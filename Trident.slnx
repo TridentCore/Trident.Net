@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="src\Trident.Abstractions\Trident.Abstractions.csproj" Type="Classic C#" />
+  <Project Path="src\Trident.Purl\Trident.Purl.csproj" Type="Classic C#" />
+</Solution>
