@@ -99,13 +99,12 @@ namespace Trident.Abstractions
         public string DirectoryOfHome(string key) => Path.Combine(InstanceDirectory, key);
 
         public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
+        
         public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
 
         public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
 
         public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
-
-        public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
         #endregion
     }
