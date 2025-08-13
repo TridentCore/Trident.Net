@@ -1,12 +1,13 @@
-﻿namespace Trident.Abstractions.Repositories.Resources;
-
-public enum ReleaseType
+﻿namespace Trident.Abstractions.Repositories.Resources
 {
-    Release,
-    Beta,
-    Alpha,
-    Experimental,
+    public enum ReleaseType
+    {
+        Release,
+        Beta,
+        Alpha,
+        Experimental,
 
-    // Or snapshot
-    Nightly
+        // Or snapshot
+        Nightly
+    }
 }
