@@ -5,7 +5,7 @@ namespace Trident.Purl
     public readonly record struct PackageDescriptor(
         string Repository,
         string? Namespace,
-        string ProjectId,
-        string? VersionId,
+        string Identity,
+        string? Version,
         ImmutableArray<(string, string)> Filters);
 }
