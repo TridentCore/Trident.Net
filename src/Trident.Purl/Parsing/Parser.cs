@@ -7,6 +7,8 @@ namespace Trident.Purl.Parsing
     {
         private readonly Regex _pattern = GenerateRegex();
 
+        public static readonly Parser Default = new();
+
         public PackageDescriptor Parse(string input)
         {
             var match = _pattern.Match(input);
