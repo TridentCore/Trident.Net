@@ -8,16 +8,16 @@ namespace Trident.Purl.Building
         public required string Identity { get; set; }
         public string? Namespace { get; set; }
         public string? Version { get; set; }
-        public IList<(string, string)> Filters { get; } = [];
+        public IList<(string, string?)> Filters { get; } = [];
 
-        public string Build() => Build(Repository, Identity, Namespace, Version, Filters.ToArray().AsSpan());
+        public string Build() => Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
 
         public static string Build(
             string repository,
+            string? @namespace,
             string identity,
-            string? @namespace = null,
-            string? version = null,
-            ReadOnlySpan<(string, string)> filters = default)
+            string? version,
+            ReadOnlySpan<(string, string?)> filters = default)
         {
             var builder = new StringBuilder();
             builder.Append(repository);
@@ -39,6 +39,8 @@ namespace Trident.Purl.Building
             {
                 foreach (var (key, value) in filters)
                 {
+                    if (value == null)
+                        continue;
                     builder.Append('#');
                     builder.Append(key);
                     builder.Append('=');

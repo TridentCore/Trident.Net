@@ -7,5 +7,5 @@ namespace Trident.Purl
         string? Namespace,
         string Identity,
         string? Version,
-        ImmutableArray<(string, string)> Filters);
+        ImmutableArray<(string, string?)> Filters);
 }
