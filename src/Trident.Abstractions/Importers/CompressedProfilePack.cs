@@ -10,7 +10,7 @@ public class CompressedProfilePack
     // input should be MemoryStream in practice
     public CompressedProfilePack(Stream input)
     {
-        _archive = new ZipArchive(input, ZipArchiveMode.Read, true);
+        _archive = new(input, ZipArchiveMode.Read, true);
         FileNames = [.. _archive.Entries.Select(x => x.FullName)];
     }
 
