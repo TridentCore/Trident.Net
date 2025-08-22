@@ -1,4 +1,3 @@
-﻿namespace Trident.Abstractions.Repositories
-{
-    public class ResourceNotFoundException(string message) : Exception(message) { }
-}
+﻿namespace Trident.Abstractions.Repositories;
+
+public class ResourceNotFoundException(string message) : Exception(message) { }
