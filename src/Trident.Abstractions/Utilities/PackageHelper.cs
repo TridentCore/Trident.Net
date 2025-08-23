@@ -45,6 +45,6 @@ public static class PackageHelper
                       pid,
                       vid,
                       filter is not null
-                          ? [("kind", filter.Kind.ToString()), ("version", filter.Version), ("loader", filter.Loader)]
+                          ? [("kind", filter.Kind?.ToString()), ("version", filter.Version), ("loader", filter.Loader)]
                           : null);
 }
