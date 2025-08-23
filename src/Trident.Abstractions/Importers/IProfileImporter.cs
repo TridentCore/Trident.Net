@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.Importers
+namespace Trident.Abstractions.Importers
 {
     public interface IProfileImporter
     {

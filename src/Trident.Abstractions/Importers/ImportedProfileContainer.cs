@@ -1,4 +1,4 @@
-﻿using Trident.Abstractions.FileModels;
+using Trident.Abstractions.FileModels;
 
 namespace Trident.Abstractions.Importers
 {

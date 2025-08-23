@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.FileModels
+namespace Trident.Abstractions.FileModels
 {
     // 相对于 TridentV1 的 Artifact，DataLock 可以迁移
     public record DataLock(

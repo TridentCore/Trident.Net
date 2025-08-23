@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.Repositories.Resources
+namespace Trident.Abstractions.Repositories.Resources
 {
     public record Version(
         string Label,

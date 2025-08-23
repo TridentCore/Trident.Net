@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.FileModels
+namespace Trident.Abstractions.FileModels
 {
     public class Profile(string name, Profile.Rice setup, IDictionary<string, object>? overrides)
     {

@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.Accounts
+namespace Trident.Abstractions.Accounts
 {
     public interface IAccount
     {

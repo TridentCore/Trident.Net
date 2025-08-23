@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using IParser;
 
 namespace Trident.Purl.Parsing
@@ -31,7 +31,7 @@ namespace Trident.Purl.Parsing
                                    @namespace is { Success: true } ? @namespace.Value : null,
                                    identity.Value,
                                    version is { Success: true } ? version.Value : null,
-                                   [..filters.Captures.Zip(values.Captures, (x, y) => (x.Value, y.Value))]);
+                                   [.. filters.Captures.Zip(values.Captures, (x, y) => (x.Value, y.Value))]);
                     }
 
                     return new(label.Value,

@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.FileModels
+namespace Trident.Abstractions.FileModels
 {
     // 这里会事无巨细的尽可能记录数据，但详细部分仅用于分析，不会展示给用户
     public class DataUser(TimeSpan totalPlayed, DateTimeOffset lastPlayed, IList<DataUser.Record>? records)

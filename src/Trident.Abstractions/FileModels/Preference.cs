@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.FileModels
+namespace Trident.Abstractions.FileModels
 {
     public record Preference(
         Preference.AccountSection Account,

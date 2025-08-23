@@ -1,4 +1,4 @@
-﻿using Trident.Abstractions.Repositories.Resources;
+using Trident.Abstractions.Repositories.Resources;
 
 namespace Trident.Abstractions.Repositories
 {

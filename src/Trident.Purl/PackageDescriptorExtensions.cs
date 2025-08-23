@@ -1,4 +1,4 @@
-﻿using Trident.Purl.Building;
+using Trident.Purl.Building;
 
 namespace Trident.Purl
 {

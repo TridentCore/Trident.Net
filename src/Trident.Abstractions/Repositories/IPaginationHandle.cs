@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.Repositories
+namespace Trident.Abstractions.Repositories
 {
     public interface IPaginationHandle<T>
     {

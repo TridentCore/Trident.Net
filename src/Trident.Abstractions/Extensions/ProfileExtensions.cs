@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using Trident.Abstractions.FileModels;
 
 namespace Trident.Abstractions.Extensions

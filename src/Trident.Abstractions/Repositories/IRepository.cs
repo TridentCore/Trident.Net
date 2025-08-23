@@ -1,4 +1,4 @@
-﻿using Trident.Abstractions.Repositories.Resources;
+using Trident.Abstractions.Repositories.Resources;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Abstractions.Repositories
