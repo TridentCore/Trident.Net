@@ -1,56 +1,62 @@
 ﻿using System.Text;
 using IBuilder;
 
-namespace Trident.Purl.Building;
-
-public class Builder : IBuilder<string>
+namespace Trident.Purl.Building
 {
-    public required string Repository { get; set; }
-    public required string Identity { get; set; }
-    public string? Namespace { get; set; }
-    public string? Version { get; set; }
-    public IList<(string, string?)> Filters { get; } = [];
-
-    #region IBuilder<string> Members
-
-    public string Build() => Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
-
-    #endregion
-
-    public static string Build(
-        string repository,
-        string? @namespace,
-        string identity,
-        string? version,
-        ReadOnlySpan<(string, string?)> filters = default)
+    public class Builder : IBuilder<string>
     {
-        var builder = new StringBuilder();
-        builder.Append(repository);
-        builder.Append(':');
-        if (@namespace != null)
-        {
-            builder.Append(@namespace);
-            builder.Append('/');
-        }
+        public required string Repository { get; set; }
+        public required string Identity { get; set; }
+        public string? Namespace { get; set; }
+        public string? Version { get; set; }
+        public IList<(string, string?)> Filters { get; } = [];
 
-        builder.Append(identity);
-        if (version != null)
-        {
-            builder.Append('@');
-            builder.Append(version);
-        }
+        #region IBuilder<string> Members
 
-        if (!filters.IsEmpty)
-            foreach (var (key, value) in filters)
+        public string Build() => Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
+
+        #endregion
+
+        public static string Build(
+            string repository,
+            string? @namespace,
+            string identity,
+            string? version,
+            ReadOnlySpan<(string, string?)> filters = default)
+        {
+            var builder = new StringBuilder();
+            builder.Append(repository);
+            builder.Append(':');
+            if (@namespace != null)
             {
-                if (value == null)
-                    continue;
-                builder.Append('#');
-                builder.Append(key);
-                builder.Append('=');
-                builder.Append(value);
+                builder.Append(@namespace);
+                builder.Append('/');
             }
 
-        return builder.ToString();
+            builder.Append(identity);
+            if (version != null)
+            {
+                builder.Append('@');
+                builder.Append(version);
+            }
+
+            if (!filters.IsEmpty)
+            {
+                foreach (var (key, value) in filters)
+                {
+                    if (value == null)
+                    {
+                        continue;
+                    }
+
+                    builder.Append('#');
+                    builder.Append(key);
+                    builder.Append('=');
+                    builder.Append(value);
+                }
+            }
+
+            return builder.ToString();
+        }
     }
 }

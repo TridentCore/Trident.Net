@@ -1,9 +1,10 @@
-﻿namespace Trident.Abstractions.Accounts;
-
-public interface IAccount
+﻿namespace Trident.Abstractions.Accounts
 {
-    string Username { get; }
-    string Uuid { get; }
-    string AccessToken { get; }
-    string UserType { get; }
+    public interface IAccount
+    {
+        string Username { get; }
+        string Uuid { get; }
+        string AccessToken { get; }
+        string UserType { get; }
+    }
 }

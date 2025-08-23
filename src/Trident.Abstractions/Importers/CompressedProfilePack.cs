@@ -1,21 +1,22 @@
 ﻿using System.IO.Compression;
 using Trident.Abstractions.Repositories.Resources;
 
-namespace Trident.Abstractions.Importers;
-
-public class CompressedProfilePack
+namespace Trident.Abstractions.Importers
 {
-    private readonly ZipArchive _archive;
-
-    // input should be MemoryStream in practice
-    public CompressedProfilePack(Stream input)
+    public class CompressedProfilePack
     {
-        _archive = new(input, ZipArchiveMode.Read, true);
-        FileNames = [.. _archive.Entries.Select(x => x.FullName)];
+        private readonly ZipArchive _archive;
+
+        // input should be MemoryStream in practice
+        public CompressedProfilePack(Stream input)
+        {
+            _archive = new(input, ZipArchiveMode.Read, true);
+            FileNames = [.. _archive.Entries.Select(x => x.FullName)];
+        }
+
+        public IReadOnlyList<string> FileNames { get; }
+        public Package? Reference { get; set; }
+
+        public Stream Open(string fileName) => _archive.GetEntry(fileName)!.Open();
     }
-
-    public IReadOnlyList<string> FileNames { get; }
-    public Package? Reference { get; set; }
-
-    public Stream Open(string fileName) => _archive.GetEntry(fileName)!.Open();
 }

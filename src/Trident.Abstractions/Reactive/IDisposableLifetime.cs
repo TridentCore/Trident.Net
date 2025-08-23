@@ -1,8 +1,9 @@
 ﻿using System.Reactive.Disposables;
 
-namespace Trident.Abstractions.Reactive;
-
-public interface IDisposableLifetime : IDisposable
+namespace Trident.Abstractions.Reactive
 {
-    CompositeDisposable DisposableLifetime { get; }
+    public interface IDisposableLifetime : IDisposable
+    {
+        CompositeDisposable DisposableLifetime { get; }
+    }
 }

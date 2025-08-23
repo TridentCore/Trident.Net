@@ -1,8 +1,9 @@
-﻿namespace Trident.Abstractions.Importers;
-
-public interface IProfileImporter
+﻿namespace Trident.Abstractions.Importers
 {
-    string IndexFileName { get; }
+    public interface IProfileImporter
+    {
+        string IndexFileName { get; }
 
-    Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack);
+        Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack);
+    }
 }
