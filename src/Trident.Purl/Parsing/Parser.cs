@@ -26,12 +26,16 @@ public partial class Parser : IParser<string, PackageDescriptor>
                  && values is { Captures.Count: > 0 }
                  && filters.Captures.Count == values.Captures.Count)
                     return new(label.Value,
-                               @namespace?.Value,
+                               @namespace is { Success: true } ? @namespace.Value : null,
                                identity.Value,
-                               version?.Value,
+                               version is { Success: true } ? version.Value : null,
                                [..filters.Captures.Zip(values.Captures, (x, y) => (x.Value, y.Value))]);
 
-                return new(label.Value, @namespace?.Value, identity.Value, version?.Value, []);
+                return new(label.Value,
+                           @namespace is { Success: true } ? @namespace.Value : null,
+                           identity.Value,
+                           version is { Success: true } ? version.Value : null,
+                           []);
             }
 
         throw new FormatException();
