@@ -1,4 +1,4 @@
-using IParser;
+﻿using IParser;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Purl.Building;
@@ -47,7 +47,7 @@ namespace Trident.Abstractions.Utilities
                           filter is not null
                               ?
                               [
-                                  ("kind", filter.Kind?.ToString()),
+                                  ("kind", filter.Kind.ToString()),
                                   ("version", filter.Version),
                                   ("loader", filter.Loader)
                               ]
