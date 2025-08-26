@@ -5,6 +5,7 @@
 ## Architecture
 
 Trident 是一种 Minecraft 的文件组织结构。
+同时也是相应的一套工具链。
 
 ### File Structure
 
@@ -61,7 +62,7 @@ Trident 会保证 `build` 目录中的文件总是和 `profile.json` 中的描�
 
 ### Modpack Creation in real world: Github Actions
 
-> [!WARNING] WIP
+> [!WARNING]
 > Trident Cli 还在制作中，暂时不可用且展示的 API 在未来会发生变动。
 
 在需要 CD 构建整合包的情况下可以使用 Trident Cli 在 Github Actions 中实现。
