@@ -116,6 +116,35 @@ namespace Trident.Core.Services
                                 () => Redirect(label).ResolveAsync(ns, pid, vid, filter),
                                 cacheEnabled);
 
+        public async Task<List<Package>> BulkResolveAsync(List<(string label,(string? ns,string pid,string? vid) meta)> bml,Filter filter,bool cacheEnabled = true ,bool detailed = false) {
+            Dictionary<string,List<(string? ns,string pid,string? vid)>> sorted = [];
+            List<Package> result = [];
+            foreach (var bm in bml) {
+                if (TryRetrieveCached($"package:{PackageHelper.Identify(bm.label,bm.meta.ns,bm.meta.pid,bm.meta.vid,filter)}"
+                                     ,out Package? pkg
+                                     ,cacheEnabled)) {
+                    result.Add(pkg!);
+                    continue;
+                }
+                if (sorted.TryGetValue(bm.label, out var value)) {
+                    value.Add(bm.meta);
+                } else {
+                    sorted.Add(bm.label,[bm.meta]);
+                }
+            }
+            foreach (var kvp in sorted) {
+                var brt = Redirect(kvp.Key).BulkResolveAsync(kvp.Value,filter,detailed);
+                if (brt == null) {
+                    foreach (var vm in kvp.Value) {
+                        result.Add(await ResolveAsync(kvp.Key,vm.ns,vm.pid,vm.vid,filter,cacheEnabled).ConfigureAwait(false));
+                    }
+                    continue;
+                }
+                brt.Wait();
+                result.AddRange(brt.Result);
+            }
+            return result;
+        }
 
         public Task<Project> QueryAsync(string label, string? ns, string pid) =>
             RetrieveCachedAsync($"project:{PackageHelper.Identify(label, ns, pid, null, null)}",
@@ -186,6 +215,54 @@ namespace Trident.Core.Services
                 _logger.LogError(e, "Exception occurred: {message}", e.Message);
                 throw;
             }
+        }
+
+        private bool TryRetrieveCached<T>(string key,out T? cache,bool cacheEnabled = true) {
+            var getTask = _cache.GetStringAsync(key);
+            getTask.Wait();
+            var cachedJson = cacheEnabled ? getTask.Result : null;
+            if (cachedJson != null)
+            {
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<T>(cachedJson);
+                    if (cached != null)
+                    {
+                        _logger.LogDebug("Cache hit: {}", key);
+                        // await _cache.RefreshAsync(key).ConfigureAwait(false);
+                        // NOTE: 不刷新！过期就让他过期，因为是由时效性的
+                        //  刷新！因为当前包的解析版本落后无伤大雅，而版本列表是无持久缓存的，不会导致时效性问题
+                        cache = cached;
+                        return true;
+                    }
+
+                    _logger.LogDebug("Bad cache hit: {}", key);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Broken cache hit: {}", key);
+                }
+            }
+
+            try {
+                _logger.LogDebug("Cache missed: {}", key);
+                cache = default;
+                return false;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Exception occurred: {message}", e.Message);
+                throw;
+            }
+        }
+
+        private void CacheObject<T>(string key,T value) {
+            var cacher = _cache
+                 .SetStringAsync(key,
+                                 JsonSerializer.Serialize(value),
+                                 new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN });
+            cacher.Wait();
+            _logger.LogDebug("Cache recorded: {}", key);
         }
 
         private async Task<byte[]> RetrieveCachedAsync(string key, Func<Task<byte[]>> factory)
