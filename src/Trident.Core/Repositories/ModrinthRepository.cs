@@ -4,6 +4,7 @@ using Trident.Core.Utilities;
 using Refit;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
+using Trident.Core.Models.ModrinthApi;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories
@@ -13,6 +14,10 @@ namespace Trident.Core.Repositories
         private const uint PAGE_SIZE = 20;
 
         public string Label => ModrinthHelper.LABEL;
+
+        private string ArrayParameterConstructor(IEnumerable<string> members) {
+            return "[\"" + string.Join("\",\"",members) + "\"]";
+        }
 
         #region IRepository Members
 
@@ -120,6 +125,45 @@ namespace Trident.Core.Repositories
 
                 throw;
             }
+        }
+
+        //todo: 做错误处理
+        public async Task<List<Package>> BulkResolveAsync(List<(string? ns,string pid,string? vid)> bml, Filter filter, bool detailed = false) {
+            var projs = await client.BulkGetProjectsAsync(ArrayParameterConstructor(bml.Select((bm => bm.pid)))).ConfigureAwait(false);
+            Dictionary<string,VersionInfo> vdt = [];
+            List<string> vql = [];
+            foreach (var bm in projs.Select(pi => bml.FirstOrDefault(bm => bm.pid == pi.Id))) {
+                if (bm.vid == null) {
+                    var version = await client
+                                       .GetProjectVersionsAsync(bm.pid,null,filter.Loader is not null ? $"[\"{ModrinthHelper.LoaderIdToName(filter.Loader)}\"]" : null)
+                                       .ConfigureAwait(false);
+                    var found = version.FirstOrDefault(x => filter.Version is null
+                                                         || x.GameVersions.Contains(filter.Version));
+                    if (found == default) {
+                        throw new ResourceNotFoundException($"{bm.pid}/{bm.vid ?? "*"} has not matched version");
+                    }
+                    vdt.Add(bm.pid,found);
+                } else {
+                    vql.Add(bm.vid);
+                }
+            }
+            if (vql.Count != 0) {
+                var vrl = await client.BulkGetVersionsAsync(
+                                                            ArrayParameterConstructor(vql)
+                                                           )!.ConfigureAwait(false);
+                foreach (var vr in vrl) {
+                    vdt.Add(vr.ProjectId,vr);
+                }
+            }
+            List<Package> result = [];
+            foreach (var pi in projs) {
+
+                var member = detailed
+                                 ? (await client.GetTeamMembersAsync(pi.TeamId).ConfigureAwait(false)).FirstOrDefault()
+                                 : new MemberInfo(); // 避免不可避免的大量请求
+                result.Add(ModrinthHelper.ToPackage(pi,vdt[pi.Id],member));
+            }
+            return result;
         }
 
         public async Task<string> ReadDescriptionAsync(string? ns, string pid)
