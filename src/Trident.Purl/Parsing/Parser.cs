@@ -1,11 +1,11 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using IParser;
 
 namespace Trident.Purl.Parsing
 {
     public partial class Parser : IParser<string, PackageDescriptor>
     {
-        public static readonly Parser Default = new();
+        public static Parser Default { get; } = new();
         private readonly Regex _pattern = GenerateRegex();
 
         #region IParser<string,PackageDescriptor> Members
