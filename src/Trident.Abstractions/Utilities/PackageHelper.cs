@@ -1,4 +1,4 @@
-﻿using IParser;
+using IParser;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Purl.Building;
