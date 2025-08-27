@@ -65,8 +65,12 @@ namespace Trident.Core.Engines.Deploying.Stages
 
             var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);
             var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
+            var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
             var persistDir = PathDef.Default.DirectoryOfPersist(Context.Key);
-            PopulatePersistent(manifest.PersistentFiles, importDir, buildDir, false);
+            // 将 import -> live 查漏补缺，会因为用户手动文件操作而产生 live 的文件比 import 多的情况
+            // 但这视为用户行为，在完全的程序托管下只有 RESET/UPDATE 两种情况会修改 import/live，PROJECT 一种情况会修改 live，不会有文件多出来的意外而导致脱离控制的情况
+            PopulatePersistent(manifest.PersistentFiles, importDir, liveDir, false);
+            PopulatePersistent(manifest.PersistentFiles, liveDir, buildDir, true);
             PopulatePersistent(manifest.PersistentFiles, persistDir, buildDir, true);
 
             Context.Manifest = manifest;
