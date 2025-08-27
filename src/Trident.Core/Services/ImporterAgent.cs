@@ -23,7 +23,7 @@ namespace Trident.Core.Services
             ImportedProfileContainer container,
             CompressedProfilePack pack)
         {
-            var importDir = PathDef.Default.DirectoryOfImport(key);
+            var importDir = PathDef.Default.DirectoryOfLive(key);
 
             foreach (var (source, target) in container.ImportFileNames)
             {

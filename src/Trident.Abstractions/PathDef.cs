@@ -104,6 +104,8 @@ namespace Trident.Abstractions
 
         public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
 
+        public string DirectoryOfLive(string key) => Path.Combine(InstanceDirectory, key, "live");
+
         public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
 
         #endregion
