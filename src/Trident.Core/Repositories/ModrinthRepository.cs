@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
@@ -127,7 +128,6 @@ namespace Trident.Core.Repositories
             }
         }
 
-        //todo: 做错误处理
         public async Task<List<Package>> BulkResolveAsync(List<(string? ns,string pid,string? vid)> bml, Filter filter, bool detailed = false) {
             var projs = await client.BulkGetProjectsAsync(ArrayParameterConstructor(bml.Select((bm => bm.pid)))).ConfigureAwait(false);
             Dictionary<string,VersionInfo> vdt = [];
@@ -160,8 +160,27 @@ namespace Trident.Core.Repositories
 
                 var member = detailed
                                  ? (await client.GetTeamMembersAsync(pi.TeamId).ConfigureAwait(false)).FirstOrDefault()
-                                 : new MemberInfo(); // 避免不可避免的大量请求
-                result.Add(ModrinthHelper.ToPackage(pi,vdt[pi.Id],member));
+                                 : new(); // 避免不可避免的大量请求
+                if (vdt.Keys.Contains(pi.Id)) {
+                    result.Add(ModrinthHelper.ToPackage(pi,vdt[pi.Id],member));
+                } else {
+                    var bm = bml.FirstOrDefault(bm => bm.pid == pi.Id);
+                    Debug.WriteLine($"Couldn't found fetched version in vDict {pi.Id}:{bm.vid ?? "*"}","Warn");
+                    try {
+                        if (bm.vid != null) {
+                            result.Add(ModrinthHelper.ToPackage(pi,await client.GetVersionAsync(bm.vid).ConfigureAwait(false),member));
+                        } else {
+                            // 这怎么可能(恼
+                            Debug.WriteLine($"{pi.Id}/{bm.vid} not found in the repository","Error");
+                        }
+                    }
+                    catch(ApiException ex) {
+                        if (ex.StatusCode == HttpStatusCode.NotFound) {
+                            throw new ResourceNotFoundException($"{pi.Id}/{bm.vid ?? "*"} not found in the repository");
+                        }
+                        throw;
+                    }
+                }
             }
             return result;
         }
