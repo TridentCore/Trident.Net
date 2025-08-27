@@ -61,8 +61,10 @@ namespace Trident.Core.Engines.Deploying.Stages
                                         {
                                             if (!Verify(fragile.SourcePath, fragile.Hash))
                                             {
-                                                for (var i = 0; i <= 5; i++) {
-                                                    try {
+                                                for (var i = 0; i <= 5; i++)
+                                                {
+                                                    try
+                                                    {
                                                         logger.LogDebug("Starting download fragile file {} from {}",
                                                                         fragile.SourcePath,
                                                                         fragile.Url);
@@ -84,7 +86,8 @@ namespace Trident.Core.Engines.Deploying.Stages
                                                         await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                                                         break;
                                                     }
-                                                    catch (Exception e) {
+                                                    catch (Exception e)
+                                                    {
                                                         logger.LogError("Failed download fragile file {1} from {2} {3} times: {4}",
                                                                 fragile.SourcePath,
                                                                 fragile.Url,

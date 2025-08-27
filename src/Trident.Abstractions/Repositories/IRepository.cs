@@ -10,7 +10,8 @@ namespace Trident.Abstractions.Repositories
         Task<Project> QueryAsync(string? ns, string pid);
         Task<IEnumerable<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch);
         Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter);
-        Task<List<Package>>? BulkResolveAsync(List<(string? ns,string pid,string? vid)> bml,Filter filter,bool detailed = false) {
+        Task<List<Package>>? BulkResolveAsync(List<(string? ns, string pid, string? vid)> bml, Filter filter, bool detailed = false)
+        {
             // 默认实现直接返回null 来区分是否支持批量
             return null;
         }

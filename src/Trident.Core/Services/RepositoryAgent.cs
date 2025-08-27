@@ -117,36 +117,47 @@ namespace Trident.Core.Services
                                 () => Redirect(label).ResolveAsync(ns, pid, vid, filter),
                                 cacheEnabled);
 
-        public async Task<List<Package>> BulkResolveAsync(List<(string label,(string? ns,string pid,string? vid) meta)> bml,Filter filter,bool cacheEnabled = true ,bool detailed = false) {
-            Dictionary<string,List<(string? ns,string pid,string? vid)>> sorted = [];
+        public async Task<List<Package>> BulkResolveAsync(List<(string label, (string? ns, string pid, string? vid) meta)> bml, Filter filter, bool cacheEnabled = true, bool detailed = false)
+        {
+            Dictionary<string, List<(string? ns, string pid, string? vid)>> sorted = [];
             List<Package> result = [];
-            foreach (var bm in bml) {
-                if (TryRetrieveCached($"package:{PackageHelper.Identify(bm.label,bm.meta.ns,bm.meta.pid,bm.meta.vid,filter)}"
-                                     ,out Package? pkg
-                                     ,cacheEnabled)) {
+            foreach (var bm in bml)
+            {
+                if (TryRetrieveCached($"package:{PackageHelper.Identify(bm.label, bm.meta.ns, bm.meta.pid, bm.meta.vid, filter)}"
+                                     , out Package? pkg
+                                     , cacheEnabled))
+                {
                     result.Add(pkg!);
                     continue;
                 }
-                if (sorted.TryGetValue(bm.label, out var value)) {
+                if (sorted.TryGetValue(bm.label, out var value))
+                {
                     value.Add(bm.meta);
-                } else {
-                    sorted.Add(bm.label,[bm.meta]);
+                }
+                else
+                {
+                    sorted.Add(bm.label, [bm.meta]);
                 }
             }
-            foreach (var kvp in sorted) {
-                var brt = Redirect(kvp.Key).BulkResolveAsync(kvp.Value,filter,detailed);
-                if (brt == null) {
-                    foreach (var vm in kvp.Value) {
-                        var resolved = await ResolveAsync(kvp.Key,vm.ns,vm.pid,vm.vid,filter,cacheEnabled).ConfigureAwait(false);
+            foreach (var kvp in sorted)
+            {
+                var brt = Redirect(kvp.Key).BulkResolveAsync(kvp.Value, filter, detailed);
+                if (brt == null)
+                {
+                    foreach (var vm in kvp.Value)
+                    {
+                        var resolved = await ResolveAsync(kvp.Key, vm.ns, vm.pid, vm.vid, filter, cacheEnabled).ConfigureAwait(false);
                         result.Add(resolved);
                     }
                     continue;
                 }
                 brt.Wait();
                 var brr = brt.Result;
-                if (cacheEnabled) {
-                    foreach (var rp in brr) {
-                        CacheObject($"package:{PackageHelper.Identify(kvp.Key,rp.Namespace,rp.ProjectId,rp.VersionId,filter)}",rp);
+                if (cacheEnabled)
+                {
+                    foreach (var rp in brr)
+                    {
+                        CacheObject($"package:{PackageHelper.Identify(kvp.Key, rp.Namespace, rp.ProjectId, rp.VersionId, filter)}", rp);
                     }
                 }
                 result.AddRange(brr);
@@ -225,7 +236,8 @@ namespace Trident.Core.Services
             }
         }
 
-        private bool TryRetrieveCached<T>(string key,out T? cache,bool cacheEnabled = true) {
+        private bool TryRetrieveCached<T>(string key, out T? cache, bool cacheEnabled = true)
+        {
             var getTask = _cache.GetStringAsync(key);
             getTask.Wait();
             var cachedJson = cacheEnabled ? getTask.Result : null;
@@ -252,8 +264,9 @@ namespace Trident.Core.Services
                 }
             }
 
-            try {
-                Debug.WriteLine($"Cache missed: {key}","Agent");
+            try
+            {
+                Debug.WriteLine($"Cache missed: {key}", "Agent");
                 _logger.LogDebug("Cache missed: {}", key);
                 cache = default;
                 return false;
@@ -265,14 +278,15 @@ namespace Trident.Core.Services
             }
         }
 
-        private void CacheObject<T>(string key,T value) {
-            if (TryRetrieveCached<T>(key,out _)) return;
+        private void CacheObject<T>(string key, T value)
+        {
+            if (TryRetrieveCached<T>(key, out _)) return;
             var cacher = _cache
                  .SetStringAsync(key,
                                  JsonSerializer.Serialize(value),
                                  new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN });
             cacher.Wait();
-            Debug.WriteLine($"Cache recorded: {key}","Agent");
+            Debug.WriteLine($"Cache recorded: {key}", "Agent");
             _logger.LogDebug("Cache recorded: {}", key);
         }
 

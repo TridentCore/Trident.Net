@@ -16,8 +16,9 @@ namespace Trident.Core.Repositories
 
         public string Label => ModrinthHelper.LABEL;
 
-        private string ArrayParameterConstructor(IEnumerable<string> members) {
-            return "[\"" + string.Join("\",\"",members) + "\"]";
+        private string ArrayParameterConstructor(IEnumerable<string> members)
+        {
+            return "[\"" + string.Join("\",\"", members) + "\"]";
         }
 
         #region IRepository Members
@@ -128,54 +129,72 @@ namespace Trident.Core.Repositories
             }
         }
 
-        public async Task<List<Package>> BulkResolveAsync(List<(string? ns,string pid,string? vid)> bml, Filter filter, bool detailed = false) {
+        public async Task<List<Package>> BulkResolveAsync(List<(string? ns, string pid, string? vid)> bml, Filter filter, bool detailed = false)
+        {
             var projs = await client.BulkGetProjectsAsync(ArrayParameterConstructor(bml.Select((bm => bm.pid)))).ConfigureAwait(false);
-            Dictionary<string,VersionInfo> vdt = [];
+            Dictionary<string, VersionInfo> vdt = [];
             List<string> vql = [];
-            foreach (var bm in projs.Select(pi => bml.FirstOrDefault(bm => bm.pid == pi.Id))) {
-                if (bm.vid == null) {
+            foreach (var bm in projs.Select(pi => bml.FirstOrDefault(bm => bm.pid == pi.Id)))
+            {
+                if (bm.vid == null)
+                {
                     var version = await client
-                                       .GetProjectVersionsAsync(bm.pid,null,filter.Loader is not null ? $"[\"{ModrinthHelper.LoaderIdToName(filter.Loader)}\"]" : null)
+                                       .GetProjectVersionsAsync(bm.pid, null, filter.Loader is not null ? $"[\"{ModrinthHelper.LoaderIdToName(filter.Loader)}\"]" : null)
                                        .ConfigureAwait(false);
                     var found = version.FirstOrDefault(x => filter.Version is null
                                                          || x.GameVersions.Contains(filter.Version));
-                    if (found == default) {
+                    if (found == default)
+                    {
                         throw new ResourceNotFoundException($"{bm.pid}/{bm.vid ?? "*"} has not matched version");
                     }
-                    vdt.Add(bm.pid,found);
-                } else {
+                    vdt.Add(bm.pid, found);
+                }
+                else
+                {
                     vql.Add(bm.vid);
                 }
             }
-            if (vql.Count != 0) {
+            if (vql.Count != 0)
+            {
                 var vrl = await client.BulkGetVersionsAsync(
                                                             ArrayParameterConstructor(vql)
                                                            )!.ConfigureAwait(false);
-                foreach (var vr in vrl) {
-                    vdt.Add(vr.ProjectId,vr);
+                foreach (var vr in vrl)
+                {
+                    vdt.Add(vr.ProjectId, vr);
                 }
             }
             List<Package> result = [];
-            foreach (var pi in projs) {
+            foreach (var pi in projs)
+            {
 
                 var member = detailed
                                  ? (await client.GetTeamMembersAsync(pi.TeamId).ConfigureAwait(false)).FirstOrDefault()
                                  : new(); // 避免不可避免的大量请求
-                if (vdt.Keys.Contains(pi.Id)) {
-                    result.Add(ModrinthHelper.ToPackage(pi,vdt[pi.Id],member));
-                } else {
+                if (vdt.Keys.Contains(pi.Id))
+                {
+                    result.Add(ModrinthHelper.ToPackage(pi, vdt[pi.Id], member));
+                }
+                else
+                {
                     var bm = bml.FirstOrDefault(bm => bm.pid == pi.Id);
-                    Debug.WriteLine($"Couldn't found fetched version in vDict {pi.Id}:{bm.vid ?? "*"}","Warn");
-                    try {
-                        if (bm.vid != null) {
-                            result.Add(ModrinthHelper.ToPackage(pi,await client.GetVersionAsync(bm.vid).ConfigureAwait(false),member));
-                        } else {
+                    Debug.WriteLine($"Couldn't found fetched version in vDict {pi.Id}:{bm.vid ?? "*"}", "Warn");
+                    try
+                    {
+                        if (bm.vid != null)
+                        {
+                            result.Add(ModrinthHelper.ToPackage(pi, await client.GetVersionAsync(bm.vid).ConfigureAwait(false), member));
+                        }
+                        else
+                        {
                             // 这怎么可能(恼
-                            Debug.WriteLine($"{pi.Id}/{bm.vid} not found in the repository","Error");
+                            Debug.WriteLine($"{pi.Id}/{bm.vid} not found in the repository", "Error");
                         }
                     }
-                    catch(ApiException ex) {
-                        if (ex.StatusCode == HttpStatusCode.NotFound) {
+                    catch (ApiException ex)
+                    {
+                        if (ex.StatusCode == HttpStatusCode.NotFound)
+                        {
                             throw new ResourceNotFoundException($"{pi.Id}/{bm.vid ?? "*"} not found in the repository");
                         }
                         throw;
