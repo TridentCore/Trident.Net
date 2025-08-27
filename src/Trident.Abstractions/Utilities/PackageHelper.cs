@@ -47,7 +47,7 @@ namespace Trident.Abstractions.Utilities
                           filter is not null
                               ?
                               [
-                                  ("kind", filter.Kind.ToString()),
+                                  ("kind", filter.Kind?.ToString()),
                                   ("version", filter.Version),
                                   ("loader", filter.Loader)
                               ]
