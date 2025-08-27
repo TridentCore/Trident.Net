@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
@@ -136,12 +137,19 @@ namespace Trident.Core.Services
                 var brt = Redirect(kvp.Key).BulkResolveAsync(kvp.Value,filter,detailed);
                 if (brt == null) {
                     foreach (var vm in kvp.Value) {
-                        result.Add(await ResolveAsync(kvp.Key,vm.ns,vm.pid,vm.vid,filter,cacheEnabled).ConfigureAwait(false));
+                        var resolved = await ResolveAsync(kvp.Key,vm.ns,vm.pid,vm.vid,filter,cacheEnabled).ConfigureAwait(false);
+                        result.Add(resolved);
                     }
                     continue;
                 }
                 brt.Wait();
-                result.AddRange(brt.Result);
+                var brr = brt.Result;
+                if (cacheEnabled) {
+                    foreach (var rp in brr) {
+                        CacheObject($"package:{PackageHelper.Identify(kvp.Key,rp.Namespace,rp.ProjectId,rp.VersionId,filter)}",rp);
+                    }
+                }
+                result.AddRange(brr);
             }
             return result;
         }
@@ -245,6 +253,7 @@ namespace Trident.Core.Services
             }
 
             try {
+                Debug.WriteLine($"Cache missed: {key}","Agent");
                 _logger.LogDebug("Cache missed: {}", key);
                 cache = default;
                 return false;
@@ -257,11 +266,13 @@ namespace Trident.Core.Services
         }
 
         private void CacheObject<T>(string key,T value) {
+            if (TryRetrieveCached<T>(key,out _)) return;
             var cacher = _cache
                  .SetStringAsync(key,
                                  JsonSerializer.Serialize(value),
                                  new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN });
             cacher.Wait();
+            Debug.WriteLine($"Cache recorded: {key}","Agent");
             _logger.LogDebug("Cache recorded: {}", key);
         }
 
