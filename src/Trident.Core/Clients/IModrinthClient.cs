@@ -26,14 +26,14 @@ namespace Trident.Core.Clients
         Task<ProjectInfo> GetProjectAsync(string projectId);
 
         [Get("/v3/projects")]
-        Task<List<ProjectInfo>> BulkGetProjectsAsync(string ids);
+        Task<IReadOnlyList<ProjectInfo>> GetMultipleProjectsAsync(string ids);
 
 
         [Get("/v3/version/{versionId}")]
         Task<VersionInfo> GetVersionAsync(string versionId);
 
         [Get("/v3/versions")]
-        Task<List<VersionInfo>>? BulkGetVersionsAsync(string ids);
+        Task<IReadOnlyList<VersionInfo>> GetMultipleVersionsAsync(string ids);
 
         [Get("/v3/team/{teamId}/members")]
         Task<IReadOnlyList<MemberInfo>> GetTeamMembersAsync(string teamId);

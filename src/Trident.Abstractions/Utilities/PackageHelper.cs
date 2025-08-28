@@ -39,12 +39,13 @@ namespace Trident.Abstractions.Utilities
         public static string ToPurl(Package package) =>
             ToPurl(package.Label, package.Namespace, package.ProjectId, package.VersionId);
 
+        // vid 存在则固定为特定版本，vid 不存在且 filter 存在则为浮动版本
         public static string Identify(string label, string? ns, string pid, string? vid, Filter? filter) =>
             Builder.Build(label,
                           ns,
                           pid,
                           vid,
-                          filter is not null
+                          vid is null && filter is not null
                               ?
                               [
                                   ("kind", filter.Kind?.ToString()),
