@@ -69,30 +69,31 @@ namespace Trident.Core.Engines.Deploying.Stages
             var persistDir = PathDef.Default.DirectoryOfPersist(Context.Key);
             // 将 import -> live 查漏补缺，会因为用户手动文件操作而产生 live 的文件比 import 多的情况
             // 但这视为用户行为，在完全的程序托管下只有 RESET/UPDATE 两种情况会修改 import/live，PROJECT 一种情况会修改 live，不会有文件多出来的意外而导致脱离控制的情况
-            PopulatePersistent(manifest.PersistentFiles, importDir, liveDir, false);
-            PopulatePersistent(manifest.PersistentFiles, liveDir, buildDir, true);
-            PopulatePersistent(manifest.PersistentFiles, persistDir, buildDir, true);
+            PopulatePersistent(manifest.PersistentFiles, importDir, importDir, liveDir, false);
+            PopulatePersistent(manifest.PersistentFiles, importDir, liveDir, buildDir, true);
+            PopulatePersistent(manifest.PersistentFiles, persistDir, persistDir, buildDir, true);
 
             Context.Manifest = manifest;
         }
 
         private static void PopulatePersistent(
             IList<EntityManifest.PersistentFile> collection,
-            string baseDir,
+            string scanDir,
+            string sourceDir,
             string targetDir,
             bool phantom)
         {
-            if (Directory.Exists(baseDir))
+            if (Directory.Exists(scanDir))
             {
                 var dirs = new Stack<string>();
-                dirs.Push(baseDir);
+                dirs.Push(scanDir);
 
                 while (dirs.TryPop(out var sub))
                 {
                     foreach (var file in Directory.GetFiles(sub))
                     {
-                        collection.Add(new(file,
-                                           Path.Combine(targetDir, Path.GetRelativePath(baseDir, file)),
+                        collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, file)),
+                                           Path.Combine(targetDir, Path.GetRelativePath(scanDir, file)),
                                            phantom));
                     }
 
