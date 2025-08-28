@@ -93,6 +93,9 @@ namespace Trident.Core.Engines.Deploying.Stages
                                                                     fragile.Url,
                                                                     i,
                                                                     e.Message);
+                                                    if (cancel.IsCancellationRequested) {
+                                                        break;
+                                                    }
                                                     if (i == 5) throw; // 第五次重新引发, 终止固实化
                                                 }
                                             }
