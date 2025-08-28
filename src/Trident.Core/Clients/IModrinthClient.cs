@@ -1,5 +1,5 @@
-using Trident.Core.Models.ModrinthApi;
 using Refit;
+using Trident.Core.Models.ModrinthApi;
 
 namespace Trident.Core.Clients
 {
@@ -25,8 +25,15 @@ namespace Trident.Core.Clients
         [Get("/v3/project/{projectId}")]
         Task<ProjectInfo> GetProjectAsync(string projectId);
 
+        [Get("/v3/projects")]
+        Task<IReadOnlyList<ProjectInfo>> GetMultipleProjectsAsync(string ids);
+
+
         [Get("/v3/version/{versionId}")]
         Task<VersionInfo> GetVersionAsync(string versionId);
+
+        [Get("/v3/versions")]
+        Task<IReadOnlyList<VersionInfo>> GetMultipleVersionsAsync(string ids);
 
         [Get("/v3/team/{teamId}/members")]
         Task<IReadOnlyList<MemberInfo>> GetTeamMembersAsync(string teamId);

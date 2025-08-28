@@ -16,7 +16,7 @@ namespace Trident.Core.Models.ModrinthApi
         DateTimeOffset? Queued,
         string Status,
         string? RequestedStatus,
-        string? ModeratorMessage,
+        ProjectInfo.Messages? ModeratorMessage,
         ProjectInfo.ProjectLicense License,
         ulong Downloads,
         uint Followers,
@@ -40,6 +40,10 @@ namespace Trident.Core.Models.ModrinthApi
 
         public readonly record struct ProjectLicense(string Id, string Name, Uri? Url);
 
+        #endregion
+
+        #region Nested type: Messages
+        public readonly record struct Messages(string Message,string? Body);
         #endregion
 
         #region Nested type: ProjectLinks

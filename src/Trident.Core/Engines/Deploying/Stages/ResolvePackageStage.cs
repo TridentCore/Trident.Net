@@ -31,30 +31,43 @@ namespace Trident.Core.Engines.Deploying.Stages
                 }
             }
 
-            var purls = new ConcurrentStack<Purl>(Context
-                                                 .Setup.Packages.Where(x => x.Enabled)
-                                                 .Select(x =>
-                                                  {
-                                                      if (PackageHelper.TryParse(x.Purl, out var parsed))
-                                                      {
-                                                          return new Purl(new(parsed.Label,
-                                                                              parsed.Namespace,
-                                                                              parsed.Pid),
-                                                                          parsed.Vid,
-                                                                          false);
-                                                      }
+            var purls = new List<Purl>(Context
+                                      .Setup.Packages.Where(x => x.Enabled)
+                                      .Select(x =>
+                                       {
+                                           if (PackageHelper.TryParse(x.Purl, out var parsed))
+                                           {
+                                               return new Purl(new(parsed.Label, parsed.Namespace, parsed.Pid),
+                                                               parsed.Vid,
+                                                               false);
+                                           }
 
-                                                      throw new
-                                                          FormatException($"Package {x.Purl} is not a valid package");
-                                                  }));
-            var flatten = new ConcurrentDictionary<Identity, Version>();
+                                           throw new FormatException($"Package {x.Purl} is not a valid package");
+                                       }));
+            var flatten = new Dictionary<Identity, Version>();
 
             ProgressStream.OnNext((0, purls.Count));
 
-            // 不同于依赖解决方案，由于各个资源平台本身就没考虑过版本兼容性，这里直接按可用的最高版本选择
-            var tasks = Enumerable.Range(0, Math.Max(Environment.ProcessorCount / 2, 1)).Select(_ => ResolveAsync());
+            while (purls.Any())
+            {
+                var resolved = await agent
+                                    .ResolveBatchAsync(purls.Select(x => (x.Identity.Label, x.Identity.Namespace,
+                                                                          x.Identity.Pid, x.Vid)),
+                                                       Filter.None with
+                                                       {
+                                                           Loader = loader, Version = Context.Setup.Version
+                                                       })
+                                    .ConfigureAwait(false);
 
-            await Task.WhenAll(tasks).ConfigureAwait(false);
+                logger.LogDebug("Bulk resolved {} packages", resolved.Count);
+                purls.Clear();
+
+                // 依赖解析直接不要了，本来就没法用，留着也是累赘
+
+                // TODO: 如果批量解析存在失败那就按需重试几次
+
+                ProgressStream.OnNext((flatten.Count, purls.Count + flatten.Count));
+            }
 
             if (token.IsCancellationRequested)
             {
@@ -76,81 +89,6 @@ namespace Trident.Core.Engines.Deploying.Stages
 
             Context.IsPackageResolved = true;
             return;
-
-            async Task ResolveAsync()
-            {
-                while (purls.TryPop(out var parsed) && !token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        var resolved = await agent
-                                            .ResolveAsync(parsed.Identity.Label,
-                                                          parsed.Identity.Namespace,
-                                                          parsed.Identity.Pid,
-                                                          parsed.Vid,
-                                                          Filter.None with
-                                                          {
-                                                              Loader = loader,
-                                                              Version = Context.Setup.Version
-                                                          })
-                                            .ConfigureAwait(false);
-                        logger.LogDebug("Resolved {} package {}({}/{}) with {}",
-                                        parsed.IsPhantom ? "phantom" : "non-phantom",
-                                        resolved.ProjectName,
-                                        resolved.ProjectId,
-                                        resolved.VersionId,
-                                        resolved.Dependencies.Any()
-                                            ? $"[{string.Join(",", resolved.Dependencies)}]"
-                                            : "no dependencies");
-                        var version = new Version(resolved.VersionId,
-                                                  resolved.Kind,
-                                                  resolved.PublishedAt,
-                                                  resolved.FileName,
-                                                  resolved.Sha1,
-                                                  resolved.Download,
-                                                  parsed.Vid != null);
-
-                        if (flatten.TryGetValue(parsed.Identity, out var old))
-                        {
-                            if (!old.IsReliable)
-                            {
-                                if (version.IsReliable || old.ReleasedAt < resolved.PublishedAt)
-                                {
-                                    flatten[parsed.Identity] = version;
-                                }
-                            }
-                            // 该版本对应的依赖图也应该替换掉，但这里不管，忽略掉
-                        }
-                        else
-                        {
-                            flatten.TryAdd(parsed.Identity, version);
-                            // NOTE: 实测有些模组的依赖是互相冲突的，这游戏的资源托管站数据就是依托狗屎
-                            if (Context.Options.ResolveDependency)
-                            {
-                                foreach (var dep in resolved.Dependencies.Where(x => x.IsRequired))
-                                {
-                                    purls.Push(new(new(dep.Label, dep.Namespace, dep.Pid), dep.Vid, true));
-                                }
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        if (!parsed.IsPhantom)
-                        {
-                            throw;
-                        }
-                        else
-                        {
-                            logger.LogWarning("Phantom package {} has been referred incorrectly", parsed.Identity);
-                        }
-                    }
-                    finally
-                    {
-                        ProgressStream.OnNext((flatten.Count, purls.Count + flatten.Count));
-                    }
-                }
-            }
         }
 
         public override void Dispose()

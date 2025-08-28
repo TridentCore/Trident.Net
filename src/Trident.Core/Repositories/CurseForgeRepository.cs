@@ -96,7 +96,7 @@ namespace Trident.Core.Repositories
         }
 
         // POST api.curseforge.com/v1/mods {"modIds": [...]}
-        public Task<IEnumerable<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
+        public Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
             throw new NotImplementedException();
 
         public async Task<Package> ResolveAsync(string? _, string pid, string? vid, Filter filter)
@@ -164,6 +164,16 @@ namespace Trident.Core.Repositories
             }
 
             throw new FormatException("Pid is not well formatted into modId");
+        }
+
+        public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
+            IEnumerable<(string? ns, string pid, string? vid)> batch,
+            Filter filter)
+        {
+            // TODO: 这里是 FALLBACK，未来补全
+            var tasks = batch.Select(x => ResolveAsync(x.ns, x.pid, x.vid, filter)).ToList();
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            return tasks.ConvertAll(x => x.Result);
         }
 
         public async Task<string> ReadDescriptionAsync(string? ns, string pid)

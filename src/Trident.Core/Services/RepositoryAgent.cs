@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
@@ -9,6 +10,8 @@ using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
+
+// ReSharper disable PossibleMultipleEnumeration
 
 namespace Trident.Core.Services
 {
@@ -42,30 +45,30 @@ namespace Trident.Core.Services
                 switch (profile.Driver)
                 {
                     case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
-                        {
-                            var modrinth = new ModrinthRepository(RestService.For<IModrinthClient>(BuildClient(profile),
-                                                                      new RefitSettings(new
-                                                                          SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                             .Web)
-                                                                          {
-                                                                              PropertyNamingPolicy =
-                                                                                  JsonNamingPolicy
-                                                                                     .SnakeCaseLower
-                                                                          }))));
+                    {
+                        var modrinth = new ModrinthRepository(RestService.For<IModrinthClient>(BuildClient(profile),
+                                                                  new RefitSettings(new
+                                                                      SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                         .Web)
+                                                                      {
+                                                                          PropertyNamingPolicy =
+                                                                              JsonNamingPolicy
+                                                                                 .SnakeCaseLower
+                                                                      }))));
 
-                            built.Add(profile.Label, modrinth);
-                            break;
-                        }
+                        built.Add(profile.Label, modrinth);
+                        break;
+                    }
                     case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
-                        {
-                            var curseforge =
-                                new CurseForgeRepository(RestService.For<ICurseForgeClient>(BuildClient(profile),
-                                                             new RefitSettings(new
-                                                                                   SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                                      .Web)))));
-                            built.Add(profile.Label, curseforge);
-                            break;
-                        }
+                    {
+                        var curseforge =
+                            new CurseForgeRepository(RestService.For<ICurseForgeClient>(BuildClient(profile),
+                                                         new RefitSettings(new
+                                                                               SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                                  .Web)))));
+                        built.Add(profile.Label, curseforge);
+                        break;
+                    }
                 }
             }
 
@@ -116,6 +119,44 @@ namespace Trident.Core.Services
                                 () => Redirect(label).ResolveAsync(ns, pid, vid, filter),
                                 cacheEnabled);
 
+        public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
+            IEnumerable<(string label, string? ns, string pid, string? vid)> batch,
+            Filter filter)
+        {
+            var cachedTasks =
+                batch.Select(async x => (Meta: x,
+                                         Cached: await RetrieveCachedAsync<
+                                                         Package>($"package:{PackageHelper.Identify(x.label, x.ns, x.pid, x.vid, filter)}")
+                                                    .ConfigureAwait(false)));
+            await Task.WhenAll(cachedTasks).ConfigureAwait(false);
+            var cached = cachedTasks
+                        .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
+                        .Select(x => x.Result);
+
+            var toResolve = batch.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
+            var resolveTasks = toResolve.Select(async x => (Label: x.Key,
+                                                            Packages: await Redirect(x.Key)
+                                                                           .ResolveBatchAsync(x.Select(y => (y.ns,
+                                                                                                y.pid,
+                                                                                                y.vid)),
+                                                                                filter)
+                                                                           .ConfigureAwait(false)));
+            await Task.WhenAll(resolveTasks).ConfigureAwait(false);
+            var resolved = resolveTasks
+                          .Where(x => x.IsCompletedSuccessfully && x.Result != default)
+                          .Select(x => x.Result)
+                          .SelectMany(x => x.Packages.Select(y => (x.Label, Package: y)))
+                          .ToList();
+            foreach (var (label, package) in resolved)
+            {
+                await
+                    CacheObjectAsync($"package:{PackageHelper.Identify(label, package.Namespace, package.ProjectId, package.VersionId, filter)}",
+                                     package)
+                       .ConfigureAwait(false);
+            }
+
+            return cached.Select(x => x.Cached!).Concat(resolved.Select(x => x.Package)).ToList();
+        }
 
         public Task<Project> QueryAsync(string label, string? ns, string pid) =>
             RetrieveCachedAsync($"project:{PackageHelper.Identify(label, ns, pid, null, null)}",
@@ -145,40 +186,16 @@ namespace Trident.Core.Services
 
         private async Task<T> RetrieveCachedAsync<T>(string key, Func<Task<T>> factory, bool cacheEnabled = true)
         {
-            var cachedJson = cacheEnabled ? await _cache.GetStringAsync(key).ConfigureAwait(false) : null;
-            if (cachedJson != null)
+            var cached = cacheEnabled ? await RetrieveCachedAsync<T>(key).ConfigureAwait(false) : default;
+            if (cached != null)
             {
-                try
-                {
-                    var cached = JsonSerializer.Deserialize<T>(cachedJson);
-                    if (cached != null)
-                    {
-                        _logger.LogDebug("Cache hit: {}", key);
-                        // await _cache.RefreshAsync(key).ConfigureAwait(false);
-                        // NOTE: 不刷新！过期就让他过期，因为是由时效性的
-                        //  刷新！因为当前包的解析版本落后无伤大雅，而版本列表是无持久缓存的，不会导致时效性问题
-                        return cached;
-                    }
-
-                    _logger.LogDebug("Bad cache hit: {}", key);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Broken cache hit: {}", key);
-                }
+                return cached;
             }
 
             try
             {
                 var result = await factory().ConfigureAwait(false);
-                await _cache
-                     .SetStringAsync(key,
-                                     JsonSerializer.Serialize(result),
-                                     new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN })
-                     .ConfigureAwait(false);
-                _logger.LogDebug("Cache missed but recorded: {}", key);
-
-
+                await CacheObjectAsync(key, result).ConfigureAwait(false);
                 return result;
             }
             catch (Exception e)
@@ -188,31 +205,38 @@ namespace Trident.Core.Services
             }
         }
 
-        private async Task<byte[]> RetrieveCachedAsync(string key, Func<Task<byte[]>> factory)
+        private async ValueTask<T?> RetrieveCachedAsync<T>(string key)
         {
-            var cachedBytes = await _cache.GetAsync(key).ConfigureAwait(false);
-            if (cachedBytes != null)
+            var cachedJson = await _cache.GetStringAsync(key).ConfigureAwait(false);
+            if (cachedJson != null)
             {
-                _logger.LogDebug("Cache bytes hit: {}", key);
-                await _cache.RefreshAsync(key).ConfigureAwait(false);
-                // 图片而已，过时了不重要，还是可以 Renew 一下的
-                return cachedBytes;
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<T>(cachedJson);
+                    _logger.LogDebug("Cache hit: {}", key);
+                    // await _cache.RefreshAsync(key).ConfigureAwait(false);
+                    // NOTE: 不刷新！过期就让他过期，因为是由时效性的
+                    //  刷新！因为当前包的解析版本落后无伤大雅，而版本列表是无持久缓存的，不会导致时效性问题
+                    return cached;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Broken cache hit: {}", key);
+                }
             }
 
-            try
-            {
-                var result = await factory().ConfigureAwait(false);
-                await _cache.SetAsync(key, result, new() { SlidingExpiration = EXPIRED_IN }).ConfigureAwait(false);
-                _logger.LogDebug("Cache bytes missed but recorded: {}", key);
+            _logger.LogDebug("Cache missed: {}", key);
+            return default;
+        }
 
-
-                return result;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Exception occurred: {message}", e.Message);
-                throw;
-            }
+        private async Task CacheObjectAsync<T>(string key, T value)
+        {
+            await _cache
+                 .SetStringAsync(key,
+                                 JsonSerializer.Serialize(value),
+                                 new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN })
+                 .ConfigureAwait(false);
+            _logger.LogDebug("Cache recorded: {}", key);
         }
 
         #region Injected

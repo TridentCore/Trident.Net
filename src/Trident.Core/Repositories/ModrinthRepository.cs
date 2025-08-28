@@ -1,10 +1,14 @@
+using System.Diagnostics;
 using System.Net;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
 using Refit;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
+using Trident.Core.Models.ModrinthApi;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
+
+// ReSharper disable PossibleMultipleEnumeration
 
 namespace Trident.Core.Repositories
 {
@@ -13,6 +17,9 @@ namespace Trident.Core.Repositories
         private const uint PAGE_SIZE = 20;
 
         public string Label => ModrinthHelper.LABEL;
+
+        private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
+            "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
 
         #region IRepository Members
 
@@ -75,7 +82,7 @@ namespace Trident.Core.Repositories
             return ModrinthHelper.ToProject(project, team.FirstOrDefault());
         }
 
-        public Task<IEnumerable<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
+        public Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
             throw new NotImplementedException();
 
         public async Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter)
@@ -92,17 +99,19 @@ namespace Trident.Core.Repositories
                 }
                 else
                 {
-                    var (versionTask, membersTask) =
+                    var (versionsTask, membersTask) =
                         (client
                         .GetProjectVersionsAsync(pid,
                                                  null,
                                                  filter.Loader is not null
-                                                     ? $"[\"{ModrinthHelper.LoaderIdToName(filter.Loader)}\"]"
+                                                     ? ArrayParameterConstructor([
+                                                         ModrinthHelper.LoaderIdToName(filter.Loader)
+                                                     ])
                                                      : null)
                         .ConfigureAwait(false), client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false));
-                    var (version, members) = (await versionTask, await membersTask);
-                    var found = version.FirstOrDefault(x => filter.Version is null
-                                                         || x.GameVersions.Contains(filter.Version));
+                    var (versions, members) = (await versionsTask, await membersTask);
+                    var found = versions.FirstOrDefault(x => filter.Version is null
+                                                          || x.GameVersions.Contains(filter.Version));
                     if (found == default)
                     {
                         throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
@@ -120,6 +129,57 @@ namespace Trident.Core.Repositories
 
                 throw;
             }
+        }
+
+        public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
+            IEnumerable<(string? ns, string pid, string? vid)> batch,
+            Filter filter)
+        {
+            var knownVids = batch.Where(x => x.vid is not null);
+            var unknownVids = batch.Where(x => x.vid is null);
+
+            // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
+            var unknownProjectVersionListsTasks = unknownVids.Select(async x =>
+            {
+                var versions = await client
+                                    .GetProjectVersionsAsync(x.pid,
+                                                             null,
+                                                             filter.Loader is not null
+                                                                 ? ArrayParameterConstructor([
+                                                                     ModrinthHelper.LoaderIdToName(filter.Loader)
+                                                                 ])
+                                                                 : null)
+                                    .ConfigureAwait(false);
+                var chosen = versions.FirstOrDefault(y => filter.Version is null
+                                                       || y.GameVersions.Contains(filter.Version));
+                if (chosen == default)
+                    throw new ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
+                return chosen;
+            });
+            await Task.WhenAll(unknownProjectVersionListsTasks).ConfigureAwait(false);
+            var unknownVersionLists = unknownProjectVersionListsTasks.Select(x => x.Result);
+
+            var knownVersionLists = await client
+                                         .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm
+                                                                      .vid)))
+                                         .ConfigureAwait(false);
+
+
+            var projects = (await client
+                                 .GetMultipleProjectsAsync(ArrayParameterConstructor(batch.Select(bm => bm.pid)))
+                                 .ConfigureAwait(false)).ToDictionary(x => x.Id);
+            var membersTasks =
+                projects.Keys.Select(async x =>
+                                         (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false)));
+            await Task.WhenAll(membersTasks).ConfigureAwait(false);
+            var members = membersTasks.ToDictionary(x => x.Result.Id, x => x.Result.Members.FirstOrDefault());
+
+            var packages = knownVersionLists.Concat(unknownVersionLists)
+                                                   .Select(x => ModrinthHelper.ToPackage(projects[x.ProjectId],
+                                                               x,
+                                                               members[x.ProjectId]))
+                                                   .ToList();
+            return packages;
         }
 
         public async Task<string> ReadDescriptionAsync(string? ns, string pid)

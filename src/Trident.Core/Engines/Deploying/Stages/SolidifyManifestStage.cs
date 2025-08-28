@@ -61,25 +61,44 @@ namespace Trident.Core.Engines.Deploying.Stages
                                     {
                                         if (!Verify(fragile.SourcePath, fragile.Hash))
                                         {
-                                            logger.LogDebug("Starting download fragile file {src} from {url}",
-                                                            fragile.SourcePath,
-                                                            fragile.Url);
-                                            var dir = Path.GetDirectoryName(fragile.SourcePath);
-                                            if (dir != null && !Directory.Exists(dir))
+                                            for (var i = 1; i <= 5; i++)
                                             {
-                                                Directory.CreateDirectory(dir);
-                                            }
+                                                try {
+                                                    logger.LogDebug("Starting download fragile file {src} from {url} for {i} times",
+                                                                    fragile.SourcePath,
+                                                                    fragile.Url,
+                                                                    i);
+                                                    var dir = Path.GetDirectoryName(fragile.SourcePath);
+                                                    if (dir != null && !Directory.Exists(dir))
+                                                    {
+                                                        Directory.CreateDirectory(dir);
+                                                    }
 
-                                            using var client = factory.CreateClient();
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(fragile.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(fragile.SourcePath,
-                                                FileMode.Create,
-                                                FileAccess.Write,
-                                                FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                                    using var client = factory.CreateClient();
+                                                    await using var reader = await client
+                                                                                  .GetStreamAsync(fragile.Url, cancel.Token)
+                                                                                  .ConfigureAwait(false);
+                                                    await using var writer = new FileStream(fragile.SourcePath,
+                                                                                            FileMode.Create,
+                                                                                            FileAccess.Write,
+                                                                                            FileShare.Write);
+                                                    await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                                    await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                                    break;
+                                                }
+                                                catch (Exception e)
+                                                {
+                                                    logger.LogError("Failed download fragile file {src} from {url} for {i} times: {message}",
+                                                                    fragile.SourcePath,
+                                                                    fragile.Url,
+                                                                    i,
+                                                                    e.Message);
+                                                    if (cancel.IsCancellationRequested) {
+                                                        break;
+                                                    }
+                                                    if (i == 5) throw; // 第五次重新引发, 终止固实化
+                                                }
+                                            }
                                         }
 
                                         entities.Add(new(fragile.TargetPath, fragile.SourcePath));
