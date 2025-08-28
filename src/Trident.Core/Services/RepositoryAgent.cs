@@ -11,8 +11,6 @@ using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
-// ReSharper disable PossibleMultipleEnumeration
-
 namespace Trident.Core.Services
 {
     public class RepositoryAgent
@@ -123,24 +121,27 @@ namespace Trident.Core.Services
             IEnumerable<(string label, string? ns, string pid, string? vid)> batch,
             Filter filter)
         {
-            var cachedTasks =
-                batch.Select(async x => (Meta: x,
-                                         Cached: await RetrieveCachedAsync<
-                                                         Package>($"package:{PackageHelper.Identify(x.label, x.ns, x.pid, x.vid, filter)}")
-                                                    .ConfigureAwait(false)));
+            var batchArray = batch.ToArray();
+            var cachedTasks = batchArray
+                             .Select(async x => (Meta: x,
+                                                 Cached: await RetrieveCachedAsync<
+                                                                 Package>($"package:{PackageHelper.Identify(x.label, x.ns, x.pid, x.vid, filter)}")
+                                                            .ConfigureAwait(false)))
+                             .ToList();
             await Task.WhenAll(cachedTasks).ConfigureAwait(false);
             var cached = cachedTasks
                         .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
-                        .Select(x => x.Result);
+                        .Select(x => x.Result)
+                        .ToList();
 
-            var toResolve = batch.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
-            var resolveTasks = toResolve.Select(async x => (Label: x.Key,
-                                                            Packages: await Redirect(x.Key)
-                                                                           .ResolveBatchAsync(x.Select(y => (y.ns,
-                                                                                                y.pid,
-                                                                                                y.vid)),
-                                                                                filter)
-                                                                           .ConfigureAwait(false)));
+            var toResolve = batchArray.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
+            var resolveTasks = toResolve
+                              .Select(async x => (Label: x.Key,
+                                                  Packages: await Redirect(x.Key)
+                                                                 .ResolveBatchAsync(x.Select(y => (y.ns, y.pid, y.vid)),
+                                                                      filter)
+                                                                 .ConfigureAwait(false)))
+                              .ToList();
             await Task.WhenAll(resolveTasks).ConfigureAwait(false);
             var resolved = resolveTasks
                           .Where(x => x.IsCompletedSuccessfully && x.Result != default)

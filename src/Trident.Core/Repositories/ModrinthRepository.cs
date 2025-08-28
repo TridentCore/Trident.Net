@@ -8,8 +8,6 @@ using Trident.Abstractions.Repositories.Resources;
 using Trident.Core.Models.ModrinthApi;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
-// ReSharper disable PossibleMultipleEnumeration
-
 namespace Trident.Core.Repositories
 {
     public class ModrinthRepository(IModrinthClient client) : IRepository
@@ -135,8 +133,9 @@ namespace Trident.Core.Repositories
             IEnumerable<(string? ns, string pid, string? vid)> batch,
             Filter filter)
         {
-            var knownVids = batch.Where(x => x.vid is not null);
-            var unknownVids = batch.Where(x => x.vid is null);
+            var batchArray = batch.ToArray();
+            var knownVids = batchArray.Where(x => x.vid is not null);
+            var unknownVids = batchArray.Where(x => x.vid is null);
 
             // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
             var unknownProjectVersionListsTasks = unknownVids.Select(async x =>
@@ -155,7 +154,7 @@ namespace Trident.Core.Repositories
                 if (chosen == default)
                     throw new ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
                 return chosen;
-            });
+            }).ToList();
             await Task.WhenAll(unknownProjectVersionListsTasks).ConfigureAwait(false);
             var unknownVersionLists = unknownProjectVersionListsTasks.Select(x => x.Result);
 
@@ -166,11 +165,11 @@ namespace Trident.Core.Repositories
 
 
             var projects = (await client
-                                 .GetMultipleProjectsAsync(ArrayParameterConstructor(batch.Select(bm => bm.pid)))
+                                 .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.pid)))
                                  .ConfigureAwait(false)).ToDictionary(x => x.Id);
             var membersTasks =
                 projects.Keys.Select(async x =>
-                                         (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false)));
+                                         (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false))).ToList();
             await Task.WhenAll(membersTasks).ConfigureAwait(false);
             var members = membersTasks.ToDictionary(x => x.Result.Id, x => x.Result.Members.FirstOrDefault());
 
