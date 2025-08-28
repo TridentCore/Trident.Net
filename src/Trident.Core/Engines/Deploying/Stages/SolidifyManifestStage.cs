@@ -139,9 +139,6 @@ namespace Trident.Core.Engines.Deploying.Stages
 
                                             if (File.Exists(persistent.SourcePath))
                                             {
-                                                logger.LogDebug("Linking persistent file from {src} to {dst}",
-                                                                persistent.SourcePath,
-                                                                persistent.TargetPath);
                                                 entities.Add(new(persistent.TargetPath, persistent.SourcePath));
                                             }
                                         }
