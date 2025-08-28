@@ -44,12 +44,11 @@ namespace Trident.Core.Engines.Deploying.Stages
 
                                            throw new FormatException($"Package {x.Purl} is not a valid package");
                                        }));
-            var flatten = new Dictionary<Identity, Version>();
 
-            ProgressStream.OnNext((0, purls.Count));
-
-            while (purls.Any())
+            if (purls.Any())
             {
+                ProgressStream.OnNext((0, purls.Count));
+
                 var resolved = await agent
                                     .ResolveBatchAsync(purls.Select(x => (x.Identity.Label, x.Identity.Namespace,
                                                                           x.Identity.Pid, x.Vid)),
@@ -59,14 +58,25 @@ namespace Trident.Core.Engines.Deploying.Stages
                                                        })
                                     .ConfigureAwait(false);
 
+                foreach (var package in resolved)
+                {
+                    builder.AddParcel(package.Label,
+                                      package.Namespace,
+                                      package.ProjectId,
+                                      package.ProjectId,
+                                      Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
+                                                   FileHelper.GetAssetFolderName(package.Kind),
+                                                   package.FileName),
+                                      package.Download,
+                                      package.Sha1);
+                }
+
                 logger.LogDebug("Bulk resolved {} packages", resolved.Count);
                 purls.Clear();
 
                 // 依赖解析直接不要了，本来就没法用，留着也是累赘
 
-                // TODO: 如果批量解析存在失败那就按需重试几次
-
-                ProgressStream.OnNext((flatten.Count, purls.Count + flatten.Count));
+                ProgressStream.OnNext((resolved.Count, resolved.Count + purls.Count));
             }
 
             if (token.IsCancellationRequested)
@@ -74,21 +84,7 @@ namespace Trident.Core.Engines.Deploying.Stages
                 return;
             }
 
-            foreach (var (key, value) in flatten)
-            {
-                builder.AddParcel(key.Label,
-                                  key.Namespace,
-                                  key.Pid,
-                                  value.Vid,
-                                  Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
-                                               FileHelper.GetAssetFolderName(value.Kind),
-                                               value.FileName),
-                                  value.Download,
-                                  value.Sha1);
-            }
-
             Context.IsPackageResolved = true;
-            return;
         }
 
         public override void Dispose()
