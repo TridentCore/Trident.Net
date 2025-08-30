@@ -1,4 +1,3 @@
-namespace Trident.Core
-{
-    public enum InstanceState { Idle, Installing, Updating, Deploying, Running }
-}
+namespace Trident.Core;
+
+public enum InstanceState { Idle, Installing, Updating, Deploying, Running }

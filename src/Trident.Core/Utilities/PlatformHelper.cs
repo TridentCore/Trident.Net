@@ -1,39 +1,38 @@
 using System.Runtime.InteropServices;
 
-namespace Trident.Core.Utilities
+namespace Trident.Core.Utilities;
+
+public static class PlatformHelper
 {
-    public static class PlatformHelper
+    public static string GetOsName()
     {
-        public static string GetOsName()
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return "windows";
-            }
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                return "linux";
-            }
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                return "osx";
-            }
-
-            throw new NotSupportedException("Unsupported operating system.");
+            return "windows";
         }
 
-        public static string GetOsArch() =>
-            RuntimeInformation.OSArchitecture switch
-            {
-                Architecture.X64 => "x64",
-                Architecture.X86 => "x86",
-                Architecture.Arm => "arm",
-                Architecture.Arm64 => "arm64",
-                _ => throw new NotSupportedException("Unsupported process architecture.")
-            };
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return "linux";
+        }
 
-        public static string GetOsVersion() => Environment.OSVersion.Version.ToString();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return "osx";
+        }
+
+        throw new NotSupportedException("Unsupported operating system.");
     }
+
+    public static string GetOsArch() =>
+        RuntimeInformation.OSArchitecture switch
+        {
+            Architecture.X64 => "x64",
+            Architecture.X86 => "x86",
+            Architecture.Arm => "arm",
+            Architecture.Arm64 => "arm64",
+            _ => throw new NotSupportedException("Unsupported process architecture.")
+        };
+
+    public static string GetOsVersion() => Environment.OSVersion.Version.ToString();
 }

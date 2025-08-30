@@ -1,32 +1,31 @@
-namespace Trident.Abstractions.FileModels
+namespace Trident.Abstractions.FileModels;
+
+public record Preference(
+    Preference.AccountSection Account,
+    Preference.SnapshotSection Snapshot,
+    Preference.PersistSection Persist)
 {
-    public record Preference(
-        Preference.AccountSection Account,
-        Preference.SnapshotSection Snapshot,
-        Preference.PersistSection Persist)
-    {
-        #region Nested type: AccountSection
+    #region Nested type: AccountSection
 
-        public record struct AccountSection(string Uuid);
+    public record struct AccountSection(string Uuid);
 
-        #endregion
+    #endregion
 
-        #region Nested type: EntryCollection
+    #region Nested type: EntryCollection
 
-        public record struct EntryCollection(IEnumerable<string> Files, IEnumerable<string> Folders);
+    public record struct EntryCollection(IEnumerable<string> Files, IEnumerable<string> Folders);
 
-        #endregion
+    #endregion
 
-        #region Nested type: PersistSection
+    #region Nested type: PersistSection
 
-        public record struct PersistSection(EntryCollection Entries);
+    public record struct PersistSection(EntryCollection Entries);
 
-        #endregion
+    #endregion
 
-        #region Nested type: SnapshotSection
+    #region Nested type: SnapshotSection
 
-        public record struct SnapshotSection(EntryCollection Entries);
+    public record struct SnapshotSection(EntryCollection Entries);
 
-        #endregion
-    }
+    #endregion
 }

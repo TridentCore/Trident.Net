@@ -1,11 +1,10 @@
 using Trident.Core.Models.XboxLiveApi;
 using Refit;
 
-namespace Trident.Core.Clients
+namespace Trident.Core.Clients;
+
+public interface IXboxServiceClient
 {
-    public interface IXboxServiceClient
-    {
-        [Post("/xsts/authorize")]
-        Task<XboxLiveResponse> AcquireMinecraftTokenAsync([Body] XboxLiveRequest<MinecraftTokenProperties> request);
-    }
+    [Post("/xsts/authorize")]
+    Task<XboxLiveResponse> AcquireMinecraftTokenAsync([Body] XboxLiveRequest<MinecraftTokenProperties> request);
 }

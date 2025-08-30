@@ -6,137 +6,135 @@ using Trident.Core.Services.Instances;
 using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Reactive;
 
-namespace Trident.Core.Engines
+namespace Trident.Core.Engines;
+// 构建过程
+// 1.加载现有版本锁信息，验证是否可用（与 Setup 是否能完全对的上）
+// 2.生成启用的包列表，解析出依赖图，扁平化
+// 3.解析加载器，添加资源到版本锁
+// 4.构建版本锁，并写入文件
+// 5.构建固化清单
+// 6.固化
+// ...
+// 版本锁中需要保存验证信息，例如当时的所有包列表
+
+public class DeployEngine(
+    string key,
+    Profile.Rice setup,
+    IServiceProvider provider,
+    DeployEngineOptions options,
+    string verificationWatermark,
+    JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
 {
-    // 构建过程
-    // 1.加载现有版本锁信息，验证是否可用（与 Setup 是否能完全对的上）
-    // 2.生成启用的包列表，解析出依赖图，扁平化
-    // 3.解析加载器，添加资源到版本锁
-    // 4.构建版本锁，并写入文件
-    // 5.构建固化清单
-    // 6.固化
-    // ...
-    // 版本锁中需要保存验证信息，例如当时的所有包列表
+    #region IEnumerable<StageBase> Members
 
-    public class DeployEngine(
-        string key,
-        Profile.Rice setup,
-        IServiceProvider provider,
-        DeployEngineOptions options,
-        string verificationWatermark,
-        JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
+    public IEnumerator<StageBase> GetEnumerator() =>
+        new DeployEngineEnumerator(new(key, setup, provider, options, verificationWatermark, javaHomeLocator));
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    #endregion
+
+    #region Nested type: DeployEngineEnumerator
+
+    private class DeployEngineEnumerator(DeployContext context) : IEnumerator<StageBase>
     {
-        #region IEnumerable<StageBase> Members
+        #region IEnumerator<StageBase> Members
 
-        public IEnumerator<StageBase> GetEnumerator() =>
-            new DeployEngineEnumerator(new(key, setup, provider, options, verificationWatermark, javaHomeLocator));
+        public void Reset() => throw new NotImplementedException();
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        #endregion
-
-        #region Nested type: DeployEngineEnumerator
-
-        private class DeployEngineEnumerator(DeployContext context) : IEnumerator<StageBase>
+        public bool MoveNext()
         {
-            #region IEnumerator<StageBase> Members
-
-            public void Reset() => throw new NotImplementedException();
-
-            public bool MoveNext()
+            if (Current is IDisposableLifetime disposable)
             {
-                if (Current is IDisposableLifetime disposable)
-                {
-                    disposable.Dispose();
-                }
-
-                var next = DecideNext();
-                if (next != null)
-                {
-                    Current = next;
-                    return true;
-                }
-
-                Current = null!;
-                return false;
+                disposable.Dispose();
             }
 
-            public StageBase Current { get; private set; } = null!;
-
-            object IEnumerator.Current => Current;
-
-            public void Dispose()
+            var next = DecideNext();
+            if (next != null)
             {
-                // 中断导致没有 MoveNext
-                if (Current is IDisposableLifetime disposable)
-                {
-                    disposable.Dispose();
-                }
+                Current = next;
+                return true;
             }
 
-            #endregion
+            Current = null!;
+            return false;
+        }
 
-            private StageBase? DecideNext()
+        public StageBase Current { get; private set; } = null!;
+
+        object IEnumerator.Current => Current;
+
+        public void Dispose()
+        {
+            // 中断导致没有 MoveNext
+            if (Current is IDisposableLifetime disposable)
             {
-                if (context.Manifest != null)
-                {
-                    if (!context.IsSolidified)
-                    {
-                        return CreateStage<SolidifyManifestStage>();
-                    }
-
-                    // Done
-                    return null;
-                }
-
-                if (context.Artifact != null)
-                {
-                    if (context.Options.FastMode)
-                    // Fast-Forward
-                    {
-                        return null;
-                    }
-
-                    if (!context.IsRuntimeEnsured)
-                    {
-                        return CreateStage<EnsureRuntimeStage>();
-                    }
-
-                    return CreateStage<GenerateManifestStage>();
-                }
-
-
-                if (context.ArtifactBuilder != null)
-                {
-                    if (!context.IsVanillaInstalled)
-                    {
-                        return CreateStage<InstallVanillaStage>();
-                    }
-
-                    if (!context.IsLoaderProcessed)
-                    {
-                        return CreateStage<ProcessLoaderStage>();
-                    }
-
-                    if (!context.IsPackageResolved)
-                    {
-                        return CreateStage<ResolvePackageStage>();
-                    }
-
-                    return CreateStage<BuildArtifactStage>();
-                }
-
-                return CreateStage<CheckArtifactStage>();
-            }
-
-            private T CreateStage<T>() where T : StageBase
-            {
-                var stage = ActivatorUtilities.CreateInstance<T>(context.Provider);
-                stage.Context = context;
-                return stage;
+                disposable.Dispose();
             }
         }
 
         #endregion
+
+        private StageBase? DecideNext()
+        {
+            if (context.Manifest != null)
+            {
+                if (!context.IsSolidified)
+                {
+                    return CreateStage<SolidifyManifestStage>();
+                }
+
+                // Done
+                return null;
+            }
+
+            if (context.Artifact != null)
+            {
+                if (context.Options.FastMode)
+                    // Fast-Forward
+                {
+                    return null;
+                }
+
+                if (!context.IsRuntimeEnsured)
+                {
+                    return CreateStage<EnsureRuntimeStage>();
+                }
+
+                return CreateStage<GenerateManifestStage>();
+            }
+
+
+            if (context.ArtifactBuilder != null)
+            {
+                if (!context.IsVanillaInstalled)
+                {
+                    return CreateStage<InstallVanillaStage>();
+                }
+
+                if (!context.IsLoaderProcessed)
+                {
+                    return CreateStage<ProcessLoaderStage>();
+                }
+
+                if (!context.IsPackageResolved)
+                {
+                    return CreateStage<ResolvePackageStage>();
+                }
+
+                return CreateStage<BuildArtifactStage>();
+            }
+
+            return CreateStage<CheckArtifactStage>();
+        }
+
+        private T CreateStage<T>() where T : StageBase
+        {
+            var stage = ActivatorUtilities.CreateInstance<T>(context.Provider);
+            stage.Context = context;
+            return stage;
+        }
     }
+
+    #endregion
 }

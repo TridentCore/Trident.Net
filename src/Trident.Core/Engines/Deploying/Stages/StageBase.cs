@@ -1,22 +1,21 @@
 using System.Reactive.Disposables;
 using Trident.Abstractions.Reactive;
 
-namespace Trident.Core.Engines.Deploying.Stages
+namespace Trident.Core.Engines.Deploying.Stages;
+
+public abstract class StageBase : IDisposableLifetime
 {
-    public abstract class StageBase : IDisposableLifetime
-    {
-        public DeployContext Context { get; set; } = null!;
+    public DeployContext Context { get; set; } = null!;
 
-        #region IDisposableLifetime Members
+    #region IDisposableLifetime Members
 
-        public CompositeDisposable DisposableLifetime { get; } = new();
+    public CompositeDisposable DisposableLifetime { get; } = new();
 
-        public virtual void Dispose() => DisposableLifetime.Dispose();
+    public virtual void Dispose() => DisposableLifetime.Dispose();
 
-        #endregion
+    #endregion
 
-        protected abstract Task OnProcessAsync(CancellationToken token);
+    protected abstract Task OnProcessAsync(CancellationToken token);
 
-        public Task ProcessAsync(CancellationToken token) => OnProcessAsync(token);
-    }
+    public Task ProcessAsync(CancellationToken token) => OnProcessAsync(token);
 }

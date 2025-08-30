@@ -1,46 +1,45 @@
 using Trident.Abstractions;
 using Trident.Abstractions.Importers;
 
-namespace Trident.Core.Services
+namespace Trident.Core.Services;
+
+public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 {
-    public class ImporterAgent(IEnumerable<IProfileImporter> importers)
+    public static readonly string[] INVALID_NAMES = ["", ".", ".."];
+
+    public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
     {
-        public static readonly string[] INVALID_NAMES = ["", ".", ".."];
-
-        public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
+        var importer = importers.FirstOrDefault(x => pack.FileNames.Contains(x.IndexFileName));
+        if (importer is not null)
         {
-            var importer = importers.FirstOrDefault(x => pack.FileNames.Contains(x.IndexFileName));
-            if (importer is not null)
-            {
-                return await importer.ExtractAsync(pack).ConfigureAwait(false);
-            }
-
-            throw new ImporterNotFoundException();
+            return await importer.ExtractAsync(pack).ConfigureAwait(false);
         }
 
-        public async Task ExtractImportFilesAsync(
-            string key,
-            ImportedProfileContainer container,
-            CompressedProfilePack pack)
+        throw new ImporterNotFoundException();
+    }
+
+    public async Task ExtractImportFilesAsync(
+        string key,
+        ImportedProfileContainer container,
+        CompressedProfilePack pack)
+    {
+        var importDir = PathDef.Default.DirectoryOfLive(key);
+
+        foreach (var (source, target) in container.ImportFileNames)
         {
-            var importDir = PathDef.Default.DirectoryOfLive(key);
-
-            foreach (var (source, target) in container.ImportFileNames)
+            var to = Path.Combine(importDir, target);
+            var dir = Path.GetDirectoryName(to);
+            if (dir != null && !Directory.Exists(dir))
             {
-                var to = Path.Combine(importDir, target);
-                var dir = Path.GetDirectoryName(to);
-                if (dir != null && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-
-                var fromStream = pack.Open(source);
-                var file = new FileStream(to, FileMode.Create);
-                await fromStream.CopyToAsync(file).ConfigureAwait(false);
-                await file.FlushAsync().ConfigureAwait(false);
-                file.Close();
-                fromStream.Close();
+                Directory.CreateDirectory(dir);
             }
+
+            var fromStream = pack.Open(source);
+            var file = new FileStream(to, FileMode.Create);
+            await fromStream.CopyToAsync(file).ConfigureAwait(false);
+            await file.FlushAsync().ConfigureAwait(false);
+            file.Close();
+            fromStream.Close();
         }
     }
 }

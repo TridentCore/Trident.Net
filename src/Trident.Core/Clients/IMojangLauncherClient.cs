@@ -1,11 +1,10 @@
 using Trident.Core.Models.MojangLauncherApi;
 using Refit;
 
-namespace Trident.Core.Clients
+namespace Trident.Core.Clients;
+
+public interface IMojangLauncherClient
 {
-    public interface IMojangLauncherClient
-    {
-        [Get("/news.json")]
-        Task<MinecraftNewsResponse> GetNewsAsync();
-    }
+    [Get("/news.json")]
+    Task<MinecraftNewsResponse> GetNewsAsync();
 }

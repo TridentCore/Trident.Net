@@ -1,14 +1,13 @@
-namespace Trident.Core.Exceptions
+namespace Trident.Core.Exceptions;
+
+public class XboxLiveAuthenticationException(XboxLiveAuthenticationException.ErrorKind kind, string message)
+    : AccountAuthenticationException(message)
 {
-    public class XboxLiveAuthenticationException(XboxLiveAuthenticationException.ErrorKind kind, string message)
-        : AccountAuthenticationException(message)
-    {
-        #region ErrorKind enum
+    #region ErrorKind enum
 
-        public enum ErrorKind { Unknown, ParentControl, UnsupportedRegion }
+    public enum ErrorKind { Unknown, ParentControl, UnsupportedRegion }
 
-        #endregion
+    #endregion
 
-        public ErrorKind Kind { get; } = kind;
-    }
+    public ErrorKind Kind { get; } = kind;
 }
