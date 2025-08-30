@@ -54,7 +54,8 @@ namespace Trident.Core.Engines.Deploying.Stages
                                                                           x.Identity.Pid, x.Vid)),
                                                        Filter.None with
                                                        {
-                                                           Loader = loader, Version = Context.Setup.Version
+                                                           Loader = loader,
+                                                           Version = Context.Setup.Version
                                                        })
                                     .ConfigureAwait(false);
 

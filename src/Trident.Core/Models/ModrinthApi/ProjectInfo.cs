@@ -43,7 +43,7 @@ namespace Trident.Core.Models.ModrinthApi
         #endregion
 
         #region Nested type: Messages
-        public readonly record struct Messages(string Message,string? Body);
+        public readonly record struct Messages(string Message, string? Body);
         #endregion
 
         #region Nested type: ProjectLinks

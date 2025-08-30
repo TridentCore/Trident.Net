@@ -58,87 +58,87 @@ namespace Trident.Core.Engines.Deploying.Stages
                                 switch (x)
                                 {
                                     case EntityManifest.FragileFile fragile:
-                                    {
-                                        if (!Verify(fragile.SourcePath, fragile.Hash))
                                         {
-                                            logger.LogDebug("Starting download fragile file {src} from {url}",
-                                                            fragile.SourcePath,
-                                                            fragile.Url);
-                                            var dir = Path.GetDirectoryName(fragile.SourcePath);
-                                            if (dir != null && !Directory.Exists(dir))
+                                            if (!Verify(fragile.SourcePath, fragile.Hash))
                                             {
-                                                Directory.CreateDirectory(dir);
+                                                logger.LogDebug("Starting download fragile file {src} from {url}",
+                                                                fragile.SourcePath,
+                                                                fragile.Url);
+                                                var dir = Path.GetDirectoryName(fragile.SourcePath);
+                                                if (dir != null && !Directory.Exists(dir))
+                                                {
+                                                    Directory.CreateDirectory(dir);
+                                                }
+
+                                                using var client = factory.CreateClient();
+                                                await using var reader = await client
+                                                                              .GetStreamAsync(fragile.Url, cancel.Token)
+                                                                              .ConfigureAwait(false);
+                                                await using var writer = new FileStream(fragile.SourcePath,
+                                                    FileMode.Create,
+                                                    FileAccess.Write,
+                                                    FileShare.Write);
+                                                await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                                await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                                             }
 
-                                            using var client = factory.CreateClient();
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(fragile.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(fragile.SourcePath,
-                                                FileMode.Create,
-                                                FileAccess.Write,
-                                                FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            entities.Add(new(fragile.TargetPath, fragile.SourcePath));
+
+                                            break;
                                         }
-
-                                        entities.Add(new(fragile.TargetPath, fragile.SourcePath));
-
-                                        break;
-                                    }
                                     case EntityManifest.PresentFile present:
-                                    {
-                                        if (!Verify(present.Path, present.Hash))
                                         {
-                                            var dir = Path.GetDirectoryName(present.Path);
-                                            if (dir != null && !Directory.Exists(dir))
+                                            if (!Verify(present.Path, present.Hash))
                                             {
-                                                Directory.CreateDirectory(dir);
+                                                var dir = Path.GetDirectoryName(present.Path);
+                                                if (dir != null && !Directory.Exists(dir))
+                                                {
+                                                    Directory.CreateDirectory(dir);
+                                                }
+
+                                                using var client = factory.CreateClient();
+                                                await using var reader = await client
+                                                                              .GetStreamAsync(present.Url, cancel.Token)
+                                                                              .ConfigureAwait(false);
+                                                await using var writer = new FileStream(present.Path,
+                                                    FileMode.Create,
+                                                    FileAccess.Write,
+                                                    FileShare.Write);
+                                                await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                                await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                                             }
 
-                                            using var client = factory.CreateClient();
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(present.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(present.Path,
-                                                FileMode.Create,
-                                                FileAccess.Write,
-                                                FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            break;
                                         }
-
-                                        break;
-                                    }
                                     case EntityManifest.PersistentFile persistent:
-                                    {
-                                        // 如果是虚文件（例如持久化文件功能），则在创建软链接前尝试确保目标文件不存在（最起码不是 Symlink）
-                                        // 不是虚文件时策略更简单，无则复制有则不管
-                                        if (persistent.IsPhantom)
                                         {
-                                            // 原先这里会在 TargetPath 存在文件时将其删除，这么做是错误的，因为有存在的文件是上次部署的 Symlink
-
-                                            if (File.Exists(persistent.SourcePath))
+                                            // 如果是虚文件（例如持久化文件功能），则在创建软链接前尝试确保目标文件不存在（最起码不是 Symlink）
+                                            // 不是虚文件时策略更简单，无则复制有则不管
+                                            if (persistent.IsPhantom)
                                             {
-                                                entities.Add(new(persistent.TargetPath, persistent.SourcePath));
+                                                // 原先这里会在 TargetPath 存在文件时将其删除，这么做是错误的，因为有存在的文件是上次部署的 Symlink
+
+                                                if (File.Exists(persistent.SourcePath))
+                                                {
+                                                    entities.Add(new(persistent.TargetPath, persistent.SourcePath));
+                                                }
                                             }
-                                        }
-                                        else if (!File.Exists(persistent.TargetPath))
-                                        {
-                                            var dir = Path.GetDirectoryName(persistent.TargetPath);
-                                            if (dir != null && !Directory.Exists(dir))
+                                            else if (!File.Exists(persistent.TargetPath))
                                             {
-                                                Directory.CreateDirectory(dir);
+                                                var dir = Path.GetDirectoryName(persistent.TargetPath);
+                                                if (dir != null && !Directory.Exists(dir))
+                                                {
+                                                    Directory.CreateDirectory(dir);
+                                                }
+
+                                                logger.LogDebug("Copying persistent file from {src} to {dst}",
+                                                                persistent.SourcePath,
+                                                                persistent.TargetPath);
+                                                File.Copy(persistent.SourcePath, persistent.TargetPath);
                                             }
 
-                                            logger.LogDebug("Copying persistent file from {src} to {dst}",
-                                                            persistent.SourcePath,
-                                                            persistent.TargetPath);
-                                            File.Copy(persistent.SourcePath, persistent.TargetPath);
+                                            break;
                                         }
-
-                                        break;
-                                    }
                                 }
 
                                 Interlocked.Increment(ref downloaded);
@@ -282,7 +282,7 @@ namespace Trident.Core.Engines.Deploying.Stages
                     rootItem = entry[..slashIndex];
                 }
                 else
-                    // 如果没有斜杠，则整个条目是根级别项目
+                // 如果没有斜杠，则整个条目是根级别项目
                 {
                     rootItem = entry;
                 }
@@ -297,9 +297,9 @@ namespace Trident.Core.Engines.Deploying.Stages
                 }
             }
 
-            #pragma warning disable CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
+#pragma warning disable CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
             return true;
-            #pragma warning restore CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
+#pragma warning restore CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
         }
 
         private static bool Verify(string path, string? hash)

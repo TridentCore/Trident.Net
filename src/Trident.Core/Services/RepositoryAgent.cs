@@ -43,30 +43,30 @@ namespace Trident.Core.Services
                 switch (profile.Driver)
                 {
                     case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
-                    {
-                        var modrinth = new ModrinthRepository(RestService.For<IModrinthClient>(BuildClient(profile),
-                                                                  new RefitSettings(new
-                                                                      SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                         .Web)
-                                                                      {
-                                                                          PropertyNamingPolicy =
-                                                                              JsonNamingPolicy
-                                                                                 .SnakeCaseLower
-                                                                      }))));
+                        {
+                            var modrinth = new ModrinthRepository(RestService.For<IModrinthClient>(BuildClient(profile),
+                                                                      new RefitSettings(new
+                                                                          SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                             .Web)
+                                                                          {
+                                                                              PropertyNamingPolicy =
+                                                                                  JsonNamingPolicy
+                                                                                     .SnakeCaseLower
+                                                                          }))));
 
-                        built.Add(profile.Label, modrinth);
-                        break;
-                    }
+                            built.Add(profile.Label, modrinth);
+                            break;
+                        }
                     case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
-                    {
-                        var curseforge =
-                            new CurseForgeRepository(RestService.For<ICurseForgeClient>(BuildClient(profile),
-                                                         new RefitSettings(new
-                                                                               SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                                  .Web)))));
-                        built.Add(profile.Label, curseforge);
-                        break;
-                    }
+                        {
+                            var curseforge =
+                                new CurseForgeRepository(RestService.For<ICurseForgeClient>(BuildClient(profile),
+                                                             new RefitSettings(new
+                                                                                   SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                                      .Web)))));
+                            built.Add(profile.Label, curseforge);
+                            break;
+                        }
                 }
             }
 
