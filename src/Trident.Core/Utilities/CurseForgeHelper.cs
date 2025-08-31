@@ -8,8 +8,6 @@ namespace Trident.Core.Utilities;
 
 public static class CurseForgeHelper
 {
-    public const string LABEL = "curseforge";
-
     public const string API_KEY = "$2a$10$cjd5uExXA6oMi3lSnylNC.xsFJiujI8uQ/pV1eGltFe/hlDO2mjzm";
     public const string ENDPOINT = "https://api.curseforge.com";
     public const string PROJECT_URL = "https://www.curseforge.com/minecraft/{0}/{1}";
@@ -128,13 +126,13 @@ public static class CurseForgeHelper
         return new(gameReq, loaderReq);
     }
 
-    public static IReadOnlyList<Dependency> ToDependencies(FileInfo file) =>
+    public static IReadOnlyList<Dependency> ToDependencies(string label, FileInfo file) =>
     [
         .. file
           .Dependencies
           .Where(x => x.RelationType is FileInfo.FileDependency.FileRelationType.RequiredDependency
                                      or FileInfo.FileDependency.FileRelationType.OptionalDependency)
-          .Select(x => new Dependency(LABEL,
+          .Select(x => new Dependency(label,
                                       null,
                                       x.ModId.ToString(),
                                       null,
@@ -143,8 +141,8 @@ public static class CurseForgeHelper
     ];
 
 
-    public static Exhibit ToExhibit(ModInfo mod) =>
-        new(LABEL,
+    public static Exhibit ToExhibit(string label, ModInfo mod) =>
+        new(label,
             null,
             mod.Id.ToString(),
             mod.Name,
@@ -160,8 +158,8 @@ public static class CurseForgeHelper
             mod.DateModified);
 
 
-    public static Package ToPackage(ModInfo mod, FileInfo file) =>
-        new(LABEL,
+    public static Package ToPackage(string label, ModInfo mod, FileInfo file) =>
+        new(label,
             null,
             mod.Id.ToString(),
             file.Id.ToString(),
@@ -180,10 +178,10 @@ public static class CurseForgeHelper
             file.FileName,
             ToSha1(file),
             ToRequirement(file),
-            ToDependencies(file));
+            ToDependencies(label, file));
 
-    public static Version ToVersion(FileInfo file) =>
-        new(LABEL,
+    public static Version ToVersion(string label, FileInfo file) =>
+        new(label,
             null,
             file.ModId.ToString(),
             file.Id.ToString(),
@@ -192,11 +190,11 @@ public static class CurseForgeHelper
             file.FileDate,
             file.DownloadCount,
             ToRequirement(file),
-            ToDependencies(file));
+            ToDependencies(label, file));
 
 
-    public static Project ToProject(ModInfo info) =>
-        new(LABEL,
+    public static Project ToProject(string label, ModInfo info) =>
+        new(label,
             null,
             info.Id.ToString(),
             info.Name,

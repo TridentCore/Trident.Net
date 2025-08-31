@@ -45,9 +45,7 @@ public class ModrinthImporter : IProfileImporter
                        new Dictionary<string, object>()),
                    pack
                       .FileNames
-                      .Where(x => x.StartsWith("overrides")
-                               && x != "overrides"
-                               && x.Length > "overrides".Length + 1)
+                      .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
                       .Select(x => (x, x[("overrides".Length + 1)..]))
                       .Where(x => !x.Item2.EndsWith('/') && !ImporterAgent.INVALID_NAMES.Contains(x.Item2))
                       .Concat(pack
@@ -80,9 +78,7 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private bool TryExtractVersion(
-        IDictionary<string, string> dependencies,
-        [MaybeNullWhen(false)] out string version)
+    private bool TryExtractVersion(IDictionary<string, string> dependencies, [MaybeNullWhen(false)] out string version)
     {
         if (dependencies.TryGetValue("minecraft", out var v))
         {
@@ -96,6 +92,10 @@ public class ModrinthImporter : IProfileImporter
 
     private Profile.Rice.Entry ToPackage(Index.IndexFile file)
     {
+        // FIX: 需要兼容 bbsmc
+        //  bbsmc 用的第三方包，其中部分使用 mrpack，而 mrpack 使用多个源，其中就有 forgecdn
+        //  也就是 mrpack 可以包含多个托管站
+        // FIX: 有些 %版本% 写的是文件名
         var download = file.Downloads.FirstOrDefault(x => x.Host == "cdn.modrinth.com");
         // https://cdn.modrinth.com/data/88888888/versions/88888888/filename.jar
         if (download != null)
@@ -105,7 +105,7 @@ public class ModrinthImporter : IProfileImporter
             {
                 var projectId = path[6..14];
                 var versionId = path[24..32];
-                return new(PackageHelper.ToPurl(ModrinthHelper.LABEL, null, projectId, versionId), true, null, []);
+                return new(PackageHelper.ToPurl("modrinth", null, projectId, versionId), true, null, []);
             }
         }
 

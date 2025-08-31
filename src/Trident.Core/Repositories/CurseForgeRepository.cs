@@ -10,13 +10,11 @@ using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
 
-public class CurseForgeRepository(ICurseForgeClient client) : IRepository
+public class CurseForgeRepository(string label, ICurseForgeClient client) : IRepository
 {
     private const uint PAGE_SIZE = 20;
 
     private static readonly Converter CONVERTER = new(new() { GithubFlavored = false, SmartHrefHandling = true });
-
-    public string Label => CurseForgeHelper.LABEL;
 
     #region IRepository Members
 
@@ -51,7 +49,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
                                           loader,
                                           pageSize: PAGE_SIZE)
                          .ConfigureAwait(false);
-        var initial = first.Data.Select(CurseForgeHelper.ToExhibit);
+        var initial = first.Data.Select(x => CurseForgeHelper.ToExhibit(label, x));
         return new PaginationHandle<Exhibit>(initial,
                                              first.Pagination.PageSize,
                                              first.Pagination.TotalCount,
@@ -60,14 +58,17 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
                                                  var rv = await client
                                                                .SearchModsAsync(query,
                                                                                     CurseForgeHelper
-                                                                                       .ResourceKindToClassId(filter.Kind),
+                                                                                       .ResourceKindToClassId(filter
+                                                                                           .Kind),
                                                                                     filter.Version,
                                                                                     loader,
                                                                                     index: pageIndex
                                                                                       * first.Pagination.PageSize,
                                                                                     pageSize: first.Pagination.PageSize)
                                                                .ConfigureAwait(false);
-                                                 var exhibits = rv.Data.Select(CurseForgeHelper.ToExhibit).ToList();
+                                                 var exhibits = rv
+                                                               .Data.Select(x => CurseForgeHelper.ToExhibit(label, x))
+                                                               .ToList();
                                                  return exhibits;
                                              });
     }
@@ -79,7 +80,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
             try
             {
                 var mod = await client.GetModAsync(modId).ConfigureAwait(false);
-                return CurseForgeHelper.ToProject(mod.Data);
+                return CurseForgeHelper.ToProject(label, mod.Data);
             }
             catch (ApiException ex)
             {
@@ -118,7 +119,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
                             file = (await client.GetModFileAsync(modId, fileId).ConfigureAwait(false)).Data;
                         }
 
-                        return CurseForgeHelper.ToPackage(mod, file);
+                        return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
                     throw new FormatException("Vid is not well formatted into fileId");
@@ -146,7 +147,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
                                      .ConfigureAwait(false)).Data.FirstOrDefault();
                     if (file != default)
                     {
-                        return CurseForgeHelper.ToPackage(mod, file);
+                        return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
                     throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
@@ -233,7 +234,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
             var first = await client
                              .GetModFilesAsync(modId, filter.Version, loader, 0, PAGE_SIZE)
                              .ConfigureAwait(false);
-            var initial = first.Data.Select(CurseForgeHelper.ToVersion);
+            var initial = first.Data.Select(x => CurseForgeHelper.ToVersion(label, x));
             return new PaginationHandle<Version>(initial,
                                                  first.Pagination.PageSize,
                                                  first.Pagination.TotalCount,
@@ -246,7 +247,7 @@ public class CurseForgeRepository(ICurseForgeClient client) : IRepository
                                                                         pageIndex * first.Pagination.PageSize,
                                                                         first.Pagination.PageSize)
                                                                    .ConfigureAwait(false);
-                                                     return rv.Data.Select(CurseForgeHelper.ToVersion);
+                                                     return rv.Data.Select(x => CurseForgeHelper.ToVersion(label, x));
                                                  });
         }
 

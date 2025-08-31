@@ -41,7 +41,7 @@ public class CurseForgeImporter : IProfileImporter
                            [
                                .. manifest.Files.Select(x =>
                                                             new Profile.Rice.Entry(PackageHelper
-                                                                   .ToPurl(CurseForgeHelper.LABEL,
+                                                                   .ToPurl("curseforge",
                                                                            null,
                                                                            x.ProjectId.ToString(),
                                                                            x.FileId.ToString()),

@@ -10,11 +10,9 @@ using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
 
-public class ModrinthRepository(IModrinthClient client) : IRepository
+public class ModrinthRepository(string label, IModrinthClient client) : IRepository
 {
     private const uint PAGE_SIZE = 20;
-
-    public string Label => ModrinthHelper.LABEL;
 
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
@@ -51,7 +49,7 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
                                                                  loader),
                                       limit: PAGE_SIZE)
                          .ConfigureAwait(false);
-        var initial = first.Hits.Select(ModrinthHelper.ToExhibit);
+        var initial = first.Hits.Select(x => ModrinthHelper.ToExhibit(label, x));
         return new PaginationHandle<Exhibit>(initial,
                                              first.Limit,
                                              first.TotalHits,
@@ -59,16 +57,17 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
                                              {
                                                  var rv = await client
                                                                .SearchAsync(query,
-                                                                            ModrinthHelper
-                                                                               .BuildFacets(ModrinthHelper
-                                                                                       .ResourceKindToType(filter
-                                                                                           .Kind),
-                                                                                    filter.Version,
-                                                                                    loader),
+                                                                            ModrinthHelper.BuildFacets(ModrinthHelper
+                                                                                   .ResourceKindToType(filter
+                                                                                       .Kind),
+                                                                                filter.Version,
+                                                                                loader),
                                                                             offset: pageIndex * first.Limit,
                                                                             limit: first.Limit)
                                                                .ConfigureAwait(false);
-                                                 var exhibits = rv.Hits.Select(ModrinthHelper.ToExhibit).ToList();
+                                                 var exhibits = rv
+                                                               .Hits.Select(x => ModrinthHelper.ToExhibit(label, x))
+                                                               .ToList();
                                                  return exhibits;
                                              });
     }
@@ -77,7 +76,7 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
     {
         var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
         var team = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
-        return ModrinthHelper.ToProject(project, team.FirstOrDefault());
+        return ModrinthHelper.ToProject(label, project, team.FirstOrDefault());
     }
 
     public Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
@@ -93,7 +92,7 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
                 var (versionTask, membersTask) = (client.GetVersionAsync(vid).ConfigureAwait(false),
                                                   client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false));
                 var (version, members) = (await versionTask, await membersTask);
-                return ModrinthHelper.ToPackage(project, version, members.FirstOrDefault());
+                return ModrinthHelper.ToPackage(label, project, version, members.FirstOrDefault());
             }
             else
             {
@@ -115,7 +114,7 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
                     throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
                 }
 
-                return ModrinthHelper.ToPackage(project, found, members.FirstOrDefault());
+                return ModrinthHelper.ToPackage(label, project, found, members.FirstOrDefault());
             }
         }
         catch (ApiException ex)
@@ -138,23 +137,27 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
         var unknownVids = batchArray.Where(x => x.vid is null);
 
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
-        var unknownProjectVersionListsTasks = unknownVids.Select(async x =>
-        {
-            var versions = await client
-                                .GetProjectVersionsAsync(x.pid,
-                                                         null,
-                                                         filter.Loader is not null
-                                                             ? ArrayParameterConstructor([
-                                                                 ModrinthHelper.LoaderIdToName(filter.Loader)
-                                                             ])
-                                                             : null)
-                                .ConfigureAwait(false);
-            var chosen = versions.FirstOrDefault(y => filter.Version is null
+        var unknownProjectVersionListsTasks = unknownVids
+                                             .Select(async x =>
+                                              {
+                                                  var versions = await client
+                                                                      .GetProjectVersionsAsync(x.pid,
+                                                                           null,
+                                                                           filter.Loader is not null
+                                                                               ? ArrayParameterConstructor([
+                                                                                   ModrinthHelper.LoaderIdToName(filter
+                                                                                      .Loader)
+                                                                               ])
+                                                                               : null)
+                                                                      .ConfigureAwait(false);
+                                                  var chosen = versions.FirstOrDefault(y => filter.Version is null
                                                    || y.GameVersions.Contains(filter.Version));
-            if (chosen == default)
-                throw new ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
-            return chosen;
-        }).ToList();
+                                                  if (chosen == default)
+                                                      throw new
+                                                          ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
+                                                  return chosen;
+                                              })
+                                             .ToList();
         await Task.WhenAll(unknownProjectVersionListsTasks).ConfigureAwait(false);
         var unknownVersionLists = unknownProjectVersionListsTasks.Select(x => x.Result);
 
@@ -167,17 +170,17 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
         var projects = (await client
                              .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.pid)))
                              .ConfigureAwait(false)).ToDictionary(x => x.Id);
-        var membersTasks =
-            projects.Keys.Select(async x =>
-                                     (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false))).ToList();
+        var membersTasks = projects
+                          .Keys.Select(async x =>
+                                           (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false)))
+                          .ToList();
         await Task.WhenAll(membersTasks).ConfigureAwait(false);
         var members = membersTasks.ToDictionary(x => x.Result.Id, x => x.Result.Members.FirstOrDefault());
 
-        var packages = knownVersionLists.Concat(unknownVersionLists)
-                                        .Select(x => ModrinthHelper.ToPackage(projects[x.ProjectId],
-                                                                              x,
-                                                                              members[x.ProjectId]))
-                                        .ToList();
+        var packages = knownVersionLists
+                      .Concat(unknownVersionLists)
+                      .Select(x => ModrinthHelper.ToPackage(label, projects[x.ProjectId], x, members[x.ProjectId]))
+                      .ToList();
         return packages;
     }
 
@@ -203,7 +206,7 @@ public class ModrinthRepository(IModrinthClient client) : IRepository
                          .ConfigureAwait(false);
         var all = first
                  .Where(x => filter.Version is null || x.GameVersions.Contains(filter.Version))
-                 .Select(ModrinthHelper.ToVersion)
+                 .Select(x => ModrinthHelper.ToVersion(label, x))
                  .ToList();
         // Modrinth 的版本无法分页，只能过滤拉取全部之后本地分页
         return new LocalPaginationHandle<Version>(all, PAGE_SIZE);

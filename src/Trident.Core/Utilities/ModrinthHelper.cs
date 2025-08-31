@@ -8,8 +8,6 @@ namespace Trident.Core.Utilities;
 
 public static class ModrinthHelper
 {
-    public const string LABEL = "modrinth";
-
     public const string OFFICIAL_ENDPOINT = "https://api.modrinth.com";
     public const string FAKE_ENDPOINT = "https://api.bbsmc.net";
     private const string OFFICIAL_PROJECT_URL = "https://modrinth.com/{0}/{1}";
@@ -89,17 +87,17 @@ public static class ModrinthHelper
               .Select(x => x!)
         ]);
 
-    public static IReadOnlyList<Dependency> ToDependencies(VersionInfo version) =>
+    public static IReadOnlyList<Dependency> ToDependencies(string label, VersionInfo version) =>
     [
-        .. version.Dependencies.Select(x => new Dependency(LABEL,
+        .. version.Dependencies.Select(x => new Dependency(label,
                                                            null,
                                                            x.ProjectId,
                                                            x.VersionId,
                                                            x.DependencyType != "optional"))
     ];
 
-    public static Exhibit ToExhibit(SearchHit hit) =>
-        new(LABEL,
+    public static Exhibit ToExhibit(string label, SearchHit hit) =>
+        new(label,
             null,
             hit.ProjectId,
             hit.Title,
@@ -113,8 +111,8 @@ public static class ModrinthHelper
             hit.DateCreated,
             hit.DateModified);
 
-    public static Version ToVersion(VersionInfo version) =>
-        new(LABEL,
+    public static Version ToVersion(string label, VersionInfo version) =>
+        new(label,
             null,
             version.ProjectId,
             version.Id,
@@ -123,13 +121,13 @@ public static class ModrinthHelper
             version.DatePublished,
             version.Downloads,
             ToRequirement(version),
-            ToDependencies(version));
+            ToDependencies(label, version));
 
-    public static Project ToProject(ProjectInfo project, MemberInfo? member)
+    public static Project ToProject(string label, ProjectInfo project, MemberInfo? member)
     {
         var extracted = project.ProjectTypes.FirstOrDefault();
         var kind = ProjectTypeToKind(extracted) ?? ResourceKind.Unknown;
-        return new(LABEL,
+        return new(label,
                    null,
                    project.Id,
                    project.Name,
@@ -145,14 +143,14 @@ public static class ModrinthHelper
                    [.. project.Gallery.Select(x => new Project.Screenshot(x.Name, x.Url))]);
     }
 
-    public static Package ToPackage(ProjectInfo project, VersionInfo version, MemberInfo? member)
+    public static Package ToPackage(string label, ProjectInfo project, VersionInfo version, MemberInfo? member)
     {
         var extracted = project.ProjectTypes.FirstOrDefault();
         var kind = ProjectTypeToKind(extracted) ?? ResourceKind.Unknown;
         var file = version.Files.FirstOrDefault(x => x.Primary)
                 ?? version.Files.FirstOrDefault()
                 ?? throw new ResourceNotFoundException($"{project.Id}/{version.Id} has no file available");
-        return new(LABEL,
+        return new(label,
                    null,
                    project.Id,
                    version.Id,
@@ -170,7 +168,7 @@ public static class ModrinthHelper
                    file.Filename,
                    file.Hashes.Sha1,
                    ToRequirement(version),
-                   ToDependencies(version));
+                   ToDependencies(label, version));
     }
 
     public static IReadOnlyList<string> ToLoaderNames(IEnumerable<ModLoader> loaders) =>
