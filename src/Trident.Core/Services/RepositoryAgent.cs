@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
+using MessagePack;
+using MessagePack.Resolvers;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Trident.Core.Clients;
@@ -19,6 +21,9 @@ public class RepositoryAgent
     private static readonly string USER_AGENT = $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}";
 
     private readonly IReadOnlyDictionary<string, IRepository> _repositories;
+
+    private readonly MessagePackSerializerOptions _options =
+        MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance);
 
     public RepositoryAgent(
         IEnumerable<IRepositoryProviderAccessor> accessors,
@@ -179,12 +184,12 @@ public class RepositoryAgent
         Redirect(label).InspectAsync(ns, pid, filter);
 
     public Task<byte[]> SeeAsync(Uri url) =>
-        RetrieveBytesAsync($"thumbnail:{url}",
-                           async () =>
-                           {
-                               using var client = _clientFactory.CreateClient();
-                               return await client.GetByteArrayAsync(url).ConfigureAwait(false);
-                           });
+        RetrieveCachedAsync($"thumbnail:{url}",
+                            async () =>
+                            {
+                                using var client = _clientFactory.CreateClient();
+                                return await client.GetByteArrayAsync(url).ConfigureAwait(false);
+                            });
 
     private async Task<T> RetrieveCachedAsync<T>(string key, Func<Task<T>> factory, bool cacheEnabled = true)
     {
@@ -209,12 +214,14 @@ public class RepositoryAgent
 
     private async ValueTask<T?> RetrieveCachedAsync<T>(string key)
     {
-        var cachedJson = await _cache.GetStringAsync(key).ConfigureAwait(false);
-        if (cachedJson != null)
+        var cachedBytes = await _cache.GetAsync(key).ConfigureAwait(false);
+        if (cachedBytes != null)
         {
             try
             {
-                var cached = JsonSerializer.Deserialize<T>(cachedJson);
+                var cached = typeof(T) == typeof(byte[])
+                                 ? (T)(object)cachedBytes
+                                 : MessagePackSerializer.Deserialize<T>(cachedBytes, _options);
                 _logger.LogDebug("Cache hit: {}", key);
                 // await _cache.RefreshAsync(key).ConfigureAwait(false);
                 // NOTE: 不刷新！过期就让他过期，因为是由时效性的
@@ -230,35 +237,16 @@ public class RepositoryAgent
         return default;
     }
 
-    private async Task<byte[]> RetrieveBytesAsync(string key, Func<Task<byte[]>> factory, bool cacheEnabled = true)
-    {
-        var cached = cacheEnabled ? await _cache.GetAsync(key).ConfigureAwait(false) : null;
-        if (cached != null)
-        {
-            _logger.LogDebug("Bytes hit: {}", key);
-            return cached;
-        }
-
-        try
-        {
-            var result = await factory().ConfigureAwait(false);
-            await _cache.SetAsync(key, result).ConfigureAwait(false);
-            _logger.LogDebug("Bytes recorded: {}", key);
-            return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Exception occurred: {message}", e.Message);
-            throw;
-        }
-    }
-
     private async Task CacheObjectAsync<T>(string key, T value)
     {
         await _cache
-             .SetStringAsync(key,
-                             JsonSerializer.Serialize(value),
-                             new DistributedCacheEntryOptions { SlidingExpiration = EXPIRED_IN })
+             .SetAsync(key,
+                       value is not null
+                           ? (typeof(T) == typeof(byte[])
+                                  ? (byte[])((object)value)
+                                  : MessagePackSerializer.Serialize(value, _options))
+                           : [],
+                       new() { SlidingExpiration = EXPIRED_IN })
              .ConfigureAwait(false);
         _logger.LogDebug("Cache recorded: {}", key);
     }
