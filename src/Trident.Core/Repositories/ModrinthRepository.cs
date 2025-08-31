@@ -79,8 +79,19 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return ModrinthHelper.ToProject(label, project, team.FirstOrDefault());
     }
 
-    public Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
-        throw new NotImplementedException();
+    public async Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch)
+    {
+        var batchArray = batch.ToArray();
+        var projects = await client
+                            .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.pid)))
+                            .ConfigureAwait(false);
+        var teamTasks = projects
+                       .Select(async x => (x.Id, await client.GetTeamMembersAsync(x.TeamId).ConfigureAwait(false)))
+                       .ToList();
+        await Task.WhenAll(teamTasks).ConfigureAwait(false);
+        var teams = teamTasks.ToDictionary(x => x.Result.Id, x => x.Result.Item2.FirstOrDefault());
+        return projects.Select(x => ModrinthHelper.ToProject(label, x, teams[x.Id])).ToList();
+    }
 
     public async Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter)
     {
@@ -139,36 +150,34 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
         var unknownProjectVersionsTasks = unknownVids
-                                             .Select(async x =>
-                                              {
-                                                  var versions = await client
-                                                                      .GetProjectVersionsAsync(x.pid,
-                                                                           null,
-                                                                           filter.Loader is not null
-                                                                               ? ArrayParameterConstructor([
-                                                                                   ModrinthHelper.LoaderIdToName(filter
-                                                                                      .Loader)
-                                                                               ])
-                                                                               : null)
-                                                                      .ConfigureAwait(false);
-                                                  var chosen = versions
-                                                              .OrderByDescending(y => y.DatePublished)
-                                                              .FirstOrDefault(y => filter.Version is null
-                                                                               || y.GameVersions
-                                                                                     .Contains(filter.Version));
-                                                  if (chosen == default)
-                                                      throw new
-                                                          ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
-                                                  return chosen;
-                                              })
-                                             .ToList();
+                                         .Select(async x =>
+                                          {
+                                              var versions = await client
+                                                                  .GetProjectVersionsAsync(x.pid,
+                                                                       null,
+                                                                       filter.Loader is not null
+                                                                           ? ArrayParameterConstructor([
+                                                                               ModrinthHelper.LoaderIdToName(filter
+                                                                                  .Loader)
+                                                                           ])
+                                                                           : null)
+                                                                  .ConfigureAwait(false);
+                                              var chosen = versions
+                                                          .OrderByDescending(y => y.DatePublished)
+                                                          .FirstOrDefault(y => filter.Version is null
+                                                                            || y.GameVersions.Contains(filter.Version));
+                                              if (chosen == default)
+                                                  throw new
+                                                      ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
+                                              return chosen;
+                                          })
+                                         .ToList();
         await Task.WhenAll(unknownProjectVersionsTasks).ConfigureAwait(false);
         var unknownVersions = unknownProjectVersionsTasks.Select(x => x.Result);
 
         var knownVersions = await client
-                                     .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm
-                                                                  .vid)))
-                                     .ConfigureAwait(false);
+                                 .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm.vid)))
+                                 .ConfigureAwait(false);
 
 
         var projects = (await client

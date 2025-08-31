@@ -5,6 +5,7 @@ using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using MimeDetective.Storage;
 using Trident.Core.Clients;
 using Trident.Core.Repositories;
 using Refit;
@@ -150,7 +151,6 @@ public class RepositoryAgent
                           .ToList();
         await Task.WhenAll(resolveTasks).ConfigureAwait(false);
         var resolved = resolveTasks
-                      .Where(x => x.IsCompletedSuccessfully && x.Result != default)
                       .Select(x => x.Result)
                       .SelectMany(x => x.Packages.Select(y => (x.Label, Package: y)))
                       .ToList();
@@ -169,8 +169,43 @@ public class RepositoryAgent
         RetrieveCachedAsync($"project:{PackageHelper.Identify(label, ns, pid, null, null)}",
                             () => Redirect(label).QueryAsync(ns, pid));
 
-    public Task<Project> QueryBatchAsync(IEnumerable<(string, string?, string)> batch) =>
-        throw new NotImplementedException();
+    public async Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string label, string? ns, string pid)> batch)
+    {
+        var batchArray = batch.ToArray();
+        var cachedTasks = batchArray
+                         .Select(async x => (Meta: x,
+                                             Cached: await RetrieveCachedAsync<
+                                                             Project>($"project:{PackageHelper.Identify(x.label, x.ns, x.pid, null, null)}")
+                                                        .ConfigureAwait(false)))
+                         .ToList();
+        await Task.WhenAll(cachedTasks).ConfigureAwait(false);
+        var cached = cachedTasks
+                    .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
+                    .Select(x => x.Result)
+                    .ToList();
+
+        var toQuery = batchArray.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
+        var queryTasks = toQuery
+                        .Select(async x => (Label: x.Key,
+                                            Projects: await Redirect(x.Key)
+                                                           .QueryBatchAsync(x.Select(y => (y.ns, y.pid)))
+                                                           .ConfigureAwait(false)))
+                        .ToList();
+        await Task.WhenAll(queryTasks).ConfigureAwait(false);
+        var queried = queryTasks
+                     .Select(x => x.Result)
+                     .SelectMany(x => x.Projects.Select(y => (x.Label, Project: y)))
+                     .ToList();
+        foreach (var (label, project) in queried)
+        {
+            await
+                CacheObjectAsync($"project:{PackageHelper.Identify(label, project.Namespace, project.ProjectId, null, null)}",
+                                 project)
+                   .ConfigureAwait(false);
+        }
+
+        return cached.Select(x => x.Cached!).Concat(queried.Select(x => x.Project)).ToList();
+    }
 
     public Task<string> ReadDescriptionAsync(string label, string? ns, string pid) =>
         RetrieveCachedAsync($"description:{PackageHelper.Identify(label, ns, pid, null, null)}",

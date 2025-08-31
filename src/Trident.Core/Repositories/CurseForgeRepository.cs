@@ -97,9 +97,17 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new FormatException("Pid is not well formatted into modId");
     }
 
-    // POST api.curseforge.com/v1/mods {"modIds": [...]}
-    public Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch) =>
-        throw new NotImplementedException();
+    public async Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch)
+    {
+        var batchArray = batch.ToArray();
+        var modIds = batchArray
+                    .Select(x => uint.TryParse(x.pid, out var pid)
+                                     ? pid
+                                     : throw new FormatException($"{x.pid} is not well formatted into modId"))
+                    .ToList();
+        var mods = await client.GetModsAsync(new(modIds)).ConfigureAwait(false);
+        return mods.Data.Select(x => CurseForgeHelper.ToProject(label, x)).ToList();
+    }
 
     public async Task<Package> ResolveAsync(string? _, string pid, string? vid, Filter filter)
     {
@@ -178,54 +186,51 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
         // 这一块依旧没法一次性拿全，都怪 CurseForge 的 API 设计
         var unknownFilesTasks = unknownVids
-                                         .Select(async x =>
-                                          {
-                                              if (uint.TryParse(x.pid, out var modId))
-                                              {
-                                                  var mod = (await client.GetModAsync(modId).ConfigureAwait(false))
-                                                     .Data;
-                                                  var file = (await client
-                                                                   .GetModFilesAsync(modId,
-                                                                        filter.Version,
-                                                                        mod.ClassId == CurseForgeHelper.CLASSID_MOD
-                                                                            ? CurseForgeHelper.LoaderIdToType(filter
-                                                                               .Loader)
-                                                                            : null,
-                                                                        0,
-                                                                        1)
-                                                                   .ConfigureAwait(false)).Data.FirstOrDefault();
-                                                  if (file != default)
-                                                  {
-                                                      return (mod, file);
-                                                  }
+                               .Select(async x =>
+                                {
+                                    if (uint.TryParse(x.pid, out var modId))
+                                    {
+                                        var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
+                                        var file = (await client
+                                                         .GetModFilesAsync(modId,
+                                                                           filter.Version,
+                                                                           mod.ClassId == CurseForgeHelper.CLASSID_MOD
+                                                                               ? CurseForgeHelper.LoaderIdToType(filter
+                                                                                  .Loader)
+                                                                               : null,
+                                                                           0,
+                                                                           1)
+                                                         .ConfigureAwait(false)).Data.FirstOrDefault();
+                                        if (file != default)
+                                        {
+                                            return (mod, file);
+                                        }
 
-                                                  throw new
-                                                      ResourceNotFoundException($"{modId}/* has not matched version");
-                                              }
+                                        throw new ResourceNotFoundException($"{modId}/* has not matched version");
+                                    }
 
-                                              throw new FormatException($"{x.pid} is not well formatted into modId");
-                                          })
-                                         .ToList();
+                                    throw new FormatException($"{x.pid} is not well formatted into modId");
+                                })
+                               .ToList();
         await Task.WhenAll(unknownFilesTasks).ConfigureAwait(false);
         var unknownFiles = unknownFilesTasks.Select(x => x.Result);
 
         var knownMods = await client
-                                 .GetModsAsync(new([
-                                                       .. knownVids.Select(x => uint.TryParse(x.pid, out var pid)
-                                                                               ? pid
-                                                                               : throw new
-                                                                                   FormatException($"{x.pid} is not well formatted into fileId"))
-                                                   ],
-                                                   true))
-                                 .ConfigureAwait(false);
+                             .GetModsAsync(new([
+                                  .. knownVids.Select(x => uint.TryParse(x.pid, out var pid)
+                                                               ? pid
+                                                               : throw new
+                                                                     FormatException($"{x.pid} is not well formatted into fileId"))
+                              ]))
+                             .ConfigureAwait(false);
         var knownFiles = await client
-                                 .GetFilesAsync(new([
-                                      .. knownVids.Select(x => uint.TryParse(x.vid, out var vid)
-                                                                   ? vid
-                                                                   : throw new
-                                                                         FormatException($"{x.vid} is not well formatted into fileId"))
-                                  ]))
-                                 .ConfigureAwait(false);
+                              .GetFilesAsync(new([
+                                   .. knownVids.Select(x => uint.TryParse(x.vid, out var vid)
+                                                                ? vid
+                                                                : throw new
+                                                                      FormatException($"{x.vid} is not well formatted into fileId"))
+                               ]))
+                              .ConfigureAwait(false);
         var knownPairs = knownMods.Data.OrderBy(x => x.Id).Zip(knownFiles.Data.OrderBy(x => x.ModId)).ToList();
         if (knownPairs.Any(x => x.First.Id != x.Second.ModId))
         {
