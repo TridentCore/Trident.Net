@@ -24,6 +24,12 @@ public interface ICurseForgeClient
     [Get("/v1/mods/{modId}")]
     Task<ObjectResponse<ModInfo>> GetModAsync(uint modId);
 
+    [Post("/v1/mods")]
+    Task<ArrayResponse<ModInfo>> GetModsAsync([Body] GetModsRequest request);
+
+    [Post("/v1/mods/files")]
+    Task<ArrayResponse<FileInfo>> GetFilesAsync([Body] GetFilesRequest request);
+
     [Get("/v1/mods/{modId}/files/{fileId}")]
     Task<ObjectResponse<FileInfo>> GetModFileAsync(uint modId, uint fileId);
 

@@ -107,8 +107,9 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                  : null)
                     .ConfigureAwait(false), client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false));
                 var (versions, members) = (await versionsTask, await membersTask);
-                var found = versions.FirstOrDefault(x => filter.Version is null
-                                                      || x.GameVersions.Contains(filter.Version));
+                var found = versions
+                           .OrderByDescending(x => x.DatePublished)
+                           .FirstOrDefault(x => filter.Version is null || x.GameVersions.Contains(filter.Version));
                 if (found == default)
                 {
                     throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
@@ -137,7 +138,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var unknownVids = batchArray.Where(x => x.vid is null);
 
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
-        var unknownProjectVersionListsTasks = unknownVids
+        var unknownProjectVersionsTasks = unknownVids
                                              .Select(async x =>
                                               {
                                                   var versions = await client
@@ -150,18 +151,21 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                                                ])
                                                                                : null)
                                                                       .ConfigureAwait(false);
-                                                  var chosen = versions.FirstOrDefault(y => filter.Version is null
-                                                   || y.GameVersions.Contains(filter.Version));
+                                                  var chosen = versions
+                                                              .OrderByDescending(y => y.DatePublished)
+                                                              .FirstOrDefault(y => filter.Version is null
+                                                                               || y.GameVersions
+                                                                                     .Contains(filter.Version));
                                                   if (chosen == default)
                                                       throw new
                                                           ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
                                                   return chosen;
                                               })
                                              .ToList();
-        await Task.WhenAll(unknownProjectVersionListsTasks).ConfigureAwait(false);
-        var unknownVersionLists = unknownProjectVersionListsTasks.Select(x => x.Result);
+        await Task.WhenAll(unknownProjectVersionsTasks).ConfigureAwait(false);
+        var unknownVersions = unknownProjectVersionsTasks.Select(x => x.Result);
 
-        var knownVersionLists = await client
+        var knownVersions = await client
                                      .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm
                                                                   .vid)))
                                      .ConfigureAwait(false);
@@ -177,8 +181,8 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         await Task.WhenAll(membersTasks).ConfigureAwait(false);
         var members = membersTasks.ToDictionary(x => x.Result.Id, x => x.Result.Members.FirstOrDefault());
 
-        var packages = knownVersionLists
-                      .Concat(unknownVersionLists)
+        var packages = knownVersions
+                      .Concat(unknownVersions)
                       .Select(x => ModrinthHelper.ToPackage(label, projects[x.ProjectId], x, members[x.ProjectId]))
                       .ToList();
         return packages;

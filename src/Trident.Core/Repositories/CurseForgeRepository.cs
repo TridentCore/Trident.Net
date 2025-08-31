@@ -6,6 +6,7 @@ using ReverseMarkdown;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Models.CurseForgeApi;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
@@ -122,9 +123,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
-                    throw new FormatException("Vid is not well formatted into fileId");
+                    throw new FormatException($"{vid} is not well formatted into fileId");
                 }
-
+                else
                 {
                     // var loaderNick = CurseForgeService.LoaderIdToName(filter.Loader);
                     // // GameVersion 是游戏版本，GameVersionName 是游戏版本或加载器版本
@@ -164,17 +165,79 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        throw new FormatException("Pid is not well formatted into modId");
+        throw new FormatException($"{pid} is not well formatted into modId");
     }
 
     public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
         IEnumerable<(string? ns, string pid, string? vid)> batch,
         Filter filter)
     {
-        // TODO: 这里是 FALLBACK，未来补全
-        var tasks = batch.Select(x => ResolveAsync(x.ns, x.pid, x.vid, filter)).ToList();
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-        return tasks.ConvertAll(x => x.Result);
+        var batchArray = batch.ToArray();
+        var knownVids = batchArray.Where(x => x.vid is not null).ToArray();
+        var unknownVids = batchArray.Where(x => x.vid is null).ToArray();
+
+        // 这一块依旧没法一次性拿全，都怪 CurseForge 的 API 设计
+        var unknownFilesTasks = unknownVids
+                                         .Select(async x =>
+                                          {
+                                              if (uint.TryParse(x.pid, out var modId))
+                                              {
+                                                  var mod = (await client.GetModAsync(modId).ConfigureAwait(false))
+                                                     .Data;
+                                                  var file = (await client
+                                                                   .GetModFilesAsync(modId,
+                                                                        filter.Version,
+                                                                        mod.ClassId == CurseForgeHelper.CLASSID_MOD
+                                                                            ? CurseForgeHelper.LoaderIdToType(filter
+                                                                               .Loader)
+                                                                            : null,
+                                                                        0,
+                                                                        1)
+                                                                   .ConfigureAwait(false)).Data.FirstOrDefault();
+                                                  if (file != default)
+                                                  {
+                                                      return (mod, file);
+                                                  }
+
+                                                  throw new
+                                                      ResourceNotFoundException($"{modId}/* has not matched version");
+                                              }
+
+                                              throw new FormatException($"{x.pid} is not well formatted into modId");
+                                          })
+                                         .ToList();
+        await Task.WhenAll(unknownFilesTasks).ConfigureAwait(false);
+        var unknownFiles = unknownFilesTasks.Select(x => x.Result);
+
+        var knownMods = await client
+                                 .GetModsAsync(new([
+                                                       .. knownVids.Select(x => uint.TryParse(x.pid, out var pid)
+                                                                               ? pid
+                                                                               : throw new
+                                                                                   FormatException($"{x.pid} is not well formatted into fileId"))
+                                                   ],
+                                                   true))
+                                 .ConfigureAwait(false);
+        var knownFiles = await client
+                                 .GetFilesAsync(new([
+                                      .. knownVids.Select(x => uint.TryParse(x.vid, out var vid)
+                                                                   ? vid
+                                                                   : throw new
+                                                                         FormatException($"{x.vid} is not well formatted into fileId"))
+                                  ]))
+                                 .ConfigureAwait(false);
+        var knownPairs = knownMods.Data.OrderBy(x => x.Id).Zip(knownFiles.Data.OrderBy(x => x.ModId)).ToList();
+        if (knownPairs.Any(x => x.First.Id != x.Second.ModId))
+        {
+            throw new InvalidOperationException("Pairs of Mod-File are not matched");
+        }
+
+        var packages = knownPairs
+                      .Select(x => (mod: x.First, file: x.Second))
+                      .Concat(unknownFiles)
+                      .Select(x => CurseForgeHelper.ToPackage(label, x.mod, x.file))
+                      .ToList();
+        return packages;
     }
 
     public async Task<string> ReadDescriptionAsync(string? ns, string pid)
@@ -197,7 +260,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        throw new FormatException("Pid is not well formatted into modId");
+        throw new FormatException($"{pid} is not well formatted into modId");
     }
 
     public async Task<string> ReadChangelogAsync(string? ns, string pid, string vid)
