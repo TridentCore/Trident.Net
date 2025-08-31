@@ -179,12 +179,12 @@ public class RepositoryAgent
         Redirect(label).InspectAsync(ns, pid, filter);
 
     public Task<byte[]> SeeAsync(Uri url) =>
-        RetrieveCachedAsync($"thumbnail:{url}",
-                            async () =>
-                            {
-                                using var client = _clientFactory.CreateClient();
-                                return await client.GetByteArrayAsync(url).ConfigureAwait(false);
-                            });
+        RetrieveBytesAsync($"thumbnail:{url}",
+                           async () =>
+                           {
+                               using var client = _clientFactory.CreateClient();
+                               return await client.GetByteArrayAsync(url).ConfigureAwait(false);
+                           });
 
     private async Task<T> RetrieveCachedAsync<T>(string key, Func<Task<T>> factory, bool cacheEnabled = true)
     {
@@ -227,8 +227,30 @@ public class RepositoryAgent
             }
         }
 
-        _logger.LogDebug("Cache missed: {}", key);
         return default;
+    }
+
+    private async Task<byte[]> RetrieveBytesAsync(string key, Func<Task<byte[]>> factory, bool cacheEnabled = true)
+    {
+        var cached = cacheEnabled ? await _cache.GetAsync(key).ConfigureAwait(false) : null;
+        if (cached != null)
+        {
+            _logger.LogDebug("Bytes hit: {}", key);
+            return cached;
+        }
+
+        try
+        {
+            var result = await factory().ConfigureAwait(false);
+            await _cache.SetAsync(key, result).ConfigureAwait(false);
+            _logger.LogDebug("Bytes recorded: {}", key);
+            return result;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Exception occurred: {message}", e.Message);
+            throw;
+        }
     }
 
     private async Task CacheObjectAsync<T>(string key, T value)
