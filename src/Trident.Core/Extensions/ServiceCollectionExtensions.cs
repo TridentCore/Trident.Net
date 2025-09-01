@@ -17,15 +17,11 @@ public static class ServiceCollectionExtensions
     {
         services
            .AddRefitClient<
-                IPrismLauncherClient>(_ =>
-                                          new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
+                IPrismLauncherClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
            .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(PrismLauncherService.ENDPOINT);
-                client.DefaultRequestHeaders.Add("User-Agent",
-                                                 $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}");
-            })
-           .AddTransientHttpErrorPolicy(builder => builder.RetryAsync());
+            });
 
         services.AddSingleton<PrismLauncherService>();
 
@@ -36,16 +32,11 @@ public static class ServiceCollectionExtensions
     {
         services
            .AddRefitClient<
-                IMojangLauncherClient>(_ =>
-                                           new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                  .Web))))
+                IMojangLauncherClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
            .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(MojangLauncherService.ENDPOINT);
-                client.DefaultRequestHeaders.Add("User-Agent",
-                                                 $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}");
-            })
-           .AddTransientHttpErrorPolicy(builder => builder.RetryAsync());
+            });
 
         services.AddSingleton<MojangLauncherService>();
 
