@@ -94,7 +94,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        throw new FormatException("Pid is not well formatted into modId");
+        throw new FormatException($"{pid} is not well formatted into modId");
     }
 
     public async Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch)
