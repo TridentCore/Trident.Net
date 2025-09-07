@@ -82,7 +82,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                         await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                                     }
 
-                                    entities.Add(new(fragile.TargetPath, fragile.SourcePath));
+                                    entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
 
                                     break;
                                 }
@@ -118,10 +118,9 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                     {
                                         // 原先这里会在 TargetPath 存在文件时将其删除，这么做是错误的，因为有存在的文件是上次部署的 Symlink
 
-                                        if (File.Exists(persistent.SourcePath))
-                                        {
-                                            entities.Add(new(persistent.TargetPath, persistent.SourcePath));
-                                        }
+                                        entities.Add(new(persistent.TargetPath,
+                                                         persistent.SourcePath,
+                                                         persistent.IsDirectory));
                                     }
                                     else if (!File.Exists(persistent.TargetPath))
                                     {

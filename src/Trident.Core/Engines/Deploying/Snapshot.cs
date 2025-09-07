@@ -14,20 +14,25 @@ public class Snapshot : Collection<Snapshot.Entity>
         var snapshot = new Snapshot();
         var subs = new Queue<DirectoryInfo>();
         subs.Enqueue(new(directory));
-        while (subs.TryDequeue(out var dir))
+        while (subs.TryDequeue(out var parent))
         {
-            var dirs = dir.GetDirectories();
-            foreach (var d in dirs)
+            var dirs = parent.GetDirectories();
+            foreach (var dir in dirs)
             {
-                subs.Enqueue(d);
+                if (dir.LinkTarget != null)
+                {
+                    snapshot.Add(new(dir.FullName, dir.LinkTarget, true));
+                }
+
+                subs.Enqueue(dir);
             }
 
-            var files = dir.GetFiles();
+            var files = parent.GetFiles();
             foreach (var file in files)
             {
                 if (file.LinkTarget != null)
                 {
-                    snapshot.Add(new(file.FullName, file.LinkTarget));
+                    snapshot.Add(new(file.FullName, file.LinkTarget, false));
                 }
             }
         }
@@ -43,7 +48,7 @@ public class Snapshot : Collection<Snapshot.Entity>
         }
 
         var current = Take(directory);
-        var entities = new List<Entity>(toPopulate);
+        var entities = new List<Entity>(toPopulate.DistinctBy(x => x.Path));
         foreach (var exist in current)
         {
             var final = entities.FirstOrDefault(x => x.Path == exist.Path);
@@ -51,15 +56,31 @@ public class Snapshot : Collection<Snapshot.Entity>
             {
                 if (!exist.Target.Equals(final.Target))
                 {
-                    File.Delete(exist.Path);
-                    File.CreateSymbolicLink(final.Path, final.Target);
+                    if (exist.IsDirectory)
+                    {
+                        Directory.Delete(exist.Path, false);
+                        Directory.CreateSymbolicLink(exist.Path, final.Target);
+                    }
+                    else
+                    {
+                        File.Delete(exist.Path);
+                        File.CreateSymbolicLink(exist.Path, final.Target);
+                    }
                 }
 
                 entities.Remove(final);
             }
             else
             {
-                File.Delete(exist.Path);
+                // 不该出现的多余的软链接
+                if (exist.IsDirectory)
+                {
+                    Directory.Delete(exist.Path, false);
+                }
+                else
+                {
+                    File.Delete(exist.Path);
+                }
             }
         }
 
@@ -71,9 +92,18 @@ public class Snapshot : Collection<Snapshot.Entity>
                 Directory.CreateDirectory(dir);
             }
 
-            if (!File.Exists(remain.Path))
-                // 有些包会内嵌文件的同时引用该附件导致文件重复
-                // 这里的原则为以现有文件为准
+            // 被普通文件或目录占用了
+            if (File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null
+             || Directory.Exists(remain.Path) && Directory.ResolveLinkTarget(remain.Path, false) is null)
+            {
+                throw new InvalidOperationException($"Target {remain.Path} already exists and is not a symlink");
+            }
+
+            if (remain.IsDirectory)
+            {
+                Directory.CreateSymbolicLink(remain.Path, remain.Target);
+            }
+            else
             {
                 File.CreateSymbolicLink(remain.Path, remain.Target);
             }
@@ -82,7 +112,7 @@ public class Snapshot : Collection<Snapshot.Entity>
 
     #region Nested type: Entity
 
-    public record Entity(string Path, string Target);
+    public record Entity(string Path, string Target, bool IsDirectory);
 
     #endregion
 }

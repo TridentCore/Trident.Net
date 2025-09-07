@@ -26,7 +26,7 @@ public class EntityManifest
 
     #region Nested type: PersistentFile
 
-    public record PersistentFile(string SourcePath, string TargetPath, bool IsPhantom);
+    public record PersistentFile(string SourcePath, string TargetPath, bool IsPhantom, bool IsDirectory);
 
     #endregion
 

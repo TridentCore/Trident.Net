@@ -83,6 +83,8 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         string targetDir,
         bool phantom)
     {
+        // TODO: 如果 live 里有，persist 里也有同名文件，会冲突。
+        //  目前使用去重解决，没有明确的优先级
         if (Directory.Exists(scanDir))
         {
             var dirs = new Stack<string>();
@@ -90,16 +92,27 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
             while (dirs.TryPop(out var sub))
             {
-                foreach (var file in Directory.GetFiles(sub))
+                if (File.Exists(Path.Combine(sub, ".keep")))
                 {
-                    collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, file)),
-                                       Path.Combine(targetDir, Path.GetRelativePath(scanDir, file)),
-                                       phantom));
+                    collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, sub)),
+                                       Path.Combine(targetDir, Path.GetRelativePath(scanDir, sub)),
+                                       phantom,
+                                       true));
                 }
-
-                foreach (var dir in Directory.GetDirectories(sub))
+                else
                 {
-                    dirs.Push(dir);
+                    foreach (var file in Directory.GetFiles(sub))
+                    {
+                        collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, file)),
+                                           Path.Combine(targetDir, Path.GetRelativePath(scanDir, file)),
+                                           phantom,
+                                           false));
+                    }
+
+                    foreach (var dir in Directory.GetDirectories(sub))
+                    {
+                        dirs.Push(dir);
+                    }
                 }
             }
         }
@@ -121,9 +134,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         using var client = factory.CreateClient();
-        return await client
-                    .GetFromJsonAsync<MinecraftAssetIndex>(url, JsonSerializerOptions.Web)
-                    .ConfigureAwait(false);
+        return await client.GetFromJsonAsync<MinecraftAssetIndex>(url, JsonSerializerOptions.Web).ConfigureAwait(false);
     }
 
     #region Nested type: MinecraftAssetIndex
