@@ -36,7 +36,7 @@ Trident 是一种 Minecraft 的文件组织结构。
 - **Trident Cli**
   - 规则1：通过命令行参数指定
   - 规则2：环境变量 `TRIDENT_HOME`
-  - 规则3：目录层级查找，从当前目录到根目录逐层向上查找 `.trident` 目录
+  - 规则3：目录层级查找，从工作目录到根目录逐层向上查找 `.trident` 目录
   - 兜底：`~/.trident`
 
 ### Deployment
@@ -74,7 +74,7 @@ Trident 会保证 `build` 目录中的文件总是和 `profile.json` 中的描�
 
 在需要 CD 构建整合包的情况下可以使用 Trident Cli 在 Github Actions 中实现。
 
-以下是一个简单的示例，用于在整合包仓库(元数据文件使用 `src/profile.json`)构建 Polypack 格式的整合包并发布到 Release：
+以下是一个简单的示例，用于在整合包仓库(元数据文件使用 `src/profile.json`)构建 Tripack 格式的整合包并发布到 Release：
 
 ```yaml
 name: Build and Publish Modpack
@@ -100,7 +100,10 @@ jobs:
         run: dotnet tool install -g Trident.Cli
 
       - name: Run Trident CLI
-        run: trident publish --output Releases --format polypack --type online src/profile.json
+        run:
+          trident export --output Releases/tripack.zip --format tripack --type online --profile src/profile.json
+          trident export --output Releases/curseforge.zip --format curseforge --type online --profile src/profile.json
+          trident export --output Releases/modrinth.zip --format modrinth --type online --profile src/profile.json
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

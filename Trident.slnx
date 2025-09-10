@@ -5,4 +5,5 @@
     </Folder>
     <Project Path="src\Trident.Abstractions\Trident.Abstractions.csproj" Type="C#" />
     <Project Path="src\Trident.Purl\Trident.Purl.csproj" Type="C#" />
+    <Project Path="src\Trident.Cli\Trident.Cli.csproj" Type="C#" />
 </Solution>
