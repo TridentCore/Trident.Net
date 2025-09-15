@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.CurseForgeApi;
 
-public readonly record struct GameVersion(
+public record GameVersion(
     uint Id,
     uint GameId,
     string VersionString,

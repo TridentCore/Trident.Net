@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.ModrinthApi;
 
-public readonly record struct ModLoader(
+public record ModLoader(
     string Icon,
     string Name,
     IReadOnlyList<string> SupportedProjectTypes,
@@ -10,7 +10,7 @@ public readonly record struct ModLoader(
 {
     #region Nested type: LoaderMetadata
 
-    public readonly record struct LoaderMetadata(bool? Platform);
+    public record LoaderMetadata(bool? Platform);
 
     #endregion
 }

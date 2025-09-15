@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.CurseForgeApi;
 
-public readonly record struct CategoryModel(
+public record CategoryModel(
     uint Id,
     uint GameId,
     string Name,

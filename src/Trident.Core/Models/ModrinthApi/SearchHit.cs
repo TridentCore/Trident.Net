@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.ModrinthApi;
 
-public readonly record struct SearchHit(
+public record SearchHit(
     string ProjectId,
     string ProjectType,
     string Slug,

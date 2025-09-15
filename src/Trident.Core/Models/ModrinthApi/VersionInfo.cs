@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.ModrinthApi;
 
-public readonly record struct VersionInfo(
+public record VersionInfo(
     string Id,
     string ProjectId,
     string AuthorId,
@@ -28,7 +28,7 @@ public readonly record struct VersionInfo(
 {
     #region Nested type: VersionDependency
 
-    public readonly record struct VersionDependency(
+    public record VersionDependency(
         string ProjectId,
         string VersionId,
         string? FileName,

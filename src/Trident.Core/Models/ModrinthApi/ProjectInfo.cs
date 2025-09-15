@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.ModrinthApi;
 
-public readonly record struct ProjectInfo(
+public record ProjectInfo(
     string Id,
     string Slug,
     IReadOnlyList<string> ProjectTypes,
@@ -38,17 +38,17 @@ public readonly record struct ProjectInfo(
 {
     #region Nested type: ProjectLicense
 
-    public readonly record struct ProjectLicense(string Id, string Name, Uri? Url);
+    public record ProjectLicense(string Id, string Name, Uri? Url);
 
     #endregion
 
     #region Nested type: Messages
-    public readonly record struct Messages(string Message, string? Body);
+    public record Messages(string Message, string? Body);
     #endregion
 
     #region Nested type: ProjectLinks
 
-    public readonly record struct ProjectLinks(
+    public record ProjectLinks(
         ProjectLinks.Links? Other,
         ProjectLinks.Links? Discord,
         ProjectLinks.Links? Matrix,
@@ -59,7 +59,7 @@ public readonly record struct ProjectInfo(
     {
         #region Nested type: Links
 
-        public readonly record struct Links(string Platform, bool Donation, Uri Url);
+        public record Links(string Platform, bool Donation, Uri Url);
 
         #endregion
     }
@@ -68,7 +68,7 @@ public readonly record struct ProjectInfo(
 
     #region Nested type: ProjectScreenshot
 
-    public readonly record struct ProjectScreenshot(
+    public record ProjectScreenshot(
         Uri Url,
         Uri RawUrl,
         bool Featured,

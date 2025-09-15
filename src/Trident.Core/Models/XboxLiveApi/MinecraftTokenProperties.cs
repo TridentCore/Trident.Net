@@ -1,5 +1,5 @@
 namespace Trident.Core.Models.XboxLiveApi;
 
-public readonly record struct MinecraftTokenProperties(
+public record MinecraftTokenProperties(
     IReadOnlyList<string> UserTokens,
     string SandboxId = "RETAIL");

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Trident.Core.Models.PrismLauncherApi;
 
-public readonly record struct ComponentIndex(
+public record ComponentIndex(
     int FormatVersion,
     string Name,
     string Uid,
@@ -10,7 +10,7 @@ public readonly record struct ComponentIndex(
 {
     #region Nested type: ComponentVersion
 
-    public readonly record struct ComponentVersion(
+    public record ComponentVersion(
         bool Recommended,
         DateTimeOffset ReleaseTime,
         IReadOnlyList<ComponentVersion.VersionRequirement> Requires,
@@ -20,7 +20,7 @@ public readonly record struct ComponentIndex(
     {
         #region Nested type: VersionRequirement
 
-        public readonly record struct VersionRequirement(
+        public record VersionRequirement(
             [property: JsonPropertyName("suggests")]
             string? Suggest,
             [property: JsonPropertyName("equals")] string? Equal,

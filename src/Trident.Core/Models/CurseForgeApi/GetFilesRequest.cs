@@ -1,3 +1,3 @@
 ﻿namespace Trident.Core.Models.CurseForgeApi;
 
-public readonly record struct GetFilesRequest(IReadOnlyList<uint> FileIds);
+public record GetFilesRequest(IReadOnlyList<uint> FileIds);

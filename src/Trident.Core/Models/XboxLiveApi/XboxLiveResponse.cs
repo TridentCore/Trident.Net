@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.XboxLiveApi;
 
-public readonly record struct XboxLiveResponse(
+public record XboxLiveResponse(
     long? XErr,
     string? Message,
     DateTimeOffset IssueInstant,
@@ -10,11 +10,11 @@ public readonly record struct XboxLiveResponse(
 {
     #region Nested type: Claims
 
-    public readonly record struct Claims(Claims.XuiEntry[] Xui)
+    public record Claims(Claims.XuiEntry[] Xui)
     {
         #region Nested type: XuiEntry
 
-        public readonly record struct XuiEntry(string Uhs);
+        public record XuiEntry(string Uhs);
 
         #endregion
     }

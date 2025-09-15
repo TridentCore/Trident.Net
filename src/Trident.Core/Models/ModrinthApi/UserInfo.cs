@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.ModrinthApi;
 
-public readonly record struct UserInfo(
+public record UserInfo(
     string Username,
     string? Name,
     string? Email,

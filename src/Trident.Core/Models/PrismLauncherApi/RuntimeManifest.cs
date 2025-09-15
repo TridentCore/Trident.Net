@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.PrismLauncherApi;
 
-public readonly record struct RuntimeManifest(
+public record RuntimeManifest(
     int FormatVersion,
     string Name,
     DateTimeOffset ReleaseTime,
@@ -8,7 +8,7 @@ public readonly record struct RuntimeManifest(
 {
     #region Nested type: Runtime
 
-    public readonly record struct Runtime(
+    public record Runtime(
         Runtime.ChecksumData Checksum,
         string DownloadType,
         string Name,
@@ -21,13 +21,13 @@ public readonly record struct RuntimeManifest(
     {
         #region Nested type: ChecksumData
 
-        public readonly record struct ChecksumData(string Hash, string Type);
+        public record ChecksumData(string Hash, string Type);
 
         #endregion
 
         #region Nested type: VersionData
 
-        public readonly record struct VersionData(uint Major, uint Minor, uint Security);
+        public record VersionData(uint Major, uint Minor, uint Security);
 
         #endregion
     }

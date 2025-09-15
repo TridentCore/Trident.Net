@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.CurseForgeApi;
 
-public readonly record struct ModInfo(
+public record ModInfo(
     uint Id,
     uint GameId,
     string Name,
@@ -47,7 +47,7 @@ public readonly record struct ModInfo(
 
     #region Nested type: ModAsset
 
-    public readonly record struct ModAsset(
+    public record ModAsset(
         uint Id,
         uint ModId,
         string Title,
@@ -59,13 +59,13 @@ public readonly record struct ModInfo(
 
     #region Nested type: ModAuthor
 
-    public readonly record struct ModAuthor(uint Id, string Name, Uri Url);
+    public record ModAuthor(uint Id, string Name, Uri Url);
 
     #endregion
 
     #region Nested type: ModLinks
 
-    public readonly record struct ModLinks(Uri? WebsiteUrl, Uri? WikiUrl, Uri? IssuesUrl, Uri? SourceUrl);
+    public record ModLinks(Uri? WebsiteUrl, Uri? WikiUrl, Uri? IssuesUrl, Uri? SourceUrl);
 
     #endregion
 }

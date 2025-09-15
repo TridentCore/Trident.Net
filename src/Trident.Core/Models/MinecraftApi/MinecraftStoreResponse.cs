@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.MinecraftApi;
 
-public readonly record struct MinecraftStoreResponse(
+public record MinecraftStoreResponse(
     string? Error,
     string? ErrorMessage,
     IReadOnlyList<MinecraftStoreResponse.Item> Items,
@@ -9,7 +9,7 @@ public readonly record struct MinecraftStoreResponse(
 {
     #region Nested type: Item
 
-    public readonly record struct Item(string Name, string Signature);
+    public record Item(string Name, string Signature);
 
     #endregion
 }

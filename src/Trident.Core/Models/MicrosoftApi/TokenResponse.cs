@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.MicrosoftApi;
 
-public readonly record struct TokenResponse(
+public record TokenResponse(
     string? Error,
     string? ErrorDescription,
     string TokenType,

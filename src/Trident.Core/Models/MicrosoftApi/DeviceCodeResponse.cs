@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.MicrosoftApi;
 
-public readonly record struct DeviceCodeResponse(
+public record DeviceCodeResponse(
     string? Message,
     string DeviceCode,
     string UserCode,

@@ -3,7 +3,7 @@ using Refit;
 
 namespace Trident.Core.Models.MicrosoftApi;
 
-public readonly record struct AuthenticateRequest(
+public record AuthenticateRequest(
     [property: AliasAs("device_code")] string DeviceCode,
     [property: AliasAs("grant_type")] string GrantType = "urn:ietf:params:oauth:grant-type:device_code",
     [property: AliasAs("client_id")] string ClientId = MicrosoftService.CLIENT_ID);

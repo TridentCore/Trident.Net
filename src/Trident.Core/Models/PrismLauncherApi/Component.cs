@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Trident.Core.Models.PrismLauncherApi;
 
-public readonly record struct Component(
+public record Component(
     [property: JsonPropertyName("+tweakers")]
     IReadOnlyList<string>? Tweakers,
     [property: JsonPropertyName("+traits")]
@@ -26,13 +26,13 @@ public readonly record struct Component(
 {
     #region Nested type: AssetIndexEntry
 
-    public readonly record struct AssetIndexEntry(string Id, string Sha1, ulong Size, ulong TotalSize, Uri Url);
+    public record AssetIndexEntry(string Id, string Sha1, ulong Size, ulong TotalSize, Uri Url);
 
     #endregion
 
     #region Nested type: Library
 
-    public readonly record struct Library(
+    public record Library(
         Library.DownloadsEntry? Downloads,
         Library.ExtractExtry? Extract,
         string Name,
@@ -42,13 +42,13 @@ public readonly record struct Component(
     {
         #region Nested type: DownloadsEntry
 
-        public readonly record struct DownloadsEntry(
+        public record DownloadsEntry(
             DownloadsEntry.ArtifactEntry? Artifact,
             IDictionary<string, DownloadsEntry.ArtifactEntry> Classifiers)
         {
             #region Nested type: ArtifactEntry
 
-            public readonly record struct ArtifactEntry(string Sha1, ulong Size, Uri Url);
+            public record ArtifactEntry(string Sha1, ulong Size, Uri Url);
 
             #endregion
         }
@@ -57,19 +57,19 @@ public readonly record struct Component(
 
         #region Nested type: ExtractExtry
 
-        public readonly record struct ExtractExtry(IReadOnlyList<string> Exclude);
+        public record ExtractExtry(IReadOnlyList<string> Exclude);
 
         #endregion
 
         #region Nested type: NativesEntry
 
-        public readonly record struct NativesEntry(string? Windows, string? Linux, string? Osx);
+        public record NativesEntry(string? Windows, string? Linux, string? Osx);
 
         #endregion
 
         #region Nested type: Rule
 
-        public readonly record struct Rule(string Action, IDictionary<string, string>? Os);
+        public record Rule(string Action, IDictionary<string, string>? Os);
 
         #endregion
     }
@@ -78,7 +78,7 @@ public readonly record struct Component(
 
     #region Nested type: Requirement
 
-    public readonly record struct Requirement(
+    public record Requirement(
         [property: JsonPropertyName("suggests")]
         string? Suggest,
         [property: JsonPropertyName("equals")] string? Equal,

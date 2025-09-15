@@ -1,6 +1,6 @@
 namespace Trident.Core.Models.MinecraftApi;
 
-public readonly record struct MinecraftLoginResponse(
+public record MinecraftLoginResponse(
     string? Error,
     string? ErrorMessage,
     string Username,
