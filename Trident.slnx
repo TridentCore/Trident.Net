@@ -1,9 +1,12 @@
 <Solution>
-    <Project Path="src\Trident.Core\Trident.Core.csproj" Type="C#" />
+    <Folder Name="/Docs/">
+        <File Path="docs/CLI.md" />
+    </Folder>
     <Folder Name="/Misc/">
         <File Path="README.md" />
     </Folder>
-    <Project Path="src\Trident.Abstractions\Trident.Abstractions.csproj" Type="C#" />
-    <Project Path="src\Trident.Purl\Trident.Purl.csproj" Type="C#" />
-    <Project Path="src\Trident.Cli\Trident.Cli.csproj" Type="C#" />
+    <Project Path="src\Trident.Abstractions\Trident.Abstractions.csproj" />
+    <Project Path="src\Trident.Cli\Trident.Cli.csproj" />
+    <Project Path="src\Trident.Core\Trident.Core.csproj" />
+    <Project Path="src\Trident.Purl\Trident.Purl.csproj" />
 </Solution>

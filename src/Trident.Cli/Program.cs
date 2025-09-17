@@ -1,67 +1,70 @@
-﻿using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Spectre.Console.Cli;
+using Trident.Abstractions;
 using Trident.Cli;
-using Trident.Cli.Commands;
+using Trident.Cli.Services;
 
-namespace Trident.Cli;
 
-public class SimpleHostEnvironment : IHostEnvironment
+#if DEBUG
+var env = "Development";
+#else
+var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+#endif
+
+var environment = new SimpleEnvironment()
 {
-    public string ApplicationName { get; set; } = "Trident.Cli";
-    public string EnvironmentName { get; set; }
-    public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
-    public IFileProvider ContentRootFileProvider { get; set; } = new PhysicalFileProvider(Directory.GetCurrentDirectory());
+    EnvironmentName = env
+};
 
-    public SimpleHostEnvironment(string envName)
-    {
-        EnvironmentName = envName;
-    }
-}
+var lookup = LookupHome();
+var services = new ServiceCollection();
 
-internal static class Program
+var configurationBuilder = new ConfigurationBuilder();
+Startup.ConfigureConfiguration(configurationBuilder, environment);
+var configuration = configurationBuilder.Build();
+Startup.ConfigureServices(services, configuration, environment);
+
+
+services.AddSingleton<IConfiguration>(configuration);
+services.AddSingleton<IEnvironment>(environment);
+services.AddSingleton(lookup);
+
+var registrar = new TypeRegistrar(services);
+var app = new CommandApp(registrar);
+Startup.ConfigureCommands(app);
+
+return await app.RunAsync(args);
+
+LookupContext LookupHome() => LookupHomeInternal(Environment.CurrentDirectory);
+LookupContext LookupHomeInternal(string startDir)
 {
-    public static async Task<int> Main(string[] args)
+    string? home = null;
+    string? profile = null;
+    var dir = startDir;
+    while (dir is not null && Directory.Exists(dir))
     {
-        var services = new ServiceCollection();
-
-        // Configuration
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddEnvironmentVariables()
-            .Build();
-
-        // Hosting environment
-        var environment = new SimpleHostEnvironment("Development");
-
-        // Configure services
-        Startup.ConfigureServices(services, configuration, environment);
-
-        // Add logging
-        services.AddLogging(logging =>
+        var canidiate = Path.Combine(dir, ".trident");
+        if (Directory.Exists(canidiate))
         {
-            logging.ClearProviders();
-            logging.AddConsole();
-        });
-
-        var registrar = new MicrosoftDependencyInjectionTypeRegistrar(services);
-        var app = new CommandApp(registrar);
-
-        app.Configure(config =>
+            home = canidiate;
+        }
+        var found = Path.Combine(dir, "profile.json");
+        if (File.Exists(found))
         {
-            config.AddCommand<RootCommand>("default");
-            config.AddBranch<ManageBranch.Settings>("manage", manage =>
-            {
-                manage.AddCommand<ManageListCommand>("list");
-                manage.AddCommand<ManageAddCommand>("add");
-            });
-        });
+            profile = found;
+        }
 
-        return await app.RunAsync(args);
+        dir = Path.GetDirectoryName(dir);
     }
+
+    if (home != null)
+    {
+        PathDef.HomeLocatorDefault = () => home;
+    }
+
+    return new LookupContext(PathDef.Default.Home)
+    {
+        FoundProfile = profile,
+    };
 }
