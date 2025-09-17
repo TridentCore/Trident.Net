@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 namespace Trident.Cli.Commands;
 public class CreationArgumentsBase : CommandSettings
 {
-    [CommandOption("-n|--name", isRequired: true)]
+    [CommandOption("-n|--name <NAME>", isRequired: true)]
     public required string Name { get; set; }
-    [CommandOption("-i|--id", isRequired: true)]
+    [CommandOption("-i|--id <ID>", isRequired: true)]
     public required string Id { get; set; }
 }
