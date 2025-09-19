@@ -1,8 +1,8 @@
+using Trident.Abstractions.Utilities;
 using Trident.Core.Clients;
 using Trident.Core.Engines.Deploying;
 using Trident.Core.Models.PrismLauncherApi;
 using Trident.Core.Utilities;
-using Trident.Abstractions.Utilities;
 
 namespace Trident.Core.Services;
 
@@ -58,9 +58,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
     }
 
 
-    public async Task<IEnumerable<Component.Library>> GetPatchedLibraries(
-        Component version,
-        CancellationToken token)
+    public async Task<IEnumerable<Component.Library>> GetPatchedLibraries(Component version, CancellationToken token)
     {
         var libraries = new List<Component.Library>(version.Libraries ?? Enumerable.Empty<Component.Library>());
         foreach (var requirement in version.Requires)

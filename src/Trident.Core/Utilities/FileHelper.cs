@@ -61,12 +61,7 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        inspector
-           .Inspect(stream)
-           .ByFileExtension()
-           .OrderBy(x => -x.Points)
-           .Select(x => x.Extension)
-           .FirstOrDefault()
+        inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
      ?? fallback;
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)

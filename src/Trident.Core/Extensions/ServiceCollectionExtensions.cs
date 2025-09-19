@@ -2,10 +2,9 @@ using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Polly;
+using Refit;
 using Trident.Core.Clients;
 using Trident.Core.Services;
-using Refit;
 
 namespace Trident.Core.Extensions;
 
@@ -50,8 +49,7 @@ public static class ServiceCollectionExtensions
                 IMicrosoftClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)
                                   {
                                       PropertyNamingPolicy =
-                                          JsonNamingPolicy
-                                             .SnakeCaseLower
+                                          JsonNamingPolicy.SnakeCaseLower
                                   }))
                                   {
                                       ExceptionFactory = async message => message switch
@@ -113,9 +111,8 @@ public static class ServiceCollectionExtensions
            .AddRefitClient<
                 IMinecraftClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)
             {
-                PropertyNamingPolicy =
-                    JsonNamingPolicy
-                       .SnakeCaseLower
+                PropertyNamingPolicy = JsonNamingPolicy
+                   .SnakeCaseLower
             })))
            .ConfigureHttpClient(client =>
             {

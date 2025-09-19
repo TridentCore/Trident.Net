@@ -2,10 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using Trident.Core.Services.Profiles;
 using Trident.Abstractions;
 using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Services.Profiles;
 
 namespace Trident.Core.Services;
 
@@ -128,10 +128,7 @@ public class ProfileManager : IDisposable
 
     public void Add(ReservedKey key, Profile profile)
     {
-        var handle = new ProfileHandle(key.Key,
-                                       profile,
-                                       PathDef.Default.FileOfProfile(key.Key),
-                                       _serializerOptions);
+        var handle = new ProfileHandle(key.Key, profile, PathDef.Default.FileOfProfile(key.Key), _serializerOptions);
         handle.SaveAsync().Wait();
         _profiles.Add(handle);
         key.Dispose();

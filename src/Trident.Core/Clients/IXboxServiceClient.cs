@@ -1,5 +1,5 @@
-using Trident.Core.Models.XboxLiveApi;
 using Refit;
+using Trident.Core.Models.XboxLiveApi;
 
 namespace Trident.Core.Clients;
 

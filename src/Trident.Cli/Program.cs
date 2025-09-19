@@ -5,17 +5,13 @@ using Trident.Abstractions;
 using Trident.Cli;
 using Trident.Cli.Services;
 
-
 #if DEBUG
 var env = "Development";
 #else
 var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 #endif
 
-var environment = new SimpleEnvironment()
-{
-    EnvironmentName = env
-};
+var environment = new SimpleEnvironment { EnvironmentName = env };
 
 var lookup = LookupHome();
 var services = new ServiceCollection();
@@ -37,6 +33,7 @@ Startup.ConfigureCommands(app);
 return await app.RunAsync(args);
 
 LookupContext LookupHome() => LookupHomeInternal(Environment.CurrentDirectory);
+
 LookupContext LookupHomeInternal(string startDir)
 {
     string? home = null;
@@ -49,6 +46,7 @@ LookupContext LookupHomeInternal(string startDir)
         {
             home = canidiate;
         }
+
         var found = Path.Combine(dir, "profile.json");
         if (File.Exists(found))
         {
@@ -63,8 +61,5 @@ LookupContext LookupHomeInternal(string startDir)
         PathDef.HomeLocatorDefault = () => home;
     }
 
-    return new LookupContext(PathDef.Default.Home)
-    {
-        FoundProfile = profile,
-    };
+    return new(PathDef.Default.Home) { FoundProfile = profile };
 }

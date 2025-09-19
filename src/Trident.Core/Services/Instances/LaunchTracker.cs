@@ -1,6 +1,6 @@
 using System.Reactive.Subjects;
-using Trident.Core.Engines.Launching;
 using Trident.Abstractions.Tasks;
+using Trident.Core.Engines.Launching;
 
 namespace Trident.Core.Services.Instances;
 

@@ -5,8 +5,8 @@ namespace Trident.Purl.Parsing;
 
 public partial class Parser : IParser<string, PackageDescriptor>
 {
-    public static Parser Default { get; } = new();
     private readonly Regex _pattern = GenerateRegex();
+    public static Parser Default { get; } = new();
 
     #region IParser<string,PackageDescriptor> Members
 

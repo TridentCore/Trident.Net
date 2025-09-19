@@ -1,12 +1,11 @@
-using System.Collections.Concurrent;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.Logging;
-using Trident.Core.Services;
-using Trident.Core.Utilities;
 using Trident.Abstractions;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Services;
+using Trident.Core.Utilities;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -45,7 +44,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                        throw new FormatException($"Package {x.Purl} is not a valid package");
                                    }));
 
-        if (purls.Any())
+        if (purls.Count != 0)
         {
             ProgressStream.OnNext((0, purls.Count));
 
@@ -54,8 +53,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                                                       x.Identity.Pid, x.Vid)),
                                                    Filter.None with
                                                    {
-                                                       Loader = loader,
-                                                       Version = Context.Setup.Version
+                                                       Loader = loader, Version = Context.Setup.Version
                                                    })
                                 .ConfigureAwait(false);
 

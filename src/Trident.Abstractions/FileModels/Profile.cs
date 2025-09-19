@@ -15,8 +15,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
     public string Name { get; set; } = name ?? throw new ArgumentNullException(nameof(name));
     public Rice Setup { get; private set; } = setup ?? throw new ArgumentNullException(nameof(setup));
 
-    public IDictionary<string, object> Overrides { get; private set; } =
-        overrides ?? new Dictionary<string, object>();
+    public IDictionary<string, object> Overrides { get; private set; } = overrides ?? new Dictionary<string, object>();
 
     #region Nested type: Rice
 

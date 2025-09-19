@@ -1,11 +1,5 @@
 using Spectre.Console.Cli;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Trident.Cli.Commands;
-public abstract class CreationCommandBase<T> : Command<T> where T : CreationArgumentsBase
-{
-}
+
+public abstract class CreationCommandBase<T> : Command<T> where T : CreationArgumentsBase { }

@@ -36,14 +36,16 @@ public record ProjectInfo(
     IReadOnlyList<string> MrpackLoaders,
     IReadOnlyList<bool> ServerOnly)
 {
+    #region Nested type: Messages
+
+    public record Messages(string Message, string? Body);
+
+    #endregion
+
     #region Nested type: ProjectLicense
 
     public record ProjectLicense(string Id, string Name, Uri? Url);
 
-    #endregion
-
-    #region Nested type: Messages
-    public record Messages(string Message, string? Body);
     #endregion
 
     #region Nested type: ProjectLinks

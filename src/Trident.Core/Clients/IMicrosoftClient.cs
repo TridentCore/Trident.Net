@@ -1,5 +1,5 @@
-using Trident.Core.Models.MicrosoftApi;
 using Refit;
+using Trident.Core.Models.MicrosoftApi;
 
 namespace Trident.Core.Clients;
 

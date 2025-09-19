@@ -1,7 +1,7 @@
-using Trident.Core.Models.ModrinthApi;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Models.ModrinthApi;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Utilities;

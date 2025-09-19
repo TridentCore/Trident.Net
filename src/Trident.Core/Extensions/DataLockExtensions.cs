@@ -1,6 +1,6 @@
-using Trident.Core.Igniters;
 using Trident.Abstractions;
 using Trident.Abstractions.FileModels;
+using Trident.Core.Igniters;
 
 namespace Trident.Core.Extensions;
 

@@ -28,11 +28,7 @@ public record VersionInfo(
 {
     #region Nested type: VersionDependency
 
-    public record VersionDependency(
-        string ProjectId,
-        string VersionId,
-        string? FileName,
-        string DependencyType);
+    public record VersionDependency(string ProjectId, string VersionId, string? FileName, string DependencyType);
 
     #endregion
 

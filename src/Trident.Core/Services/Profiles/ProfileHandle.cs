@@ -3,8 +3,7 @@ using Trident.Abstractions.FileModels;
 
 namespace Trident.Core.Services.Profiles;
 
-internal class ProfileHandle(string key, Profile value, string path, JsonSerializerOptions options)
-    : IAsyncDisposable
+internal class ProfileHandle(string key, Profile value, string path, JsonSerializerOptions options) : IAsyncDisposable
 {
     public string Key => key;
     public Profile Value => value;

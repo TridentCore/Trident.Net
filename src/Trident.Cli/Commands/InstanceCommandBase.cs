@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -7,6 +6,7 @@ namespace Trident.Cli.Commands;
 public abstract class InstanceCommandBase<T> : Command<T> where T : InstanceArgumentsBase
 {
     public InstanceContext Context { get; private set; } = null!;
+
     public override ValidationResult Validate(CommandContext context, T settings)
     {
         if (settings.Profile != null)
@@ -25,8 +25,9 @@ public abstract class InstanceCommandBase<T> : Command<T> where T : InstanceArgu
         return ValidationResult.Success();
     }
 
-    public class InstanceContext(string instanceHome)
-    {
+    #region Nested type: InstanceContext
 
-    }
+    public class InstanceContext(string instanceHome) { }
+
+    #endregion
 }

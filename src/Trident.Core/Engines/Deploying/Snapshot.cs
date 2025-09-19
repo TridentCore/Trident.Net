@@ -93,8 +93,8 @@ public class Snapshot : Collection<Snapshot.Entity>
             }
 
             // 被普通文件或目录占用了
-            if (File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null
-             || Directory.Exists(remain.Path) && Directory.ResolveLinkTarget(remain.Path, false) is null)
+            if ((File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null)
+             || (Directory.Exists(remain.Path) && Directory.ResolveLinkTarget(remain.Path, false) is null))
             {
                 throw new InvalidOperationException($"Target {remain.Path} already exists and is not a symlink");
             }

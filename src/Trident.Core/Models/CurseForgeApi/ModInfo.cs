@@ -47,13 +47,7 @@ public record ModInfo(
 
     #region Nested type: ModAsset
 
-    public record ModAsset(
-        uint Id,
-        uint ModId,
-        string Title,
-        string Description,
-        Uri? ThumbnailUrl,
-        Uri Url);
+    public record ModAsset(uint Id, uint ModId, string Title, string Description, Uri? ThumbnailUrl, Uri Url);
 
     #endregion
 

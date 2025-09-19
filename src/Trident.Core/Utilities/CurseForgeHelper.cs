@@ -1,6 +1,6 @@
-using Trident.Core.Models.CurseForgeApi;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Models.CurseForgeApi;
 using FileInfo = Trident.Core.Models.CurseForgeApi.FileInfo;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 

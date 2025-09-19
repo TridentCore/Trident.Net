@@ -1,5 +1,5 @@
-using Trident.Core.Models.MojangLauncherApi;
 using Refit;
+using Trident.Core.Models.MojangLauncherApi;
 
 namespace Trident.Core.Clients;
 

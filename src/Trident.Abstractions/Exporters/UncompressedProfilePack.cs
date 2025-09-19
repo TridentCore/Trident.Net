@@ -1,5 +1,4 @@
 ﻿using Trident.Abstractions.FileModels;
-using Trident.Abstractions.Repositories.Resources;
 
 namespace Trident.Abstractions.Exporters;
 

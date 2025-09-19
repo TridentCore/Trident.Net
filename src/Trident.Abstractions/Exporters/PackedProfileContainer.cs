@@ -1,6 +1,3 @@
 ﻿namespace Trident.Abstractions.Exporters;
 
-public class PackedProfileContainer
-{
-    
-}
+public class PackedProfileContainer { }

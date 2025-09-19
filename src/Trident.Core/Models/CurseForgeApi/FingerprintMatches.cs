@@ -8,5 +8,9 @@ public record FingerprintMatches(
     IReadOnlyList<int> InstalledFingerprints,
     IReadOnlyList<int> UnmatchedFingerprints)
 {
+    #region Nested type: FingerprintMatch
+
     public record FingerprintMatch(uint Id, FileInfo File, IReadOnlyList<FileInfo> LatestFiles);
+
+    #endregion
 }

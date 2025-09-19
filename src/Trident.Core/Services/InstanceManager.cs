@@ -6,6 +6,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Trident.Abstractions;
+using Trident.Abstractions.Extensions;
+using Trident.Abstractions.FileModels;
+using Trident.Abstractions.Importers;
+using Trident.Abstractions.Repositories;
+using Trident.Abstractions.Repositories.Resources;
+using Trident.Abstractions.Tasks;
+using Trident.Abstractions.Utilities;
 using Trident.Core.Engines;
 using Trident.Core.Engines.Deploying;
 using Trident.Core.Engines.Deploying.Stages;
@@ -15,14 +23,6 @@ using Trident.Core.Igniters;
 using Trident.Core.Services.Instances;
 using Trident.Core.Services.Profiles;
 using Trident.Core.Utilities;
-using Trident.Abstractions;
-using Trident.Abstractions.Extensions;
-using Trident.Abstractions.FileModels;
-using Trident.Abstractions.Importers;
-using Trident.Abstractions.Repositories;
-using Trident.Abstractions.Repositories.Resources;
-using Trident.Abstractions.Tasks;
-using Trident.Abstractions.Utilities;
 
 namespace Trident.Core.Services;
 
@@ -92,9 +92,7 @@ public class InstanceManager(
         }
 
         var tracker = new DeployTracker(key,
-                                        async t => await DeployInternalAsync((DeployTracker)t,
-                                                                             deploy,
-                                                                             javaHomeLocator)
+                                        async t => await DeployInternalAsync((DeployTracker)t, deploy, javaHomeLocator)
                                                       .ConfigureAwait(false),
                                         t =>
                                         {
@@ -138,10 +136,7 @@ public class InstanceManager(
         return memory;
     }
 
-    private static async Task ExtractIconFileAsync(
-        string key,
-        ImportedProfileContainer container,
-        HttpClient client)
+    private static async Task ExtractIconFileAsync(string key, ImportedProfileContainer container, HttpClient client)
     {
         var iconReader = await client.GetStreamAsync(container.IconUrl).ConfigureAwait(false);
         var iconMemory = new MemoryStream();
@@ -176,9 +171,8 @@ public class InstanceManager(
         }
 
         var tracker = new DeployTracker(key,
-                                        async t =>
-                                            await DeployInternalAsync((DeployTracker)t, options, javaHomeLocator)
-                                               .ConfigureAwait(false),
+                                        async t => await DeployInternalAsync((DeployTracker)t, options, javaHomeLocator)
+                                                      .ConfigureAwait(false),
                                         TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceDeploying?.Invoke(this, tracker);
@@ -273,9 +267,8 @@ public class InstanceManager(
         }
 
         var tracker = new LaunchTracker(key,
-                                        async t =>
-                                            await LaunchInternalAsync((LaunchTracker)t, options, javaHomeLocator)
-                                               .ConfigureAwait(false),
+                                        async t => await LaunchInternalAsync((LaunchTracker)t, options, javaHomeLocator)
+                                                      .ConfigureAwait(false),
                                         TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceLaunching?.Invoke(this, tracker);
@@ -363,8 +356,7 @@ public class InstanceManager(
                 }
 
                 await File
-                     .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"),
-                                         process.StartInfo.ArgumentList)
+                     .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"), process.StartInfo.ArgumentList)
                      .ConfigureAwait(false);
                 if (options.Mode == LaunchMode.Managed)
                 {
@@ -496,9 +488,8 @@ public class InstanceManager(
         }
 
         var tracker = new UpdateTracker(key,
-                                        async t =>
-                                            await UpdateInternalAsync((UpdateTracker)t, key, label, ns, pid, vid)
-                                               .ConfigureAwait(false),
+                                        async t => await UpdateInternalAsync((UpdateTracker)t, key, label, ns, pid, vid)
+                                                      .ConfigureAwait(false),
                                         TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceUpdating?.Invoke(this, tracker);

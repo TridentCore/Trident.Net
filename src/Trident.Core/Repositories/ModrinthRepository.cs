@@ -1,12 +1,10 @@
-using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
-using Trident.Core.Clients;
-using Trident.Core.Utilities;
 using Refit;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
-using Trident.Core.Models.ModrinthApi;
+using Trident.Core.Clients;
+using Trident.Core.Utilities;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
@@ -14,9 +12,6 @@ namespace Trident.Core.Repositories;
 public class ModrinthRepository(string label, IModrinthClient client) : IRepository
 {
     private const uint PAGE_SIZE = 20;
-
-    private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
-        "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
 
     #region IRepository Members
 
@@ -177,8 +172,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                           .FirstOrDefault(y => filter.Version is null
                                                                             || y.GameVersions.Contains(filter.Version));
                                               if (chosen == null)
+                                              {
                                                   throw new
                                                       ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
+                                              }
+
                                               return chosen;
                                           })
                                          .ToList();
@@ -236,4 +234,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     }
 
     #endregion
+
+    private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
+        "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
 }

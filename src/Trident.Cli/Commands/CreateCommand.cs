@@ -1,10 +1,5 @@
-using Spectre.Console.Cli;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Spectre.Console;
+using Spectre.Console.Cli;
 using Trident.Core.Services;
 using Profile = Trident.Abstractions.FileModels.Profile;
 
@@ -24,12 +19,16 @@ public class CreateCommand(ProfileManager profileManager) : CreationCommandBase<
         return 0;
     }
 
+    #region Nested type: Arguments
+
     public class Arguments : CreationArgumentsBase
     {
-        [CommandOption("-v|--version <VERSION>", isRequired: true)]
+        [CommandOption("-v|--version <VERSION>", true)]
         public required string Version { get; set; }
 
         [CommandOption("-l|--loader <LURL>")]
         public string? Loader { get; set; }
     }
+
+    #endregion
 }

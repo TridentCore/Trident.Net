@@ -1,5 +1,5 @@
-using Trident.Core.Models.MinecraftApi;
 using Refit;
+using Trident.Core.Models.MinecraftApi;
 
 namespace Trident.Core.Clients;
 

@@ -66,15 +66,12 @@ public class Igniter : IBuilder<Process>
                                       !OperatingSystem.IsWindows() ? "java" : IsDebug ? "java.exe" : "javaw.exe");
         var start = new ProcessStartInfo(executable)
         {
-            WorkingDirectory = WorkingDirectory!,
-            UseShellExecute = IsDebug
+            WorkingDirectory = WorkingDirectory!, UseShellExecute = IsDebug
         };
         foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
         {
             var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            var line = crate.Key == null || crate.Value == null
-                           ? argument
-                           : argument.Replace(crate.Key, crate.Value);
+            var line = crate.Key == null || crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
             start.ArgumentList.Add(line);
         }
 

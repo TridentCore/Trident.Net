@@ -1,17 +1,15 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using MimeDetective.Storage;
-using Trident.Core.Clients;
-using Trident.Core.Repositories;
 using Refit;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Clients;
+using Trident.Core.Repositories;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Services;
@@ -21,10 +19,10 @@ public class RepositoryAgent
     private static readonly TimeSpan EXPIRED_IN = TimeSpan.FromDays(7);
     private static readonly string USER_AGENT = $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}";
 
-    private readonly IReadOnlyDictionary<string, IRepository> _repositories;
-
     private readonly MessagePackSerializerOptions _options =
         MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance);
+
+    private readonly IReadOnlyDictionary<string, IRepository> _repositories;
 
     public RepositoryAgent(
         IEnumerable<IRepositoryProviderAccessor> accessors,
@@ -295,9 +293,9 @@ public class RepositoryAgent
         await _cache
              .SetAsync(key,
                        value is not null
-                           ? (typeof(T) == typeof(byte[])
-                                  ? (byte[])((object)value)
-                                  : MessagePackSerializer.Serialize(value, _options))
+                           ? typeof(T) == typeof(byte[])
+                                 ? (byte[])(object)value
+                                 : MessagePackSerializer.Serialize(value, _options)
                            : [],
                        new() { SlidingExpiration = EXPIRED_IN })
              .ConfigureAwait(false);

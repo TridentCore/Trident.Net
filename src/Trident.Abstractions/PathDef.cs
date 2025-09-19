@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Trident.Abstractions;
 
 public class PathDef(string home)
@@ -7,10 +5,12 @@ public class PathDef(string home)
     public static PathDef Default { get; set; } = new(LocateHomeDefault());
 
     /// <summary>
-    /// Default static locator for home directory.
-    ///  Set before first use of <see cref="Default"/> to override default behavior.
+    ///     Default static locator for home directory.
+    ///     Set before first use of <see cref="Default" /> to override default behavior.
     /// </summary>
     public static Func<string>? HomeLocatorDefault { get; set; }
+
+    public string Home => home;
 
     public static string LocateHomeDefault()
     {
@@ -30,8 +30,6 @@ public class PathDef(string home)
 
         return home ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".trident");
     }
-
-    public string Home => home;
 
     #region Private Folder
 

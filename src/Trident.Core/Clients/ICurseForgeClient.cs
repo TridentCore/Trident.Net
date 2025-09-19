@@ -1,6 +1,6 @@
+using Refit;
 using Trident.Core.Models.CurseForgeApi;
 using Trident.Core.Utilities;
-using Refit;
 using FileInfo = Trident.Core.Models.CurseForgeApi.FileInfo;
 
 namespace Trident.Core.Clients;

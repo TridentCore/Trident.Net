@@ -1,5 +1,5 @@
-using Trident.Core.Models.PrismLauncherApi;
 using Refit;
+using Trident.Core.Models.PrismLauncherApi;
 
 namespace Trident.Core.Clients;
 

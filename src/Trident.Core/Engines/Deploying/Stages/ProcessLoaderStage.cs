@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using Trident.Core.Models.PrismLauncherApi;
-using Trident.Core.Services;
 using Trident.Abstractions;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Models.PrismLauncherApi;
+using Trident.Core.Services;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -50,17 +50,12 @@ public class ProcessLoaderStage(
         Context.IsLoaderProcessed = true;
     }
 
-    private async Task InstallForgeAsync(
-        DataLockBuilder builder,
-        string uid,
-        string version,
-        CancellationToken token)
+    private async Task InstallForgeAsync(DataLockBuilder builder, string uid, string version, CancellationToken token)
     {
         var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
 
         PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
-                                                             index.Libraries
-                                                          ?? Enumerable.Empty<Component.Library>());
+                                                             index.Libraries ?? Enumerable.Empty<Component.Library>());
 
         foreach (var file in index.MavenFiles ?? Enumerable.Empty<Component.Library>())
         {
@@ -116,22 +111,15 @@ public class ProcessLoaderStage(
         builder.SetMainClass(index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main");
     }
 
-    private async Task InstallFabricAsync(
-        DataLockBuilder builder,
-        string uid,
-        string version,
-        CancellationToken token)
+    private async Task InstallFabricAsync(DataLockBuilder builder, string uid, string version, CancellationToken token)
     {
         var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
 
         PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
-                                                             index.Libraries
-                                                          ?? Enumerable.Empty<Component.Library>());
+                                                             index.Libraries ?? Enumerable.Empty<Component.Library>());
 
         var intermediary = await prismLauncherService
-                                .GetVersionAsync(PrismLauncherService.UID_INTERMEDIARY,
-                                                 Context.Setup.Version,
-                                                 token)
+                                .GetVersionAsync(PrismLauncherService.UID_INTERMEDIARY, Context.Setup.Version, token)
                                 .ConfigureAwait(false);
 
         PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
