@@ -8,6 +8,7 @@ namespace Trident.Core.Utilities;
 
 public static class CurseForgeHelper
 {
+    public const string LABEL = "curseforge";
     public const string API_KEY = "$2a$10$cjd5uExXA6oMi3lSnylNC.xsFJiujI8uQ/pV1eGltFe/hlDO2mjzm";
     public const string ENDPOINT = "https://api.curseforge.com";
     public const string PROJECT_URL = "https://www.curseforge.com/minecraft/{0}/{1}";
@@ -211,4 +212,64 @@ public static class CurseForgeHelper
             info.DateModified,
             info.DownloadCount,
             [.. info.Screenshots.Select(x => new Project.Screenshot(x.Title, x.Url))]);
+
+    public static int ComputeFingerprint(ReadOnlyMemory<byte> content)
+    {
+        // 使用 MurmurHash2，基于种子 1，忽略空白字符
+
+        var span = content.Span;
+
+        uint len = 0;
+        foreach (var b in span)
+        {
+            if (b != 9 && b != 10 && b != 13 && b != 32) // tab, lf, cr, space
+            {
+                len++;
+            }
+        }
+
+        const uint seed = 1;
+        const uint m = 0x5bd1e995;
+        const int r = 24;
+
+        var h = seed ^ len;
+        var processedBytes = 0u;
+        var k = 0u;
+        var byteIndex = 0;
+
+        foreach (var b in span)
+        {
+            if (b != 9 && b != 10 && b != 13 && b != 32)
+            {
+                k |= (uint)(b << (byteIndex * 8));
+                byteIndex++;
+
+                if (byteIndex == 4)
+                {
+                    k *= m;
+                    k ^= k >> r;
+                    k *= m;
+                    h *= m;
+                    h ^= k;
+
+                    k = 0;
+                    byteIndex = 0;
+                    processedBytes += 4;
+                }
+            }
+        }
+
+        var remaining = len - processedBytes;
+        if (remaining > 0)
+        {
+            h ^= k;
+            h *= m;
+        }
+
+        h ^= h >> 13;
+        h *= m;
+        h ^= h >> 15;
+
+        return (int)h;
+    }
 }

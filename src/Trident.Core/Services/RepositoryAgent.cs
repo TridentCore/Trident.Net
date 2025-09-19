@@ -97,15 +97,10 @@ public class RepositoryAgent
         return client;
     }
 
-    private IRepository Redirect(string label)
-    {
-        if (_repositories.TryGetValue(label, out var repository))
-        {
-            return repository;
-        }
-
-        throw new KeyNotFoundException($"{label} is not a listed repository label or not found");
-    }
+    private IRepository Redirect(string label) =>
+        _repositories.TryGetValue(label, out var repository)
+            ? repository
+            : throw new KeyNotFoundException($"{label} is not a listed repository label or not found");
 
     public Task<RepositoryStatus> CheckStatusAsync(string label) =>
         RetrieveCachedAsync($"status:{label}", () => Redirect(label).CheckStatusAsync());
@@ -123,6 +118,29 @@ public class RepositoryAgent
         RetrieveCachedAsync($"package:{PackageHelper.Identify(label, ns, pid, vid, filter)}",
                             () => Redirect(label).ResolveAsync(ns, pid, vid, filter),
                             cacheEnabled);
+
+    public Task<Package> IdentityAsync(string filePath)
+    {
+        // 如果文件不存在会返回 IOException
+        // 如果文件过大导致 IO 异常或内存占用异常导致闪退是预期内事件
+        var content = File.ReadAllBytes(filePath);
+        return IdentityAsync(new ReadOnlyMemory<byte>(content));
+    }
+
+    public Task<Package> IdentityAsync(ReadOnlyMemory<byte> content)
+    {
+        // 不走缓存
+        foreach (var (k, v) in _repositories)
+        {
+            try
+            {
+                return v.IdentifyAsync(content);
+            }
+            catch (ResourceNotFoundException) { }
+        }
+
+        throw new ResourceNotFoundException("No repository can identify the file");
+    }
 
     public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
         IEnumerable<(string label, string? ns, string pid, string? vid)> batch,

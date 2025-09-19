@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
 using Refit;
@@ -74,6 +75,20 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                              });
     }
 
+    public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
+    {
+        var hash = CurseForgeHelper.ComputeFingerprint(content);
+        var rv = await client.GetFingerprintMatchesByGameId(new([hash])).ConfigureAwait(false);
+        var match = rv.Data.ExactMatches.FirstOrDefault();
+        if (match != null)
+        {
+            var mod = (await client.GetModAsync(match.Id).ConfigureAwait(false)).Data;
+            return CurseForgeHelper.ToPackage(label, mod, match.File);
+        }
+
+        throw new ResourceNotFoundException($"No file matched the fingerprint {hash}");
+    }
+
     public async Task<Project> QueryAsync(string? _, string pid)
     {
         if (uint.TryParse(pid, out var modId))
@@ -123,7 +138,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     if (uint.TryParse(vid, out var fileId))
                     {
                         var file = mod.LatestFiles.FirstOrDefault(x => x.Id == fileId);
-                        if (file == default)
+                        if (file == null)
                         {
                             file = (await client.GetModFileAsync(modId, fileId).ConfigureAwait(false)).Data;
                         }
@@ -154,7 +169,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                        0,
                                                        1)
                                      .ConfigureAwait(false)).Data.FirstOrDefault();
-                    if (file != default)
+                    if (file != null)
                     {
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
@@ -201,12 +216,10 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                                            0,
                                                                            1)
                                                          .ConfigureAwait(false)).Data.FirstOrDefault();
-                                        if (file != default)
-                                        {
-                                            return (mod, file);
-                                        }
-
-                                        throw new ResourceNotFoundException($"{modId}/* has not matched version");
+                                        return file != null
+                                                   ? (mod, file)
+                                                   : throw new
+                                                         ResourceNotFoundException($"{modId}/* has not matched version");
                                     }
 
                                     throw new FormatException($"{x.pid} is not well formatted into modId");

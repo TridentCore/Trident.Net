@@ -28,7 +28,7 @@ public class EnsureRuntimeStage(PrismLauncherService prismLauncherService) : Sta
             var runtime = manifest
                          .Runtimes.OrderBy(x => x.ReleaseTime)
                          .FirstOrDefault(x => x.RuntimeOS == osString);
-            if (runtime != default)
+            if (runtime != null)
             {
                 Context.Runtime = new(major, runtime.Vendor, runtime.Url, true);
             }

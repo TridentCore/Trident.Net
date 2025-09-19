@@ -105,7 +105,7 @@ public class ModrinthImporter : IProfileImporter
             {
                 var projectId = path[6..14];
                 var versionId = path[24..32];
-                return new(PackageHelper.ToPurl("modrinth", null, projectId, versionId), true, null, []);
+                return new(PackageHelper.ToPurl(ModrinthHelper.LABEL, null, projectId, versionId), true, null, []);
             }
         }
 

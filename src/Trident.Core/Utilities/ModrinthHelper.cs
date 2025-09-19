@@ -8,6 +8,7 @@ namespace Trident.Core.Utilities;
 
 public static class ModrinthHelper
 {
+    public const string LABEL = "modrinth";
     public const string OFFICIAL_ENDPOINT = "https://api.modrinth.com";
     public const string FAKE_ENDPOINT = "https://api.bbsmc.net";
     private const string OFFICIAL_PROJECT_URL = "https://modrinth.com/{0}/{1}";
@@ -18,7 +19,7 @@ public static class ModrinthHelper
     public const string RESOURCENAME_SHADERPACK = "shader";
     public const string RESOURCENAME_DATAPACK = "datapack";
 
-    public static readonly IReadOnlyDictionary<string, string> MODLOADER_MAPPINGS = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> ModloaderMappings = new Dictionary<string, string>
     {
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
@@ -82,7 +83,7 @@ public static class ModrinthHelper
         new(version.GameVersions,
         [
             .. version
-              .Loaders.Select(x => MODLOADER_MAPPINGS.GetValueOrDefault(x))
+              .Loaders.Select(x => ModloaderMappings.GetValueOrDefault(x))
               .Where(x => !string.IsNullOrEmpty(x))
               .Select(x => x!)
         ]);

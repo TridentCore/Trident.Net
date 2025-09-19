@@ -43,4 +43,7 @@ public interface IModrinthClient
         string projectId,
         string? versionType = null,
         string? loaders = null);
+
+    [Get("/v3/version_file/{hash}")]
+    Task<VersionInfo> GetVersionFromHashAsync(string hash, [Query] string algorithm = "sha1");
 }

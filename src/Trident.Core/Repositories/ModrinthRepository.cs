@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
 using Refit;
@@ -27,7 +28,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                           ModrinthHelper.ToVersionNames(await versionsTask.ConfigureAwait(false)),
                                           await typesTask.ConfigureAwait(false));
         var supportedLoaders = loaders
-                              .Select(x => ModrinthHelper.MODLOADER_MAPPINGS.GetValueOrDefault(x))
+                              .Select(x => ModrinthHelper.ModloaderMappings.GetValueOrDefault(x))
                               .Where(x => x != null)
                               .Select(x => x!)
                               .ToList();
@@ -72,11 +73,20 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                              });
     }
 
+    public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
+    {
+        var hash = Convert.ToHexString(SHA1.HashData(content.Span));
+        var info = await client.GetVersionFromHashAsync(hash).ConfigureAwait(false);
+        var project = await client.GetProjectAsync(info.ProjectId).ConfigureAwait(false);
+        var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+        return ModrinthHelper.ToPackage(label, project, info, members.FirstOrDefault());
+    }
+
     public async Task<Project> QueryAsync(string? ns, string pid)
     {
         var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
-        var team = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
-        return ModrinthHelper.ToProject(label, project, team.FirstOrDefault());
+        var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+        return ModrinthHelper.ToProject(label, project, members.FirstOrDefault());
     }
 
     public async Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch)
@@ -121,7 +131,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 var found = versions
                            .OrderByDescending(x => x.DatePublished)
                            .FirstOrDefault(x => filter.Version is null || x.GameVersions.Contains(filter.Version));
-                if (found == default)
+                if (found == null)
                 {
                     throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
                 }
@@ -166,7 +176,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                           .OrderByDescending(y => y.DatePublished)
                                                           .FirstOrDefault(y => filter.Version is null
                                                                             || y.GameVersions.Contains(filter.Version));
-                                              if (chosen == default)
+                                              if (chosen == null)
                                                   throw new
                                                       ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
                                               return chosen;

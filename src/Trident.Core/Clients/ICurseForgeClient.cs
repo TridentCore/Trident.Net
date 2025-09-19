@@ -46,4 +46,9 @@ public interface ICurseForgeClient
 
     [Get("/v1/mods/{modId}/files/{fileId}/changelog")]
     Task<ObjectResponse<string>> GetModFileChangelogAsync(uint modId, uint fileId);
+
+    [Post("/v1/fingerprints/{gameId}")]
+    Task<ObjectResponse<FingerprintMatches>> GetFingerprintMatchesByGameId(
+        [Body] GetFingerprintMatchesRequest request,
+        uint gameId = CurseForgeHelper.GAME_ID);
 }
