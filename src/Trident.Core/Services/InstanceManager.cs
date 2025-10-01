@@ -313,11 +313,15 @@ public class InstanceManager(
                 var assetDir = PathDef.Default.CacheAssetDirectory;
                 var nativeDir = PathDef.Default.DirectoryOfNatives(tracker.Key);
                 var igniter = artifact.MakeIgniter();
+
                 igniter
                    .AddGameArgument("--width")
                    .AddGameArgument("${resolution_width}")
                    .AddGameArgument("--height")
-                   .AddGameArgument("${resolution_height}");
+                   .AddGameArgument("${resolution_height}")
+                   .AddGameArgument("--quickPlayMultiplayer")
+                   .AddGameArgument("${connect_address}");
+
                 igniter
                    .SetJavaHome(javaHome)
                    .SetWorkingDirectory(workingDir)
@@ -337,6 +341,12 @@ public class InstanceManager(
                    .SetWindowSize(options.WindowSize)
                    .SetMaxMemory(options.MaxMemory)
                    .SetReleaseType(options.Brand);
+                if (!string.IsNullOrEmpty(options.QuickConnectAddress))
+                {
+                    igniter.SetQuickConnectAddress(options.QuickConnectAddress);
+                }
+
+
                 foreach (var additional in options.AdditionalArguments.Split(' '))
                 {
                     igniter.AddJvmArgument(additional);
@@ -353,6 +363,14 @@ public class InstanceManager(
                 if (!Directory.Exists(build))
                 {
                     Directory.CreateDirectory(build);
+                }
+
+                if (options.Mode == LaunchMode.Debug)
+                {
+                    await File
+                         .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"),
+                                             process.StartInfo.ArgumentList)
+                         .ConfigureAwait(false);
                 }
 
                 await File

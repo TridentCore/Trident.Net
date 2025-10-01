@@ -8,6 +8,7 @@ public class LaunchOptions(
     LaunchMode launchMode = LaunchMode.Managed,
     IAccount? account = null,
     (uint, uint)? windowSize = null,
+    string? quickConnectAddress = null,
     uint maxMemory = 4096,
     string? additionalArguments = null)
 {
@@ -16,6 +17,7 @@ public class LaunchOptions(
     public IAccount? Account { get; set; } = account;
     public uint MaxMemory { get; set; } = maxMemory;
     public (uint, uint) WindowSize { get; set; } = windowSize ?? (1270, 720);
+    public string? QuickConnectAddress { get; set; } = quickConnectAddress;
     public string AdditionalArguments { get; set; } = additionalArguments ?? string.Empty;
 
     public string Brand { get; set; } = brand ?? "Trident";

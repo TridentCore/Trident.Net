@@ -18,6 +18,7 @@ public class Igniter : IBuilder<Process>
     public string? UserName { get; set; }
     public string? VersionName { get; set; }
     public string? ReleaseType { get; set; }
+    public string? QuickConnectAddress { get; set; }
     public string? UserUuid { get; set; }
     public string? UserAccessToken { get; set; }
     public string? UserType { get; set; }
@@ -48,6 +49,7 @@ public class Igniter : IBuilder<Process>
             { "${auth_access_token}", UserAccessToken! },
             { "${user_type}", UserType! },
             { "${version_type}", ReleaseType! },
+            { "${connect_address}", QuickConnectAddress ?? string.Empty },
             { "${resolution_width}", WindowSize!.Value.Item1.ToString() },
             { "${resolution_height}", WindowSize!.Value.Item2.ToString() },
             { "${natives_directory}", NativesRootDirectory! },
@@ -157,6 +159,12 @@ public class Igniter : IBuilder<Process>
     public Igniter SetReleaseType(string type)
     {
         ReleaseType = type;
+        return this;
+    }
+
+    public Igniter SetQuickConnectAddress(string address)
+    {
+        QuickConnectAddress = address;
         return this;
     }
 

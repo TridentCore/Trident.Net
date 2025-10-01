@@ -11,6 +11,8 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
     public const string OVERRIDE_BEHAVIOR_DEPLOY_METHOD = "behavior.deploy.method";
     public const string OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE = "behavior.deploy.fastmode";
     public const string OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY = "behavior.resolve.dependency";
+    public const string OVERRIDE_BEHAVIOR_CONNECT_SERVER = "behavior.connect.address";
+
 
     public string Name { get; set; } = name ?? throw new ArgumentNullException(nameof(name));
     public Rice Setup { get; private set; } = setup ?? throw new ArgumentNullException(nameof(setup));
