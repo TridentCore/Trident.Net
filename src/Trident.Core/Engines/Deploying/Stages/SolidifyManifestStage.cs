@@ -116,7 +116,15 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                     // 不是虚文件时策略更简单，无则复制有则不管
                                     if (persistent.IsPhantom)
                                     {
-                                        // 原先这里会在 TargetPath 存在文件时将其删除，这么做是错误的，因为有存在的文件是上次部署的 Symlink
+                                        // 由于 Java 的落后性，有些模组更新文件并不是 Open-Overwrite，而是 Delete-Create
+                                        // 导致软链接被删除而非覆盖
+                                        // 遇到这种落后方式写入文件的会将 build/ 中的文件替换掉 live/ 的实现反向影响
+
+                                        if (File.Exists(persistent.TargetPath)
+                                         && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                        {
+                                            File.Move(persistent.TargetPath, persistent.SourcePath, true);
+                                        }
 
                                         entities.Add(new(persistent.TargetPath,
                                                          persistent.SourcePath,
@@ -296,9 +304,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
             }
         }
 
-        #pragma warning disable CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
+        rootDirName = string.Empty;
         return true;
-        #pragma warning restore CS8762 // 在某些条件下退出时，参数必须具有非 null 值。
     }
 
     private static bool Verify(string path, string? hash)

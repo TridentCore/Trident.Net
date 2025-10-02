@@ -246,13 +246,13 @@ public class InstanceManager(
                     break;
             }
 
-            logger.LogInformation("Enter stage {}", stage.GetType().Name);
+            logger.LogInformation("Enter stage {name}", stage.GetType().Name);
             await stage.ProcessAsync(tracker.Token).ConfigureAwait(false);
             await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
         }
 
         watch.Stop();
-        logger.LogInformation("{} deployed in {}ms", tracker.Key, watch.ElapsedMilliseconds);
+        logger.LogInformation("{key} deployed in {ms}ms", tracker.Key, watch.ElapsedMilliseconds);
     }
 
     #endregion
@@ -373,9 +373,6 @@ public class InstanceManager(
                          .ConfigureAwait(false);
                 }
 
-                await File
-                     .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"), process.StartInfo.ArgumentList)
-                     .ConfigureAwait(false);
                 if (options.Mode == LaunchMode.Managed)
                 {
                     var launcher = new LaunchEngine(process);
@@ -619,7 +616,7 @@ public class InstanceManager(
                               [.. container.Profile.Setup.Packages.Select(x => x.Purl)],
                               container.Profile.Overrides);
 
-        logger.LogInformation("{} updated", key);
+        logger.LogInformation("{key} updated", key);
 
         client.Dispose();
     }
