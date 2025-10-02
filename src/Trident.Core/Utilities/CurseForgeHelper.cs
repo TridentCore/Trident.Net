@@ -17,7 +17,8 @@ public static class CurseForgeHelper
     public const uint CLASSID_MODPACK = 4471;
     public const uint CLASSID_MOD = 6;
     public const uint CLASSID_WORLD = 17;
-    public const uint CLASSID_DATAPACK = 4546;
+    public const uint CLASSID_DATAPACK = 6945;
+    public const uint CLASSID_COSUMIZATION = 4546;
     public const uint CLASSID_SHADERPACK = 6552;
     public const uint CLASSID_RESOURCEPACK = 12;
 

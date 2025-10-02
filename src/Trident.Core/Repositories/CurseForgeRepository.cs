@@ -14,7 +14,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 {
     private const uint PAGE_SIZE = 20;
 
-    private static readonly Converter CONVERTER = new(new() { GithubFlavored = false, SmartHrefHandling = true });
+    private static readonly Converter Converter = new(new() { GithubFlavored = false, SmartHrefHandling = true });
 
     #region IRepository Members
 
@@ -135,11 +135,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                 {
                     if (uint.TryParse(vid, out var fileId))
                     {
-                        var file = mod.LatestFiles.FirstOrDefault(x => x.Id == fileId);
-                        if (file == null)
-                        {
-                            file = (await client.GetModFileAsync(modId, fileId).ConfigureAwait(false)).Data;
-                        }
+                        var file = mod.LatestFiles.FirstOrDefault(x => x.Id == fileId)
+                                ?? (await client.GetModFileAsync(modId, fileId).ConfigureAwait(false)).Data;
 
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
@@ -263,7 +260,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             try
             {
                 var html = (await client.GetModDescriptionAsync(modId).ConfigureAwait(false)).Data;
-                return CONVERTER.Convert(html);
+                return Converter.Convert(html);
             }
             catch (ApiException ex)
             {
@@ -286,7 +283,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             try
             {
                 var html = (await client.GetModFileChangelogAsync(modId, fileId).ConfigureAwait(false)).Data;
-                return CONVERTER.Convert(html);
+                return Converter.Convert(html);
             }
             catch (ApiException ex)
             {

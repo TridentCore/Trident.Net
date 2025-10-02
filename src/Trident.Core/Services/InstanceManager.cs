@@ -523,18 +523,18 @@ public class InstanceManager(
         string pid,
         string vid)
     {
-        logger.LogInformation("Begin update {} from package {}", key, PackageHelper.ToPurl(label, ns, pid, vid));
+        logger.LogInformation("Begin update {key} from package {purl}", key, PackageHelper.ToPurl(label, ns, pid, vid));
         var package = await repositories
                            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
                            .ConfigureAwait(false);
         var size = package.Size;
-        logger.LogDebug("Downloading package file {} sized {} bytes", package.Download.AbsoluteUri, size);
+        logger.LogDebug("Downloading package file {url} sized {size} bytes", package.Download.AbsoluteUri, size);
         var client = clientFactory.CreateClient();
 
         var memory = await DownloadFileAsync(package.Download, size, tracker.ProgressStream, client, tracker.Token)
                         .ConfigureAwait(false);
 
-        logger.LogDebug("Downloaded {} bytes", memory.Length);
+        logger.LogDebug("Downloaded {length} bytes", memory.Length);
 
         tracker.ProgressStream.OnNext(100d);
         await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
