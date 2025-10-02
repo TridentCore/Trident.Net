@@ -5,7 +5,7 @@ namespace Trident.Core.Services;
 
 public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 {
-    public static readonly string[] INVALID_NAMES = ["", ".", ".."];
+    public static readonly string[] InvalidNames = ["", ".", ".."];
 
     public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
     {
@@ -23,7 +23,7 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
         ImportedProfileContainer container,
         CompressedProfilePack pack)
     {
-        var importDir = PathDef.Default.DirectoryOfLive(key);
+        var importDir = PathDef.Default.DirectoryOfImport(key);
 
         foreach (var (source, target) in container.ImportFileNames)
         {
