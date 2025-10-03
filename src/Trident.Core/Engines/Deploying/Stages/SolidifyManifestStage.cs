@@ -234,6 +234,46 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
         Snapshot.Apply(buildDir, entities);
 
+        var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
+        var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
+        if (Directory.Exists(liveDir) && Directory.Exists(importDir))
+        {
+            var queue = new Queue<string>();
+            var cleans = new List<string>();
+            queue.Enqueue(liveDir);
+            while (queue.TryDequeue(out var dir))
+            {
+                var liveFiles = Directory.GetFiles(dir);
+                var liveDirs = Directory.GetDirectories(dir);
+                foreach (var sub in liveDirs)
+                {
+                    queue.Enqueue(sub);
+                    cleans.Add(sub);
+                }
+
+                foreach (var file in liveFiles)
+                {
+                    var relative = Path.GetRelativePath(liveDir, file);
+                    var target = Path.Combine(importDir, relative);
+                    if (!File.Exists(target))
+                    {
+                        File.Delete(file);
+                    }
+                }
+            }
+
+            // 这里的排序是为了遍历顺序永远是级别深入的在前，以此代替 DFS 达到效果
+            // 证明有限遍历到 A 的子文件夹 A/B，由 A/B(3) 长度必定大于 A(1)
+            foreach (var target in cleans
+                                  .OrderByDescending(x => x.Length)
+                                  .Where(Directory.Exists)
+                                  .Where(x => Directory.GetDirectories(x).Length == 0
+                                           && Directory.GetFiles(x).Length == 0))
+            {
+                Directory.Delete(target);
+            }
+        }
+
         // 生成 allowed_symlinks.txt
         if (!Path.Exists(buildDir))
         {

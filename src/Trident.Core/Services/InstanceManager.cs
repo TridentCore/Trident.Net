@@ -547,51 +547,8 @@ public class InstanceManager(
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
-        var buildDir = PathDef.Default.DirectoryOfBuild(key);
         var importDir = PathDef.Default.DirectoryOfImport(key);
         var liveDir = PathDef.Default.DirectoryOfLive(key);
-
-        // 以下是一段非常牛逼的文件清理代码，我舍不得删
-        // if (Directory.Exists(buildDir) && Directory.Exists(importDir))
-        // {
-        //     var queue = new Queue<string>();
-        //     var cleans = new List<string>();
-        //     queue.Enqueue(importDir);
-        //     while (queue.TryDequeue(out var dir))
-        //     {
-        //         var files = Directory.GetFiles(dir);
-        //         var dirs = Directory.GetDirectories(dir);
-        //         foreach (var sub in dirs)
-        //         {
-        //             queue.Enqueue(sub);
-        //             cleans.Add(sub);
-        //         }
-
-        //         foreach (var file in files)
-        //         {
-        //             var relative = Path.GetRelativePath(importDir, file);
-        //             var target = Path.Combine(buildDir, relative);
-        //             if (File.Exists(target))
-        //             {
-        //                 File.Delete(target);
-        //             }
-        //         }
-        //     }
-
-        //     // 这里的排序是为了遍历顺序永远是级别深入的在前，以此代替 DFS 达到效果
-        //     // 证明有限遍历到 A 的子文件夹 A/B，由 A/B(3) 长度必定大于 A(1)
-        //     foreach (var target in cleans
-        //                           .OrderByDescending(x => x.Length)
-        //                           .Select(x => Path.GetRelativePath(importDir, x))
-        //                           .Select(x => Path.Combine(buildDir, x))
-        //                           .Where(Directory.Exists)
-        //                           .Where(x => Directory.GetDirectories(x).Length == 0
-        //                                    && Directory.GetFiles(x).Length == 0))
-        //     {
-        //         Directory.Delete(target);
-        //     }
-        // }
-
 
         if (Directory.Exists(importDir))
         {

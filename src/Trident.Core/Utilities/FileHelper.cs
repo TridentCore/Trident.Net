@@ -12,7 +12,7 @@ public static class FileHelper
         "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff"
     ];
 
-    private static readonly IContentInspector inspector =
+    private static readonly IContentInspector Inspector =
         new ContentInspectorBuilder { Definitions = DefaultDefinitions.All() }.Build();
 
     public static string? PickExists(string home, Span<string> candidates)
@@ -29,28 +29,11 @@ public static class FileHelper
         return null;
     }
 
-    public static string? PickRandomly(string home, string pattern)
-    {
-        if (!Directory.Exists(home))
-        {
-            return null;
-        }
-
-        var files = Directory.GetFiles(home, pattern);
-        if (files.Length == 0)
-        {
-            return null;
-        }
-
-        var index = Random.Shared.Next(files.Length);
-        return files[index];
-    }
-
     public static bool IsBitmapFile(string path)
     {
         if (File.Exists(path))
         {
-            var results = inspector.Inspect(path).ByMimeType();
+            var results = Inspector.Inspect(path).ByMimeType();
             if (results.Any(x => SUPPORTED_BITMAP_MIMES.Contains(x.MimeType)))
             {
                 return true;
@@ -61,8 +44,14 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
+        Inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
      ?? fallback;
+
+    public static bool IsInDirectory(string file, string directory) =>
+        Path
+           .GetFullPath(file)
+           .StartsWith(Path.GetFullPath(directory),
+                       OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {

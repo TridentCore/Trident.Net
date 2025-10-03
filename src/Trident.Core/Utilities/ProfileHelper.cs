@@ -8,6 +8,18 @@ public static class ProfileHelper
         FileHelper.PickExists(PathDef.Default.DirectoryOfHome(key),
                               ["icon.png", "icon.jpeg", "icon.jpg", "icon.webp", "icon.bmp", "icon.gif"]);
 
-    public static string? PickScreenshotRandomly(string key) =>
-        FileHelper.PickRandomly(Path.Combine(PathDef.Default.DirectoryOfBuild(key), "screenshots"), "*.png");
+    public static string? PickScreenshotRandomly(string key)
+    {
+        var screenshots = AssetHelper
+                         .ScanNonSymlinks(key, "*.png", ["screenshots"])
+                         .Where(x => x.Length != 0)
+                         .ToArray();
+        if (screenshots.Length == 0)
+        {
+            return null;
+        }
+
+        var index = Random.Shared.Next(screenshots.Length);
+        return screenshots[index].FullName;
+    }
 }
