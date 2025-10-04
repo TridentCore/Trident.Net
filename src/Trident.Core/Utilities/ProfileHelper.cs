@@ -11,7 +11,7 @@ public static class ProfileHelper
     public static string? PickScreenshotRandomly(string key)
     {
         var screenshots = AssetHelper
-                         .ScanNonSymlinks(key, "*.png", ["screenshots"])
+                         .ScanNonSymlinkFiles(key, "*.png", ["screenshots"])
                          .Where(x => x.Length != 0)
                          .ToArray();
         if (screenshots.Length == 0)
