@@ -69,22 +69,27 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         var persistDir = PathDef.Default.DirectoryOfPersist(Context.Key);
         // 将 import -> live 查漏补缺，会因为用户手动文件操作而产生 live 的文件比 import 多的情况
         // 但这视为用户行为，在完全的程序托管下只有 RESET/UPDATE 两种情况会修改 import/live，PROJECT 一种情况会修改 live，不会有文件多出来的意外而导致脱离控制的情况
-        PopulatePersistent(manifest.PersistentFiles, importDir, importDir, liveDir, false);
-        PopulatePersistent(manifest.PersistentFiles, importDir, liveDir, buildDir, true);
-        PopulatePersistent(manifest.PersistentFiles, persistDir, persistDir, buildDir, true);
+        // 按优先级 live/import/persist ，后面的会把前面的顶掉
+        // FIX: 如果 live/screenshots/.keep 且 persist/screenshots/a.png 则会把 a.png 塞进 live/screenshots/a.png，但好像无伤大雅
+        var set = new Dictionary<string, EntityManifest.PersistentFile>();
+        PopulatePersistent(set, importDir, importDir, liveDir, false);
+        PopulatePersistent(set, importDir, liveDir, buildDir, true);
+        PopulatePersistent(set, persistDir, persistDir, buildDir, true);
+        foreach (var file in set.Values)
+        {
+            manifest.PersistentFiles.Add(file);
+        }
 
         Context.Manifest = manifest;
     }
 
     private static void PopulatePersistent(
-        IList<EntityManifest.PersistentFile> collection,
+        IDictionary<string, EntityManifest.PersistentFile> collection,
         string scanDir,
         string sourceDir,
         string targetDir,
         bool phantom)
     {
-        // TODO: 如果 live 里有，persist 里也有同名文件，会冲突。
-        //  目前使用去重解决，没有明确的优先级
         if (Directory.Exists(scanDir))
         {
             var dirs = new Stack<string>();
@@ -94,19 +99,24 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
             {
                 if (File.Exists(Path.Combine(sub, ".keep")))
                 {
-                    collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, sub)),
-                                       Path.Combine(targetDir, Path.GetRelativePath(scanDir, sub)),
-                                       phantom,
-                                       true));
+                    var dirRel = Path.GetRelativePath(scanDir, sub);
+                    if (!collection.ContainsKey(dirRel))
+                    {
+                        collection[dirRel] = new(Path.Combine(sourceDir, dirRel),
+                                                 Path.Combine(targetDir, dirRel),
+                                                 phantom,
+                                                 true);
+                    }
                 }
                 else
                 {
                     foreach (var file in Directory.GetFiles(sub))
                     {
-                        collection.Add(new(Path.Combine(sourceDir, Path.GetRelativePath(scanDir, file)),
-                                           Path.Combine(targetDir, Path.GetRelativePath(scanDir, file)),
-                                           phantom,
-                                           false));
+                        var fileRel = Path.GetRelativePath(scanDir, file);
+                        collection[fileRel] = new(Path.Combine(sourceDir, fileRel),
+                                                  Path.Combine(targetDir, fileRel),
+                                                  phantom,
+                                                  false);
                     }
 
                     foreach (var dir in Directory.GetDirectories(sub))
