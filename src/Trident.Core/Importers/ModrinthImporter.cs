@@ -3,15 +3,15 @@ using System.Text.Json;
 using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Importers;
 using Trident.Abstractions.Utilities;
+using Trident.Core.Models.ModrinthPack;
 using Trident.Core.Services;
 using Trident.Core.Utilities;
-using Index = Trident.Core.Models.ModrinthPack.Index;
 
 namespace Trident.Core.Importers;
 
 public class ModrinthImporter : IProfileImporter
 {
-    private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
+    private static readonly Dictionary<string, string> LoaderMappings = new()
     {
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
@@ -21,13 +21,13 @@ public class ModrinthImporter : IProfileImporter
 
     #region IProfileImporter Members
 
-    public string IndexFileName => "modrinth.index.json";
+    public string IndexFileName => ModrinthHelper.PACK_INDEX_FILE_NAME;
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
         await using var manifestStream = pack.Open(IndexFileName);
         var index = await JsonSerializer
-                         .DeserializeAsync<Index>(manifestStream, JsonSerializerOptions.Web)
+                         .DeserializeAsync<PackIndex>(manifestStream, JsonSerializerOptions.Web)
                          .ConfigureAwait(false);
         if (index is null
          || !TryExtractLoader(index.Dependencies, out var loader)
@@ -67,7 +67,7 @@ public class ModrinthImporter : IProfileImporter
     {
         foreach (var (k, v) in dependencies)
         {
-            if (LOADER_MAPPINGS.TryGetValue(k, out var mapping))
+            if (LoaderMappings.TryGetValue(k, out var mapping))
             {
                 loader = (mapping, v);
                 return true;
@@ -90,7 +90,7 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private Profile.Rice.Entry ToPackage(Index.IndexFile file)
+    private Profile.Rice.Entry ToPackage(PackIndex.IndexFile file)
     {
         // FIX: 需要兼容 bbsmc
         //  bbsmc 用的第三方包，其中部分使用 mrpack，而 mrpack 使用多个源，其中就有 forgecdn

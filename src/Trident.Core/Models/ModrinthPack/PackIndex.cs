@@ -1,12 +1,12 @@
 namespace Trident.Core.Models.ModrinthPack;
 
-public record Index(
+public record PackIndex(
     int FormatVersion,
     string Game,
     string VersionId,
     string Name,
     string? Summary,
-    IReadOnlyList<Index.IndexFile> Files,
+    IReadOnlyList<PackIndex.IndexFile> Files,
     IDictionary<string, string> Dependencies)
 {
     #region Nested type: IndexFile
@@ -26,7 +26,7 @@ public record Index(
 
         #region Nested type: FileHashes
 
-        public record FileHashes(string Sha1, string Sha512);
+        public record FileHashes(string? Sha1, string? Sha512);
 
         #endregion
     }

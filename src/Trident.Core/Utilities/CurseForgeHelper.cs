@@ -22,6 +22,8 @@ public static class CurseForgeHelper
     public const uint CLASSID_SHADERPACK = 6552;
     public const uint CLASSID_RESOURCEPACK = 12;
 
+    public const string PACK_INDEX_FILE_NAME = "manifest.json";
+
 
     public static readonly IReadOnlyDictionary<string, string> LOADER_MAPPINGS = new Dictionary<string, string>
     {

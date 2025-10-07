@@ -9,7 +9,7 @@ public static class LoaderHelper
     public const string LOADERID_FABRIC = "net.fabricmc";
     public const string LOADERID_QUILT = "org.quiltmc";
     public const string LOADERID_FLINT = "net.flintloader";
-    private static readonly Regex PATTERN = new("^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$");
+    private static readonly Regex Pattern = new("^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$");
 
 
     public static string ToDisplayName(string identity) =>
@@ -27,7 +27,7 @@ public static class LoaderHelper
 
     public static bool TryParse(string lurl, out (string Identity, string Version) result)
     {
-        var match = PATTERN.Match(lurl);
+        var match = Pattern.Match(lurl);
         if (match.Success && match.Groups["identity"].Success && match.Groups["version"].Success)
         {
             result.Identity = match.Groups["identity"].Value;

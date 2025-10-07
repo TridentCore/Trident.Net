@@ -19,6 +19,8 @@ public static class ModrinthHelper
     public const string RESOURCENAME_SHADERPACK = "shader";
     public const string RESOURCENAME_DATAPACK = "datapack";
 
+    public const string PACK_INDEX_FILE_NAME = "modrinth.index.json";
+
     public static readonly IReadOnlyDictionary<string, string> ModloaderMappings = new Dictionary<string, string>
     {
         ["forge"] = LoaderHelper.LOADERID_FORGE,

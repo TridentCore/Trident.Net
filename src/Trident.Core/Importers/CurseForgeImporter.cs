@@ -10,7 +10,7 @@ namespace Trident.Core.Importers;
 
 public class CurseForgeImporter : IProfileImporter
 {
-    private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
+    private static readonly Dictionary<string, string> LoaderMappings = new()
     {
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
@@ -20,7 +20,7 @@ public class CurseForgeImporter : IProfileImporter
 
     #region IProfileImporter Members
 
-    public string IndexFileName => "manifest.json";
+    public string IndexFileName => CurseForgeHelper.PACK_INDEX_FILE_NAME;
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
@@ -76,7 +76,7 @@ public class CurseForgeImporter : IProfileImporter
 
         var name = primary.Id[..primary.Id.IndexOf('-')];
         var ver = primary.Id[(primary.Id.IndexOf('-') + 1)..];
-        if (LOADER_MAPPINGS.TryGetValue(name, out var mapping))
+        if (LoaderMappings.TryGetValue(name, out var mapping))
         {
             name = mapping;
         }
