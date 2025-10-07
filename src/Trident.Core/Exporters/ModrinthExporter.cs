@@ -49,8 +49,8 @@ public class ModrinthExporter(RepositoryAgent agent) : IProfileExporter
 
         var files = resolved
                    .Select(package =>
-                               new PackIndex.IndexFile(Path.Combine(FileHelper.GetAssetFolderName(package.Kind),
-                                                                    package.FileName),
+                               new
+                                   PackIndex.IndexFile($"{FileHelper.GetAssetFolderName(package.Kind)}/{package.FileName}",
                                                        new(package.Sha1, null),
                                                        new("required", "unsupported"),
                                                        [package.Download],
