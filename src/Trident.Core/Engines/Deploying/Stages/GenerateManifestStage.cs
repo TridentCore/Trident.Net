@@ -100,12 +100,10 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                 if (File.Exists(Path.Combine(sub, ".keep")))
                 {
                     var dirRel = Path.GetRelativePath(scanDir, sub);
+                    var dirTar = Path.Combine(targetDir, dirRel);
                     if (!collection.ContainsKey(dirRel))
                     {
-                        collection[dirRel] = new(Path.Combine(sourceDir, dirRel),
-                                                 Path.Combine(targetDir, dirRel),
-                                                 phantom,
-                                                 true);
+                        collection[dirTar] = new(Path.Combine(sourceDir, dirRel), dirTar, phantom, true);
                     }
                 }
                 else
@@ -113,8 +111,9 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                     foreach (var file in Directory.GetFiles(sub))
                     {
                         var fileRel = Path.GetRelativePath(scanDir, file);
-                        collection[fileRel] = new(Path.Combine(sourceDir, fileRel),
-                                                  Path.Combine(targetDir, fileRel),
+                        var fileTar = Path.Combine(targetDir, fileRel);
+                        collection[fileTar] = new(Path.Combine(sourceDir, fileRel),
+                                                  fileTar,
                                                   phantom,
                                                   false);
                     }
