@@ -5,6 +5,7 @@ using System.Reactive.Subjects;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Trident.Abstractions;
+using Trident.Core.Utilities;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -198,7 +199,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                           FileShare.Read),
                                            ZipArchiveMode.Read,
                                            false);
-            var nested = HasSingleRootDirectory(zip, out var rootDir, !explosive.Unwrap);
+            string? rootDir = null;
+            var nested = explosive.Unwrap && ZipArchiveHelper.HasSingleRootDirectory(zip, out rootDir);
             foreach (var entry in zip.Entries)
             {
                 if (entry.Length == 0)
@@ -294,58 +296,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
         logger.LogInformation("Solidifying finished in {ms}ms", watch.ElapsedMilliseconds);
 
         Context.IsSolidified = true;
-    }
-
-    /// <summary>
-    ///     检查压缩包是否只有一个根目录，所有文件都在该目录内
-    /// </summary>
-    /// <param name="archive">要检查的ZipArchive</param>
-    /// <param name="rootDirName">如果存在单根目录，返回该目录名</param>
-    /// <param name="skip">是否跳过检查，直接返回false</param>
-    /// <returns>如果所有文件都在一个根目录内，返回true</returns>
-    public static bool HasSingleRootDirectory(
-        ZipArchive archive,
-        [MaybeNullWhen(false)] out string rootDirName,
-        bool skip = false)
-    {
-        rootDirName = null;
-
-        if (skip || archive.Entries.Count == 0)
-        {
-            return false;
-        }
-
-        // 获取所有条目的路径
-        var entries = archive.Entries.Select(e => e.FullName).Where(x => x.Length > 0).ToList();
-
-        foreach (var entry in entries)
-        {
-            // 获取根级别项目（第一个目录或文件名）
-            string rootItem;
-            var slashIndex = entry.IndexOf('/');
-
-            if (slashIndex >= 0)
-            {
-                rootItem = entry[..slashIndex];
-            }
-            else
-                // 如果没有斜杠，则整个条目是根级别项目
-            {
-                rootItem = entry;
-            }
-
-            if (rootDirName is null)
-            {
-                rootDirName = rootItem;
-            }
-            else if (rootItem != rootDirName)
-            {
-                return false;
-            }
-        }
-
-        rootDirName = string.Empty;
-        return true;
     }
 
     private static bool Verify(string path, string? hash)

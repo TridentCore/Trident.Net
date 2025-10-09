@@ -5,8 +5,6 @@ namespace Trident.Core.Services;
 
 public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 {
-    public static readonly string[] InvalidNames = ["", ".", ".."];
-
     public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
     {
         var importer = importers.FirstOrDefault(x => pack.FileNames.Contains(x.IndexFileName));
