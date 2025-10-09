@@ -34,7 +34,11 @@ public static class ZipArchiveHelper
         rootDirName = prefix;
         foreach (var path in entries)
         {
-            if (!string.IsNullOrEmpty(path) && !path.StartsWith(rootDirName))
+            if (!string.IsNullOrEmpty(path)
+             && !path.StartsWith(rootDirName,
+                                 OperatingSystem.IsWindows()
+                                     ? StringComparison.OrdinalIgnoreCase
+                                     : StringComparison.Ordinal))
             {
                 if (rootDirName.Contains('/'))
                 {
