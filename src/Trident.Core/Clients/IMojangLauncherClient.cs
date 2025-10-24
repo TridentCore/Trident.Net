@@ -5,6 +5,6 @@ namespace Trident.Core.Clients;
 
 public interface IMojangLauncherClient
 {
-    [Get("/news.json")]
-    Task<MinecraftNewsResponse> GetNewsAsync();
+    [Get("/v2/javaPatchNotes.json")]
+    Task<MinecraftReleasePatchesResponse> GetReleasePatchesAsync();
 }
