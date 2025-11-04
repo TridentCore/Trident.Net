@@ -112,10 +112,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                     {
                         var fileRel = Path.GetRelativePath(scanDir, file);
                         var fileTar = Path.Combine(targetDir, fileRel);
-                        collection[fileTar] = new(Path.Combine(sourceDir, fileRel),
-                                                  fileTar,
-                                                  phantom,
-                                                  false);
+                        collection[fileTar] = new(Path.Combine(sourceDir, fileRel), fileTar, phantom, false);
                     }
 
                     foreach (var dir in Directory.GetDirectories(sub))

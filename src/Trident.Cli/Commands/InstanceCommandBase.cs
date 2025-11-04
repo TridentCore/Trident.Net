@@ -17,11 +17,8 @@ public abstract class InstanceCommandBase<T> : Command<T> where T : InstanceArgu
         {
             // 选择 trident home 里的实例
         }
-        else
-        {
-            // 自动搜索
-        }
 
+        // 自动搜索
         return ValidationResult.Success();
     }
 

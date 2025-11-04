@@ -4,7 +4,6 @@ using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Importers;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Models.ModrinthPack;
-using Trident.Core.Services;
 using Trident.Core.Utilities;
 
 namespace Trident.Core.Importers;

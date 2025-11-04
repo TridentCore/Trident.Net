@@ -3,7 +3,6 @@ using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Importers;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Models.CurseForgePack;
-using Trident.Core.Services;
 using Trident.Core.Utilities;
 
 namespace Trident.Core.Importers;
@@ -41,13 +40,13 @@ public class CurseForgeImporter : IProfileImporter
                            [
                                .. manifest.Files.Select(x =>
                                                             new Profile.Rice.Entry(PackageHelper.ToPurl(CurseForgeHelper
-                                                                                  .LABEL,
-                                                                               null,
-                                                                               x.ProjectId.ToString(),
-                                                                               x.FileId.ToString()),
-                                                                           x.Required,
-                                                                           source,
-                                                                           []))
+                                                                       .LABEL,
+                                                                    null,
+                                                                    x.ProjectId.ToString(),
+                                                                    x.FileId.ToString()),
+                                                                x.Required,
+                                                                source,
+                                                                []))
                            ]),
                        new Dictionary<string, object>()),
                    pack

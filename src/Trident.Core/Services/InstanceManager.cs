@@ -266,7 +266,8 @@ public class InstanceManager(
             throw new InvalidOperationException($"Instance {key} is operated in progress");
         }
 
-        var tracker = new LaunchTracker(key, options.Account,
+        var tracker = new LaunchTracker(key,
+                                        options.Account,
                                         async t => await LaunchInternalAsync((LaunchTracker)t, options, javaHomeLocator)
                                                       .ConfigureAwait(false),
                                         TrackerOnCompleted);

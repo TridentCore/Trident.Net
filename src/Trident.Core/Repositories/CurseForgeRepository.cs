@@ -143,7 +143,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
                     throw new FormatException($"{vid} is not well formatted into fileId");
                 }
-                else
+
                 {
                     // var loaderNick = CurseForgeService.LoaderIdToName(filter.Loader);
                     // // GameVersion 是游戏版本，GameVersionName 是游戏版本或加载器版本

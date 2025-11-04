@@ -21,10 +21,8 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
                 var pack = new UncompressedProfilePack(key, profile, name, author, version);
                 return await exporter.PackAsync(pack).ConfigureAwait(false);
             }
-            else
-            {
-                throw new KeyNotFoundException($"{key} is not a key to the managed profile");
-            }
+
+            throw new KeyNotFoundException($"{key} is not a key to the managed profile");
         }
 
         throw new ExporterNotFoundException(label);
