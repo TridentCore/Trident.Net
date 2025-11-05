@@ -106,6 +106,17 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                                                     FileShare.Write);
                                         await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
                                         await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                        if (present.IsExecutable
+                                         && !OperatingSystem.IsWindows()
+                                         && File.Exists(present.Path))
+                                        {
+                                            var current = File.GetUnixFileMode(present.Path);
+                                            File.SetUnixFileMode(present.Path,
+                                                                 current
+                                                               | UnixFileMode.UserExecute
+                                                               | UnixFileMode.GroupExecute
+                                                               | UnixFileMode.OtherExecute);
+                                        }
                                     }
 
                                     break;
@@ -173,24 +184,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
         foreach (var explosive in manifest.ExplosiveFiles)
         {
-            // if (Directory.Exists(explosive.TargetDirectory) && explosive.IsDestructive)
-            // {
-            //     // 只有 build 目录里才具有摧毁性
-            //     var full = Path.GetFullPath(explosive.TargetDirectory);
-            //     if (full.StartsWith(fullBuildDir))
-            //     {
-            //         logger.LogDebug("Destroying {}", full);
-            //         Directory.Delete(explosive.TargetDirectory, true);
-            //     }
-            // }
-            //
-            // if (!Directory.Exists(explosive.TargetDirectory))
-            //     Directory.CreateDirectory(explosive.TargetDirectory);
-            //
-            // logger.LogDebug("Extracting {} to {}", explosive.SourcePath, explosive.TargetDirectory);
-            // ZipFile.ExtractToDirectory(explosive.SourcePath, explosive.TargetDirectory, true);
-            // ProgressStream.OnNext((++downloaded, files.Count + manifest.ExplosiveFiles.Count));
-
             logger.LogDebug("Extracting {file} to {dir}", explosive.SourcePath, explosive.TargetDirectory);
             using var zip = new ZipArchive(new FileStream(explosive.SourcePath,
                                                           FileMode.Open,

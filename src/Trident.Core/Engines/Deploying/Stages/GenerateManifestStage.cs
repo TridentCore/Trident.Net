@@ -57,10 +57,14 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
         if (Context.Runtime != null)
         {
-            var path = PathDef.Default.FileOfRuntimeBundle(Context.Runtime.Major);
             var dir = PathDef.Default.DirectoryOfRuntime(Context.Runtime.Major);
-            manifest.PresentFiles.Add(new(path, Context.Runtime.Url, null));
-            manifest.ExplosiveFiles.Add(new(path, dir, true));
+            foreach (var entry in Context.Runtime.Files)
+            {
+                manifest.PresentFiles.Add(new(Path.Combine(dir, entry.Path),
+                                              entry.Download,
+                                              entry.Sha1,
+                                              entry.IsExecutable));
+            }
         }
 
         var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);

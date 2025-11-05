@@ -34,10 +34,17 @@ public static class ServiceCollectionExtensions
                 IMojangLauncherClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
            .ConfigureHttpClient(client =>
             {
-                client.BaseAddress = new(MojangLauncherService.ENDPOINT);
+                client.BaseAddress = new(MojangService.LAUNCHER_ENDPOINT);
+            });
+        services
+           .AddRefitClient<
+                IMojangPistonClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
+           .ConfigureHttpClient(client =>
+            {
+                client.BaseAddress = new(MojangService.PISTON_ENDPOINT);
             });
 
-        services.AddSingleton<MojangLauncherService>();
+        services.AddSingleton<MojangService>();
 
         return services;
     }

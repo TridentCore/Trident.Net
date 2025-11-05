@@ -32,7 +32,7 @@ public class EntityManifest
 
     #region Nested type: PresentFile
 
-    public record PresentFile(string Path, Uri Url, string? Hash);
+    public record PresentFile(string Path, Uri Url, string? Hash, bool IsExecutable = false);
 
     #endregion
 }
