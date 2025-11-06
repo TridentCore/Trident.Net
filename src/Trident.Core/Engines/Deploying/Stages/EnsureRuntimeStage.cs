@@ -56,11 +56,16 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                         {
                             if (value is JsonObject file)
                             {
-                                if (file.TryGetPropertyValue("type", out var type)
-                                 && type != null
-                                 && type.GetValue<string>() == "directory")
+                                if (file.TryGetPropertyValue("type", out var type) && type != null)
                                 {
-                                    continue;
+                                    if (type.GetValue<string>() == "directory")
+                                    {
+                                        continue;
+                                    }
+                                }
+                                else
+                                {
+                                    throw new FormatException("Invalid type property");
                                 }
 
                                 if (file.TryGetPropertyValue("downloads", out var d)
@@ -70,14 +75,17 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                                 {
                                     var executable = file["executable"]?.GetValue<bool>() ?? false;
                                     var sha1 = raw["sha1"]?.GetValue<string>()
-                                            ?? throw new FormatException("Invalid file entry");
+                                            ?? throw new FormatException("Invalid sha1 property");
                                     var urlString = raw["url"]?.GetValue<string>()
-                                                 ?? throw new FormatException("Invalid file entry");
+                                                 ?? throw new FormatException("Invalid url property");
                                     var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
                                                   ? new Uri(urlString)
                                                   : throw new FormatException("Invalid url string");
                                     entries.Add(new(path, url, sha1, executable));
-                                    continue;
+                                }
+                                else
+                                {
+                                    throw new FormatException("Invalid downloads property");
                                 }
                             }
 
