@@ -101,9 +101,10 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                                     }
                                     case "link":
                                     {
-                                        var target = file["target"]?.GetValue<string>()
-                                                  ?? throw new FormatException("Invalid target property");
-                                        links.Add(new(path, target));
+                                        // 似乎 Target 都在 ../java.base/ 也就是 Runtime 目录之外，而且还互相冲突，那就不处理了
+                                        // var target = file["target"]?.GetValue<string>()
+                                        //           ?? throw new FormatException("Invalid target property");
+                                        // links.Add(new(path, target));
 
                                         break;
                                     }
