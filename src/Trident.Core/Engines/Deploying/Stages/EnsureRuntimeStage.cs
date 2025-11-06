@@ -46,7 +46,8 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                 var first = runtime.FirstOrDefault();
                 if (first != null)
                 {
-                    var entries = new List<BundledRuntime.Entry>();
+                    var entries = new List<BundledRuntime.File>();
+                    var links = new List<BundledRuntime.Link>();
                     using var client = httpClientFactory.CreateClient();
                     var content = await client.GetStringAsync(first.Manifest.Url, token).ConfigureAwait(false);
                     var json = JsonSerializer.Deserialize<JsonObject>(content, JsonSerializerOptions.Default);
@@ -56,44 +57,66 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                         {
                             if (value is JsonObject file)
                             {
-                                if (file.TryGetPropertyValue("type", out var type) && type != null)
+                                // if (file.TryGetPropertyValue("type", out var type) && type != null)
+                                // {
+                                //     if (type.GetValue<string>() == "directory")
+                                //     {
+                                //         continue;
+                                //     }
+                                // }
+                                // else
+                                // {
+                                //     throw new FormatException("Invalid type property");
+                                // }
+                                var type = file["type"]?.GetValue<string>()
+                                        ?? throw new FormatException("Invalid type property");
+
+                                switch (type)
                                 {
-                                    if (type.GetValue<string>() == "directory")
-                                    {
+                                    case "directory":
                                         continue;
+                                    case "file":
+                                    {
+                                        if (file.TryGetPropertyValue("downloads", out var d)
+                                         && d is JsonObject downloads
+                                         && downloads.TryGetPropertyValue("raw", out var r)
+                                         && r is JsonObject raw)
+                                        {
+                                            var executable = file["executable"]?.GetValue<bool>() ?? false;
+                                            var sha1 = raw["sha1"]?.GetValue<string>()
+                                                    ?? throw new FormatException("Invalid sha1 property");
+                                            var urlString = raw["url"]?.GetValue<string>()
+                                                         ?? throw new FormatException("Invalid url property");
+                                            var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
+                                                          ? new Uri(urlString)
+                                                          : throw new FormatException("Invalid url string");
+                                            entries.Add(new(path, url, sha1, executable));
+                                        }
+                                        else
+                                        {
+                                            throw new FormatException("Invalid downloads property");
+                                        }
+
+                                        break;
+                                    }
+                                    case "link":
+                                    {
+                                        var target = file["target"]?.GetValue<string>()
+                                                  ?? throw new FormatException("Invalid target property");
+                                        links.Add(new(path, target));
+
+                                        break;
                                     }
                                 }
-                                else
-                                {
-                                    throw new FormatException("Invalid type property");
-                                }
-
-                                if (file.TryGetPropertyValue("downloads", out var d)
-                                 && d is JsonObject downloads
-                                 && downloads.TryGetPropertyValue("raw", out var r)
-                                 && r is JsonObject raw)
-                                {
-                                    var executable = file["executable"]?.GetValue<bool>() ?? false;
-                                    var sha1 = raw["sha1"]?.GetValue<string>()
-                                            ?? throw new FormatException("Invalid sha1 property");
-                                    var urlString = raw["url"]?.GetValue<string>()
-                                                 ?? throw new FormatException("Invalid url property");
-                                    var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
-                                                  ? new Uri(urlString)
-                                                  : throw new FormatException("Invalid url string");
-                                    entries.Add(new(path, url, sha1, executable));
-                                }
-                                else
-                                {
-                                    throw new FormatException("Invalid downloads property");
-                                }
                             }
-
-                            throw new FormatException("Invalid file entry");
+                            else
+                            {
+                                throw new FormatException("Invalid file entry");
+                            }
                         }
                     }
 
-                    Context.Runtime = new(major, entries);
+                    Context.Runtime = new(major, entries, links);
                 }
             }
         }

@@ -65,6 +65,14 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                                               entry.Sha1,
                                               entry.IsExecutable));
             }
+
+            foreach (var entry in Context.Runtime.Links)
+            {
+                manifest.PersistentFiles.Add(new(Path.Combine(dir, entry.Path),
+                                                 Path.Combine(dir, entry.Target),
+                                                 true,
+                                                 false));
+            }
         }
 
         var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);
