@@ -6,7 +6,15 @@ public record BundledRuntime(
     IReadOnlyList<BundledRuntime.File> Files,
     IReadOnlyList<BundledRuntime.Link> Links)
 {
+    #region Nested type: File
+
     public record File(string Path, Uri Download, string Sha1, bool IsExecutable);
 
+    #endregion
+
+    #region Nested type: Link
+
     public record Link(string Path, string Target);
+
+    #endregion
 }

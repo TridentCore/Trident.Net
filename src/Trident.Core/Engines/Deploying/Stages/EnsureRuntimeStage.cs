@@ -1,10 +1,8 @@
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Trident.Core.Exceptions;
 using Trident.Core.Services;
-using Trident.Core.Utilities;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -143,11 +141,13 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
             {
                 return "windows-x64";
             }
-            else if (RuntimeInformation.OSArchitecture == Architecture.X86)
+
+            if (RuntimeInformation.OSArchitecture == Architecture.X86)
             {
                 return "windows-x86";
             }
-            else if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+
+            if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
             {
                 return "windows-arm64";
             }
@@ -158,7 +158,8 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
             {
                 return "linux";
             }
-            else if (RuntimeInformation.OSArchitecture == Architecture.X86)
+
+            if (RuntimeInformation.OSArchitecture == Architecture.X86)
             {
                 return "linux-i386";
             }
@@ -169,7 +170,8 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
             {
                 return "mac-os";
             }
-            else if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+
+            if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
             {
                 return "mac-os-arm64";
             }

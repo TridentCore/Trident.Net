@@ -127,13 +127,11 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 native = (lib.Natives.Windows.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32"),
                           lib.Downloads);
             }
-
-            if (OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null })
+            else if (OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null })
             {
                 native = (lib.Natives.Linux, lib.Downloads);
             }
-
-            if (OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null })
+            else if (OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null })
             {
                 native = (lib.Natives.Osx, lib.Downloads);
             }
