@@ -112,8 +112,8 @@ public class PrismLauncherService(IPrismLauncherClient client)
         foreach (var lib in libraries.Where(ValidateLibraryRule))
         {
             if (lib.Url != null)
-                // old fashion
             {
+                // old fashion
                 builder.AddLibraryPrismFlavor(lib.Name, lib.Url);
             }
             else if (lib.Downloads is { Artifact: { } artifact })
@@ -121,10 +121,25 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 builder.AddLibrary(lib.Name, artifact.Url, artifact.Sha1);
             }
 
-            if (lib is { Downloads: { } downloads })
+            (string, Component.Library.DownloadsEntry)? native = null;
+            if (OperatingSystem.IsWindows() && lib is { Natives.Windows: not null, Downloads: not null })
             {
-                var platform = PlatformHelper.GetOsName();
-                var classifier = platform.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32");
+                native = (lib.Natives.Windows.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32"),
+                          lib.Downloads);
+            }
+
+            if (OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null })
+            {
+                native = (lib.Natives.Linux, lib.Downloads);
+            }
+
+            if (OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null })
+            {
+                native = (lib.Natives.Osx, lib.Downloads);
+            }
+
+            if (native is var (classifier, downloads))
+            {
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                     // NOTE: 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
