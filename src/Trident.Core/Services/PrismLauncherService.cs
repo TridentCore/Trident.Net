@@ -17,10 +17,10 @@ public class PrismLauncherService(IPrismLauncherClient client)
     public const string UID_FABRIC = "net.fabricmc.fabric-loader";
     public const string UID_QUILT = "org.quiltmc.quilt-loader";
 
-    public static readonly string OS_NAME_STRING = PlatformHelper.GetOsName();
-    private static readonly string OS_FULL_STRING = $"{OS_NAME_STRING}-{PlatformHelper.GetOsArch()}";
+    private static readonly string OsNameString = PlatformHelper.GetOsName();
+    private static readonly string OsFullString = $"{OsNameString}-{PlatformHelper.GetOsArch()}";
 
-    public static readonly IReadOnlyDictionary<string, string> UID_MAPPINGS = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> UidMappings = new Dictionary<string, string>
     {
         [LoaderHelper.LOADERID_FORGE] = UID_FORGE,
         [LoaderHelper.LOADERID_NEOFORGE] = UID_NEOFORGE,
@@ -92,7 +92,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 // name
                 if (y.Os != null && y.Os.TryGetValue("name", out var os))
                 {
-                    pass = OS_FULL_STRING == os || OS_NAME_STRING == os;
+                    pass = OsFullString == os || OsNameString == os;
                 }
 
                 // arch
@@ -121,9 +121,10 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 builder.AddLibrary(lib.Name, artifact.Url, artifact.Sha1);
             }
 
-            if (lib is { Natives.Windows: { } windows, Downloads: { } downloads })
+            if (lib is { Downloads: { } downloads })
             {
-                var classifier = windows.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32");
+                var platform = PlatformHelper.GetOsName();
+                var classifier = platform.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32");
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                     // NOTE: 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
