@@ -25,16 +25,6 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
 
         if (bad)
         {
-            // var manifest = await prismLauncherService.GetRuntimeAsync(major, token).ConfigureAwait(false);
-            // var osString = $"{PlatformHelper.GetOsName()}-{PlatformHelper.GetOsArch()}";
-            // var runtime = manifest.Runtimes.OrderBy(x => x.ReleaseTime).FirstOrDefault(x => x.RuntimeOS == osString);
-            // if (runtime != null)
-            // {
-            //     Context.Runtime = new(major, runtime.Vendor, runtime.Url, true);
-            // }
-
-            // 如果获取不到也什么都不做，悄咪咪把错误留给 Launch Flow 再爆出来
-
             var manifest = await mojangService.GetRuntimeManifestAsync().ConfigureAwait(false);
             var osString = GenerateOsString();
             var runtimeString = GenerateRuntimeString(major);
@@ -55,17 +45,6 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                         {
                             if (value is JsonObject file)
                             {
-                                // if (file.TryGetPropertyValue("type", out var type) && type != null)
-                                // {
-                                //     if (type.GetValue<string>() == "directory")
-                                //     {
-                                //         continue;
-                                //     }
-                                // }
-                                // else
-                                // {
-                                //     throw new FormatException("Invalid type property");
-                                // }
                                 var type = file["type"]?.GetValue<string>()
                                         ?? throw new FormatException("Invalid type property");
 
@@ -114,6 +93,7 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                             }
                         }
                     }
+                    // 如果获取不到也什么都不做，悄咪咪把错误留给 Launch Flow 再爆出来
 
                     Context.Runtime = new(major, entries, links);
                 }
