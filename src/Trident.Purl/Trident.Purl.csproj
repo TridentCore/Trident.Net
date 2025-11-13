@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="IBuilder" Version="0.3.0" />
-        <PackageReference Include="IParser" Version="0.1.0" />
+        <PackageReference Include="IBuilder" Version="0.3.0"/>
+        <PackageReference Include="IParser" Version="0.1.0"/>
     </ItemGroup>
 
 </Project>
