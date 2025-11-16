@@ -77,4 +77,26 @@ public static class FileHelper
             ResourceKind.DataPack => "datapacks",
             _ => throw new NotImplementedException()
         };
+
+    public static (ulong, ulong) CalculateDirectorySize(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return (0ul, 0ul);
+        }
+
+        var directory = new DirectoryInfo(path);
+        var (size, count) = directory
+                           .GetFiles()
+                           .Aggregate((0ul, 0ul),
+                                      (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1));
+        return directory
+              .GetDirectories()
+              .Aggregate((size, count),
+                         (current, dir) =>
+                         {
+                             var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
+                             return (current.size + subSize, current.count + subCount);
+                         });
+    }
 }
