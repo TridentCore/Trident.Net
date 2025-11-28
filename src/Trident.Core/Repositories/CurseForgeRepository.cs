@@ -41,7 +41,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
     public async Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter)
     {
-        var loader = filter.Kind is ResourceKind.Mod ? CurseForgeHelper.LoaderIdToType(filter.Loader) : null;
+        var loader = filter.Kind is ResourceKind.Mod or ResourceKind.Modpack
+                         ? CurseForgeHelper.LoaderIdToType(filter.Loader)
+                         : null;
         var first = await client
                          .SearchModsAsync(query,
                                           CurseForgeHelper.ResourceKindToClassId(filter.Kind),
