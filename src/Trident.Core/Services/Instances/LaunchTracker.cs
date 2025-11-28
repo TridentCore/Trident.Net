@@ -7,13 +7,15 @@ namespace Trident.Core.Services.Instances;
 
 public class LaunchTracker(
     string key,
-    IAccount? account,
+    LaunchOptions options,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
     CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
 {
     public Subject<Scrap> ScrapStream { get; } = new();
+    public LaunchOptions Options => options;
 
-    public IAccount? Account => account;
+    public string? JavaHome { get; set; }
+    public uint? JavaVersion { get; set; }
     public bool IsDetaching { get; set; }
 }

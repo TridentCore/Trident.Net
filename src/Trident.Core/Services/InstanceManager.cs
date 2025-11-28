@@ -267,7 +267,7 @@ public class InstanceManager(
         }
 
         var tracker = new LaunchTracker(key,
-                                        options.Account,
+                                        options,
                                         async t => await LaunchInternalAsync((LaunchTracker)t, options, javaHomeLocator)
                                                       .ConfigureAwait(false),
                                         TrackerOnCompleted);
@@ -314,6 +314,9 @@ public class InstanceManager(
                 var assetDir = PathDef.Default.CacheAssetDirectory;
                 var nativeDir = PathDef.Default.DirectoryOfNatives(tracker.Key);
                 var igniter = artifact.MakeIgniter();
+
+                tracker.JavaHome = javaHome;
+                tracker.JavaVersion = artifact.JavaMajorVersion;
 
                 igniter
                    .AddGameArgument("--width")

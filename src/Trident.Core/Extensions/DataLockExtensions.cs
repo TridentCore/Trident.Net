@@ -8,7 +8,7 @@ public static class DataLockExtensions
 {
     public static Igniter MakeIgniter(this DataLock self)
     {
-        Igniter igniter = new();
+        var igniter = new Igniter();
 
         foreach (var argument in self.GameArguments)
         {

@@ -41,10 +41,10 @@ LookupContext LookupHomeInternal(string startDir)
     var dir = startDir;
     while (dir is not null && Directory.Exists(dir))
     {
-        var canidiate = Path.Combine(dir, ".trident");
-        if (Directory.Exists(canidiate))
+        var candidate = Path.Combine(dir, ".trident");
+        if (Directory.Exists(candidate))
         {
-            home = canidiate;
+            home = candidate;
         }
 
         var found = Path.Combine(dir, "profile.json");
