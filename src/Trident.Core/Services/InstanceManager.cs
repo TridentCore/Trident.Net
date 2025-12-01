@@ -369,6 +369,8 @@ public class InstanceManager(
                     Directory.CreateDirectory(build);
                 }
 
+                tracker.CommandLine = process.StartInfo.Arguments;
+
                 if (options.Mode == LaunchMode.Debug)
                 {
                     await File

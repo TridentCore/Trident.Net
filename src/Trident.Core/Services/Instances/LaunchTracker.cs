@@ -17,5 +17,6 @@ public class LaunchTracker(
 
     public string? JavaHome { get; set; }
     public uint? JavaVersion { get; set; }
+    public string? CommandLine { get; set; }
     public bool IsDetaching { get; set; }
 }
