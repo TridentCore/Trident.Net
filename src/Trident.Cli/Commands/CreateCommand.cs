@@ -7,7 +7,7 @@ namespace Trident.Cli.Commands;
 
 public class CreateCommand(ProfileManager profileManager) : CreationCommandBase<CreateCommand.Arguments>
 {
-    public override int Execute(CommandContext context, Arguments settings)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var key = profileManager.RequestKey(settings.Id);
         var profile = new Profile(settings.Name,
