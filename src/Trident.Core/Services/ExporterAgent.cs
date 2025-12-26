@@ -35,7 +35,7 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         foreach (var (name, stream) in container.Attachments)
         {
             var entry = zip.CreateEntry(name);
-            await using var writer = entry.Open();
+            await using var writer = await entry.OpenAsync().ConfigureAwait(false);
             await stream.CopyToAsync(writer).ConfigureAwait(false);
         }
 
@@ -44,6 +44,11 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         dirs.Enqueue(import);
         while (dirs.TryDequeue(out var dir))
         {
+            if (!Directory.Exists(dir))
+            {
+                continue;
+            }
+
             foreach (var sub in Directory.GetDirectories(dir))
             {
                 dirs.Enqueue(sub);
@@ -53,13 +58,13 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             {
                 var relative = Path.GetRelativePath(import, file);
                 var entry = zip.CreateEntry(Path.Combine(container.OverrideDirectoryName, relative));
-                await using var writer = entry.Open();
+                await using var writer = await entry.OpenAsync().ConfigureAwait(false);
                 await using var reader = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
                 await reader.CopyToAsync(writer).ConfigureAwait(false);
             }
         }
 
-        zip.Dispose();
+        await zip.DisposeAsync().ConfigureAwait(false);
         output.Position = 0;
         return output;
     }
