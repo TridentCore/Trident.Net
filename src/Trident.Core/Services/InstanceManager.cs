@@ -375,7 +375,7 @@ public class InstanceManager(
                 {
                     await File
                          .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"),
-                                             process.StartInfo.ArgumentList)
+                                             [process.StartInfo.FileName, ..process.StartInfo.ArgumentList])
                          .ConfigureAwait(false);
                 }
 

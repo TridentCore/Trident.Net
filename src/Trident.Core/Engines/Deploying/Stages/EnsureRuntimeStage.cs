@@ -110,6 +110,7 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
             11 or 16 => "java-runtime-alpha",
             17 => "java-runtime-beta",
             21 => "java-runtime-delta",
+            24 or 25 => "java-runtime-epsilon",
             _ => "java-runtime-gamma"
         };
 
