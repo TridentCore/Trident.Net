@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reactive.Subjects;
@@ -143,7 +144,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                             {
                                                 // 目标位置有个目录，先反向同步文件，替换同名（类似下面文件链接的原则），并创建链接
                                                 var dirs = new Queue<string>();
-                                                var toClean = new List<string> { persistent.TargetPath };
+                                                var toClean = new Stack<string>();
+                                                toClean.Push(persistent.TargetPath);
                                                 dirs.Enqueue(persistent.TargetPath);
                                                 while (dirs.TryDequeue(out var src))
                                                 {
@@ -166,7 +168,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
                                                     foreach (var dir in Directory.GetDirectories(src))
                                                     {
-                                                        toClean.Add(dir);
+                                                        toClean.Push(dir);
                                                         dirs.Enqueue(dir);
                                                     }
                                                 }
