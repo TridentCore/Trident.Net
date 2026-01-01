@@ -22,5 +22,5 @@ public static class ProfileExtensions
     }
 
     public static T? GetOverride<T>(this Profile profile, string key, T? defaultValue = default) =>
-        TryGetOverride<T>(profile, key, out var result) ? result : defaultValue;
+        profile.TryGetOverride<T>(key, out var result) ? result : defaultValue;
 }
