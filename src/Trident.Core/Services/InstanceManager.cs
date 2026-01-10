@@ -488,7 +488,7 @@ public class InstanceManager(
 
         await importers.ExtractImportFilesAsync(key.Key, container, pack).ConfigureAwait(false);
 
-        tracker.Source = container.Profile.Setup.Source;
+        tracker.Reference = container.Profile.Setup.Source;
 
         profileManager.Add(key, container.Profile);
 

@@ -11,7 +11,7 @@ public class InstallTracker(
 {
     public Subject<double?> ProgressStream { get; } = new();
 
-    public string? Source { get; set; }
+    public string? Reference { get; set; }
 
     public override void Dispose()
     {
