@@ -58,8 +58,7 @@ public class ModrinthExporter(RepositoryAgent agent) : IProfileExporter
                                                        package.Size))
                    .ToList();
 
-        var dependencies = new Dictionary<string, string>();
-        dependencies.Add("minecraft", setup.Version);
+        var dependencies = new Dictionary<string, string> { { "minecraft", setup.Version } };
         if (loader is not null && LoaderMappings.TryGetValue(loader.Value.Identity, out var mapping))
         {
             dependencies.Add(mapping, loader.Value.Version);
