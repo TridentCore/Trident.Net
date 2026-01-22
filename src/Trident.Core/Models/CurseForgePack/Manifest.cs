@@ -12,7 +12,9 @@ public record Manifest(
 {
     #region Nested type: FileModel
 
-    public record FileModel(uint ProjectId, uint FileId, bool Required);
+    // ReSharper disable InconsistentNaming
+    public record FileModel(uint ProjectID, uint FileID, bool Required);
+    // ReSharper restore InconsistentNaming
 
     #endregion
 

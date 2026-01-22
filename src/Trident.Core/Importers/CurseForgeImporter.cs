@@ -42,8 +42,8 @@ public class CurseForgeImporter : IProfileImporter
                                                             new Profile.Rice.Entry(PackageHelper.ToPurl(CurseForgeHelper
                                                                        .LABEL,
                                                                     null,
-                                                                    x.ProjectId.ToString(),
-                                                                    x.FileId.ToString()),
+                                                                    x.ProjectID.ToString(),
+                                                                    x.FileID.ToString()),
                                                                 x.Required,
                                                                 source,
                                                                 []))
