@@ -5,22 +5,35 @@ namespace Trident.Abstractions.Extensions;
 
 public static class ProfileExtensions
 {
-    public static bool TryGetOverride<T>(
-        this Profile profile,
-        string key,
-        [MaybeNullWhen(false)] out T value,
-        T? defaultValue = default)
+    extension(Profile profile)
     {
-        if (profile.Overrides.TryGetValue(key, out var result) && result is T rv)
+        public bool TryGetOverride<T>(string key, [MaybeNullWhen(false)] out T value, T? defaultValue = default)
         {
-            value = rv;
-            return true;
+            if (profile.Overrides.TryGetValue(key, out var result) && result is T rv)
+            {
+                value = rv;
+                return true;
+            }
+
+            value = defaultValue;
+            return false;
         }
 
-        value = defaultValue;
-        return false;
-    }
+        public T? GetOverride<T>(string key, T? defaultValue = default) =>
+            profile.TryGetOverride<T>(key, out var result) ? result : defaultValue;
 
-    public static T? GetOverride<T>(this Profile profile, string key, T? defaultValue = default) =>
-        profile.TryGetOverride<T>(key, out var result) ? result : defaultValue;
+        public void SetOverride<T>(string key, T? value)
+        {
+            if (value is null or "")
+            {
+                profile.Overrides.Remove(key);
+            }
+            else
+            {
+                profile.Overrides[key] = value;
+            }
+        }
+
+        public void RemoveOverride(string key) => profile.Overrides.Remove(key);
+    }
 }

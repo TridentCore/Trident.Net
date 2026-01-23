@@ -12,6 +12,9 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
     public const string OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE = "behavior.deploy.fastmode";
     public const string OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY = "behavior.resolve.dependency";
     public const string OVERRIDE_BEHAVIOR_CONNECT_SERVER = "behavior.connect.address";
+    public const string OVERRIDE_MODPACK_NAME = "modpack.name";
+    public const string OVERRIDE_MODPACK_AUTHOR = "modpack.author";
+    public const string OVERRIDE_MODPACK_VERSION = "modpack.version";
 
 
     public string Name { get; set; } = name ?? throw new ArgumentNullException(nameof(name));
