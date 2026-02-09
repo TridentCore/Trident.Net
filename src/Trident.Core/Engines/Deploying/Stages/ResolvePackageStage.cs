@@ -62,7 +62,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                 builder.AddParcel(package.Label,
                                   package.Namespace,
                                   package.ProjectId,
-                                  package.ProjectId,
+                                  package.VersionId,
                                   Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
                                                FileHelper.GetAssetFolderName(package.Kind),
                                                package.FileName),
@@ -70,7 +70,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                   package.Sha1);
             }
 
-            logger.LogDebug("Bulk resolved {} packages", resolved.Count);
+            logger.LogDebug("Batch resolved {} packages", resolved.Count);
             purls.Clear();
 
             // 依赖解析直接不要了，本来就没法用，留着也是累赘
