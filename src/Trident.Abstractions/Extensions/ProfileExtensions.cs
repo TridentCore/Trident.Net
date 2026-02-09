@@ -5,6 +5,8 @@ namespace Trident.Abstractions.Extensions;
 
 public static class ProfileExtensions
 {
+    #region Nested type: $extension
+
     extension(Profile profile)
     {
         public bool TryGetOverride<T>(string key, [MaybeNullWhen(false)] out T value, T? defaultValue = default)
@@ -36,4 +38,6 @@ public static class ProfileExtensions
 
         public void RemoveOverride(string key) => profile.Overrides.Remove(key);
     }
+
+    #endregion
 }
