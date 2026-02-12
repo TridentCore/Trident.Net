@@ -74,7 +74,7 @@ public static class FileHelper
             ResourceKind.World => "saves",
             ResourceKind.ShaderPack => "shaderpacks",
             ResourceKind.ResourcePack => "resourcepacks",
-            ResourceKind.DataPack => "resourcepacks",
+            ResourceKind.DataPack => "datapacks",
             _ => throw new NotImplementedException()
         };
 
