@@ -5,33 +5,21 @@ namespace Trident.Abstractions.Utilities;
 
 public static class RuleHelper
 {
-    public static IReadOnlyList<Result> Evaluate(IReadOnlyList<Input> input, IReadOnlyList<Profile.Rice.Rule> rules)
-    {
-        var results = new List<Result>();
-        foreach (var one in input)
-        {
-            var passedRules = new List<Profile.Rice.Rule>();
-            foreach (var rule in rules)
+    public static IReadOnlyList<Result> Evaluate(IReadOnlyList<Input> input, IReadOnlyList<Profile.Rice.Rule> rules) =>
+        input
+           .Select(x =>
             {
-                var passed = Evaluate(one, rule);
-                if (passed)
-                {
-                    passedRules.Add(rule);
-                }
-            }
-
-            results.Add(new(one, passedRules.Count > 0, passedRules, passedRules.LastOrDefault()));
-        }
-
-        return results;
-    }
+                var passedRules = rules.Where(y => Evaluate(x, y)).ToList();
+                return new Result(x, passedRules, passedRules.LastOrDefault());
+            })
+           .ToList();
 
     public static bool Evaluate(Input input, Profile.Rice.Rule rule) =>
         rule.Selector switch
         {
-            Profile.Rice.Rule.SelectorType.And => rule.Selectors?.All(x => Evaluate(input, x)) ?? false,
-            Profile.Rice.Rule.SelectorType.Or => rule.Selectors?.Any(x => Evaluate(input, x)) ?? false,
-            Profile.Rice.Rule.SelectorType.Not => rule.Selectors?.All(x => !Evaluate(input, x)) ?? false,
+            Profile.Rice.Rule.SelectorType.And => rule.Children?.All(x => Evaluate(input, x)) ?? false,
+            Profile.Rice.Rule.SelectorType.Or => rule.Children?.Any(x => Evaluate(input, x)) ?? false,
+            Profile.Rice.Rule.SelectorType.Not => rule.Children?.All(x => !Evaluate(input, x)) ?? false,
             Profile.Rice.Rule.SelectorType.Purl => rule.Purl != null
                                                 && PackageHelper.IsMatched(rule.Purl, input.Package),
             Profile.Rice.Rule.SelectorType.Repository => rule.Repository != null
@@ -51,11 +39,10 @@ public static class RuleHelper
 
     #region Nested type: Result
 
-    public record Result(
-        Input Input,
-        bool Matched,
-        IReadOnlyList<Profile.Rice.Rule> AppliedRules,
-        Profile.Rice.Rule? EffectiveRule);
+    public record Result(Input Input, IReadOnlyList<Profile.Rice.Rule> AppliedRules, Profile.Rice.Rule? EffectiveRule)
+    {
+        public bool Matched => AppliedRules.Count > 0;
+    }
 
     #endregion
 }
