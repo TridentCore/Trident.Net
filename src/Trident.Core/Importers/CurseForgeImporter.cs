@@ -47,7 +47,8 @@ public class CurseForgeImporter : IProfileImporter
                                                                 x.Required,
                                                                 source,
                                                                 []))
-                           ]),
+                           ],
+                           []),
                        new Dictionary<string, object>()),
                    pack
                       .FileNames

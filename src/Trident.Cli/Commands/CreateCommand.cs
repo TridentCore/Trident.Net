@@ -11,7 +11,7 @@ public class CreateCommand(ProfileManager profileManager) : CreationCommandBase<
     {
         var key = profileManager.RequestKey(settings.Id);
         var profile = new Profile(settings.Name,
-                                  new(null, settings.Version, settings.Loader, []),
+                                  new(null, settings.Version, settings.Loader, [], []),
                                   new Dictionary<string, object>());
         profileManager.Add(key, profile);
         AnsiConsole.WriteLine($"Instance {key.Key} created");

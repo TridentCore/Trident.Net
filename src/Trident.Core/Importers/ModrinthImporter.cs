@@ -40,7 +40,8 @@ public class ModrinthImporter : IProfileImporter
                        new(source,
                            version,
                            LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                           [.. index.Files.Where(x => x.Env?.Client is not "unsupported").Select(ToPackage)]),
+                           [.. index.Files.Where(x => x.Env?.Client is not "unsupported").Select(ToPackage)],
+                           []),
                        new Dictionary<string, object>()),
                    pack
                       .FileNames

@@ -1,3 +1,5 @@
+using Trident.Abstractions.Repositories.Resources;
+
 namespace Trident.Abstractions.FileModels;
 
 public class Profile(string name, Profile.Rice setup, IDictionary<string, object>? overrides)
@@ -24,12 +26,18 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
     #region Nested type: Rice
 
-    public class Rice(string? source, string version, string? loader, IList<Rice.Entry>? packages)
+    public class Rice(
+        string? source,
+        string version,
+        string? loader,
+        IList<Rice.Entry>? packages,
+        IList<Rice.Rule>? rules)
     {
         public string? Source { get; set; } = source;
         public string Version { get; set; } = version ?? throw new ArgumentNullException(nameof(version));
         public string? Loader { get; set; } = loader;
         public IList<Entry> Packages { get; private set; } = packages ?? new List<Entry>();
+        public IList<Rule> Rules { get; set; } = new List<Rule>();
 
         #region Nested type: Entry
 
@@ -39,6 +47,39 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
             public bool Enabled { get; set; } = enabled;
             public string? Source { get; set; } = source;
             public IList<string> Tags { get; private set; } = tags ?? new List<string>();
+        }
+
+        #endregion
+
+        #region Nested type: Rule
+
+        public class Rule(Rule.SelectorType selector, bool enabled)
+        {
+            #region SelectorType enum
+
+            public enum SelectorType { And, Or, Not, Purl, Repository, Tag, Kind }
+
+            #endregion
+
+            public SelectorType Selector { get; set; } = selector;
+            public bool Enabled { get; set; } = true;
+
+            #region Rule Override
+
+            public string? Destination { get; set; }
+            public bool? Solidifying { get; set; }
+
+            #endregion
+
+            #region For Selector
+
+            public IList<Rule>? Selectors { get; set; }
+            public string? Purl { get; set; }
+            public string? Repository { get; set; }
+            public string? Tag { get; set; }
+            public ResourceKind? Kind { get; set; }
+
+            #endregion
         }
 
         #endregion
