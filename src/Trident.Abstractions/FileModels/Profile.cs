@@ -67,7 +67,8 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
             #region Rule Override
 
             public string? Destination { get; set; }
-            public bool? Solidifying { get; set; }
+            public bool Solidifying { get; set; }
+            public bool Skipping { get; set; }
 
             #endregion
 

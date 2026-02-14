@@ -254,7 +254,10 @@ public class RepositoryAgent
         {
             var result = await factory().ConfigureAwait(false);
             if (cacheEnabled)
+            {
                 await CacheObjectAsync(key, result).ConfigureAwait(false);
+            }
+
             return result;
         }
         catch (Exception e)

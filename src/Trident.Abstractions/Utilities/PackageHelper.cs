@@ -24,11 +24,17 @@ public static class PackageHelper
         return false;
     }
 
+    public static bool IsMatched(string left, string label, string? ns, string pid) =>
+        TryParse(left, out var l)
+     && string.Equals(l.Label, label, StringComparison.OrdinalIgnoreCase)
+     && string.Equals(l.Namespace, ns, StringComparison.Ordinal)
+     && string.Equals(l.Pid, pid, StringComparison.Ordinal);
+
     public static bool IsMatched(string left, string right) =>
         left == right || (TryParse(right, out var r) && IsMatched(left, r.Label, r.Namespace, r.Pid));
 
-    public static bool IsMatched(string left, string label, string? ns, string pid) =>
-        TryParse(left, out var l) && l.Label == label && l.Namespace == ns && l.Pid == pid;
+    public static bool IsMatched(string left, Package right) =>
+        IsMatched(left, right.Label, right.Namespace, right.ProjectId);
 
     public static string ExtractProjectIdentityIfValid(string purl) =>
         TryParse(purl, out var result) ? ToPurl(result.Label, result.Namespace, result.Pid, null) : purl;
