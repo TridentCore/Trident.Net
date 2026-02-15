@@ -53,7 +53,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
         #region Nested type: Rule
 
-        public class Rule(Rule.SelectorType selector, bool enabled)
+        public class Rule
         {
             #region SelectorType enum
 
@@ -61,7 +61,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
             #endregion
 
-            public SelectorType Selector { get; set; } = selector;
+            public SelectorType Selector { get; set; } = SelectorType.Purl;
             public bool Enabled { get; set; } = true;
 
             #region Rule Override
