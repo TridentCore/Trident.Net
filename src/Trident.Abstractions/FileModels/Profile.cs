@@ -37,7 +37,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
         public string Version { get; set; } = version ?? throw new ArgumentNullException(nameof(version));
         public string? Loader { get; set; } = loader;
         public IList<Entry> Packages { get; private set; } = packages ?? new List<Entry>();
-        public IList<Rule> Rules { get; private set; } = new List<Rule>();
+        public IList<Rule> Rules { get; private set; } = rules ?? new List<Rule>();
 
         #region Nested type: Entry
 
