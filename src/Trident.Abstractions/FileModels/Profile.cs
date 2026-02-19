@@ -55,13 +55,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
         public class Rule
         {
-            #region SelectorType enum
-
-            public enum SelectorType { And, Or, Not, Purl, Repository, Tag, Kind }
-
-            #endregion
-
-            public SelectorType Selector { get; set; } = SelectorType.Purl;
+            public required RuleSelector Selector { get; set; }
             public bool Enabled { get; set; } = true;
 
             #region Rule Override
@@ -72,13 +66,24 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
             #endregion
 
-            #region For Selector
+            #region Nested type: RuleSelector
 
-            public IList<Rule>? Children { get; set; }
-            public string? Purl { get; set; }
-            public string? Repository { get; set; }
-            public string? Tag { get; set; }
-            public ResourceKind? Kind { get; set; }
+            public class RuleSelector
+            {
+                #region SelectorType enum
+
+                public enum SelectorType { And, Or, Not, Purl, Repository, Tag, Kind }
+
+                #endregion
+
+                public SelectorType Type { get; set; } = SelectorType.Purl;
+
+                public IList<RuleSelector>? Children { get; set; }
+                public string? Purl { get; set; }
+                public string? Repository { get; set; }
+                public string? Tag { get; set; }
+                public ResourceKind? Kind { get; set; }
+            }
 
             #endregion
         }
