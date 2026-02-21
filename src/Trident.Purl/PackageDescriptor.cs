@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Trident.Purl;
 
-public record PackageDescriptor(
+public readonly record struct PackageDescriptor(
     string Repository,
     string? Namespace,
     string Identity,

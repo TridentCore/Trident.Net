@@ -1,4 +1,5 @@
 using Trident.Abstractions.Repositories.Resources;
+using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Abstractions.Repositories;
@@ -12,8 +13,8 @@ public interface IRepository
     Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch);
     Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter);
 
-    Task<IReadOnlyList<Package>> ResolveBatchAsync(
-        IEnumerable<(string? ns, string pid, string? vid)> batch,
+    Task<IReadOnlyList<(ScopedPackageIdentifier, Package)>> ResolveBatchAsync(
+        IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter);
 
     Task<string> ReadDescriptionAsync(string? ns, string pid);

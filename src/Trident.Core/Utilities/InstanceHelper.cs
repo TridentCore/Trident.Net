@@ -2,7 +2,7 @@ using Trident.Abstractions;
 
 namespace Trident.Core.Utilities;
 
-public static class ProfileHelper
+public static class InstanceHelper
 {
     public static string? PickIcon(string key) =>
         FileHelper.PickExists(PathDef.Default.DirectoryOfHome(key),

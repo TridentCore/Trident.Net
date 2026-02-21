@@ -61,12 +61,6 @@ public class InstanceManager(
 
     public bool IsInUse(string key) => _trackers.ContainsKey(key);
 
-    private string ComputeWatermark(DeployOptions options)
-    {
-        var data = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(options));
-        return Convert.ToHexString(SHA1.HashData(data));
-    }
-
     public void DeployAndLaunch(
         string key,
         DeployOptions deploy,
@@ -84,7 +78,7 @@ public class InstanceManager(
             var artifact = JsonSerializer.Deserialize<DataLock>(File.ReadAllText(path), JsonSerializerOptions.Web);
 
             if (artifact != null
-             && artifact.Verify(key, profileManager.GetImmutable(key).Setup, ComputeWatermark(deploy)))
+             && artifact.Verify(key, profileManager.GetImmutable(key).Setup, HashHelper.ComputeObjectHash(deploy)))
             {
                 Launch(key, launch, javaHomeLocator);
                 return;
@@ -197,7 +191,7 @@ public class InstanceManager(
                                           ResolveDependency = options.ResolveDependency,
                                           FullCheckMode = options.FullCheckMod
                                       },
-                                      ComputeWatermark(options),
+                                      HashHelper.ComputeObjectHash(options),
                                       javaHomeLocator);
 
         var watch = Stopwatch.StartNew();

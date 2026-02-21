@@ -5,6 +5,7 @@ using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
+using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
@@ -147,20 +148,20 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
     }
 
-    public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
-        IEnumerable<(string? ns, string pid, string? vid)> batch,
+    public async Task<IReadOnlyList<(ScopedPackageIdentifier, Package)>> ResolveBatchAsync(
+        IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter)
     {
         var batchArray = batch.ToArray();
-        var knownVids = batchArray.Where(x => x.vid is not null);
-        var unknownVids = batchArray.Where(x => x.vid is null);
+        var knownVids = batchArray.Where(x => x.Version is not null).ToArray();
+        var unknownVids = batchArray.Where(x => x.Version is null).ToArray();
 
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
         var unknownProjectVersionsTasks = unknownVids
                                          .Select(async x =>
                                           {
                                               var versions = await client
-                                                                  .GetProjectVersionsAsync(x.pid,
+                                                                  .GetProjectVersionsAsync(x.Identity,
                                                                        null,
                                                                        filter.Loader is not null
                                                                            ? ArrayParameterConstructor([
@@ -176,22 +177,23 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                               if (chosen == null)
                                               {
                                                   throw new
-                                                      ResourceNotFoundException($"{x.pid}/{x.vid ?? "*"} has not matched version");
+                                                      ResourceNotFoundException($"{x.Identity}/{x.Version ?? "*"} has not matched version");
                                               }
 
-                                              return chosen;
+                                              return (x, chosen);
                                           })
                                          .ToList();
         await Task.WhenAll(unknownProjectVersionsTasks).ConfigureAwait(false);
         var unknownVersions = unknownProjectVersionsTasks.Select(x => x.Result);
 
         var knownVersions = await client
-                                 .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm.vid)))
+                                 .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids
+                                                              .Select(bm => bm.Version)))
                                  .ConfigureAwait(false);
 
 
         var projects = (await client
-                             .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.pid)))
+                             .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.Identity)))
                              .ConfigureAwait(false)).ToDictionary(x => x.Id);
         var membersTasks = projects
                           .Keys.Select(async x =>
@@ -200,9 +202,16 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         await Task.WhenAll(membersTasks).ConfigureAwait(false);
         var members = membersTasks.ToDictionary(x => x.Result.Id, x => x.Result.Members.FirstOrDefault());
 
+        var knownIndex = knownVids.ToDictionary(x => x.Version!);
+
         var packages = knownVersions
+                      .Select(x => (knownIndex[x.Id], x))
                       .Concat(unknownVersions)
-                      .Select(x => ModrinthHelper.ToPackage(label, projects[x.ProjectId], x, members[x.ProjectId]))
+                      .Select(x => (x.Item1,
+                                    ModrinthHelper.ToPackage(label,
+                                                             projects[x.Item2.ProjectId],
+                                                             x.Item2,
+                                                             members[x.Item2.ProjectId])))
                       .ToList();
         return packages;
     }

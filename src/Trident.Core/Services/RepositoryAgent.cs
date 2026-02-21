@@ -10,6 +10,7 @@ using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Clients;
 using Trident.Core.Repositories;
+using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Services;
@@ -140,15 +141,15 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
-    public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
-        IEnumerable<(string label, string? ns, string pid, string? vid)> batch,
+    public async Task<IReadOnlyList<(PackageIdentifier, Package)>> ResolveBatchAsync(
+        IEnumerable<PackageIdentifier> batch,
         Filter filter)
     {
         var batchArray = batch.ToArray();
         var cachedTasks = batchArray
-                         .Select(async x => (Meta: x,
+                         .Select(async x => (Purl: x,
                                              Cached: await RetrieveCachedAsync<
-                                                             Package>($"package:{PackageHelper.Identify(x.label, x.ns, x.pid, x.vid, filter)}")
+                                                             Package>($"package:{PackageHelper.Identify(x.Repository, x.Namespace, x.Identity, x.Version, filter)}")
                                                         .ConfigureAwait(false)))
                          .ToList();
         await Task.WhenAll(cachedTasks).ConfigureAwait(false);
@@ -157,28 +158,29 @@ public class RepositoryAgent
                     .Select(x => x.Result)
                     .ToList();
 
-        var toResolve = batchArray.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
+        var toResolve = batchArray.Except(cached.Select(x => x.Purl)).GroupBy(x => x.Repository);
         var resolveTasks = toResolve
                           .Select(async x => (Label: x.Key,
                                               Packages: await Redirect(x.Key)
-                                                             .ResolveBatchAsync(x.Select(y => (y.ns, y.pid, y.vid)),
+                                                             .ResolveBatchAsync(x.Select(PackageIdentifierExtensions
+                                                                                       .ToScoped),
                                                                                     filter)
                                                              .ConfigureAwait(false)))
                           .ToList();
         await Task.WhenAll(resolveTasks).ConfigureAwait(false);
         var resolved = resolveTasks
                       .Select(x => x.Result)
-                      .SelectMany(x => x.Packages.Select(y => (x.Label, Package: y)))
+                      .SelectMany(x => x.Packages.Select(y => (y.Item1.ToUnscoped(x.Label), Package: y.Item2)))
                       .ToList();
-        foreach (var (label, package) in resolved)
+        foreach (var (purl, package) in resolved)
         {
             await
-                CacheObjectAsync($"package:{PackageHelper.Identify(label, package.Namespace, package.ProjectId, package.VersionId, filter)}",
+                CacheObjectAsync($"package:{PackageHelper.Identify(purl.Repository, package.Namespace, package.ProjectId, package.VersionId, filter)}",
                                  package)
                    .ConfigureAwait(false);
         }
 
-        return cached.Select(x => x.Cached!).Concat(resolved.Select(x => x.Package)).ToList();
+        return cached.Select(x => (x.Purl, x.Cached!)).Concat(resolved).ToList();
     }
 
     public Task<Project> QueryAsync(string label, string? ns, string pid) =>

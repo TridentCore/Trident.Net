@@ -45,7 +45,8 @@ public record DataLock(
         string Vid,
         string Path,
         Uri Download,
-        string? Sha1);
+        string? Sha1,
+        bool IsSolidifying = false);
 
     #endregion
 
@@ -56,6 +57,7 @@ public record DataLock(
     public record ViabilityData(
         int Format,
         string Watermark,
+        string RulesHash,
         string Home,
         string Key,
         string Version,

@@ -74,15 +74,32 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                         await using var reader = await client
                                                                       .GetStreamAsync(fragile.Url, cancel.Token)
                                                                       .ConfigureAwait(false);
-                                        await using var writer = new FileStream(fragile.SourcePath,
-                                                                                    FileMode.Create,
-                                                                                    FileAccess.Write,
-                                                                                    FileShare.Write);
+                                        var writer = new FileStream(fragile.SourcePath,
+                                                                    FileMode.Create,
+                                                                    FileAccess.Write,
+                                                                    FileShare.Write);
                                         await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
                                         await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                        writer.Close();
                                     }
 
-                                    entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
+                                    if (fragile.IsSolidifying)
+                                    {
+                                        if (!Verify(fragile.TargetPath, fragile.Hash))
+                                        {
+                                            var dir = Path.GetDirectoryName(fragile.TargetPath);
+                                            if (dir != null && !Directory.Exists(dir))
+                                            {
+                                                Directory.CreateDirectory(dir);
+                                            }
+
+                                            File.Copy(fragile.SourcePath, fragile.TargetPath, true);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
+                                    }
 
                                     break;
                                 }

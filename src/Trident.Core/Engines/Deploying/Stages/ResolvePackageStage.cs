@@ -1,11 +1,13 @@
 using System.Reactive.Subjects;
 using Microsoft.Extensions.Logging;
 using Trident.Abstractions;
+using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Services;
 using Trident.Core.Utilities;
+using Trident.Purl;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -36,7 +38,8 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                    {
                                        if (PackageHelper.TryParse(x.Purl, out var parsed))
                                        {
-                                           return new Purl(new(parsed.Label, parsed.Namespace, parsed.Pid),
+                                           return new Purl(x,
+                                                           new(parsed.Label, parsed.Namespace, parsed.Pid),
                                                            parsed.Vid,
                                                            false);
                                        }
@@ -48,26 +51,71 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
         {
             ProgressStream.OnNext((0, purls.Count));
 
+            var index = purls
+                       .Select(x => (Key: new PackageIdentifier(x.Id.Label, x.Id.Namespace, x.Id.Pid, x.Vid),
+                                     Value: x.Origin))
+                       .ToDictionary(x => x.Key, x => x.Value);
+
             var resolved = await agent
-                                .ResolveBatchAsync(purls.Select(x => (x.Identity.Label, x.Identity.Namespace,
-                                                                      x.Identity.Pid, x.Vid)),
+                                .ResolveBatchAsync(index.Keys,
                                                    Filter.None with
                                                    {
                                                        Loader = loader, Version = Context.Setup.Version
                                                    })
                                 .ConfigureAwait(false);
 
-            foreach (var package in resolved)
+            var enabledRules = Context.Setup.Rules.Where(x => x.Enabled).ToList();
+
+            foreach (var (id, package) in resolved)
             {
-                builder.AddParcel(package.Label,
-                                  package.Namespace,
-                                  package.ProjectId,
-                                  package.VersionId,
-                                  Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
-                                               FileHelper.GetAssetFolderName(package.Kind),
-                                               package.FileName),
-                                  package.Download,
-                                  package.Sha1);
+                var entry = index[id];
+                var result = RuleHelper.Evaluate(new RuleHelper.Input(entry, package), enabledRules);
+
+                if (result is { Matched: true, EffectiveRule: { } effectiveRule })
+                {
+                    logger.LogDebug("Rule {{ {skipping}, {solidifying}, {destination} }} applied to {purl}",
+                                    entry.Purl,
+                                    effectiveRule.Skipping,
+                                    effectiveRule.Solidifying,
+                                    effectiveRule.Destination ?? "<default>");
+                    if (effectiveRule.Skipping)
+                        continue;
+
+                    var target = Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
+                                              FileHelper.GetAssetFolderName(package.Kind),
+                                              package.FileName);
+                    if (effectiveRule.Destination is not null)
+                    {
+                        target = Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
+                                              effectiveRule.Destination,
+                                              package.FileName);
+                        if (!FileHelper.IsInDirectory(target, PathDef.Default.DirectoryOfBuild(Context.Key)))
+                        {
+                            throw new InvalidOperationException($"Destination {target} is outside of build directory");
+                        }
+                    }
+
+                    builder.AddParcel(package.Label,
+                                      package.Namespace,
+                                      package.ProjectId,
+                                      package.VersionId,
+                                      target,
+                                      package.Download,
+                                      package.Sha1,
+                                      effectiveRule.Solidifying);
+                }
+                else
+                {
+                    builder.AddParcel(package.Label,
+                                      package.Namespace,
+                                      package.ProjectId,
+                                      package.VersionId,
+                                      Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
+                                                   FileHelper.GetAssetFolderName(package.Kind),
+                                                   package.FileName),
+                                      package.Download,
+                                      package.Sha1);
+                }
             }
 
             logger.LogDebug("Batch resolved {} packages", resolved.Count);
@@ -100,7 +148,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
 
     #region Nested type: Purl
 
-    private record Purl(Identity Identity, string? Vid, bool IsPhantom);
+    private record Purl(Profile.Rice.Entry Origin, Identity Id, string? Vid, bool IsPhantom);
 
     #endregion
 

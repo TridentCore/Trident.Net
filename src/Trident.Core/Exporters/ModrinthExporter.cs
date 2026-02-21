@@ -5,6 +5,7 @@ using Trident.Abstractions.Utilities;
 using Trident.Core.Models.ModrinthPack;
 using Trident.Core.Services;
 using Trident.Core.Utilities;
+using Trident.Purl;
 
 namespace Trident.Core.Exporters;
 
@@ -35,7 +36,7 @@ public class ModrinthExporter(RepositoryAgent agent) : IProfileExporter
         var packages = setup
                       .Packages.Where(x => x.Enabled)
                       .Select(x => PackageHelper.TryParse(x.Purl, out var pkg)
-                                       ? pkg
+                                       ? new PackageIdentifier(pkg.Label, pkg.Namespace, pkg.Pid, pkg.Vid)
                                        : throw new FormatException($"Package {x.Purl} is not a valid package"))
                       .ToList();
 
@@ -49,6 +50,7 @@ public class ModrinthExporter(RepositoryAgent agent) : IProfileExporter
                             .ConfigureAwait(false);
 
         var files = resolved
+                   .Select(x => x.Item2)
                    .Select(package =>
                                new
                                    PackIndex.IndexFile($"{FileHelper.GetAssetFolderName(package.Kind)}/{package.FileName}",

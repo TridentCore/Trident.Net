@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Trident.Abstractions;
 using Trident.Abstractions.FileModels;
+using Trident.Abstractions.Utilities;
+using Trident.Core.Utilities;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
@@ -12,6 +14,7 @@ public class BuildArtifactStage : StageBase
 
         builder.SetViability(new(DataLock.FORMAT,
                                  Context.VerificationWatermark,
+                                 HashHelper.ComputeObjectHash(Context.Setup.Rules),
                                  PathDef.Default.Home,
                                  Context.Key,
                                  Context.Setup.Version,

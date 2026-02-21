@@ -6,6 +6,7 @@ using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Clients;
 using Trident.Core.Utilities;
+using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
 
 namespace Trident.Core.Repositories;
@@ -188,19 +189,19 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new FormatException($"{pid} is not well formatted into modId");
     }
 
-    public async Task<IReadOnlyList<Package>> ResolveBatchAsync(
-        IEnumerable<(string? ns, string pid, string? vid)> batch,
+    public async Task<IReadOnlyList<(ScopedPackageIdentifier, Package)>> ResolveBatchAsync(
+        IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter)
     {
         var batchArray = batch.ToArray();
-        var knownVids = batchArray.Where(x => x.vid is not null).ToArray();
-        var unknownVids = batchArray.Where(x => x.vid is null).ToArray();
+        var knownVids = batchArray.Where(x => x.Version is not null).ToArray();
+        var unknownVids = batchArray.Where(x => x.Version is null).ToArray();
 
         // 这一块依旧没法一次性拿全，都怪 CurseForge 的 API 设计
         var unknownFilesTasks = unknownVids
                                .Select(async x =>
                                 {
-                                    if (uint.TryParse(x.pid, out var modId))
+                                    if (uint.TryParse(x.Identity, out var modId))
                                     {
                                         var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
                                         var file = (await client
@@ -214,12 +215,12 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                                            1)
                                                          .ConfigureAwait(false)).Data.FirstOrDefault();
                                         return file != null
-                                                   ? (mod, file)
+                                                   ? (id: x, mod, file)
                                                    : throw new
                                                          ResourceNotFoundException($"{modId}/* has not matched version");
                                     }
 
-                                    throw new FormatException($"{x.pid} is not well formatted into modId");
+                                    throw new FormatException($"{x.Identity} is not well formatted into modId");
                                 })
                                .ToList();
         await Task.WhenAll(unknownFilesTasks).ConfigureAwait(false);
@@ -227,18 +228,18 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
         var knownMods = await client
                              .GetModsAsync(new([
-                                  .. knownVids.Select(x => uint.TryParse(x.pid, out var pid)
+                                  .. knownVids.Select(x => uint.TryParse(x.Identity, out var pid)
                                                                ? pid
                                                                : throw new
-                                                                     FormatException($"{x.pid} is not well formatted into fileId"))
+                                                                     FormatException($"{x.Identity} is not well formatted into fileId"))
                               ]))
                              .ConfigureAwait(false);
         var knownFiles = await client
                               .GetFilesAsync(new([
-                                   .. knownVids.Select(x => uint.TryParse(x.vid, out var vid)
+                                   .. knownVids.Select(x => uint.TryParse(x.Version, out var vid)
                                                                 ? vid
                                                                 : throw new
-                                                                      FormatException($"{x.vid} is not well formatted into fileId"))
+                                                                      FormatException($"{x.Version} is not well formatted into fileId"))
                                ]))
                               .ConfigureAwait(false);
         var knownPairs = knownMods.Data.OrderBy(x => x.Id).Zip(knownFiles.Data.OrderBy(x => x.ModId)).ToList();
@@ -247,10 +248,12 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             throw new InvalidOperationException("Pairs of Mod-File are not matched");
         }
 
+        var knownIndex = knownVids.ToDictionary(x => x.Version!);
+
         var packages = knownPairs
-                      .Select(x => (mod: x.First, file: x.Second))
+                      .Select(x => (id: knownIndex[x.Second.Id.ToString()], mod: x.First, file: x.Second))
                       .Concat(unknownFiles)
-                      .Select(x => CurseForgeHelper.ToPackage(label, x.mod, x.file))
+                      .Select(x => (x.id, CurseForgeHelper.ToPackage(label, x.mod, x.file)))
                       .ToList();
         return packages;
     }

@@ -20,7 +20,7 @@ public class EntityManifest
 
     #region Nested type: FragileFile
 
-    public record FragileFile(string SourcePath, string TargetPath, Uri Url, string? Hash);
+    public record FragileFile(string SourcePath, string TargetPath, Uri Url, string? Hash, bool IsSolidifying = false);
 
     #endregion
 

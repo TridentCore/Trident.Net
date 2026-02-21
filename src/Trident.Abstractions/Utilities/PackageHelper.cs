@@ -45,6 +45,7 @@ public static class PackageHelper
     public static string ToPurl(Package package) =>
         ToPurl(package.Label, package.Namespace, package.ProjectId, package.VersionId);
 
+    // PackageIdentifier 的元组写法的兼容函数，用于为原始的写法也提供 Purl 支持
     // vid 存在则固定为特定版本，vid 不存在且 filter 存在则为浮动版本
     public static string Identify(string label, string? ns, string pid, string? vid, Filter? filter) =>
         Builder.Build(label,
