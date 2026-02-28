@@ -5,6 +5,7 @@ using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Clients;
+using Trident.Core.Models.CurseForgeApi;
 using Trident.Core.Utilities;
 using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;
@@ -16,6 +17,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
     private const uint PAGE_SIZE = 20;
 
     private static readonly Converter Converter = new(new() { GithubFlavored = false, SmartHrefHandling = true });
+
+    private static string? CacheDataPackCategoryIds = null;
 
     #region IRepository Members
 
@@ -45,6 +48,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         var loader = filter.Kind is ResourceKind.Mod or ResourceKind.Modpack
                          ? CurseForgeHelper.LoaderIdToType(filter.Loader)
                          : null;
+
         var first = await client
                          .SearchModsAsync(query,
                                           CurseForgeHelper.ResourceKindToClassId(filter.Kind),

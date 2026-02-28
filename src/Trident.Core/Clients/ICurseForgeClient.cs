@@ -10,6 +10,9 @@ public interface ICurseForgeClient
     [Get("/v1/minecraft/version")]
     Task<ArrayResponse<GameVersion>> GetMinecraftVersionsAsync(bool? sortDescending = null);
 
+    [Get("/v1/categories")]
+    Task<ArrayResponse<CategoryModel>> GetCategories(uint gameId = CurseForgeHelper.GAME_ID);
+
     [Get("/v1/mods/search")]
     Task<SearchResponse<ModInfo>> SearchModsAsync(
         string searchFilter,

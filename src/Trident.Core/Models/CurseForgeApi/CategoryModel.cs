@@ -11,4 +11,4 @@ public record CategoryModel(
     bool? IsClass,
     uint? ClassId,
     uint? ParentCategoryId,
-    uint? DisplayIndex);
+    int? DisplayIndex);
