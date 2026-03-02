@@ -58,115 +58,177 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                             switch (x)
                             {
                                 case EntityManifest.FragileFile fragile:
-                                {
-                                    if (!Verify(fragile.SourcePath, fragile.Hash))
                                     {
-                                        logger.LogDebug("Starting download fragile file {src} from {url}",
-                                                        fragile.SourcePath,
-                                                        fragile.Url);
-                                        var dir = Path.GetDirectoryName(fragile.SourcePath);
-                                        if (dir != null && !Directory.Exists(dir))
+                                        if (!Verify(fragile.SourcePath, fragile.Hash))
                                         {
-                                            Directory.CreateDirectory(dir);
-                                        }
-
-                                        using var client = factory.CreateClient();
-                                        await using var reader = await client
-                                                                      .GetStreamAsync(fragile.Url, cancel.Token)
-                                                                      .ConfigureAwait(false);
-                                        var writer = new FileStream(fragile.SourcePath,
-                                                                    FileMode.Create,
-                                                                    FileAccess.Write,
-                                                                    FileShare.Write);
-                                        await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                        await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                                        writer.Close();
-                                    }
-
-                                    if (fragile.IsSolidifying)
-                                    {
-                                        if (!Verify(fragile.TargetPath, fragile.Hash))
-                                        {
-                                            var dir = Path.GetDirectoryName(fragile.TargetPath);
+                                            logger.LogDebug("Starting download fragile file {src} from {url}",
+                                                            fragile.SourcePath,
+                                                            fragile.Url);
+                                            var dir = Path.GetDirectoryName(fragile.SourcePath);
                                             if (dir != null && !Directory.Exists(dir))
                                             {
                                                 Directory.CreateDirectory(dir);
                                             }
 
-                                            File.Copy(fragile.SourcePath, fragile.TargetPath, true);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
-                                    }
-
-                                    break;
-                                }
-                                case EntityManifest.PresentFile present:
-                                {
-                                    if (!Verify(present.Path, present.Hash))
-                                    {
-                                        var dir = Path.GetDirectoryName(present.Path);
-                                        if (dir != null && !Directory.Exists(dir))
-                                        {
-                                            Directory.CreateDirectory(dir);
+                                            using var client = factory.CreateClient();
+                                            await using var reader = await client
+                                                                          .GetStreamAsync(fragile.Url, cancel.Token)
+                                                                          .ConfigureAwait(false);
+                                            var writer = new FileStream(fragile.SourcePath,
+                                                                        FileMode.Create,
+                                                                        FileAccess.Write,
+                                                                        FileShare.Write);
+                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            writer.Close();
                                         }
 
-                                        using var client = factory.CreateClient();
-                                        await using var reader = await client
-                                                                      .GetStreamAsync(present.Url, cancel.Token)
-                                                                      .ConfigureAwait(false);
-                                        await using var writer = new FileStream(present.Path,
-                                                                                    FileMode.Create,
-                                                                                    FileAccess.Write,
-                                                                                    FileShare.Write);
-                                        await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                        await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                                        if (present.IsExecutable
-                                         && !OperatingSystem.IsWindows()
-                                         && File.Exists(present.Path))
+                                        if (fragile.IsSolidifying)
                                         {
-                                            var current = File.GetUnixFileMode(present.Path);
-                                            File.SetUnixFileMode(present.Path,
-                                                                 current
-                                                               | UnixFileMode.UserExecute
-                                                               | UnixFileMode.GroupExecute
-                                                               | UnixFileMode.OtherExecute);
-                                        }
-                                    }
-
-                                    break;
-                                }
-                                case EntityManifest.PersistentFile persistent:
-                                {
-                                    // 如果是虚文件（例如持久化文件功能），则在创建软链接前尝试确保目标文件不存在（最起码不是 Symlink）
-                                    // 不是虚文件时策略更简单，无则复制有则不管
-                                    if (persistent.IsPhantom)
-                                    {
-                                        if (persistent.IsDirectory)
-                                        {
-                                            if (File.Exists(persistent.TargetPath)
-                                             && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                            if (!Verify(fragile.TargetPath, fragile.Hash))
                                             {
-                                                // 由于现在是目录模式，这时候只能丢弃文件，但是丢弃文件是不对的，所以直接报错！
-                                                // TODO: 提供独特的异常包含更详细清晰的诊断信息并在前端展示
-                                                throw new
-                                                    InvalidOperationException($"Target {persistent.TargetPath} already exists as a normal file while trying to create a symlink from {persistent.SourcePath} as a directory");
+                                                var dir = Path.GetDirectoryName(fragile.TargetPath);
+                                                if (dir != null && !Directory.Exists(dir))
+                                                {
+                                                    Directory.CreateDirectory(dir);
+                                                }
+
+                                                File.Copy(fragile.SourcePath, fragile.TargetPath, true);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
+                                        }
+
+                                        break;
+                                    }
+                                case EntityManifest.PresentFile present:
+                                    {
+                                        if (!Verify(present.Path, present.Hash))
+                                        {
+                                            var dir = Path.GetDirectoryName(present.Path);
+                                            if (dir != null && !Directory.Exists(dir))
+                                            {
+                                                Directory.CreateDirectory(dir);
                                             }
 
-                                            if (Directory.Exists(persistent.TargetPath)
-                                             && Directory.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                            using var client = factory.CreateClient();
+                                            await using var reader = await client
+                                                                          .GetStreamAsync(present.Url, cancel.Token)
+                                                                          .ConfigureAwait(false);
+                                            await using var writer = new FileStream(present.Path,
+                                                                                        FileMode.Create,
+                                                                                        FileAccess.Write,
+                                                                                        FileShare.Write);
+                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            if (present.IsExecutable
+                                             && !OperatingSystem.IsWindows()
+                                             && File.Exists(present.Path))
                                             {
-                                                // 目标位置有个目录，先反向同步文件，替换同名（类似下面文件链接的原则），并创建链接
+                                                var current = File.GetUnixFileMode(present.Path);
+                                                File.SetUnixFileMode(present.Path,
+                                                                     current
+                                                                   | UnixFileMode.UserExecute
+                                                                   | UnixFileMode.GroupExecute
+                                                                   | UnixFileMode.OtherExecute);
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                case EntityManifest.PersistentFile persistent:
+                                    {
+                                        // 如果是虚文件（例如持久化文件功能），则在创建软链接前尝试确保目标文件不存在（最起码不是 Symlink）
+                                        // 不是虚文件时策略更简单，无则复制有则不管
+                                        if (persistent.IsPhantom)
+                                        {
+                                            if (persistent.IsDirectory)
+                                            {
+                                                if (File.Exists(persistent.TargetPath)
+                                                 && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                                {
+                                                    // 由于现在是目录模式，这时候只能丢弃文件，但是丢弃文件是不对的，所以直接报错！
+                                                    // TODO: 提供独特的异常包含更详细清晰的诊断信息并在前端展示
+                                                    throw new
+                                                        InvalidOperationException($"Target {persistent.TargetPath} already exists as a normal file while trying to create a symlink from {persistent.SourcePath} as a directory");
+                                                }
+
+                                                if (Directory.Exists(persistent.TargetPath)
+                                                 && Directory.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                                {
+                                                    // 目标位置有个目录，先反向同步文件，替换同名（类似下面文件链接的原则），并创建链接
+                                                    var dirs = new Queue<string>();
+                                                    var toClean = new Stack<string>();
+                                                    toClean.Push(persistent.TargetPath);
+                                                    dirs.Enqueue(persistent.TargetPath);
+                                                    while (dirs.TryDequeue(out var src))
+                                                    {
+                                                        var dirRelative = Path.GetRelativePath(persistent.TargetPath, src);
+                                                        var dst = Path.Combine(persistent.SourcePath, dirRelative);
+                                                        if (!Directory.Exists(dst))
+                                                        {
+                                                            Directory.CreateDirectory(dst);
+                                                        }
+
+                                                        foreach (var file in Directory.GetFiles(src))
+                                                        {
+                                                            var target = Path.Combine(dst, Path.GetFileName(file));
+                                                            logger
+                                                               .LogDebug("Backporting violating persistent file {src} to {dst}",
+                                                                         file,
+                                                                         target);
+                                                            File.Move(file, target, true);
+                                                        }
+
+                                                        foreach (var dir in Directory.GetDirectories(src))
+                                                        {
+                                                            toClean.Push(dir);
+                                                            dirs.Enqueue(dir);
+                                                        }
+                                                    }
+
+                                                    foreach (var dir in toClean)
+                                                    {
+                                                        // 关掉递归，以此确认上面的算法没问题
+                                                        Directory.Delete(dir, false);
+                                                    }
+                                                }
+
+
+                                                entities.Add(new(persistent.TargetPath, persistent.SourcePath, true));
+                                            }
+                                            else
+                                            {
+                                                // 由于 Java 的落后性，有些模组更新文件并不是 Open-Overwrite，而是 Delete-Create
+                                                // 导致软链接被删除而非覆盖
+                                                // 遇到这种落后方式写入文件的会将 build/ 中的文件替换掉 live/ 的实现反向影响
+
+                                                if (File.Exists(persistent.TargetPath)
+                                                 && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                                {
+                                                    logger.LogDebug("Backporting violating persistent file {src} to {dst}",
+                                                                    persistent.TargetPath,
+                                                                    persistent.SourcePath);
+                                                    File.Move(persistent.TargetPath, persistent.SourcePath, true);
+                                                }
+
+                                                entities.Add(new(persistent.TargetPath, persistent.SourcePath, false));
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (persistent.IsDirectory)
+                                            {
+                                                // 收集源目录的文件，按存在原则复制到目标目录
+
                                                 var dirs = new Queue<string>();
-                                                var toClean = new Stack<string>();
-                                                toClean.Push(persistent.TargetPath);
-                                                dirs.Enqueue(persistent.TargetPath);
+                                                dirs.Enqueue(persistent.SourcePath);
                                                 while (dirs.TryDequeue(out var src))
                                                 {
-                                                    var dirRelative = Path.GetRelativePath(persistent.TargetPath, src);
-                                                    var dst = Path.Combine(persistent.SourcePath, dirRelative);
+                                                    var dirRelative = Path.GetRelativePath(persistent.SourcePath, src);
+                                                    var dst = Path.Combine(persistent.TargetPath, dirRelative);
                                                     if (!Directory.Exists(dst))
                                                     {
                                                         Directory.CreateDirectory(dst);
@@ -175,103 +237,41 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                     foreach (var file in Directory.GetFiles(src))
                                                     {
                                                         var target = Path.Combine(dst, Path.GetFileName(file));
-                                                        logger
-                                                           .LogDebug("Backporting violating persistent file {src} to {dst}",
-                                                                     file,
-                                                                     target);
-                                                        File.Move(file, target, true);
+                                                        if (!File.Exists(target))
+                                                        {
+                                                            logger.LogDebug("Copying persistent file from {src} to {dst}",
+                                                                            persistent.SourcePath,
+                                                                            persistent.TargetPath);
+                                                            File.Copy(file, target);
+                                                        }
                                                     }
 
                                                     foreach (var dir in Directory.GetDirectories(src))
                                                     {
-                                                        toClean.Push(dir);
                                                         dirs.Enqueue(dir);
                                                     }
                                                 }
-
-                                                foreach (var dir in toClean)
-                                                {
-                                                    // 关掉递归，以此确认上面的算法没问题
-                                                    Directory.Delete(dir, false);
-                                                }
                                             }
-
-
-                                            entities.Add(new(persistent.TargetPath, persistent.SourcePath, true));
-                                        }
-                                        else
-                                        {
-                                            // 由于 Java 的落后性，有些模组更新文件并不是 Open-Overwrite，而是 Delete-Create
-                                            // 导致软链接被删除而非覆盖
-                                            // 遇到这种落后方式写入文件的会将 build/ 中的文件替换掉 live/ 的实现反向影响
-
-                                            if (File.Exists(persistent.TargetPath)
-                                             && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
+                                            else
                                             {
-                                                logger.LogDebug("Backporting violating persistent file {src} to {dst}",
-                                                                persistent.TargetPath,
-                                                                persistent.SourcePath);
-                                                File.Move(persistent.TargetPath, persistent.SourcePath, true);
-                                            }
-
-                                            entities.Add(new(persistent.TargetPath, persistent.SourcePath, false));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (persistent.IsDirectory)
-                                        {
-                                            // 收集源目录的文件，按存在原则复制到目标目录
-
-                                            var dirs = new Queue<string>();
-                                            dirs.Enqueue(persistent.SourcePath);
-                                            while (dirs.TryDequeue(out var src))
-                                            {
-                                                var dirRelative = Path.GetRelativePath(persistent.SourcePath, src);
-                                                var dst = Path.Combine(persistent.TargetPath, dirRelative);
-                                                if (!Directory.Exists(dst))
+                                                if (!File.Exists(persistent.TargetPath))
                                                 {
-                                                    Directory.CreateDirectory(dst);
-                                                }
-
-                                                foreach (var file in Directory.GetFiles(src))
-                                                {
-                                                    var target = Path.Combine(dst, Path.GetFileName(file));
-                                                    if (!File.Exists(target))
+                                                    var dir = Path.GetDirectoryName(persistent.TargetPath);
+                                                    if (dir != null && !Directory.Exists(dir))
                                                     {
-                                                        logger.LogDebug("Copying persistent file from {src} to {dst}",
-                                                                        persistent.SourcePath,
-                                                                        persistent.TargetPath);
-                                                        File.Copy(file, target);
+                                                        Directory.CreateDirectory(dir);
                                                     }
-                                                }
 
-                                                foreach (var dir in Directory.GetDirectories(src))
-                                                {
-                                                    dirs.Enqueue(dir);
+                                                    logger.LogDebug("Copying persistent file from {src} to {dst}",
+                                                                    persistent.SourcePath,
+                                                                    persistent.TargetPath);
+                                                    File.Copy(persistent.SourcePath, persistent.TargetPath);
                                                 }
                                             }
                                         }
-                                        else
-                                        {
-                                            if (!File.Exists(persistent.TargetPath))
-                                            {
-                                                var dir = Path.GetDirectoryName(persistent.TargetPath);
-                                                if (dir != null && !Directory.Exists(dir))
-                                                {
-                                                    Directory.CreateDirectory(dir);
-                                                }
 
-                                                logger.LogDebug("Copying persistent file from {src} to {dst}",
-                                                                persistent.SourcePath,
-                                                                persistent.TargetPath);
-                                                File.Copy(persistent.SourcePath, persistent.TargetPath);
-                                            }
-                                        }
+                                        break;
                                     }
-
-                                    break;
-                                }
                             }
 
                             Interlocked.Increment(ref downloaded);

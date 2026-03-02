@@ -230,12 +230,12 @@ public class ProfileManager : IDisposable
                 case JsonTokenType.String:
                     return reader.GetString();
                 default:
-                {
-                    // Use JsonElement as fallback.
-                    // Newtonsoft uses JArray or JObject.
-                    using var document = JsonDocument.ParseValue(ref reader);
-                    return document.RootElement.Clone();
-                }
+                    {
+                        // Use JsonElement as fallback.
+                        // Newtonsoft uses JArray or JObject.
+                        using var document = JsonDocument.ParseValue(ref reader);
+                        return document.RootElement.Clone();
+                    }
             }
         }
 

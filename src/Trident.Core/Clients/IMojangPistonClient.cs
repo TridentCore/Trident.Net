@@ -1,4 +1,4 @@
-﻿using Refit;
+using Refit;
 using Trident.Core.Models.MojangLauncherApi;
 
 namespace Trident.Core.Clients;

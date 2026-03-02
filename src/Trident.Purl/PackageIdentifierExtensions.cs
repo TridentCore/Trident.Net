@@ -1,4 +1,4 @@
-﻿namespace Trident.Purl;
+namespace Trident.Purl;
 
 public static class PackageIdentifierExtensions
 {

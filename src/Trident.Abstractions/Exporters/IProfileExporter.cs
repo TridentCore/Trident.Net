@@ -1,4 +1,4 @@
-﻿namespace Trident.Abstractions.Exporters;
+namespace Trident.Abstractions.Exporters;
 
 public interface IProfileExporter
 {

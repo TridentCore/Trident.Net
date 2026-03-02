@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trident.Abstractions.Exporters;
 using Trident.Abstractions.Utilities;
@@ -21,7 +21,8 @@ public class ModrinthExporter(RepositoryAgent agent) : IProfileExporter
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
-        WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     #region IProfileExporter Members

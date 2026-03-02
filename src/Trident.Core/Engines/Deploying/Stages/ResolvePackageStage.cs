@@ -60,7 +60,8 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                 .ResolveBatchAsync(index.Keys,
                                                    Filter.None with
                                                    {
-                                                       Loader = loader, Version = Context.Setup.Version
+                                                       Loader = loader,
+                                                       Version = Context.Setup.Version
                                                    })
                                 .ConfigureAwait(false);
 

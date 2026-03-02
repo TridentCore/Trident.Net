@@ -1,4 +1,4 @@
-﻿namespace Trident.Core.Models.CurseForgeApi;
+namespace Trident.Core.Models.CurseForgeApi;
 
 public record FingerprintMatches(
     bool IsCacheBuilt,

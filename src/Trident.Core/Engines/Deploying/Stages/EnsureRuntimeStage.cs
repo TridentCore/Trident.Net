@@ -53,38 +53,38 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                                     case "directory":
                                         continue;
                                     case "file":
-                                    {
-                                        if (file.TryGetPropertyValue("downloads", out var d)
-                                         && d is JsonObject downloads
-                                         && downloads.TryGetPropertyValue("raw", out var r)
-                                         && r is JsonObject raw)
                                         {
-                                            var executable = file["executable"]?.GetValue<bool>() ?? false;
-                                            var sha1 = raw["sha1"]?.GetValue<string>()
-                                                    ?? throw new FormatException("Invalid sha1 property");
-                                            var urlString = raw["url"]?.GetValue<string>()
-                                                         ?? throw new FormatException("Invalid url property");
-                                            var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
-                                                          ? new Uri(urlString)
-                                                          : throw new FormatException("Invalid url string");
-                                            entries.Add(new(path, url, sha1, executable));
-                                        }
-                                        else
-                                        {
-                                            throw new FormatException("Invalid downloads property");
-                                        }
+                                            if (file.TryGetPropertyValue("downloads", out var d)
+                                             && d is JsonObject downloads
+                                             && downloads.TryGetPropertyValue("raw", out var r)
+                                             && r is JsonObject raw)
+                                            {
+                                                var executable = file["executable"]?.GetValue<bool>() ?? false;
+                                                var sha1 = raw["sha1"]?.GetValue<string>()
+                                                        ?? throw new FormatException("Invalid sha1 property");
+                                                var urlString = raw["url"]?.GetValue<string>()
+                                                             ?? throw new FormatException("Invalid url property");
+                                                var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
+                                                              ? new Uri(urlString)
+                                                              : throw new FormatException("Invalid url string");
+                                                entries.Add(new(path, url, sha1, executable));
+                                            }
+                                            else
+                                            {
+                                                throw new FormatException("Invalid downloads property");
+                                            }
 
-                                        break;
-                                    }
+                                            break;
+                                        }
                                     case "link":
-                                    {
-                                        // 似乎 Target 都在 ../java.base/ 也就是 Runtime 目录之外，而且还互相冲突，那就不处理了
-                                        // var target = file["target"]?.GetValue<string>()
-                                        //           ?? throw new FormatException("Invalid target property");
-                                        // links.Add(new(path, target));
+                                        {
+                                            // 似乎 Target 都在 ../java.base/ 也就是 Runtime 目录之外，而且还互相冲突，那就不处理了
+                                            // var target = file["target"]?.GetValue<string>()
+                                            //           ?? throw new FormatException("Invalid target property");
+                                            // links.Add(new(path, target));
 
-                                        break;
-                                    }
+                                            break;
+                                        }
                                 }
                             }
                             else

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Trident.Abstractions.Exporters;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Models.CurseForgePack;

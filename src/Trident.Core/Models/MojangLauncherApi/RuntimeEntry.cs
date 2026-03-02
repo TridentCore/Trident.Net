@@ -1,4 +1,4 @@
-﻿namespace Trident.Core.Models.MojangLauncherApi;
+namespace Trident.Core.Models.MojangLauncherApi;
 
 public record RuntimeEntry(
     RuntimeEntry.EntryAvailability Availability,

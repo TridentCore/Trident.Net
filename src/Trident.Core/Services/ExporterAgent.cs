@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Trident.Abstractions;
 using Trident.Abstractions.Exporters;
 

@@ -96,12 +96,12 @@ public class DataLockBuilder : IBuilder<DataLock>
             if (found.Id.Version == library.Id.Version)
             {
                 if (library.IsPresent)
-                    // 保留新的
+                // 保留新的
                 {
                     _libraries.Remove(found);
                 }
                 else
-                    // 保留旧的
+                // 保留旧的
                 {
                     return this;
                 }

@@ -91,7 +91,7 @@ public class DeployEngine(
             if (context.Artifact != null)
             {
                 if (context.Options.FastMode)
-                    // Fast-Forward
+                // Fast-Forward
                 {
                     return null;
                 }
