@@ -58,14 +58,6 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
             public required RuleSelector Selector { get; set; }
             public bool Enabled { get; set; } = true;
 
-            #region Rule Override
-
-            public string? Destination { get; set; }
-            public bool Solidifying { get; set; }
-            public bool Skipping { get; set; }
-
-            #endregion
-
             #region Nested type: RuleSelector
 
             public class RuleSelector
@@ -84,6 +76,14 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
                 public string? Tag { get; set; }
                 public ResourceKind? Kind { get; set; }
             }
+
+            #endregion
+
+            #region Rule Override
+
+            public string? Destination { get; set; }
+            public bool Solidifying { get; set; }
+            public bool Skipping { get; set; }
 
             #endregion
         }

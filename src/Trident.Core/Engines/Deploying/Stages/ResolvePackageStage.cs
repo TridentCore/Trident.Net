@@ -79,7 +79,9 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                                     effectiveRule.Solidifying,
                                     effectiveRule.Destination ?? "<default>");
                     if (effectiveRule.Skipping)
+                    {
                         continue;
+                    }
 
                     var target = Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
                                               FileHelper.GetAssetFolderName(package.Kind),

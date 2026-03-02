@@ -37,7 +37,8 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                                                                               Path.GetExtension(parcel.Path)),
                                           Path.Combine(PathDef.Default.DirectoryOfHome(Context.Key), parcel.Path),
                                           parcel.Download,
-                                          parcel.Sha1, parcel.IsSolidifying));
+                                          parcel.Sha1,
+                                          parcel.IsSolidifying));
         }
 
         var nativesDir = PathDef.Default.DirectoryOfNatives(Context.Key);

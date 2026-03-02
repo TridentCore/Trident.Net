@@ -5,7 +5,6 @@ using Trident.Abstractions.Repositories;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
 using Trident.Core.Clients;
-using Trident.Core.Models.CurseForgeApi;
 using Trident.Core.Utilities;
 using Trident.Purl;
 using Version = Trident.Abstractions.Repositories.Resources.Version;

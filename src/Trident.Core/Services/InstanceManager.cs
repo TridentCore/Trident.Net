@@ -2,8 +2,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Subjects;
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Trident.Abstractions;
