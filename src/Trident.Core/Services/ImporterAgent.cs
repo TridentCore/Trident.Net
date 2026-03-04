@@ -16,16 +16,22 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
         throw new ImporterNotFoundException();
     }
 
-    public async Task ExtractImportFilesAsync(
-        string key,
-        ImportedProfileContainer container,
-        CompressedProfilePack pack)
+    public async Task ExtractFilesAsync(string key, ImportedProfileContainer container, CompressedProfilePack pack)
     {
         var importDir = PathDef.Default.DirectoryOfImport(key);
+        await ExtractFilesAsync(importDir, container.ImportFileNames, pack).ConfigureAwait(false);
+        var homeDir = PathDef.Default.DirectoryOfHome(key);
+        await ExtractFilesAsync(homeDir, container.HomeFileNames, pack).ConfigureAwait(false);
+    }
 
-        foreach (var (source, target) in container.ImportFileNames)
+    private async Task ExtractFilesAsync(
+        string baseDir,
+        IReadOnlyList<(string Source, string Target)> files,
+        CompressedProfilePack pack)
+    {
+        foreach (var (source, target) in files)
         {
-            var to = Path.Combine(importDir, target);
+            var to = Path.Combine(baseDir, target);
             var dir = Path.GetDirectoryName(to);
             if (dir != null && !Directory.Exists(dir))
             {

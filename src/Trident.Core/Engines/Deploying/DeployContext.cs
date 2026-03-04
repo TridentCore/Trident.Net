@@ -13,8 +13,8 @@ public class DeployContext(
 {
     // 通过把 Context 填满，当内容被填满时代表部署完成
 
-    internal DataLock? Artifact;
-    internal DataLockBuilder? ArtifactBuilder;
+    internal LockData? Artifact;
+    internal LockDataBuilder? ArtifactBuilder;
     internal bool IsLoaderProcessed = false;
     internal bool IsPackageResolved = false;
     internal bool IsRuntimeEnsured = false;

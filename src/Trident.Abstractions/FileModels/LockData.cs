@@ -1,15 +1,15 @@
 namespace Trident.Abstractions.FileModels;
 
-// 相对于 TridentV1 的 Artifact，DataLock 可以迁移
-public record DataLock(
-    DataLock.ViabilityData Viability,
+// 相对于 TridentV1 的 Artifact，LockData 可以迁移
+public record LockData(
+    LockData.ViabilityData Viability,
     string MainClass,
     uint JavaMajorVersion,
     IReadOnlyList<string> GameArguments,
     IReadOnlyList<string> JavaArguments,
-    IReadOnlyList<DataLock.Library> Libraries,
-    IReadOnlyList<DataLock.Parcel> Parcels,
-    DataLock.AssetData AssetIndex)
+    IReadOnlyList<LockData.Library> Libraries,
+    IReadOnlyList<LockData.Parcel> Parcels,
+    LockData.AssetData AssetIndex)
 {
     public const int FORMAT = 1;
 

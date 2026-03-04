@@ -3,23 +3,23 @@ using Trident.Abstractions.FileModels;
 
 namespace Trident.Core.Engines.Deploying;
 
-public class DataLockBuilder : IBuilder<DataLock>
+public class LockDataBuilder : IBuilder<LockData>
 {
     private readonly List<string> _gameArguments = [];
     private readonly List<string> _javaArguments = [];
-    private readonly List<DataLock.Library> _libraries = [];
-    private readonly List<DataLock.Parcel> _parcels = [];
-    private DataLock.AssetData? _assetIndex;
+    private readonly List<LockData.Library> _libraries = [];
+    private readonly List<LockData.Parcel> _parcels = [];
+    private LockData.AssetData? _assetIndex;
     private uint? _javaMajorVersion;
     private string? _mainClass;
-    private DataLock.ViabilityData? _viability;
+    private LockData.ViabilityData? _viability;
 
-    public IList<DataLock.Parcel> Parcels => _parcels;
-    public IList<DataLock.Library> Libraries => _libraries;
+    public IList<LockData.Parcel> Parcels => _parcels;
+    public IList<LockData.Library> Libraries => _libraries;
 
-    #region IBuilder<DataLock> Members
+    #region IBuilder<LockData> Members
 
-    public DataLock Build()
+    public LockData Build()
     {
         ArgumentNullException.ThrowIfNull(_assetIndex);
         ArgumentNullException.ThrowIfNull(_javaMajorVersion);
@@ -40,19 +40,19 @@ public class DataLockBuilder : IBuilder<DataLock>
 
     #endregion
 
-    public DataLockBuilder SetViability(DataLock.ViabilityData viability)
+    public LockDataBuilder SetViability(LockData.ViabilityData viability)
     {
         _viability = viability;
         return this;
     }
 
-    public DataLockBuilder ClearGameArguments()
+    public LockDataBuilder ClearGameArguments()
     {
         _gameArguments.Clear();
         return this;
     }
 
-    public DataLockBuilder AddGameArgument(string arg)
+    public LockDataBuilder AddGameArgument(string arg)
     {
         arg = arg.Trim();
         if (!_gameArguments.Contains(arg))
@@ -63,7 +63,7 @@ public class DataLockBuilder : IBuilder<DataLock>
         return this;
     }
 
-    public DataLockBuilder AddJvmArgument(string arg)
+    public LockDataBuilder AddJvmArgument(string arg)
     {
         arg = arg.Trim();
         if (!_javaArguments.Contains(arg))
@@ -74,13 +74,13 @@ public class DataLockBuilder : IBuilder<DataLock>
         return this;
     }
 
-    public DataLockBuilder AddParcel(DataLock.Parcel parcel)
+    public LockDataBuilder AddParcel(LockData.Parcel parcel)
     {
         _parcels.Add(parcel);
         return this;
     }
 
-    public DataLockBuilder AddLibrary(DataLock.Library library)
+    public LockDataBuilder AddLibrary(LockData.Library library)
     {
         // 规则：
         //  允许除 IsNative 不同的同时存在，但不允许除了 IsPresent 不同的同时存在， IsPresent==True的优先
@@ -117,19 +117,19 @@ public class DataLockBuilder : IBuilder<DataLock>
         return this;
     }
 
-    public DataLockBuilder SetAssetIndex(DataLock.AssetData index)
+    public LockDataBuilder SetAssetIndex(LockData.AssetData index)
     {
         _assetIndex = index;
         return this;
     }
 
-    public DataLockBuilder SetJavaMajorVersion(uint version)
+    public LockDataBuilder SetJavaMajorVersion(uint version)
     {
         _javaMajorVersion = version;
         return this;
     }
 
-    public DataLockBuilder SetMainClass(string mainClass)
+    public LockDataBuilder SetMainClass(string mainClass)
     {
         _mainClass = mainClass;
         return this;

@@ -2,10 +2,10 @@ using Trident.Abstractions.FileModels;
 
 namespace Trident.Core.Engines.Deploying;
 
-public static class DataLockBuilderExtensions
+public static class LockDataBuilderExtensions
 {
-    public static DataLockBuilder AddParcel(
-        this DataLockBuilder self,
+    public static LockDataBuilder AddParcel(
+        this LockDataBuilder self,
         string label,
         string? @namespace,
         string pid,
@@ -17,7 +17,7 @@ public static class DataLockBuilderExtensions
         self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1, solidified));
 
     // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
-    public static DataLockBuilder AddLibraryPrismFlavor(this DataLockBuilder self, string fullname, Uri url)
+    public static LockDataBuilder AddLibraryPrismFlavor(this LockDataBuilder self, string fullname, Uri url)
     {
         var exactUrl = url.AbsoluteUri.EndsWith('/') ? url : new(url.AbsoluteUri + '/');
         // 当迁移到 TridentCore/launcher-meta 的之后移除该函数
@@ -33,7 +33,7 @@ public static class DataLockBuilderExtensions
         var id = split.Length switch
         {
             4 => new(split[0], split[1], split[2], split[3], extension),
-            3 => new DataLock.Library.Identity(split[0], split[1], split[2], null, extension),
+            3 => new LockData.Library.Identity(split[0], split[1], split[2], null, extension),
             _ => throw new NotSupportedException($"Not recognized package name format: {fullname}")
         };
 
@@ -43,15 +43,15 @@ public static class DataLockBuilderExtensions
     }
 
 
-    public static DataLockBuilder AddLibrary(
-        this DataLockBuilder self,
+    public static LockDataBuilder AddLibrary(
+        this LockDataBuilder self,
         string fullname,
         Uri url,
         string sha1,
         bool native = false,
         bool present = true)
     {
-        DataLock.Library.Identity id;
+        LockData.Library.Identity id;
         var extension = "jar";
         var index = fullname.IndexOf('@');
         if (index > 0)
@@ -77,6 +77,6 @@ public static class DataLockBuilderExtensions
         return self.AddLibrary(new(id, url, sha1, native, present));
     }
 
-    public static DataLockBuilder SetAssetIndex(this DataLockBuilder self, string id, Uri url, string sha1) =>
+    public static LockDataBuilder SetAssetIndex(this LockDataBuilder self, string id, Uri url, string sha1) =>
         self.SetAssetIndex(new(id, url, sha1));
 }

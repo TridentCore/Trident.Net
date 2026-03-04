@@ -4,9 +4,9 @@ using Trident.Core.Igniters;
 
 namespace Trident.Core.Extensions;
 
-public static class DataLockExtensions
+public static class LockDataExtensions
 {
-    public static Igniter MakeIgniter(this DataLock self)
+    public static Igniter MakeIgniter(this LockData self)
     {
         var igniter = new Igniter();
 

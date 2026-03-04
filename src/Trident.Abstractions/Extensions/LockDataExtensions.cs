@@ -3,11 +3,11 @@ using Trident.Abstractions.Utilities;
 
 namespace Trident.Abstractions.Extensions;
 
-public static class DataLockExtensions
+public static class LockDataExtensions
 {
-    public static bool Verify(this DataLock self, string key, Profile.Rice setup, string watermark)
+    public static bool Verify(this LockData self, string key, Profile.Rice setup, string watermark)
     {
-        if (self.Viability.Format != DataLock.FORMAT || self.Viability.Watermark != watermark)
+        if (self.Viability.Format != LockData.FORMAT || self.Viability.Watermark != watermark)
         {
             return false;
         }

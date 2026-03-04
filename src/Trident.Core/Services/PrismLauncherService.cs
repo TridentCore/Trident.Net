@@ -106,7 +106,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
     }
 
     public static void AddValidatedLibrariesToArtifact(
-        DataLockBuilder builder,
+        LockDataBuilder builder,
         IEnumerable<Component.Library> libraries)
     {
         foreach (var lib in libraries.Where(ValidateLibraryRule))

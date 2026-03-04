@@ -50,7 +50,7 @@ public class ProcessLoaderStage(
         Context.IsLoaderProcessed = true;
     }
 
-    private async Task InstallForgeAsync(DataLockBuilder builder, string uid, string version, CancellationToken token)
+    private async Task InstallForgeAsync(LockDataBuilder builder, string uid, string version, CancellationToken token)
     {
         var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
 
@@ -111,7 +111,7 @@ public class ProcessLoaderStage(
         builder.SetMainClass(index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main");
     }
 
-    private async Task InstallFabricAsync(DataLockBuilder builder, string uid, string version, CancellationToken token)
+    private async Task InstallFabricAsync(LockDataBuilder builder, string uid, string version, CancellationToken token)
     {
         var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
 

@@ -56,6 +56,7 @@ public class ModrinthImporter : IProfileImporter
                              .Select(x => (x, x[("client-overrides".Length + 1)..]))
                              .Where(x => !x.Item2.EndsWith('/') && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)))
                       .ToList(),
+                   [],
                    pack.Reference?.Thumbnail);
     }
 

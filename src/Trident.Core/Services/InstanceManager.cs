@@ -73,7 +73,7 @@ public class InstanceManager(
         var path = PathDef.Default.FileOfLockData(key);
         if (deploy.FastMode && File.Exists(path))
         {
-            var artifact = JsonSerializer.Deserialize<DataLock>(File.ReadAllText(path), JsonSerializerOptions.Web);
+            var artifact = JsonSerializer.Deserialize<LockData>(File.ReadAllText(path), JsonSerializerOptions.Web);
 
             if (artifact != null
              && artifact.Verify(key, profileManager.GetImmutable(key).Setup, HashHelper.ComputeObjectHash(deploy)))
@@ -288,7 +288,7 @@ public class InstanceManager(
         if (found)
         {
             var artifact =
-                JsonSerializer.Deserialize<DataLock>(await File
+                JsonSerializer.Deserialize<LockData>(await File
                                                           .ReadAllTextAsync(artifactPath, tracker.Token)
                                                           .ConfigureAwait(false),
                                                      JsonSerializerOptions.Web);
@@ -478,7 +478,7 @@ public class InstanceManager(
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
-        await importers.ExtractImportFilesAsync(key.Key, container, pack).ConfigureAwait(false);
+        await importers.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
 
         tracker.Reference = container.Profile.Setup.Source;
 
@@ -558,7 +558,7 @@ public class InstanceManager(
             Directory.Delete(liveDir, true);
         }
 
-        await importers.ExtractImportFilesAsync(key, container, pack).ConfigureAwait(false);
+        await importers.ExtractFilesAsync(key, container, pack).ConfigureAwait(false);
 
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;

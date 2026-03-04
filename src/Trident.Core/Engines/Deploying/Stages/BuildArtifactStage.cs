@@ -11,7 +11,7 @@ public class BuildArtifactStage : StageBase
     {
         var builder = Context.ArtifactBuilder!;
 
-        builder.SetViability(new(DataLock.FORMAT,
+        builder.SetViability(new(LockData.FORMAT,
                                  Context.VerificationWatermark,
                                  HashHelper.ComputeObjectHash(Context.Setup.Rules),
                                  PathDef.Default.Home,
