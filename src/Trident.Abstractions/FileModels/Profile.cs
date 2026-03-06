@@ -55,7 +55,7 @@ public class Profile(string name, Profile.Rice setup, IDictionary<string, object
 
         public class Rule
         {
-            public required RuleSelector Selector { get; set; }
+            public required RuleSelector Selector { get; init; }
             public bool Enabled { get; set; } = true;
 
             #region Nested type: RuleSelector
