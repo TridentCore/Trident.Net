@@ -131,7 +131,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                            .FirstOrDefault(x => filter.Version is null || x.GameVersions.Contains(filter.Version));
                 if (found == null)
                 {
-                    throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
+                    throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has no matched version");
                 }
 
                 return ModrinthHelper.ToPackage(label, project, found, members.FirstOrDefault());
@@ -177,7 +177,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                               if (chosen == null)
                                               {
                                                   throw new
-                                                      ResourceNotFoundException($"{x.Identity}/{x.Version ?? "*"} has not matched version");
+                                                      ResourceNotFoundException($"{x.Identity}/{x.Version ?? "*"} has no matched version");
                                               }
 
                                               return (x, chosen);

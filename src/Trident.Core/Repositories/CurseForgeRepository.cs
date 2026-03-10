@@ -175,7 +175,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
-                    throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has not matched version");
+                    throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} has no matched version");
                 }
             }
             catch (ApiException ex)
@@ -220,7 +220,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                         return file != null
                                                    ? (id: x, mod, file)
                                                    : throw new
-                                                         ResourceNotFoundException($"{modId}/* has not matched version");
+                                                         ResourceNotFoundException($"{modId}/* has no matched version");
                                     }
 
                                     throw new FormatException($"{x.Identity} is not well formatted into modId");
