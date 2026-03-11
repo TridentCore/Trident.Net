@@ -37,7 +37,31 @@ public static class ProfileExtensions
         }
 
         public void RemoveOverride(string key) => profile.Overrides.Remove(key);
+
+        public Profile Clone()
+        {
+            var overrides = new Dictionary<string, object>(profile.Overrides);
+
+            return new(profile.Name, profile.Setup.Clone(), overrides);
+        }
     }
 
     #endregion
+
+    public static Profile.Rice Clone(this Profile.Rice self)
+    {
+        var rules = new List<Profile.Rice.Rule>(self.Rules.Select(x => new Profile.Rice.Rule()
+        {
+            Enabled = x.Enabled,
+            Selector = x.Selector,
+            Destination = x.Destination,
+            Solidifying = x.Solidifying,
+            Skipping = x.Skipping
+        }));
+        var packages = new List<Profile.Rice.Entry>(self.Packages.Select(x => new Profile.Rice.Entry(x.Purl,
+                                                                               x.Enabled,
+                                                                               x.Source,
+                                                                               x.Tags)));
+        return new(self.Source, self.Version, self.Loader, packages, rules);
+    }
 }

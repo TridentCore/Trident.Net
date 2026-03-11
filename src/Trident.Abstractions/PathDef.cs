@@ -85,28 +85,17 @@ public class PathDef(string home)
     public string InstanceDirectory => Path.Combine(Home, "instances");
 
     public string FileOfProfile(string key) => Path.Combine(InstanceDirectory, key, "profile.json");
-
-    public string FileOfPreference(string key) => Path.Combine(InstanceDirectory, key, "preference.json");
-
     public string FileOfIcon(string key, string extensionGuess) =>
         Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
-
     public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
-
-    public string FileOfUserData(string key) => Path.Combine(InstanceDirectory, key, "data.user.json");
-
+    public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
     public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
 
     public string DirectoryOfHome(string key) => Path.Combine(InstanceDirectory, key);
-
     public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
-
     public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
-
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
-
     public string DirectoryOfLive(string key) => Path.Combine(InstanceDirectory, key, "live");
-
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
 
     #endregion
