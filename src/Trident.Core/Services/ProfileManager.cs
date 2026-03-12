@@ -49,7 +49,7 @@ public class ProfileManager : IDisposable
                     continue;
                 }
 
-                var handle = ProfileHandle.Create(ins.Name, path, FileHelper.SerializerOptions);
+                var handle = ProfileHandle.Create(ins.Name, FileHelper.SerializerOptions);
                 _profiles.Add(handle);
                 logger.LogInformation("{} scanned", handle.Key);
             }
@@ -125,7 +125,7 @@ public class ProfileManager : IDisposable
 
     public void Add(ReservedKey key, Profile profile)
     {
-        var handle = new ProfileHandle(key.Key, profile, PathDef.Default.FileOfProfile(key.Key), FileHelper.SerializerOptions);
+        var handle = new ProfileHandle(key.Key, profile, FileHelper.SerializerOptions);
         handle.SaveAsync().Wait();
         _profiles.Add(handle);
         key.Dispose();
