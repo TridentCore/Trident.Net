@@ -43,8 +43,13 @@ public class InstallVanillaStage(
         logger.LogInformation("Game arguments added, refer to artifact file for details");
 
         // Jvm Arguments
-        string[] jvmArguments =
-        [
+        var jvmArguments = new List<string>();
+        if (OperatingSystem.IsMacOS())
+        {   // macOS 要求 JVM 在 GLFW 初始化之前在第一个进程线程上启动
+            jvmArguments.Add("-XstartOnFirstThread");
+        }
+        jvmArguments.AddRange(
+            [
             // 由于版本文件不再提供，这里手动生成，还有个 logging，这里就不加了
             "-Djava.library.path=${natives_directory}",
             "-DlibraryDirectory=${library_directory}",
@@ -59,7 +64,7 @@ public class InstallVanillaStage(
             "-Xmx${jvm_max_memory}",
             "-cp",
             "${classpath}"
-        ];
+            ]);
         foreach (var arg in jvmArguments)
         {
             builder.AddJvmArgument(arg);
