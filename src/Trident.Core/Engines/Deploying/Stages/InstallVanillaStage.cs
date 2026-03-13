@@ -43,8 +43,18 @@ public class InstallVanillaStage(
         logger.LogInformation("Game arguments added, refer to artifact file for details");
 
         // Jvm Arguments
-        string[] jvmArguments =
-        [
+        var jvmArguments = new List<string>();
+        if (OperatingSystem.IsMacOS())
+        {   // macOS 要求 JVM 在 GLFW 初始化之前在第一个进程线程上启动
+            jvmArguments.Add("-XstartOnFirstThread");
+        }
+        if (OperatingSystem.IsWindows())
+        {
+            // TODO: Windows 专供，不知道放 Linux 和 MaxOS 会不会出错
+            jvmArguments.Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
+        }
+        jvmArguments.AddRange(
+            [
             // 由于版本文件不再提供，这里手动生成，还有个 logging，这里就不加了
             "-Djava.library.path=${natives_directory}",
             "-DlibraryDirectory=${library_directory}",
@@ -53,13 +63,11 @@ public class InstallVanillaStage(
             "-Dio.netty.native.workdir=${natives_directory}",
             "-Dminecraft.launcher.brand=${launcher_name}",
             "-Dminecraft.launcher.version=${launcher_version}",
-            // TODO: Windows 专供，不知道放 Linux 和 MaxOS 会不会出错
-            "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump",
             // 最大内存
             "-Xmx${jvm_max_memory}",
             "-cp",
             "${classpath}"
-        ];
+            ]);
         foreach (var arg in jvmArguments)
         {
             builder.AddJvmArgument(arg);
