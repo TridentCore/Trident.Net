@@ -42,7 +42,7 @@ public static class ProfileExtensions
         {
             var overrides = new Dictionary<string, object>(profile.Overrides);
 
-            return new(profile.Name, profile.Setup.Clone(), overrides);
+            return new() { Name = profile.Name, Setup = profile.Setup.Clone(), Overrides = overrides };
         }
     }
 
@@ -58,10 +58,20 @@ public static class ProfileExtensions
             Solidifying = x.Solidifying,
             Skipping = x.Skipping
         }));
-        var packages = new List<Profile.Rice.Entry>(self.Packages.Select(x => new Profile.Rice.Entry(x.Purl,
-                                                                               x.Enabled,
-                                                                               x.Source,
-                                                                               x.Tags)));
-        return new(self.Source, self.Version, self.Loader, packages, rules);
+        var packages = new List<Profile.Rice.Entry>(self.Packages.Select(x => new Profile.Rice.Entry
+        {
+            Enabled = x.Enabled,
+            Purl = x.Purl,
+            Source = x.Source,
+            Tags = x.Tags
+        }));
+        return new()
+        {
+            Version = self.Version,
+            Loader = self.Loader,
+            Source = self.Source,
+            Packages = packages,
+            Rules = self.Rules
+        };
     }
 }

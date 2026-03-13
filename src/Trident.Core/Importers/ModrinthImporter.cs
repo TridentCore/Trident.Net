@@ -36,13 +36,23 @@ public class ModrinthImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPurl(pack.Reference) : null;
-        return new(new(index.Name,
-                       new(source,
-                           version,
-                           LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                           [.. index.Files.Where(x => x.Env?.Client is not "unsupported").Select(ToPackage)],
-                           []),
-                       new Dictionary<string, object>()),
+        return new(new()
+                   {
+                       Name = index.Name,
+                       Setup =
+                           new()
+                           {
+                               Source = source,
+                               Version = version,
+                               Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
+                               Packages =
+                               [
+                                   .. index
+                                     .Files.Where(x => x.Env?.Client is not "unsupported")
+                                     .Select(x => ToPackage(x, source))
+                               ],
+                           }
+                   },
                    pack
                       .FileNames
                       .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
@@ -93,7 +103,7 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private Profile.Rice.Entry ToPackage(PackIndex.IndexFile file)
+    private Profile.Rice.Entry ToPackage(PackIndex.IndexFile file, string? source)
     {
         // FIX: 需要兼容 bbsmc
         //  bbsmc 用的第三方包，其中部分使用 mrpack，而 mrpack 使用多个源，其中就有 forgecdn
@@ -108,7 +118,12 @@ public class ModrinthImporter : IProfileImporter
             {
                 var projectId = path[6..14];
                 var versionId = path[24..32];
-                return new(PackageHelper.ToPurl(ModrinthHelper.LABEL, null, projectId, versionId), true, null, []);
+                return new()
+                {
+                    Purl = PackageHelper.ToPurl(ModrinthHelper.LABEL, null, projectId, versionId),
+                    Enabled = true,
+                    Source = source
+                };
             }
         }
 

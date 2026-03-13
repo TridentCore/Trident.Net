@@ -10,6 +10,7 @@ namespace Trident.Core.Services;
 public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManager profileManager)
 {
     public async Task<PackedProfileContainer> ExportAsync(
+        PackData options,
         string label,
         string key,
         string name,
@@ -21,18 +22,6 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         {
             if (profileManager.TryGetImmutable(key, out var profile))
             {
-                var optionsFile = PathDef.Default.FileOfPackData(key);
-                PackData? options = null;
-                if (File.Exists(optionsFile))
-                {
-                    options = JsonSerializer.Deserialize<PackData>(await File
-                                                                        .ReadAllTextAsync(optionsFile)
-                                                                        .ConfigureAwait(false),
-                                                                   FileHelper.SerializerOptions);
-                }
-
-                options ??= PackData.CreateDefault();
-
                 var pack = new UncompressedProfilePack(key, profile, options, name, author, version);
                 return await exporter.PackAsync(pack).ConfigureAwait(false);
             }

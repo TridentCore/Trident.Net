@@ -188,7 +188,12 @@ public class ProfileManager : IDisposable
 
         foreach (var add in changeSet.Values)
         {
-            handle.Value.Setup.Packages.Add(new(add, true, source, null));
+            handle.Value.Setup.Packages.Add(new()
+            {
+                Enabled = true,
+                Source = source,
+                Purl = add
+            });
         }
 
         foreach (var (k, v) in overrides)

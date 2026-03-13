@@ -33,23 +33,28 @@ public class CurseForgeImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPurl(pack.Reference) : null;
-        return new(new(manifest.Name,
-                       new(source,
-                           manifest.Minecraft.Version,
-                           LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                           [
-                               .. manifest.Files.Select(x =>
-                                                            new Profile.Rice.Entry(PackageHelper.ToPurl(CurseForgeHelper
-                                                                       .LABEL,
-                                                                    null,
-                                                                    x.ProjectID.ToString(),
-                                                                    x.FileID.ToString()),
-                                                                x.Required,
-                                                                source,
-                                                                []))
+        return new(new()
+                   {
+                       Name =  manifest.Name,
+                       Setup = new()
+                       {
+                           Version = manifest.Minecraft.Version,
+                           Source = source,
+                           Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
+                           Packages = [
+                               .. manifest.Files.Select(x => new Profile.Rice.Entry
+                               {
+                                   Enabled = x.Required,
+                                   Purl =
+                                       PackageHelper.ToPurl(CurseForgeHelper.LABEL,
+                                                            null,
+                                                            x.ProjectID.ToString(),
+                                                            x.FileID.ToString()),
+                                   Source = source,
+                               })
                            ],
-                           []),
-                       new Dictionary<string, object>()),
+                       },
+                   },
                    pack
                       .FileNames
                       .Where(x => x.StartsWith(manifest.Overrides)

@@ -1,22 +1,31 @@
 ﻿namespace Trident.Abstractions.FileModels;
 
 // 打包器配置
-public record PackData(IReadOnlyList<PackData.Entry> IncludedOverrides, bool IncludingSource)
+public class PackData
 {
     #region Nested type: Entry
 
-    public record Entry(bool Enabled, string Key);
+    public class Entry
+    {
+        public bool Enabled { get; set; }
+        public required string Key { get; init; }
+    }
 
     #endregion
 
+
+    public required IList<Entry> IncludedOverrides { get; init; }
+    public required bool IncludingSource { get; set; }
+
     public static PackData CreateDefault() =>
-        new([
-                new(false, Profile.OVERRIDE_JAVA_MAX_MEMORY),
-                new(false, Profile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS),
-                new(false, Profile.OVERRIDE_WINDOW_TITLE),
-                new(false, Profile.OVERRIDE_WINDOW_HEIGHT),
-                new(false, Profile.OVERRIDE_WINDOW_WIDTH),
-                new(false, Profile.OVERRIDE_BEHAVIOR_CONNECT_SERVER)
-            ],
-            false);
+        new()
+        {
+            IncludingSource = false,
+            IncludedOverrides =
+            [
+                new() { Key = Profile.OVERRIDE_JAVA_MAX_MEMORY },
+                new() { Key = Profile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS },
+                new() { Key = Profile.OVERRIDE_BEHAVIOR_CONNECT_SERVER }
+            ]
+        };
 }

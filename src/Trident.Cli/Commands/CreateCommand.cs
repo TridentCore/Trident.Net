@@ -10,9 +10,11 @@ public class CreateCommand(ProfileManager profileManager) : CreationCommandBase<
     public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var key = profileManager.RequestKey(settings.Id);
-        var profile = new Profile(settings.Name,
-                                  new(null, settings.Version, settings.Loader, [], []),
-                                  new Dictionary<string, object>());
+        var profile = new Profile()
+        {
+            Name = settings.Name,
+            Setup = new() { Version = settings.Version, Source = null, Loader = settings.Loader }
+        };
         profileManager.Add(key, profile);
         AnsiConsole.WriteLine($"Instance {key.Key} created");
 
