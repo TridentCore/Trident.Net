@@ -4,7 +4,8 @@ namespace Trident.Core.Engines.Deploying;
 public record BundledRuntime(
     uint Major,
     IReadOnlyList<BundledRuntime.File> Files,
-    IReadOnlyList<BundledRuntime.Link> Links)
+    IReadOnlyList<BundledRuntime.Link> Links
+)
 {
     #region Nested type: File
 

@@ -9,7 +9,8 @@ public class LaunchTracker(
     LaunchOptions options,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
-    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default
+) : TrackerBase(key, handler, onCompleted, token)
 {
     public Subject<Scrap> ScrapStream { get; } = new();
     public LaunchOptions Options => options;

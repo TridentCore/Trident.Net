@@ -8,7 +8,8 @@ namespace Trident.Core.Engines.Deploying.Stages;
 
 public class ProcessLoaderStage(
     ILogger<ProcessLoaderStage> logger,
-    PrismLauncherService prismLauncherService) : StageBase
+    PrismLauncherService prismLauncherService
+) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -22,23 +23,43 @@ public class ProcessLoaderStage(
                 switch (parsed.Identity)
                 {
                     case LoaderHelper.LOADERID_FORGE:
-                        await InstallForgeAsync(builder, PrismLauncherService.UID_FORGE, parsed.Version, token)
-                           .ConfigureAwait(false);
+                        await InstallForgeAsync(
+                                builder,
+                                PrismLauncherService.UID_FORGE,
+                                parsed.Version,
+                                token
+                            )
+                            .ConfigureAwait(false);
                         break;
 
                     case LoaderHelper.LOADERID_NEOFORGE:
-                        await InstallForgeAsync(builder, PrismLauncherService.UID_NEOFORGE, parsed.Version, token)
-                           .ConfigureAwait(false);
+                        await InstallForgeAsync(
+                                builder,
+                                PrismLauncherService.UID_NEOFORGE,
+                                parsed.Version,
+                                token
+                            )
+                            .ConfigureAwait(false);
                         break;
 
                     case LoaderHelper.LOADERID_FABRIC:
-                        await InstallFabricAsync(builder, PrismLauncherService.UID_FABRIC, parsed.Version, token)
-                           .ConfigureAwait(false);
+                        await InstallFabricAsync(
+                                builder,
+                                PrismLauncherService.UID_FABRIC,
+                                parsed.Version,
+                                token
+                            )
+                            .ConfigureAwait(false);
                         break;
 
                     case LoaderHelper.LOADERID_QUILT:
-                        await InstallFabricAsync(builder, PrismLauncherService.UID_QUILT, parsed.Version, token)
-                           .ConfigureAwait(false);
+                        await InstallFabricAsync(
+                                builder,
+                                PrismLauncherService.UID_QUILT,
+                                parsed.Version,
+                                token
+                            )
+                            .ConfigureAwait(false);
                         break;
 
                     default:
@@ -50,12 +71,21 @@ public class ProcessLoaderStage(
         Context.IsLoaderProcessed = true;
     }
 
-    private async Task InstallForgeAsync(LockDataBuilder builder, string uid, string version, CancellationToken token)
+    private async Task InstallForgeAsync(
+        LockDataBuilder builder,
+        string uid,
+        string version,
+        CancellationToken token
+    )
     {
-        var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
+        var index = await prismLauncherService
+            .GetVersionAsync(uid, version, token)
+            .ConfigureAwait(false);
 
-        PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
-                                                             index.Libraries ?? Enumerable.Empty<Component.Library>());
+        PrismLauncherService.AddValidatedLibrariesToArtifact(
+            builder,
+            index.Libraries ?? Enumerable.Empty<Component.Library>()
+        );
 
         foreach (var file in index.MavenFiles ?? Enumerable.Empty<Component.Library>())
         {
@@ -87,44 +117,57 @@ public class ProcessLoaderStage(
 
         builder.AddJvmArgument("-Dforgewrapper.librariesDir=${library_directory}");
 
-        var installer = builder.Libraries.FirstOrDefault(x => x.Id.Platform == "installer"
-                                                           && x.Id.Namespace == uid
-                                                           && x.Id.Name == "forge");
+        var installer = builder.Libraries.FirstOrDefault(x =>
+            x.Id.Platform == "installer" && x.Id.Namespace == uid && x.Id.Name == "forge"
+        );
         if (installer != null)
         {
-            builder.AddJvmArgument($"-Dforgewrapper.installer={PathDef.Default.FileOfLibrary(installer.Id.Namespace, installer.Id.Name, installer.Id.Version, installer.Id.Platform, installer.Id.Extension)}");
+            builder.AddJvmArgument(
+                $"-Dforgewrapper.installer={PathDef.Default.FileOfLibrary(installer.Id.Namespace, installer.Id.Name, installer.Id.Version, installer.Id.Platform, installer.Id.Extension)}"
+            );
         }
 
-        var minecraft = builder.Libraries.FirstOrDefault(x => x.Id is
-        {
-            Platform: "client",
-            Namespace: "com.mojang",
-            Name: "minecraft"
-        });
+        var minecraft = builder.Libraries.FirstOrDefault(x =>
+            x.Id is { Platform: "client", Namespace: "com.mojang", Name: "minecraft" }
+        );
         if (minecraft != null)
         {
-            builder.AddJvmArgument($"-Dforgewrapper.minecraft={PathDef.Default.FileOfLibrary(minecraft.Id.Namespace, minecraft.Id.Name, minecraft.Id.Version, minecraft.Id.Platform, minecraft.Id.Extension)}");
+            builder.AddJvmArgument(
+                $"-Dforgewrapper.minecraft={PathDef.Default.FileOfLibrary(minecraft.Id.Namespace, minecraft.Id.Name, minecraft.Id.Version, minecraft.Id.Platform, minecraft.Id.Extension)}"
+            );
         }
 
         // 通过拦截的方式给 ForgeWrapper 注入主要参数，即使没找到也不报错，因为报错需要定义一个异常类型，太麻烦
 
-        builder.SetMainClass(index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main");
+        builder.SetMainClass(
+            index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main"
+        );
     }
 
-    private async Task InstallFabricAsync(LockDataBuilder builder, string uid, string version, CancellationToken token)
+    private async Task InstallFabricAsync(
+        LockDataBuilder builder,
+        string uid,
+        string version,
+        CancellationToken token
+    )
     {
-        var index = await prismLauncherService.GetVersionAsync(uid, version, token).ConfigureAwait(false);
+        var index = await prismLauncherService
+            .GetVersionAsync(uid, version, token)
+            .ConfigureAwait(false);
 
-        PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
-                                                             index.Libraries ?? Enumerable.Empty<Component.Library>());
+        PrismLauncherService.AddValidatedLibrariesToArtifact(
+            builder,
+            index.Libraries ?? Enumerable.Empty<Component.Library>()
+        );
 
         var intermediary = await prismLauncherService
-                                .GetVersionAsync(PrismLauncherService.UID_INTERMEDIARY, Context.Setup.Version, token)
-                                .ConfigureAwait(false);
+            .GetVersionAsync(PrismLauncherService.UID_INTERMEDIARY, Context.Setup.Version, token)
+            .ConfigureAwait(false);
 
-        PrismLauncherService.AddValidatedLibrariesToArtifact(builder,
-                                                             intermediary.Libraries
-                                                          ?? Enumerable.Empty<Component.Library>());
+        PrismLauncherService.AddValidatedLibrariesToArtifact(
+            builder,
+            intermediary.Libraries ?? Enumerable.Empty<Component.Library>()
+        );
 
         builder.SetMainClass(index.MainClass ?? "net.fabricmc.loader.impl.launch.knot.KnotClient");
     }

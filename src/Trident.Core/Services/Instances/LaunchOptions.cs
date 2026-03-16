@@ -10,7 +10,8 @@ public class LaunchOptions(
     (uint, uint)? windowSize = null,
     string? quickConnectAddress = null,
     uint maxMemory = 4096,
-    string? additionalArguments = null)
+    string? additionalArguments = null
+)
 {
     public LaunchMode Mode { get; set; } = launchMode;
 

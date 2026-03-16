@@ -11,9 +11,11 @@ public class MojangService(IMojangLauncherClient launcherClient, IMojangPistonCl
     public async Task<MinecraftReleasePatchesResponse> GetMinecraftNewsAsync() =>
         await launcherClient.GetReleasePatchesAsync().ConfigureAwait(false);
 
-    public Uri GetAbsoluteImageUrl(Uri imageUrl) => new(new(LAUNCHER_ENDPOINT, UriKind.Absolute), imageUrl);
+    public Uri GetAbsoluteImageUrl(Uri imageUrl) =>
+        new(new(LAUNCHER_ENDPOINT, UriKind.Absolute), imageUrl);
 
-    public async Task<IReadOnlyDictionary<string, IDictionary<string, IReadOnlyList<RuntimeEntry>>>>
-        GetRuntimeManifestAsync() =>
+    public async Task<
+        IReadOnlyDictionary<string, IDictionary<string, IReadOnlyList<RuntimeEntry>>>
+    > GetRuntimeManifestAsync() =>
         await pistonClient.GetRuntimeManifestAsync().ConfigureAwait(false);
 }

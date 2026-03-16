@@ -7,11 +7,16 @@ public interface IMinecraftClient
 {
     [Post("/authentication/login_with_xbox")]
     Task<MinecraftLoginResponse> AcquireAccessTokenByXboxServiceTokenAsync(
-        [Body] AcquireAccessTokenByXboxServiceTokenRequest request);
+        [Body] AcquireAccessTokenByXboxServiceTokenRequest request
+    );
 
     [Get("/entitlements/mcstore")]
-    Task<MinecraftStoreResponse> AcquireAccountInventoryByAccessTokenAsync([Authorize] string accessToken);
+    Task<MinecraftStoreResponse> AcquireAccountInventoryByAccessTokenAsync(
+        [Authorize] string accessToken
+    );
 
     [Get("/minecraft/profile")]
-    Task<MinecraftProfileResponse> AcquireAccountProfileByMinecraftTokenAsync([Authorize] string accessToken);
+    Task<MinecraftProfileResponse> AcquireAccountProfileByMinecraftTokenAsync(
+        [Authorize] string accessToken
+    );
 }

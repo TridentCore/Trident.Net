@@ -13,11 +13,15 @@ public static class LockDataBuilderExtensions
         string target,
         Uri url,
         string? sha1,
-        bool solidified = false) =>
-        self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1, solidified));
+        bool solidified = false
+    ) => self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1, solidified));
 
     // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
-    public static LockDataBuilder AddLibraryPrismFlavor(this LockDataBuilder self, string fullname, Uri url)
+    public static LockDataBuilder AddLibraryPrismFlavor(
+        this LockDataBuilder self,
+        string fullname,
+        Uri url
+    )
     {
         var exactUrl = url.AbsoluteUri.EndsWith('/') ? url : new(url.AbsoluteUri + '/');
         // 当迁移到 TridentCore/launcher-meta 的之后移除该函数
@@ -34,14 +38,15 @@ public static class LockDataBuilderExtensions
         {
             4 => new(split[0], split[1], split[2], split[3], extension),
             3 => new LockData.Library.Identity(split[0], split[1], split[2], null, extension),
-            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}")
+            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}"),
         };
 
-        var fullUrl = new Uri(exactUrl,
-                              $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{extension}");
+        var fullUrl = new Uri(
+            exactUrl,
+            $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{extension}"
+        );
         return self.AddLibrary(new(id, fullUrl, null));
     }
-
 
     public static LockDataBuilder AddLibrary(
         this LockDataBuilder self,
@@ -49,7 +54,8 @@ public static class LockDataBuilderExtensions
         Uri url,
         string sha1,
         bool native = false,
-        bool present = true)
+        bool present = true
+    )
     {
         LockData.Library.Identity id;
         var extension = "jar";
@@ -77,6 +83,10 @@ public static class LockDataBuilderExtensions
         return self.AddLibrary(new(id, url, sha1, native, present));
     }
 
-    public static LockDataBuilder SetAssetIndex(this LockDataBuilder self, string id, Uri url, string sha1) =>
-        self.SetAssetIndex(new(id, url, sha1));
+    public static LockDataBuilder SetAssetIndex(
+        this LockDataBuilder self,
+        string id,
+        Uri url,
+        string sha1
+    ) => self.SetAssetIndex(new(id, url, sha1));
 }

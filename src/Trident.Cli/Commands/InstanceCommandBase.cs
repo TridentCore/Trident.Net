@@ -3,7 +3,8 @@ using Spectre.Console.Cli;
 
 namespace Trident.Cli.Commands;
 
-public abstract class InstanceCommandBase<T> : Command<T> where T : InstanceArgumentsBase
+public abstract class InstanceCommandBase<T> : Command<T>
+    where T : InstanceArgumentsBase
 {
     public InstanceContext Context { get; private set; } = null!;
 

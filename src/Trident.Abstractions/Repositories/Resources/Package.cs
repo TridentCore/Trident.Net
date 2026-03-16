@@ -21,7 +21,8 @@ public record Package(
     string FileName,
     string? Sha1,
     Requirement Requirements,
-    IReadOnlyList<Dependency> Dependencies)
+    IReadOnlyList<Dependency> Dependencies
+)
 {
     public override string ToString() => PackageHelper.ToPurl(this);
 }

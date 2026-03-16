@@ -9,7 +9,8 @@ public record LockData(
     IReadOnlyList<string> JavaArguments,
     IReadOnlyList<LockData.Library> Libraries,
     IReadOnlyList<LockData.Parcel> Parcels,
-    LockData.AssetData AssetIndex)
+    LockData.AssetData AssetIndex
+)
 {
     public const int FORMAT = 1;
 
@@ -22,11 +23,23 @@ public record LockData(
     #region Nested type: Library
 
     // IsNative 决定是否解压到 Natives 目录，IsPresent 决定是否添加到 ClassPath，两者互不干扰
-    public record Library(Library.Identity Id, Uri Url, string? Sha1, bool IsNative = false, bool IsPresent = true)
+    public record Library(
+        Library.Identity Id,
+        Uri Url,
+        string? Sha1,
+        bool IsNative = false,
+        bool IsPresent = true
+    )
     {
         #region Nested type: Identity
 
-        public record Identity(string Namespace, string Name, string Version, string? Platform, string Extension);
+        public record Identity(
+            string Namespace,
+            string Name,
+            string Version,
+            string? Platform,
+            string Extension
+        );
 
         #endregion
     }
@@ -46,7 +59,8 @@ public record LockData(
         string Path,
         Uri Download,
         string? Sha1,
-        bool IsSolidifying = false);
+        bool IsSolidifying = false
+    );
 
     #endregion
 
@@ -62,7 +76,8 @@ public record LockData(
         string Key,
         string Version,
         string? Loader,
-        IReadOnlyList<string> Packages);
+        IReadOnlyList<string> Packages
+    );
 
     #endregion
 }

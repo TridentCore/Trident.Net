@@ -8,28 +8,34 @@ namespace Trident.Cli;
 
 public static class Startup
 {
-    public static void ConfigureConfiguration(IConfigurationBuilder builder, IEnvironment environment) =>
+    public static void ConfigureConfiguration(
+        IConfigurationBuilder builder,
+        IEnvironment environment
+    ) =>
         builder
-           .SetBasePath(Directory.GetCurrentDirectory())
-           .AddJsonFile("appsettings.json", false)
-           .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", true);
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", false)
+            .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", true);
 
     public static void ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
-        SimpleEnvironment environment)
+        SimpleEnvironment environment
+    )
     {
         services
-           .AddHttpClient()
-           .ConfigureHttpClientDefaults(builder => builder
-                                                  .ConfigureHttpClient(client => client.BaseAddress =
-                                                                           new(configuration["ApiBaseUrl"]
-                                                                            ?? "https://api.example.com"))
-                                                  .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                                                  {
-                                                      UseProxy = false,
-                                                      UseDefaultCredentials = false
-                                                  }));
+            .AddHttpClient()
+            .ConfigureHttpClientDefaults(builder =>
+                builder
+                    .ConfigureHttpClient(client =>
+                        client.BaseAddress = new(
+                            configuration["ApiBaseUrl"] ?? "https://api.example.com"
+                        )
+                    )
+                    .ConfigurePrimaryHttpMessageHandler(() =>
+                        new HttpClientHandler { UseProxy = false, UseDefaultCredentials = false }
+                    )
+            );
 
         services.AddLogging(logging =>
         {

@@ -28,14 +28,16 @@ public class LockDataBuilder : IBuilder<LockData>
         ArgumentNullException.ThrowIfNull(_gameArguments);
         ArgumentNullException.ThrowIfNull(_javaArguments);
 
-        return new(_viability,
-                   _mainClass,
-                   _javaMajorVersion.Value,
-                   _gameArguments,
-                   _javaArguments,
-                   _libraries,
-                   _parcels,
-                   _assetIndex);
+        return new(
+            _viability,
+            _mainClass,
+            _javaMajorVersion.Value,
+            _gameArguments,
+            _javaArguments,
+            _libraries,
+            _parcels,
+            _assetIndex
+        );
     }
 
     #endregion
@@ -84,11 +86,13 @@ public class LockDataBuilder : IBuilder<LockData>
     {
         // 规则：
         //  允许除 IsNative 不同的同时存在，但不允许除了 IsPresent 不同的同时存在， IsPresent==True的优先
-        var found = _libraries.FirstOrDefault(x => x.Id.Namespace == library.Id.Namespace
-                                                && x.Id.Name == library.Id.Name
-                                                && x.Id.Platform == library.Id.Platform
-                                                && x.Id.Extension == library.Id.Extension
-                                                && x.IsNative == library.IsNative);
+        var found = _libraries.FirstOrDefault(x =>
+            x.Id.Namespace == library.Id.Namespace
+            && x.Id.Name == library.Id.Name
+            && x.Id.Platform == library.Id.Platform
+            && x.Id.Extension == library.Id.Extension
+            && x.IsNative == library.IsNative
+        );
         if (found != null)
         {
             // Present 只能有一个

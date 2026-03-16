@@ -11,14 +11,18 @@ public class BuildArtifactStage : StageBase
     {
         var builder = Context.ArtifactBuilder!;
 
-        builder.SetViability(new(LockData.FORMAT,
-                                 Context.VerificationWatermark,
-                                 HashHelper.ComputeObjectHash(Context.Setup.Rules),
-                                 PathDef.Default.Home,
-                                 Context.Key,
-                                 Context.Setup.Version,
-                                 Context.Setup.Loader,
-                                 [.. Context.Setup.Packages.Where(x => x.Enabled).Select(x => x.Purl)]));
+        builder.SetViability(
+            new(
+                LockData.FORMAT,
+                Context.VerificationWatermark,
+                HashHelper.ComputeObjectHash(Context.Setup.Rules),
+                PathDef.Default.Home,
+                Context.Key,
+                Context.Setup.Version,
+                Context.Setup.Loader,
+                [.. Context.Setup.Packages.Where(x => x.Enabled).Select(x => x.Purl)]
+            )
+        );
         var artifact = builder.Build();
 
         var path = PathDef.Default.FileOfLockData(Context.Key);
@@ -28,9 +32,12 @@ public class BuildArtifactStage : StageBase
             Directory.CreateDirectory(dir);
         }
 
-        await File
-             .WriteAllTextAsync(path, JsonSerializer.Serialize(artifact, JsonSerializerOptions.Web), token)
-             .ConfigureAwait(false);
+        await File.WriteAllTextAsync(
+                path,
+                JsonSerializer.Serialize(artifact, JsonSerializerOptions.Web),
+                token
+            )
+            .ConfigureAwait(false);
 
         Context.Artifact = artifact;
     }

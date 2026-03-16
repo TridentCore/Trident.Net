@@ -5,15 +5,25 @@ using Profile = Trident.Abstractions.FileModels.Profile;
 
 namespace Trident.Cli.Commands;
 
-public class CreateCommand(ProfileManager profileManager) : CreationCommandBase<CreateCommand.Arguments>
+public class CreateCommand(ProfileManager profileManager)
+    : CreationCommandBase<CreateCommand.Arguments>
 {
-    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(
+        CommandContext context,
+        Arguments settings,
+        CancellationToken cancellationToken
+    )
     {
         var key = profileManager.RequestKey(settings.Id);
         var profile = new Profile()
         {
             Name = settings.Name,
-            Setup = new() { Version = settings.Version, Source = null, Loader = settings.Loader }
+            Setup = new()
+            {
+                Version = settings.Version,
+                Source = null,
+                Loader = settings.Loader,
+            },
         };
         profileManager.Add(key, profile);
         AnsiConsole.WriteLine($"Instance {key.Key} created");

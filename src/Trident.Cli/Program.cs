@@ -21,7 +21,6 @@ Startup.ConfigureConfiguration(configurationBuilder, environment);
 var configuration = configurationBuilder.Build();
 Startup.ConfigureServices(services, configuration, environment);
 
-
 services.AddSingleton<IConfiguration>(configuration);
 services.AddSingleton<IEnvironment>(environment);
 services.AddSingleton(lookup);

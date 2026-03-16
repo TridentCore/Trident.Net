@@ -18,7 +18,6 @@ public class Profile
     public const string OVERRIDE_MODPACK_AUTHOR = "modpack.author";
     public const string OVERRIDE_MODPACK_VERSION = "modpack.version";
 
-
     public required string Name { get; set; }
     public required Rice Setup { get; set; }
 
@@ -59,7 +58,16 @@ public class Profile
             {
                 #region SelectorType enum
 
-                public enum SelectorType { And, Or, Not, Purl, Repository, Tag, Kind }
+                public enum SelectorType
+                {
+                    And,
+                    Or,
+                    Not,
+                    Purl,
+                    Repository,
+                    Tag,
+                    Kind,
+                }
 
                 #endregion
 

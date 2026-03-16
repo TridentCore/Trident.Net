@@ -5,4 +5,5 @@ public record SortableGameVersionModel(
     string GameVersionPadded,
     string GameVersion,
     DateTimeOffset GameVersionReleaseDate,
-    uint? GameVersionTypeId);
+    uint? GameVersionTypeId
+);

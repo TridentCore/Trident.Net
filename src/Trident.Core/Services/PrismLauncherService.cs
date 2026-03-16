@@ -20,12 +20,15 @@ public class PrismLauncherService(IPrismLauncherClient client)
     private static readonly string OsNameString = PlatformHelper.GetOsName();
     private static readonly string OsFullString = $"{OsNameString}-{PlatformHelper.GetOsArch()}";
 
-    public static readonly IReadOnlyDictionary<string, string> UidMappings = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> UidMappings = new Dictionary<
+        string,
+        string
+    >
     {
         [LoaderHelper.LOADERID_FORGE] = UID_FORGE,
         [LoaderHelper.LOADERID_NEOFORGE] = UID_NEOFORGE,
         [LoaderHelper.LOADERID_FABRIC] = UID_FABRIC,
-        [LoaderHelper.LOADERID_QUILT] = UID_QUILT
+        [LoaderHelper.LOADERID_QUILT] = UID_QUILT,
     };
 
     public async Task<ComponentIndex> GetVersionsAsync(string uid, CancellationToken token)
@@ -34,42 +37,55 @@ public class PrismLauncherService(IPrismLauncherClient client)
         return index;
     }
 
-    public async Task<IReadOnlyList<ComponentIndex.ComponentVersion>> GetVersionsForMinecraftVersionAsync(
-        string uid,
-        string version,
-        CancellationToken token)
+    public async Task<
+        IReadOnlyList<ComponentIndex.ComponentVersion>
+    > GetVersionsForMinecraftVersionAsync(string uid, string version, CancellationToken token)
     {
         var index = await client.GetComponentIndexAsync(uid, token).ConfigureAwait(false);
         return
         [
-            .. index.Versions.Where(x => x.Requires.Any(y => y.Uid == UID_INTERMEDIARY
-                                                          || (y.Uid == UID_MINECRAFT
-                                                           && (y.Suggest == version || y.Equal == version))))
+            .. index.Versions.Where(x =>
+                x.Requires.Any(y =>
+                    y.Uid == UID_INTERMEDIARY
+                    || (y.Uid == UID_MINECRAFT && (y.Suggest == version || y.Equal == version))
+                )
+            ),
         ];
     }
 
     public Task<ComponentIndex> GetMinecraftVersionsAsync(CancellationToken token) =>
         GetVersionsAsync(UID_MINECRAFT, token);
 
-    public async Task<Component> GetVersionAsync(string uid, string version, CancellationToken token)
+    public async Task<Component> GetVersionAsync(
+        string uid,
+        string version,
+        CancellationToken token
+    )
     {
         var component = await client.GetComponentAsync(uid, version, token).ConfigureAwait(false);
         return component;
     }
 
-
-    public async Task<IEnumerable<Component.Library>> GetPatchedLibraries(Component version, CancellationToken token)
+    public async Task<IEnumerable<Component.Library>> GetPatchedLibraries(
+        Component version,
+        CancellationToken token
+    )
     {
-        var libraries = new List<Component.Library>(version.Libraries ?? Enumerable.Empty<Component.Library>());
+        var libraries = new List<Component.Library>(
+            version.Libraries ?? Enumerable.Empty<Component.Library>()
+        );
         foreach (var requirement in version.Requires)
         {
-            var sub = await GetVersionAsync(requirement.Uid,
-                                            requirement.Suggest
-                                         ?? requirement.Equal
-                                         ?? throw new
-                                                FormatException($"{version.Uid}.json/requires[{requirement.Uid}].equals|suggests"),
-                                            token)
-                         .ConfigureAwait(false);
+            var sub = await GetVersionAsync(
+                    requirement.Uid,
+                    requirement.Suggest
+                        ?? requirement.Equal
+                        ?? throw new FormatException(
+                            $"{version.Uid}.json/requires[{requirement.Uid}].equals|suggests"
+                        ),
+                    token
+                )
+                .ConfigureAwait(false);
             libraries.AddRange(sub.Libraries ?? Enumerable.Empty<Component.Library>());
         }
 
@@ -107,7 +123,8 @@ public class PrismLauncherService(IPrismLauncherClient client)
 
     public static void AddValidatedLibrariesToArtifact(
         LockDataBuilder builder,
-        IEnumerable<Component.Library> libraries)
+        IEnumerable<Component.Library> libraries
+    )
     {
         foreach (var lib in libraries.Where(ValidateLibraryRule))
         {
@@ -122,16 +139,28 @@ public class PrismLauncherService(IPrismLauncherClient client)
             }
 
             (string, Component.Library.DownloadsEntry)? native = null;
-            if (OperatingSystem.IsWindows() && lib is { Natives.Windows: not null, Downloads: not null })
+            if (
+                OperatingSystem.IsWindows()
+                && lib is { Natives.Windows: not null, Downloads: not null }
+            )
             {
-                native = (lib.Natives.Windows.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32"),
-                          lib.Downloads);
+                native = (
+                    lib.Natives.Windows.Replace(
+                        "${arch}",
+                        Environment.Is64BitOperatingSystem ? "64" : "32"
+                    ),
+                    lib.Downloads
+                );
             }
-            else if (OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null })
+            else if (
+                OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null }
+            )
             {
                 native = (lib.Natives.Linux, lib.Downloads);
             }
-            else if (OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null })
+            else if (
+                OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null }
+            )
             {
                 native = (lib.Natives.Osx, lib.Downloads);
             }
@@ -141,7 +170,13 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                 // NOTE: 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
-                    builder.AddLibrary($"{lib.Name}:{classifier}", download.Url, download.Sha1, true, false);
+                    builder.AddLibrary(
+                        $"{lib.Name}:{classifier}",
+                        download.Url,
+                        download.Sha1,
+                        true,
+                        false
+                    );
                 }
             }
         }

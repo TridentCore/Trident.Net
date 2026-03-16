@@ -5,11 +5,46 @@ namespace Trident.Abstractions.Extensions;
 
 public static class ProfileExtensions
 {
+    public static Profile.Rice Clone(this Profile.Rice self)
+    {
+        var rules = new List<Profile.Rice.Rule>(
+            self.Rules.Select(x => new Profile.Rice.Rule()
+            {
+                Enabled = x.Enabled,
+                Selector = x.Selector,
+                Destination = x.Destination,
+                Solidifying = x.Solidifying,
+                Skipping = x.Skipping,
+            })
+        );
+        var packages = new List<Profile.Rice.Entry>(
+            self.Packages.Select(x => new Profile.Rice.Entry
+            {
+                Enabled = x.Enabled,
+                Purl = x.Purl,
+                Source = x.Source,
+                Tags = x.Tags,
+            })
+        );
+        return new()
+        {
+            Version = self.Version,
+            Loader = self.Loader,
+            Source = self.Source,
+            Packages = packages,
+            Rules = self.Rules,
+        };
+    }
+
     #region Nested type: $extension
 
     extension(Profile profile)
     {
-        public bool TryGetOverride<T>(string key, [MaybeNullWhen(false)] out T value, T? defaultValue = default)
+        public bool TryGetOverride<T>(
+            string key,
+            [MaybeNullWhen(false)] out T value,
+            T? defaultValue = default
+        )
         {
             if (profile.Overrides.TryGetValue(key, out var result) && result is T rv)
             {
@@ -42,36 +77,14 @@ public static class ProfileExtensions
         {
             var overrides = new Dictionary<string, object>(profile.Overrides);
 
-            return new() { Name = profile.Name, Setup = profile.Setup.Clone(), Overrides = overrides };
+            return new()
+            {
+                Name = profile.Name,
+                Setup = profile.Setup.Clone(),
+                Overrides = overrides,
+            };
         }
     }
 
     #endregion
-
-    public static Profile.Rice Clone(this Profile.Rice self)
-    {
-        var rules = new List<Profile.Rice.Rule>(self.Rules.Select(x => new Profile.Rice.Rule()
-        {
-            Enabled = x.Enabled,
-            Selector = x.Selector,
-            Destination = x.Destination,
-            Solidifying = x.Solidifying,
-            Skipping = x.Skipping
-        }));
-        var packages = new List<Profile.Rice.Entry>(self.Packages.Select(x => new Profile.Rice.Entry
-        {
-            Enabled = x.Enabled,
-            Purl = x.Purl,
-            Source = x.Source,
-            Tags = x.Tags
-        }));
-        return new()
-        {
-            Version = self.Version,
-            Loader = self.Loader,
-            Source = self.Source,
-            Packages = packages,
-            Rules = self.Rules
-        };
-    }
 }

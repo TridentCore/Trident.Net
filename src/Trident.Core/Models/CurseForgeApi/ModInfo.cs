@@ -25,7 +25,8 @@ public record ModInfo(
     uint GamePopularityRank,
     bool IsAvailable,
     uint ThumbUpCount,
-    float? Rating)
+    float? Rating
+)
 {
     #region ModStatus enum
 
@@ -40,14 +41,21 @@ public record ModInfo(
         Inactive,
         Abandoned,
         Deleted,
-        UnderReview
+        UnderReview,
     }
 
     #endregion
 
     #region Nested type: ModAsset
 
-    public record ModAsset(uint Id, uint ModId, string Title, string Description, Uri? ThumbnailUrl, Uri Url);
+    public record ModAsset(
+        uint Id,
+        uint ModId,
+        string Title,
+        string Description,
+        Uri? ThumbnailUrl,
+        Uri Url
+    );
 
     #endregion
 

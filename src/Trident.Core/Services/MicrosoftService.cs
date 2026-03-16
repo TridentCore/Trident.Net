@@ -16,7 +16,8 @@ public class MicrosoftService(IMicrosoftClient client)
     public async Task<TokenResponse> AuthenticateAsync(
         string deviceCode,
         int interval,
-        CancellationToken token = default)
+        CancellationToken token = default
+    )
     {
         while (true)
         {
@@ -30,7 +31,9 @@ public class MicrosoftService(IMicrosoftClient client)
                     continue;
                 }
 
-                throw new AccountAuthenticationException(response.ErrorDescription ?? response.Error);
+                throw new AccountAuthenticationException(
+                    response.ErrorDescription ?? response.Error
+                );
             }
 
             return response;

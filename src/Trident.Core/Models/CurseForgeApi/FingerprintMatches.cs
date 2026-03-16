@@ -6,7 +6,8 @@ public record FingerprintMatches(
     IReadOnlyList<int> ExactFingerprints,
     IReadOnlyList<FingerprintMatches.FingerprintMatch> PartialMatches,
     IReadOnlyList<int> InstalledFingerprints,
-    IReadOnlyList<int> UnmatchedFingerprints)
+    IReadOnlyList<int> UnmatchedFingerprints
+)
 {
     #region Nested type: FingerprintMatch
 

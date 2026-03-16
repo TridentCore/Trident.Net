@@ -7,6 +7,7 @@ using Trident.Core.Engines.Deploying.Stages;
 using Trident.Core.Services.Instances;
 
 namespace Trident.Core.Engines;
+
 // 构建过程
 // 1.加载现有版本锁信息，验证是否可用（与 Setup 是否能完全对的上）
 // 2.生成启用的包列表，解析出依赖图，扁平化
@@ -23,12 +24,15 @@ public class DeployEngine(
     IServiceProvider provider,
     DeployEngineOptions options,
     string verificationWatermark,
-    JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
+    JavaHomeLocatorDelegate javaHomeLocator
+) : IEnumerable<StageBase>
 {
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, verificationWatermark, javaHomeLocator));
+        new DeployEngineEnumerator(
+            new(key, setup, provider, options, verificationWatermark, javaHomeLocator)
+        );
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -104,7 +108,6 @@ public class DeployEngine(
                 return CreateStage<GenerateManifestStage>();
             }
 
-
             if (context.ArtifactBuilder != null)
             {
                 if (!context.IsVanillaInstalled)
@@ -128,7 +131,8 @@ public class DeployEngine(
             return CreateStage<CheckArtifactStage>();
         }
 
-        private T CreateStage<T>() where T : StageBase
+        private T CreateStage<T>()
+            where T : StageBase
         {
             var stage = ActivatorUtilities.CreateInstance<T>(context.Provider);
             stage.Context = context;

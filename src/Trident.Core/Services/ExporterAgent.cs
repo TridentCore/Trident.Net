@@ -15,14 +15,22 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         string key,
         string name,
         string author,
-        string version)
+        string version
+    )
     {
         var exporter = exporters.FirstOrDefault(x => x.Label == label);
         if (exporter is not null)
         {
             if (profileManager.TryGetImmutable(key, out var profile))
             {
-                var pack = new UncompressedProfilePack(key, profile, options, name, author, version);
+                var pack = new UncompressedProfilePack(
+                    key,
+                    profile,
+                    options,
+                    name,
+                    author,
+                    version
+                );
                 return await exporter.PackAsync(pack).ConfigureAwait(false);
             }
 
@@ -61,9 +69,16 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             foreach (var file in Directory.GetFiles(dir))
             {
                 var relative = Path.GetRelativePath(import, file);
-                var entry = zip.CreateEntry(Path.Combine(container.OverrideDirectoryName, relative));
+                var entry = zip.CreateEntry(
+                    Path.Combine(container.OverrideDirectoryName, relative)
+                );
                 await using var writer = await entry.OpenAsync().ConfigureAwait(false);
-                await using var reader = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+                await using var reader = new FileStream(
+                    file,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read
+                );
                 await reader.CopyToAsync(writer).ConfigureAwait(false);
             }
         }

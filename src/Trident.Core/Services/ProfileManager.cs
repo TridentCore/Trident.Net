@@ -21,7 +21,6 @@ public class ProfileManager : IDisposable
     private readonly List<ProfileHandle> _profiles = [];
     internal readonly IList<ReservedKey> ReservedKeys = new List<ReservedKey>();
 
-
     public ProfileManager(ILogger<ProfileManager> logger)
     {
         _logger = logger;
@@ -101,13 +100,14 @@ public class ProfileManager : IDisposable
     public ReservedKey RequestKey(string key)
     {
         var sanitized = !string.IsNullOrEmpty(key)
-                            ? string.Join(string.Empty,
-                                          key
-                                             .Trim()
-                                             .ToLower()
-                                             .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
-                                             .Select(x => x is ' ' or '-' ? '_' : x))
-                            : "_";
+            ? string.Join(
+                string.Empty,
+                key.Trim()
+                    .ToLower()
+                    .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
+                    .Select(x => x is ' ' or '-' ? '_' : x)
+            )
+            : "_";
         while (sanitized.Contains("__"))
         {
             sanitized = sanitized.Replace("__", "_");
@@ -156,7 +156,8 @@ public class ProfileManager : IDisposable
         string version,
         string? loader,
         IReadOnlyList<string> packages,
-        IDictionary<string, object> overrides)
+        IDictionary<string, object> overrides
+    )
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
         if (handle is null)
@@ -166,7 +167,11 @@ public class ProfileManager : IDisposable
 
         var changeSet = packages.ToDictionary(PackageHelper.ExtractProjectIdentityIfValid);
         var removeSet = new List<Profile.Rice.Entry>();
-        foreach (var entry in handle.Value.Setup.Packages.Where(x => x.Source == handle.Value.Setup.Source))
+        foreach (
+            var entry in handle.Value.Setup.Packages.Where(x =>
+                x.Source == handle.Value.Setup.Source
+            )
+        )
         {
             var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Purl);
             if (changeSet.TryGetValue(extracted, out var change))
@@ -188,12 +193,14 @@ public class ProfileManager : IDisposable
 
         foreach (var add in changeSet.Values)
         {
-            handle.Value.Setup.Packages.Add(new()
-            {
-                Enabled = true,
-                Source = source,
-                Purl = add
-            });
+            handle.Value.Setup.Packages.Add(
+                new()
+                {
+                    Enabled = true,
+                    Source = source,
+                    Purl = add,
+                }
+            );
         }
 
         foreach (var (k, v) in overrides)
@@ -225,11 +232,14 @@ public class ProfileManager : IDisposable
 
     public event EventHandler<ProfileChangedEventArgs>? ProfileAdded;
 
-    internal void OnProfileUpdated(string key, Profile profile) => ProfileUpdated?.Invoke(this, new(key, profile));
+    internal void OnProfileUpdated(string key, Profile profile) =>
+        ProfileUpdated?.Invoke(this, new(key, profile));
 
-    internal void OnProfileRemoved(string key, Profile profile) => ProfileRemoved?.Invoke(this, new(key, profile));
+    internal void OnProfileRemoved(string key, Profile profile) =>
+        ProfileRemoved?.Invoke(this, new(key, profile));
 
-    internal void OnProfileAdded(string key, Profile profile) => ProfileAdded?.Invoke(this, new(key, profile));
+    internal void OnProfileAdded(string key, Profile profile) =>
+        ProfileAdded?.Invoke(this, new(key, profile));
 
     #endregion
 

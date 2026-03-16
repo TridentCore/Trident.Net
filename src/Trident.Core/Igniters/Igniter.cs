@@ -61,20 +61,27 @@ public class Igniter : IBuilder<Process>
             { "${os_version}", OsVersion! },
             { "${jvm_max_memory}", $"{MaxMemory!.Value}m" },
             { "${classpath_separator}", separator.ToString() },
-            { "${classpath}", classPath }
+            { "${classpath}", classPath },
         };
-        var executable = Path.Combine(JavaHome!,
-                                      "bin",
-                                      !OperatingSystem.IsWindows() ? "java" : IsDebug ? "java.exe" : "javaw.exe");
+        var executable = Path.Combine(
+            JavaHome!,
+            "bin",
+            !OperatingSystem.IsWindows() ? "java"
+                : IsDebug ? "java.exe"
+                : "javaw.exe"
+        );
         var start = new ProcessStartInfo(executable)
         {
             WorkingDirectory = WorkingDirectory!,
-            UseShellExecute = IsDebug
+            UseShellExecute = IsDebug,
         };
         foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
         {
             var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            var line = crate.Key == null || crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
+            var line =
+                crate.Key == null || crate.Value == null
+                    ? argument
+                    : argument.Replace(crate.Key, crate.Value);
             start.ArgumentList.Add(line);
         }
 

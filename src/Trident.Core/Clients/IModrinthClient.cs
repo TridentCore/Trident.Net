@@ -20,14 +20,14 @@ public interface IModrinthClient
         string facets,
         string? index = null,
         uint offset = 0,
-        uint limit = 10);
+        uint limit = 10
+    );
 
     [Get("/v3/project/{projectId}")]
     Task<ProjectInfo> GetProjectAsync(string projectId);
 
     [Get("/v3/projects")]
     Task<IReadOnlyList<ProjectInfo>> GetMultipleProjectsAsync(string ids);
-
 
     [Get("/v3/version/{versionId}")]
     Task<VersionInfo> GetVersionAsync(string versionId);
@@ -42,7 +42,8 @@ public interface IModrinthClient
     Task<IReadOnlyList<VersionInfo>> GetProjectVersionsAsync(
         string projectId,
         string? versionType = null,
-        string? loaders = null);
+        string? loaders = null
+    );
 
     [Get("/v3/version_file/{hash}")]
     Task<VersionInfo> GetVersionFromHashAsync(string hash, [Query] string algorithm = "sha1");

@@ -11,7 +11,8 @@ using Trident.Purl;
 
 namespace Trident.Core.Engines.Deploying.Stages;
 
-public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, RepositoryAgent agent) : StageBase
+public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, RepositoryAgent agent)
+    : StageBase
 {
     public Subject<(int, int)> ProgressStream { get; } = new();
 
@@ -28,96 +29,130 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
             }
             else
             {
-                throw new FormatException($"{Context.Setup.Loader} is not well formatted loader string");
+                throw new FormatException(
+                    $"{Context.Setup.Loader} is not well formatted loader string"
+                );
             }
         }
 
-        var purls = new List<Purl>(Context
-                                  .Setup.Packages.Where(x => x.Enabled)
-                                  .Select(x =>
-                                   {
-                                       if (PackageHelper.TryParse(x.Purl, out var parsed))
-                                       {
-                                           return new Purl(x,
-                                                           new(parsed.Label, parsed.Namespace, parsed.Pid),
-                                                           parsed.Vid,
-                                                           false);
-                                       }
+        var purls = new List<Purl>(
+            Context
+                .Setup.Packages.Where(x => x.Enabled)
+                .Select(x =>
+                {
+                    if (PackageHelper.TryParse(x.Purl, out var parsed))
+                    {
+                        return new Purl(
+                            x,
+                            new(parsed.Label, parsed.Namespace, parsed.Pid),
+                            parsed.Vid,
+                            false
+                        );
+                    }
 
-                                       throw new FormatException($"Package {x.Purl} is not a valid package");
-                                   }));
+                    throw new FormatException($"Package {x.Purl} is not a valid package");
+                })
+        );
 
         if (purls.Count != 0)
         {
             ProgressStream.OnNext((0, purls.Count));
 
             var index = purls
-                       .Select(x => (Key: new PackageIdentifier(x.Id.Label, x.Id.Namespace, x.Id.Pid, x.Vid),
-                                     Value: x.Origin))
-                       .ToDictionary(x => x.Key, x => x.Value);
+                .Select(x =>
+                    (
+                        Key: new PackageIdentifier(x.Id.Label, x.Id.Namespace, x.Id.Pid, x.Vid),
+                        Value: x.Origin
+                    )
+                )
+                .ToDictionary(x => x.Key, x => x.Value);
 
             var resolved = await agent
-                                .ResolveBatchAsync(index.Keys,
-                                                   Filter.None with
-                                                   {
-                                                       Loader = loader,
-                                                       Version = Context.Setup.Version
-                                                   })
-                                .ConfigureAwait(false);
+                .ResolveBatchAsync(
+                    index.Keys,
+                    Filter.None with
+                    {
+                        Loader = loader,
+                        Version = Context.Setup.Version,
+                    }
+                )
+                .ConfigureAwait(false);
 
             var enabledRules = Context.Setup.Rules.Where(x => x.Enabled).ToList();
 
             foreach (var (id, package) in resolved)
             {
                 var entry = index[id];
-                var result = RuleHelper.Evaluate(new RuleHelper.Input(entry, package), enabledRules);
+                var result = RuleHelper.Evaluate(
+                    new RuleHelper.Input(entry, package),
+                    enabledRules
+                );
 
                 if (result is { Matched: true, EffectiveRule: { } effectiveRule })
                 {
-                    logger.LogDebug("Rule {{ {skipping}, {solidifying}, {destination} }} applied to {purl}",
-                                    entry.Purl,
-                                    effectiveRule.Skipping,
-                                    effectiveRule.Solidifying,
-                                    effectiveRule.Destination ?? "<default>");
+                    logger.LogDebug(
+                        "Rule {{ {skipping}, {solidifying}, {destination} }} applied to {purl}",
+                        entry.Purl,
+                        effectiveRule.Skipping,
+                        effectiveRule.Solidifying,
+                        effectiveRule.Destination ?? "<default>"
+                    );
                     if (effectiveRule.Skipping)
                     {
                         continue;
                     }
 
-                    var target = Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
-                                              FileHelper.GetAssetFolderName(package.Kind),
-                                              package.FileName);
+                    var target = Path.Combine(
+                        PathDef.Default.DirectoryOfBuild(Context.Key),
+                        FileHelper.GetAssetFolderName(package.Kind),
+                        package.FileName
+                    );
                     if (effectiveRule.Destination is not null)
                     {
-                        target = Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
-                                              effectiveRule.Destination,
-                                              package.FileName);
-                        if (!FileHelper.IsInDirectory(target, PathDef.Default.DirectoryOfBuild(Context.Key)))
+                        target = Path.Combine(
+                            PathDef.Default.DirectoryOfBuild(Context.Key),
+                            effectiveRule.Destination,
+                            package.FileName
+                        );
+                        if (
+                            !FileHelper.IsInDirectory(
+                                target,
+                                PathDef.Default.DirectoryOfBuild(Context.Key)
+                            )
+                        )
                         {
-                            throw new InvalidOperationException($"Destination {target} is outside of build directory");
+                            throw new InvalidOperationException(
+                                $"Destination {target} is outside of build directory"
+                            );
                         }
                     }
 
-                    builder.AddParcel(package.Label,
-                                      package.Namespace,
-                                      package.ProjectId,
-                                      package.VersionId,
-                                      target,
-                                      package.Download,
-                                      package.Sha1,
-                                      effectiveRule.Solidifying);
+                    builder.AddParcel(
+                        package.Label,
+                        package.Namespace,
+                        package.ProjectId,
+                        package.VersionId,
+                        target,
+                        package.Download,
+                        package.Sha1,
+                        effectiveRule.Solidifying
+                    );
                 }
                 else
                 {
-                    builder.AddParcel(package.Label,
-                                      package.Namespace,
-                                      package.ProjectId,
-                                      package.VersionId,
-                                      Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key),
-                                                   FileHelper.GetAssetFolderName(package.Kind),
-                                                   package.FileName),
-                                      package.Download,
-                                      package.Sha1);
+                    builder.AddParcel(
+                        package.Label,
+                        package.Namespace,
+                        package.ProjectId,
+                        package.VersionId,
+                        Path.Combine(
+                            PathDef.Default.DirectoryOfBuild(Context.Key),
+                            FileHelper.GetAssetFolderName(package.Kind),
+                            package.FileName
+                        ),
+                        package.Download,
+                        package.Sha1
+                    );
                 }
             }
 
@@ -164,7 +199,8 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
         string FileName,
         string? Sha1,
         Uri Download,
-        bool IsReliable = true);
+        bool IsReliable = true
+    );
 
     #endregion
 }

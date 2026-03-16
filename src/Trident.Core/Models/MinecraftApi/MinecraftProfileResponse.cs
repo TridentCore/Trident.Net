@@ -6,7 +6,8 @@ public record MinecraftProfileResponse(
     string Id,
     string Name,
     IReadOnlyList<MinecraftProfileResponse.Skin> Skins,
-    IReadOnlyList<MinecraftProfileResponse.Cape> Capes)
+    IReadOnlyList<MinecraftProfileResponse.Cape> Capes
+)
 {
     #region Nested type: Cape
 

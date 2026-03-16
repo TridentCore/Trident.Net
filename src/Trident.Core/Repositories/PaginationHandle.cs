@@ -6,7 +6,8 @@ public class PaginationHandle<T>(
     IEnumerable<T> initial,
     uint pageSize,
     uint totalCount,
-    Func<uint, CancellationToken, Task<IEnumerable<T>>> next) : IPaginationHandle<T>
+    Func<uint, CancellationToken, Task<IEnumerable<T>>> next
+) : IPaginationHandle<T>
 {
     private IEnumerable<T> _currentItems = initial;
     private uint _currentPage;

@@ -9,8 +9,9 @@ public static class LoaderHelper
     public const string LOADERID_FABRIC = "net.fabricmc";
     public const string LOADERID_QUILT = "org.quiltmc";
     public const string LOADERID_FLINT = "net.flintloader";
-    private static readonly Regex Pattern = new("^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$");
-
+    private static readonly Regex Pattern = new(
+        "^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$"
+    );
 
     public static string ToDisplayName(string identity) =>
         identity switch
@@ -20,10 +21,11 @@ public static class LoaderHelper
             LOADERID_FABRIC => "Fabric",
             LOADERID_QUILT => "Quilt",
             LOADERID_FLINT => "Flint",
-            _ => identity
+            _ => identity,
         };
 
-    public static string ToDisplayLabel(string identity, string version) => $"{ToDisplayName(identity)} {version}";
+    public static string ToDisplayLabel(string identity, string version) =>
+        $"{ToDisplayName(identity)} {version}";
 
     public static bool TryParse(string lurl, out (string Identity, string Version) result)
     {

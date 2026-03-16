@@ -4,7 +4,8 @@ public record RuntimeManifest(
     int FormatVersion,
     string Name,
     DateTimeOffset ReleaseTime,
-    IReadOnlyList<RuntimeManifest.Runtime> Runtimes)
+    IReadOnlyList<RuntimeManifest.Runtime> Runtimes
+)
 {
     #region Nested type: Runtime
 
@@ -17,7 +18,8 @@ public record RuntimeManifest(
         string RuntimeOS,
         Uri Url,
         string Vendor,
-        Runtime.VersionData Version)
+        Runtime.VersionData Version
+    )
     {
         #region Nested type: ChecksumData
 

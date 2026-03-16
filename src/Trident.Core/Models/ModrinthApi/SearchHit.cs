@@ -21,4 +21,5 @@ public record SearchHit(
     string ServerSide,
     IReadOnlyList<Uri> Gallery,
     Uri? FeaturedGallery,
-    long? Color);
+    long? Color
+);

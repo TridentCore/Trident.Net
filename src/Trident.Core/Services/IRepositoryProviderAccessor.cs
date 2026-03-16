@@ -11,11 +11,17 @@ public interface IRepositoryProviderAccessor
         ProviderProfile.DriverType Driver,
         string Endpoint,
         (string Key, string Value)? AuthorizationHeader,
-        string? UserAgent)
+        string? UserAgent
+    )
     {
         #region DriverType enum
 
-        public enum DriverType { CurseForge, Modrinth, GitHub }
+        public enum DriverType
+        {
+            CurseForge,
+            Modrinth,
+            GitHub,
+        }
 
         #endregion
     }

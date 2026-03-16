@@ -13,7 +13,10 @@ public static class ZipArchiveHelper
     /// <param name="archive">要检查的ZipArchive</param>
     /// <param name="rootDirName">如果存在单根目录，返回该目录名，否则为空串（表示根目录名）</param>
     /// <returns>如果所有文件都在一个目录内，返回 true</returns>
-    public static bool HasSingleRootDirectory(ZipArchive archive, [MaybeNullWhen(false)] out string rootDirName)
+    public static bool HasSingleRootDirectory(
+        ZipArchive archive,
+        [MaybeNullWhen(false)] out string rootDirName
+    )
     {
         rootDirName = string.Empty;
 
@@ -23,7 +26,10 @@ public static class ZipArchiveHelper
         }
 
         // 获取所有条目的路径
-        var entries = archive.Entries.Where(x => !InvalidNames.Contains(x.Name)).Select(e => e.FullName).ToList();
+        var entries = archive
+            .Entries.Where(x => !InvalidNames.Contains(x.Name))
+            .Select(e => e.FullName)
+            .ToList();
 
         var prefix = entries.FirstOrDefault();
         if (prefix == null)
@@ -34,11 +40,15 @@ public static class ZipArchiveHelper
         rootDirName = prefix;
         foreach (var path in entries)
         {
-            if (!string.IsNullOrEmpty(path)
-             && !path.StartsWith(rootDirName,
-                                 OperatingSystem.IsWindows()
-                                     ? StringComparison.OrdinalIgnoreCase
-                                     : StringComparison.Ordinal))
+            if (
+                !string.IsNullOrEmpty(path)
+                && !path.StartsWith(
+                    rootDirName,
+                    OperatingSystem.IsWindows()
+                        ? StringComparison.OrdinalIgnoreCase
+                        : StringComparison.Ordinal
+                )
+            )
             {
                 if (rootDirName.Contains('/'))
                 {

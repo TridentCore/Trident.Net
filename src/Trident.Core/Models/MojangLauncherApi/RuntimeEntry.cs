@@ -3,7 +3,8 @@ namespace Trident.Core.Models.MojangLauncherApi;
 public record RuntimeEntry(
     RuntimeEntry.EntryAvailability Availability,
     RuntimeEntry.EntryManifest Manifest,
-    RuntimeEntry.EntryVersion Version)
+    RuntimeEntry.EntryVersion Version
+)
 {
     #region Nested type: EntryAvailability
 

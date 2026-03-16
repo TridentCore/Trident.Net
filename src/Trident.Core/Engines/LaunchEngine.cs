@@ -114,29 +114,35 @@ public partial class LaunchEngine : IAsyncEnumerable<Scrap>
         private Scrap TryConstruct(string data)
         {
             var match = _pattern.Match(data);
-            if (match.Success
-             && match.Groups.TryGetValue("level", out var level)
-             && match.Groups.TryGetValue("thread", out var thread)
-             && match.Groups.TryGetValue("message", out var message))
+            if (
+                match.Success
+                && match.Groups.TryGetValue("level", out var level)
+                && match.Groups.TryGetValue("thread", out var thread)
+                && match.Groups.TryGetValue("message", out var message)
+            )
             {
                 match.Groups.TryGetValue("source", out var sender);
-                return new(message.Value,
-                           level.Value.ToUpper() switch
-                           {
-                               "INFO" => ScrapLevel.Information,
-                               "WARN" => ScrapLevel.Warning,
-                               "ERROR" => ScrapLevel.Error,
-                               _ => ScrapLevel.Information
-                           },
-                           DateTimeOffset.Now,
-                           thread.Value,
-                           sender?.Value);
+                return new(
+                    message.Value,
+                    level.Value.ToUpper() switch
+                    {
+                        "INFO" => ScrapLevel.Information,
+                        "WARN" => ScrapLevel.Warning,
+                        "ERROR" => ScrapLevel.Error,
+                        _ => ScrapLevel.Information,
+                    },
+                    DateTimeOffset.Now,
+                    thread.Value,
+                    sender?.Value
+                );
             }
 
             return new(data);
         }
 
-        [GeneratedRegex(@"\[(.*)\] \[(?<thread>[a-zA-Z0-9\ \-#@]+)/(?<level>[a-zA-Z]+)\](\ \[(?<source>[a-zA-Z0-9\ \\./\-]+)\])?: (?<message>.*)")]
+        [GeneratedRegex(
+            @"\[(.*)\] \[(?<thread>[a-zA-Z0-9\ \-#@]+)/(?<level>[a-zA-Z]+)\](\ \[(?<source>[a-zA-Z0-9\ \\./\-]+)\])?: (?<message>.*)"
+        )]
         private static partial Regex GenerateRegex();
     }
 

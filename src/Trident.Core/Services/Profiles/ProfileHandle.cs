@@ -4,7 +4,8 @@ using Trident.Abstractions.FileModels;
 
 namespace Trident.Core.Services.Profiles;
 
-internal class ProfileHandle(string key, Profile value, JsonSerializerOptions options) : IAsyncDisposable
+internal class ProfileHandle(string key, Profile value, JsonSerializerOptions options)
+    : IAsyncDisposable
 {
     public string Key => key;
     public Profile Value => value;
@@ -24,7 +25,6 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
         {
             Directory.CreateDirectory(dir);
         }
-
 
         var json = JsonSerializer.Serialize(Value, options);
         await File.WriteAllTextAsync(profilePath, json).ConfigureAwait(false);

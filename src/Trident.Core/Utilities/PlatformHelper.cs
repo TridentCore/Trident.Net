@@ -31,7 +31,7 @@ public static class PlatformHelper
             Architecture.X86 => "x86",
             Architecture.Arm => "arm",
             Architecture.Arm64 => "arm64",
-            _ => throw new NotSupportedException("Unsupported process architecture.")
+            _ => throw new NotSupportedException("Unsupported process architecture."),
         };
 
     public static string GetOsVersion() => Environment.OSVersion.Version.ToString();

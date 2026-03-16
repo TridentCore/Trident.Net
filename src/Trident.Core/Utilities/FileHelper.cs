@@ -11,24 +11,36 @@ public static class FileHelper
 {
     public static readonly JsonSerializerOptions SerializerOptions;
 
+    public static readonly string[] SupportedBitmapMimes =
+    [
+        "image/jpeg",
+        "image/png",
+        "image/bmp",
+        "image/gif",
+        "image/tiff",
+    ];
+
+    public static readonly string[] SupportedBitmapExtensions =
+    [
+        "jpeg",
+        "jpg",
+        "png",
+        "bmp",
+        "gif",
+        "tiff",
+    ];
+
+    private static readonly IContentInspector Inspector = new ContentInspectorBuilder
+    {
+        Definitions = DefaultDefinitions.All(),
+    }.Build();
+
     static FileHelper()
     {
         SerializerOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
         SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }
-
-    public static readonly string[] SupportedBitmapMimes =
-    [
-        "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff"
-    ];
-    public static readonly string[] SupportedBitmapExtensions =
-    [
-        "jpeg", "jpg", "png", "bmp", "gif", "tiff"
-    ];
-
-    private static readonly IContentInspector Inspector =
-        new ContentInspectorBuilder { Definitions = DefaultDefinitions.All() }.Build();
 
     public static string? PickExists(string home, Span<string> candidates)
     {
@@ -59,24 +71,39 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        Inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
-     ?? fallback;
+        Inspector
+            .Inspect(stream)
+            .ByFileExtension()
+            .OrderBy(x => -x.Points)
+            .Select(x => x.Extension)
+            .FirstOrDefault()
+        ?? fallback;
 
     public static bool IsInDirectory(string file, string directory) =>
-        Path
-           .GetFullPath(file)
-           .StartsWith(Path.GetFullPath(directory),
-                       OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        Path.GetFullPath(file)
+            .StartsWith(
+                Path.GetFullPath(directory),
+                OperatingSystem.IsWindows()
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal
+            );
 
     public static bool IsPathEquivalent(string path1, string path2) =>
-        Path
-           .GetFullPath(path1)
-           .Equals(Path.GetFullPath(path2),
-                   OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        Path.GetFullPath(path1)
+            .Equals(
+                Path.GetFullPath(path2),
+                OperatingSystem.IsWindows()
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal
+            );
 
     public static bool IsFileNameEquivalent(string name1, string name2) =>
-        name1.Equals(name2,
-                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        name1.Equals(
+            name2,
+            OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal
+        );
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {
@@ -113,7 +140,7 @@ public static class FileHelper
             ResourceKind.ShaderPack => "shaderpacks",
             ResourceKind.ResourcePack => "resourcepacks",
             ResourceKind.DataPack => "datapacks",
-            _ => throw new NotImplementedException()
+            _ => throw new NotImplementedException(),
         };
 
     public static (ulong, ulong) CalculateDirectorySize(string path)
@@ -125,24 +152,32 @@ public static class FileHelper
 
         var directory = new DirectoryInfo(path);
         var (size, count) = directory
-                           .GetFiles()
-                           .Aggregate((0ul, 0ul),
-                                      (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1));
+            .GetFiles()
+            .Aggregate(
+                (0ul, 0ul),
+                (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1)
+            );
         return directory
-              .GetDirectories()
-              .Aggregate((size, count),
-                         (current, dir) =>
-                         {
-                             var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
-                             return (current.size + subSize, current.count + subCount);
-                         });
+            .GetDirectories()
+            .Aggregate(
+                (size, count),
+                (current, dir) =>
+                {
+                    var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
+                    return (current.size + subSize, current.count + subCount);
+                }
+            );
     }
 
     #region Nested type: SystemObjectNewtonsoftCompatibleConverter
 
     private class SystemObjectNewtonsoftCompatibleConverter : JsonConverter<object>
     {
-        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override object? Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
         {
             switch (reader.TokenType)
             {
@@ -168,8 +203,11 @@ public static class FileHelper
             }
         }
 
-        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
-            writer.WriteRawValue(JsonSerializer.Serialize(value));
+        public override void Write(
+            Utf8JsonWriter writer,
+            object value,
+            JsonSerializerOptions options
+        ) => writer.WriteRawValue(JsonSerializer.Serialize(value));
     }
 
     #endregion

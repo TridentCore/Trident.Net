@@ -8,7 +8,8 @@ public record Manifest(
     string Version,
     string Author,
     IReadOnlyList<Manifest.FileModel> Files,
-    string Overrides)
+    string Overrides
+)
 {
     #region Nested type: FileModel
 
@@ -20,7 +21,10 @@ public record Manifest(
 
     #region Nested type: MinecraftModel
 
-    public record MinecraftModel(string Version, IReadOnlyList<MinecraftModel.ModLoaderModel> ModLoaders)
+    public record MinecraftModel(
+        string Version,
+        IReadOnlyList<MinecraftModel.ModLoaderModel> ModLoaders
+    )
     {
         #region Nested type: ModLoaderModel
 

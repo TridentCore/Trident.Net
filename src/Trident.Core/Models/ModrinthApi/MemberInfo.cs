@@ -9,4 +9,5 @@ public record MemberInfo(
     uint? OrganizationPermissions,
     bool Accepted,
     int? PayoutSplit,
-    int Ordering);
+    int Ordering
+);

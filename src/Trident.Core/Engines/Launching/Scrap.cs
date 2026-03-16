@@ -2,7 +2,13 @@ namespace Trident.Core.Engines.Launching;
 
 public record Scrap
 {
-    public Scrap(string message, ScrapLevel? level, DateTimeOffset? time, string? thread, string? sender)
+    public Scrap(
+        string message,
+        ScrapLevel? level,
+        DateTimeOffset? time,
+        string? thread,
+        string? sender
+    )
     {
         Level = level;
         Time = time;

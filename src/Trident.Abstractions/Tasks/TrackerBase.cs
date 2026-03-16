@@ -7,9 +7,11 @@ public abstract class TrackerBase(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
-    CancellationToken token = default) : IDisposableLifetime
+    CancellationToken token = default
+) : IDisposableLifetime
 {
-    private readonly CancellationTokenSource _tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
+    private readonly CancellationTokenSource _tokenSource =
+        CancellationTokenSource.CreateLinkedTokenSource(token);
     public string Key => key;
     public CancellationToken Token => _tokenSource.Token;
     public TrackerState State { get; private set; } = TrackerState.Idle;
@@ -39,28 +41,29 @@ public abstract class TrackerBase(
     {
         State = TrackerState.Running;
         StateUpdated?.Invoke(this, State);
-        Task
-           .Run(async () => await handler(this), Token)
-           .ContinueWith(t =>
-                         {
-                             if (t.IsCanceled || Token.IsCancellationRequested)
-                             {
-                                 OnFault(new OperationCanceledException());
-                             }
-                             else if (t.IsFaulted)
-                             {
-                                 OnFault(t.Exception);
-                             }
-                             else if (t.IsCompletedSuccessfully)
-                             {
-                                 OnFinish();
-                             }
-                             else
-                             {
-                                 throw new NotImplementedException();
-                             }
-                         },
-                         CancellationToken.None);
+        Task.Run(async () => await handler(this), Token)
+            .ContinueWith(
+                t =>
+                {
+                    if (t.IsCanceled || Token.IsCancellationRequested)
+                    {
+                        OnFault(new OperationCanceledException());
+                    }
+                    else if (t.IsFaulted)
+                    {
+                        OnFault(t.Exception);
+                    }
+                    else if (t.IsCompletedSuccessfully)
+                    {
+                        OnFinish();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
+                },
+                CancellationToken.None
+            );
     }
 
     protected virtual void OnFinish()

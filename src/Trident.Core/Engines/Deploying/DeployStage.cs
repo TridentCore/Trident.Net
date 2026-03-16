@@ -9,5 +9,5 @@ public enum DeployStage
     BuildArtifact,
     EnsureRuntime,
     GenerateManifest,
-    SolidifyManifest
+    SolidifyManifest,
 }

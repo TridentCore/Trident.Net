@@ -8,5 +8,5 @@ public enum ReleaseType
     Experimental,
 
     // Or snapshot
-    Nightly
+    Nightly,
 }

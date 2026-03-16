@@ -8,7 +8,8 @@ public class DeployTracker(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted = null,
-    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default
+) : TrackerBase(key, handler, onCompleted, token)
 {
     public Subject<(int, int)> ProgressStream { get; } = new();
     public Subject<DeployStage> StageStream { get; } = new();

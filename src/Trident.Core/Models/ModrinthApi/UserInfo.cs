@@ -14,4 +14,5 @@ public record UserInfo(
     bool? EmailVerified,
     bool? HasPassword,
     bool? HasTotp,
-    string? GithubId);
+    string? GithubId
+);

@@ -22,11 +22,15 @@ public static class LockDataExtensions
 
         foreach (var library in self.Libraries.Where(x => x.IsPresent))
         {
-            igniter.AddLibrary(PathDef.Default.FileOfLibrary(library.Id.Namespace,
-                                                             library.Id.Name,
-                                                             library.Id.Version,
-                                                             library.Id.Platform,
-                                                             library.Id.Extension));
+            igniter.AddLibrary(
+                PathDef.Default.FileOfLibrary(
+                    library.Id.Namespace,
+                    library.Id.Name,
+                    library.Id.Version,
+                    library.Id.Platform,
+                    library.Id.Extension
+                )
+            );
         }
 
         igniter.SetMainClass(self.MainClass).SetAssetIndex(self.AssetIndex.Id);

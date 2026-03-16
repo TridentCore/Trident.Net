@@ -10,4 +10,5 @@ public record GameVersion(
     DateTimeOffset DateModified,
     uint GameVersionTypeId,
     uint GameVersionStatus,
-    uint GameVersionTypeStatus);
+    uint GameVersionTypeStatus
+);

@@ -14,13 +14,14 @@ public static class AssetHelper
     public static IReadOnlyList<FileInfo> ScanNonSymlinkFiles(
         string key,
         string pattern,
-        ReadOnlySpan<string> pathSegments)
+        ReadOnlySpan<string> pathSegments
+    )
     {
         var storages = new[]
         {
             PathDef.Default.DirectoryOfBuild(key),
             PathDef.Default.DirectoryOfImport(key),
-            PathDef.Default.DirectoryOfPersist(key)
+            PathDef.Default.DirectoryOfPersist(key),
         };
 
         var results = new List<FileInfo>();
@@ -41,7 +42,10 @@ public static class AssetHelper
             if (pass)
             {
                 var dir = new DirectoryInfo(outer);
-                results.AddRange(dir.GetFiles(pattern, SearchOption.TopDirectoryOnly).Where(x => x.LinkTarget is null));
+                results.AddRange(
+                    dir.GetFiles(pattern, SearchOption.TopDirectoryOnly)
+                        .Where(x => x.LinkTarget is null)
+                );
             }
         }
 
@@ -58,13 +62,14 @@ public static class AssetHelper
     public static IReadOnlyList<DirectoryInfo> ScanNonSymlinkDirectories(
         string key,
         string pattern,
-        ReadOnlySpan<string> pathSegments)
+        ReadOnlySpan<string> pathSegments
+    )
     {
         var storages = new[]
         {
             PathDef.Default.DirectoryOfBuild(key),
             PathDef.Default.DirectoryOfImport(key),
-            PathDef.Default.DirectoryOfPersist(key)
+            PathDef.Default.DirectoryOfPersist(key),
         };
 
         var results = new List<DirectoryInfo>();
@@ -85,9 +90,10 @@ public static class AssetHelper
             if (pass)
             {
                 var dir = new DirectoryInfo(outer);
-                results.AddRange(dir
-                                .GetDirectories(pattern, SearchOption.TopDirectoryOnly)
-                                .Where(x => x.LinkTarget is null));
+                results.AddRange(
+                    dir.GetDirectories(pattern, SearchOption.TopDirectoryOnly)
+                        .Where(x => x.LinkTarget is null)
+                );
             }
         }
 

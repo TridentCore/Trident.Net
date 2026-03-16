@@ -15,7 +15,8 @@ public interface IRepository
 
     Task<IReadOnlyList<(ScopedPackageIdentifier, Package)>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
-        Filter filter);
+        Filter filter
+    );
 
     Task<string> ReadDescriptionAsync(string? ns, string pid);
     Task<string> ReadChangelogAsync(string? ns, string pid, string vid);
