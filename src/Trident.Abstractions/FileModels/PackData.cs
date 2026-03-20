@@ -5,11 +5,13 @@ public class PackData
 {
     public required IList<Entry> IncludedOverrides { get; init; }
     public required bool IncludingSource { get; set; }
+    public required bool IncludingTags { get; set; }
 
     public static PackData CreateDefault() =>
         new()
         {
             IncludingSource = false,
+            IncludingTags = true,
             IncludedOverrides =
             [
                 new() { Key = Profile.OVERRIDE_JAVA_MAX_MEMORY },
