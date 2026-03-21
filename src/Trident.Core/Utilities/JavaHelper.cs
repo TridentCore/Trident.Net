@@ -22,8 +22,14 @@ public static class JavaHelper
                 return null;
             }
 
-            var output = RunJavaAndCaptureMetadata(path, home, timeoutMilliseconds, "-XshowSettings:properties", "-version")
-                ?? RunJavaAndCaptureMetadata(path, home, timeoutMilliseconds, "-version");
+            var output =
+                RunJavaAndCaptureMetadata(
+                    path,
+                    home,
+                    timeoutMilliseconds,
+                    "-XshowSettings:properties",
+                    "-version"
+                ) ?? RunJavaAndCaptureMetadata(path, home, timeoutMilliseconds, "-version");
             if (string.IsNullOrWhiteSpace(output))
             {
                 return null;
@@ -32,7 +38,9 @@ public static class JavaHelper
             var vendor = ExtractJavaProperty(output, "java.vendor");
             var version = ExtractJavaProperty(output, "java.version") ?? ExtractJavaVersion(output);
             var major = ParseJavaMajor(version);
-            return vendor == null && version == null && major == null ? null : new(vendor, version, major);
+            return vendor == null && version == null && major == null
+                ? null
+                : new(vendor, version, major);
         }
         catch
         {
@@ -83,7 +91,7 @@ public static class JavaHelper
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true
+            CreateNoWindow = true,
         };
 
         foreach (var argument in arguments)
