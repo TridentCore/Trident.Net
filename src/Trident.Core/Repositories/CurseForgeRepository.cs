@@ -19,8 +19,6 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         new() { GithubFlavored = false, SmartHrefHandling = true }
     );
 
-    private static string? CacheDataPackCategoryIds = null;
-
     #region IRepository Members
 
     public async Task<RepositoryStatus> CheckStatusAsync()
