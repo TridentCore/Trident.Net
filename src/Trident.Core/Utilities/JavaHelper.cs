@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading;
 using Trident.Abstractions;
 using Trident.Core.Exceptions;
 using Trident.Core.Services.Instances;
@@ -12,7 +13,11 @@ public static class JavaHelper
         bool withFallback = true
     ) => major => Locate(major, javaHomeSelector(major), withFallback);
 
-    public static JavaRuntimeInfo? ProbeHome(string home, int timeoutMilliseconds = 5000)
+    public static async Task<JavaRuntimeInfo?> ProbeHomeAsync(
+        string home,
+        int timeoutMilliseconds = 5000,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -23,13 +28,21 @@ public static class JavaHelper
             }
 
             var output =
-                RunJavaAndCaptureMetadata(
+                await RunJavaAndCaptureMetadataAsync(
                     path,
                     home,
                     timeoutMilliseconds,
+                    cancellationToken,
                     "-XshowSettings:properties",
                     "-version"
-                ) ?? RunJavaAndCaptureMetadata(path, home, timeoutMilliseconds, "-version");
+                ).ConfigureAwait(false)
+                ?? await RunJavaAndCaptureMetadataAsync(
+                    path,
+                    home,
+                    timeoutMilliseconds,
+                    cancellationToken,
+                    "-version"
+                ).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(output))
             {
                 return null;
@@ -41,6 +54,10 @@ public static class JavaHelper
             return vendor == null && version == null && major == null
                 ? null
                 : new(vendor, version, major);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return null;
         }
         catch
         {
@@ -117,6 +134,76 @@ public static class JavaHelper
         }
 
         return string.Join(Environment.NewLine, stdoutTask.Result, stderrTask.Result);
+    }
+
+    private static async Task<string?> RunJavaAndCaptureMetadataAsync(
+        string executable,
+        string workingDirectory,
+        int timeoutMilliseconds,
+        CancellationToken cancellationToken,
+        params string[] arguments
+    )
+    {
+        using var process = new Process();
+        process.StartInfo = new(executable)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+
+        process.Start();
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeoutMilliseconds);
+
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
+            await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(timeoutCts.Token).ConfigureAwait(false);
+            return string.Join(Environment.NewLine, await stdoutTask.ConfigureAwait(false), await stderrTask.ConfigureAwait(false));
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcess(process);
+
+            try
+            {
+                await process.WaitForExitAsync().ConfigureAwait(false);
+                await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore cleanup failures and preserve the original cancellation behavior.
+            }
+
+            throw;
+        }
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup.
+        }
     }
 
     private static string? ExtractJavaProperty(string output, string propertyName)
