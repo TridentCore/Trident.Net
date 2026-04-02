@@ -29,20 +29,22 @@ public static class JavaHelper
 
             var output =
                 await RunJavaAndCaptureMetadataAsync(
-                    path,
-                    home,
-                    timeoutMilliseconds,
-                    cancellationToken,
-                    "-XshowSettings:properties",
-                    "-version"
-                ).ConfigureAwait(false)
+                        path,
+                        home,
+                        timeoutMilliseconds,
+                        cancellationToken,
+                        "-XshowSettings:properties",
+                        "-version"
+                    )
+                    .ConfigureAwait(false)
                 ?? await RunJavaAndCaptureMetadataAsync(
-                    path,
-                    home,
-                    timeoutMilliseconds,
-                    cancellationToken,
-                    "-version"
-                ).ConfigureAwait(false);
+                        path,
+                        home,
+                        timeoutMilliseconds,
+                        cancellationToken,
+                        "-version"
+                    )
+                    .ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(output))
             {
                 return null;
@@ -170,8 +172,14 @@ public static class JavaHelper
         try
         {
             await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-            await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(timeoutCts.Token).ConfigureAwait(false);
-            return string.Join(Environment.NewLine, await stdoutTask.ConfigureAwait(false), await stderrTask.ConfigureAwait(false));
+            await Task.WhenAll(stdoutTask, stderrTask)
+                .WaitAsync(timeoutCts.Token)
+                .ConfigureAwait(false);
+            return string.Join(
+                Environment.NewLine,
+                await stdoutTask.ConfigureAwait(false),
+                await stderrTask.ConfigureAwait(false)
+            );
         }
         catch (OperationCanceledException)
         {
