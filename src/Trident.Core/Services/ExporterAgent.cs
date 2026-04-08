@@ -28,8 +28,8 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
                 {
                     var excluded = options.ExcludedTags.ToHashSet();
                     profile = profile.Clone();
-                    var toRemove = profile.Setup.Packages
-                        .Where(p => p.Tags.Any(t => excluded.Contains(t)))
+                    var toRemove = profile
+                        .Setup.Packages.Where(p => p.Tags.Any(t => excluded.Contains(t)))
                         .ToList();
                     foreach (var p in toRemove)
                         profile.Setup.Packages.Remove(p);
