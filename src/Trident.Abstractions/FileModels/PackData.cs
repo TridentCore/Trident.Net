@@ -3,6 +3,7 @@
 // 打包器配置
 public class PackData
 {
+    public required IList<string> ExcludedTags { get; init; } = [];
     public required IList<Entry> IncludedOverrides { get; init; }
     public required bool IncludingSource { get; set; }
     public required bool IncludingTags { get; set; }
@@ -10,6 +11,7 @@ public class PackData
     public static PackData CreateDefault() =>
         new()
         {
+            ExcludedTags = [],
             IncludingSource = false,
             IncludingTags = true,
             IncludedOverrides =
