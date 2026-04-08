@@ -8,7 +8,7 @@ namespace Trident.Cli.Commands;
 public class CreateCommand(ProfileManager profileManager)
     : CreationCommandBase<CreateCommand.Arguments>
 {
-    public override int Execute(
+    protected override int Execute(
         CommandContext context,
         Arguments settings,
         CancellationToken cancellationToken

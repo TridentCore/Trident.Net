@@ -8,7 +8,7 @@ public abstract class InstanceCommandBase<T> : Command<T>
 {
     public InstanceContext Context { get; private set; } = null!;
 
-    public override ValidationResult Validate(CommandContext context, T settings)
+    protected override ValidationResult Validate(CommandContext context, T settings)
     {
         if (settings.Profile != null)
         {
