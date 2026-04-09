@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Trident.Core.Engines.Launching;
 using Trident.Core.Utilities;
