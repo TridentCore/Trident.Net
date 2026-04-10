@@ -347,14 +347,6 @@ public class InstanceManager(
                 tracker.JavaVersion = artifact.JavaMajorVersion;
 
                 igniter
-                    .AddGameArgument("--width")
-                    .AddGameArgument("${resolution_width}")
-                    .AddGameArgument("--height")
-                    .AddGameArgument("${resolution_height}")
-                    .AddGameArgument("--quickPlayMultiplayer")
-                    .AddGameArgument("${connect_address}");
-
-                igniter
                     .SetJavaHome(javaHome)
                     .SetWorkingDirectory(workingDir)
                     .SetAssetRootDirectory(assetDir)

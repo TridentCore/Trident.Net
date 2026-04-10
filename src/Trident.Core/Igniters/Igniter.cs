@@ -49,9 +49,6 @@ public class Igniter : IBuilder<Process>
             { "${auth_access_token}", UserAccessToken! },
             { "${user_type}", UserType! },
             { "${version_type}", ReleaseType! },
-            { "${connect_address}", QuickConnectAddress ?? string.Empty },
-            { "${resolution_width}", WindowSize!.Value.Item1.ToString() },
-            { "${resolution_height}", WindowSize!.Value.Item2.ToString() },
             { "${natives_directory}", NativesRootDirectory! },
             { "${library_directory}", LibraryRootDirectory! },
             { "${launcher_name}", LauncherName! },
@@ -78,11 +75,12 @@ public class Igniter : IBuilder<Process>
         foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
         {
             var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            var line =
-                crate.Key == null || crate.Value == null
-                    ? argument
-                    : argument.Replace(crate.Key, crate.Value);
-            start.ArgumentList.Add(line);
+            if (crate.Value is not null)
+            {
+                var line =
+                    crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
+                start.ArgumentList.Add(line);
+            }
         }
 
         start.ArgumentList.Add(MainClass!);
@@ -90,6 +88,19 @@ public class Igniter : IBuilder<Process>
         {
             var line = crates.GetValueOrDefault(argument, argument);
             start.ArgumentList.Add(line);
+        }
+
+        if (WindowSize is (var width, var height))
+        {
+            start.ArgumentList.Add("--width");
+            start.ArgumentList.Add(width.ToString());
+            start.ArgumentList.Add("--height");
+            start.ArgumentList.Add(height.ToString());
+        }
+        if (QuickConnectAddress is { } address)
+        {
+            start.ArgumentList.Add("--quickPlayMultiplayer");
+            start.ArgumentList.Add(address);
         }
 
         var process = new Process { StartInfo = start };
