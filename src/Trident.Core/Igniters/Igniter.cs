@@ -75,12 +75,11 @@ public class Igniter : IBuilder<Process>
         foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
         {
             var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            if (crate.Value is not null)
-            {
-                var line =
-                    crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
-                start.ArgumentList.Add(line);
-            }
+            var line =
+                crate.Key == null || crate.Value == null
+                    ? argument
+                    : argument.Replace(crate.Key, crate.Value);
+            start.ArgumentList.Add(line);
         }
 
         start.ArgumentList.Add(MainClass!);
