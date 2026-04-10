@@ -1,3 +1,4 @@
+using System;
 using Trident.Abstractions.Accounts;
 
 namespace Trident.Core.Accounts;
@@ -5,6 +6,8 @@ namespace Trident.Core.Accounts;
 public class MicrosoftAccount : IAccount
 {
     public required string RefreshToken { get; set; }
+
+    public DateTimeOffset? AccessTokenExpiresAt { get; set; }
 
     #region IAccount Members
 
