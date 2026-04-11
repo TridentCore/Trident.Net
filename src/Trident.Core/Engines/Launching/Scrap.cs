@@ -5,12 +5,14 @@ public record Scrap
     public Scrap(
         string message,
         ScrapLevel? level,
-        DateTimeOffset? time,
+        string? date,
+        string? time,
         string? thread,
         string? sender
     )
     {
         Level = level;
+        Date = date;
         Time = time;
         Thread = thread;
         Sender = sender;
@@ -21,7 +23,8 @@ public record Scrap
 
     public string Message { get; init; }
     public ScrapLevel? Level { get; init; }
-    public DateTimeOffset? Time { get; init; }
+    public string? Date { get; init; }
+    public string? Time { get; init; }
     public string? Thread { get; init; }
     public string? Sender { get; init; }
 }

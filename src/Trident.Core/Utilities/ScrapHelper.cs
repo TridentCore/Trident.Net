@@ -6,7 +6,7 @@ namespace Trident.Core.Utilities;
 public static partial class ScrapHelper
 {
     [GeneratedRegex(
-        @"\[(.*)\] \[(?<thread>[a-zA-Z0-9\ \-#@]+)/(?<level>[a-zA-Z]+)\](\ \[(?<source>[a-zA-Z0-9\ \\./\-]+)\])?: (?<message>.*)"
+        @"^\[(?:(?<date>.+?)\s+)?(?<time>\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\] \[(?<thread>[^\]/]+)\/(?<level>[A-Z]+)\](?: \[(?<source>[^\]]+)\])?: (?<message>.*)$"
     )]
     private static partial Regex GenerateRegex();
 
@@ -23,6 +23,21 @@ public static partial class ScrapHelper
         )
         {
             match.Groups.TryGetValue("source", out var sender);
+
+            string? parsedDate = null;
+            string? parsedTime = null;
+            if (match.Groups.TryGetValue("date", out var date) && !string.IsNullOrEmpty(date.Value))
+            {
+                parsedDate = date.Value;
+            }
+            if (
+                match.Groups.TryGetValue("time", out var time)
+                && !string.IsNullOrEmpty(time.Value)
+            )
+            {
+                parsedTime = time.Value;
+            }
+
             return new(
                 message.Value,
                 level.Value.ToUpper() switch
@@ -32,7 +47,8 @@ public static partial class ScrapHelper
                     "ERROR" => ScrapLevel.Error,
                     _ => ScrapLevel.Information,
                 },
-                DateTimeOffset.Now,
+                parsedDate,
+                parsedTime,
                 thread.Value,
                 sender?.Value
             );
