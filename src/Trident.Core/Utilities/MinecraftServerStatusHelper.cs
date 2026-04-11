@@ -30,28 +30,39 @@ public static class MinecraftServerStatusHelper
     public static async Task<ServerStatusResult> ProbeAsync(
         string address,
         int timeoutMilliseconds = 5000,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var endpoint = ParseEndpoint(address);
 
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken
+            );
             timeoutCts.CancelAfter(timeoutMilliseconds);
 
             using var client = new TcpClient();
-            await client.ConnectAsync(endpoint.Host, endpoint.Port, timeoutCts.Token).ConfigureAwait(false);
+            await client
+                .ConnectAsync(endpoint.Host, endpoint.Port, timeoutCts.Token)
+                .ConfigureAwait(false);
 
             await using var stream = client.GetStream();
-            await SendHandshakeAsync(stream, endpoint.Host, endpoint.Port, timeoutCts.Token).ConfigureAwait(false);
+            await SendHandshakeAsync(stream, endpoint.Host, endpoint.Port, timeoutCts.Token)
+                .ConfigureAwait(false);
             await SendStatusRequestAsync(stream, timeoutCts.Token).ConfigureAwait(false);
 
-            var json = await ReadStatusResponseAsync(stream, timeoutCts.Token).ConfigureAwait(false);
+            var json = await ReadStatusResponseAsync(stream, timeoutCts.Token)
+                .ConfigureAwait(false);
             var parsed = ParseStatusJson(endpoint, json);
 
             var stopwatch = Stopwatch.StartNew();
-            await SendPingAsync(stream, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), timeoutCts.Token)
-               .ConfigureAwait(false);
+            await SendPingAsync(
+                    stream,
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    timeoutCts.Token
+                )
+                .ConfigureAwait(false);
             await ReadPongAsync(stream, timeoutCts.Token).ConfigureAwait(false);
             stopwatch.Stop();
 
@@ -80,7 +91,10 @@ public static class MinecraftServerStatusHelper
         }
     }
 
-    private static ServerStatusResult CreateFailure(ServerEndpoint endpoint, string? errorMessage) =>
+    private static ServerStatusResult CreateFailure(
+        ServerEndpoint endpoint,
+        string? errorMessage
+    ) =>
         new()
         {
             Address = endpoint.Address,
@@ -94,7 +108,8 @@ public static class MinecraftServerStatusHelper
         Stream stream,
         string host,
         int port,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var packet = new MemoryStream();
         WriteVarInt(packet, 0x00);
@@ -109,14 +124,20 @@ public static class MinecraftServerStatusHelper
         await WritePacketAsync(stream, packet.ToArray(), cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task SendStatusRequestAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task SendStatusRequestAsync(
+        Stream stream,
+        CancellationToken cancellationToken
+    )
     {
         using var packet = new MemoryStream();
         WriteVarInt(packet, 0x00);
         await WritePacketAsync(stream, packet.ToArray(), cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<string> ReadStatusResponseAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task<string> ReadStatusResponseAsync(
+        Stream stream,
+        CancellationToken cancellationToken
+    )
     {
         _ = await ReadVarIntAsync(stream, cancellationToken).ConfigureAwait(false);
         var packetId = await ReadVarIntAsync(stream, cancellationToken).ConfigureAwait(false);
@@ -126,11 +147,16 @@ public static class MinecraftServerStatusHelper
         }
 
         var jsonLength = await ReadVarIntAsync(stream, cancellationToken).ConfigureAwait(false);
-        var jsonBytes = await ReadExactAsync(stream, jsonLength, cancellationToken).ConfigureAwait(false);
+        var jsonBytes = await ReadExactAsync(stream, jsonLength, cancellationToken)
+            .ConfigureAwait(false);
         return Encoding.UTF8.GetString(jsonBytes);
     }
 
-    private static async Task SendPingAsync(Stream stream, long payload, CancellationToken cancellationToken)
+    private static async Task SendPingAsync(
+        Stream stream,
+        long payload,
+        CancellationToken cancellationToken
+    )
     {
         using var packet = new MemoryStream();
         WriteVarInt(packet, 0x01);
@@ -174,8 +200,10 @@ public static class MinecraftServerStatusHelper
                 versionName = nameElement.GetString();
             }
 
-            if (versionElement.TryGetProperty("protocol", out var protocolElement)
-             && protocolElement.TryGetInt32(out var protocol))
+            if (
+                versionElement.TryGetProperty("protocol", out var protocolElement)
+                && protocolElement.TryGetInt32(out var protocol)
+            )
             {
                 protocolVersion = protocol;
             }
@@ -185,13 +213,18 @@ public static class MinecraftServerStatusHelper
         int? maxPlayers = null;
         if (root.TryGetProperty("players", out var playersElement))
         {
-            if (playersElement.TryGetProperty("online", out var onlineElement)
-             && onlineElement.TryGetInt32(out var online))
+            if (
+                playersElement.TryGetProperty("online", out var onlineElement)
+                && onlineElement.TryGetInt32(out var online)
+            )
             {
                 onlinePlayers = online;
             }
 
-            if (playersElement.TryGetProperty("max", out var maxElement) && maxElement.TryGetInt32(out var max))
+            if (
+                playersElement.TryGetProperty("max", out var maxElement)
+                && maxElement.TryGetInt32(out var max)
+            )
             {
                 maxPlayers = max;
             }
@@ -250,7 +283,10 @@ public static class MinecraftServerStatusHelper
             }
         }
 
-        if (element.TryGetProperty("extra", out var extraElement) && extraElement.ValueKind == JsonValueKind.Array)
+        if (
+            element.TryGetProperty("extra", out var extraElement)
+            && extraElement.ValueKind == JsonValueKind.Array
+        )
         {
             foreach (var child in extraElement.EnumerateArray())
             {
@@ -262,7 +298,10 @@ public static class MinecraftServerStatusHelper
             }
         }
 
-        if (element.TryGetProperty("with", out var withElement) && withElement.ValueKind == JsonValueKind.Array)
+        if (
+            element.TryGetProperty("with", out var withElement)
+            && withElement.ValueKind == JsonValueKind.Array
+        )
         {
             foreach (var child in withElement.EnumerateArray())
             {
@@ -320,7 +359,11 @@ public static class MinecraftServerStatusHelper
         return new(trimmed, trimmed, DEFAULT_PORT);
     }
 
-    private static async Task WritePacketAsync(Stream stream, byte[] payload, CancellationToken cancellationToken)
+    private static async Task WritePacketAsync(
+        Stream stream,
+        byte[] payload,
+        CancellationToken cancellationToken
+    )
     {
         using var frame = new MemoryStream();
         WriteVarInt(frame, payload.Length);
@@ -354,7 +397,10 @@ public static class MinecraftServerStatusHelper
         } while (unsignedValue != 0);
     }
 
-    private static async Task<int> ReadVarIntAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task<int> ReadVarIntAsync(
+        Stream stream,
+        CancellationToken cancellationToken
+    )
     {
         var value = 0;
         var position = 0;
@@ -375,7 +421,11 @@ public static class MinecraftServerStatusHelper
         throw new InvalidDataException("VarInt is too large");
     }
 
-    private static async Task<byte[]> ReadExactAsync(Stream stream, int count, CancellationToken cancellationToken)
+    private static async Task<byte[]> ReadExactAsync(
+        Stream stream,
+        int count,
+        CancellationToken cancellationToken
+    )
     {
         var buffer = new byte[count];
         var offset = 0;
@@ -383,8 +433,8 @@ public static class MinecraftServerStatusHelper
         while (offset < count)
         {
             var read = await stream
-                            .ReadAsync(buffer.AsMemory(offset, count - offset), cancellationToken)
-                            .ConfigureAwait(false);
+                .ReadAsync(buffer.AsMemory(offset, count - offset), cancellationToken)
+                .ConfigureAwait(false);
             if (read <= 0)
             {
                 throw new EndOfStreamException();
@@ -396,7 +446,10 @@ public static class MinecraftServerStatusHelper
         return buffer;
     }
 
-    private static async Task<byte> ReadByteAsync(Stream stream, CancellationToken cancellationToken)
+    private static async Task<byte> ReadByteAsync(
+        Stream stream,
+        CancellationToken cancellationToken
+    )
     {
         var buffer = await ReadExactAsync(stream, 1, cancellationToken).ConfigureAwait(false);
         return buffer[0];
