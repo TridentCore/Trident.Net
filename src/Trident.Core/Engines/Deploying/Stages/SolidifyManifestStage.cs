@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Reactive.Subjects;
 using System.Security.Cryptography;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Trident.Abstractions;
 using Trident.Core.Utilities;
@@ -47,7 +48,7 @@ public class SolidifyManifestStage(
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
         var watch = Stopwatch.StartNew();
         var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
-        var entities = new List<Snapshot.Entity>();
+        var entities = new ConcurrentBag<Snapshot.Entity>();
 
         ProgressStream.OnNext((downloaded, files.Count));
         var tasks = files
@@ -58,9 +59,11 @@ public class SolidifyManifestStage(
                     return;
                 }
 
+                var entered = false;
                 try
                 {
                     await semaphore.WaitAsync(cancel.Token).ConfigureAwait(false);
+                    entered = true;
                     switch (x)
                     {
                         case EntityManifest.FragileFile fragile:
@@ -82,7 +85,7 @@ public class SolidifyManifestStage(
                                 await using var reader = await client
                                     .GetStreamAsync(fragile.Url, cancel.Token)
                                     .ConfigureAwait(false);
-                                var writer = new FileStream(
+                                await using var writer = new FileStream(
                                     fragile.SourcePath,
                                     FileMode.Create,
                                     FileAccess.Write,
@@ -92,7 +95,6 @@ public class SolidifyManifestStage(
                                     .CopyToAsync(writer, cancel.Token)
                                     .ConfigureAwait(false);
                                 await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                                writer.Close();
                             }
 
                             if (fragile.IsSolidifying)
@@ -344,7 +346,10 @@ public class SolidifyManifestStage(
                 }
                 finally
                 {
-                    semaphore.Release();
+                    if (entered)
+                    {
+                        semaphore.Release();
+                    }
                 }
             })
             .ToArray();
@@ -401,16 +406,18 @@ public class SolidifyManifestStage(
                     }
 
                     await using var reader = entry.Open();
-                    var writer = new FileStream(
-                        path,
-                        FileMode.Create,
-                        FileAccess.Write,
-                        FileShare.Write
-                    );
-                    await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                    await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                    writer.Close();
-                    // 用 await using 会导致处置写入发生在设置属性后而覆盖值
+                    await using (
+                        var writer = new FileStream(
+                            path,
+                            FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.Write
+                        )
+                    )
+                    {
+                        await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                        await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                    }
                     File.SetLastWriteTimeUtc(path, entry.LastWriteTime.UtcDateTime);
                 }
             }
@@ -418,7 +425,7 @@ public class SolidifyManifestStage(
             ProgressStream.OnNext((++downloaded, files.Count + manifest.ExplosiveFiles.Count));
         }
 
-        Snapshot.Apply(buildDir, entities);
+        Snapshot.Apply(buildDir, entities.ToArray());
 
         var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
         var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
