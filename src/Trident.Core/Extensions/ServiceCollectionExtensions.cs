@@ -156,4 +156,22 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<MinecraftService>();
         return services;
     }
+
+    public static IServiceCollection AddMclogs(this IServiceCollection services)
+    {
+        services
+            .AddRefitClient<IMclogsClient>(_ =>
+                new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
+            )
+            .ConfigureHttpClient(client =>
+            {
+                client.BaseAddress = new("https://api.mclo.gs");
+                client.DefaultRequestHeaders.Add(
+                    "User-Agent",
+                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                );
+            });
+
+        return services;
+    }
 }

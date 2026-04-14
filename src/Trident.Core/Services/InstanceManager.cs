@@ -389,7 +389,9 @@ public class InstanceManager(
                     Directory.CreateDirectory(build);
                 }
 
-                tracker.CommandLine = process.StartInfo.Arguments;
+                tracker.CommandLine = !string.IsNullOrEmpty(process.StartInfo.Arguments)
+                    ? process.StartInfo.Arguments
+                    : string.Join(' ', process.StartInfo.ArgumentList);
 
                 if (options.Mode == LaunchMode.Debug)
                 {
