@@ -30,10 +30,7 @@ public static partial class ScrapHelper
             {
                 parsedDate = date.Value;
             }
-            if (
-                match.Groups.TryGetValue("time", out var time)
-                && !string.IsNullOrEmpty(time.Value)
-            )
+            if (match.Groups.TryGetValue("time", out var time) && !string.IsNullOrEmpty(time.Value))
             {
                 parsedTime = time.Value;
             }
