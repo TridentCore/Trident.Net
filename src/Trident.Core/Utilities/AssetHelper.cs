@@ -1,9 +1,37 @@
+using System.Diagnostics.CodeAnalysis;
 using Trident.Abstractions;
 
 namespace Trident.Core.Utilities;
 
 public static class AssetHelper
 {
+    private static bool TryResolveNonSymlinkDirectory(
+        string root,
+        ReadOnlySpan<string> pathSegments,
+        [MaybeNullWhen(false)] out DirectoryInfo directory
+    )
+    {
+        directory = null;
+
+        var current = root;
+        if (!(Directory.Exists(current) && Directory.ResolveLinkTarget(current, false) is null))
+        {
+            return false;
+        }
+
+        foreach (var segment in pathSegments)
+        {
+            current = Path.Combine(current, segment);
+            if (!(Directory.Exists(current) && Directory.ResolveLinkTarget(current, false) is null))
+            {
+                return false;
+            }
+        }
+
+        directory = new DirectoryInfo(current);
+        return true;
+    }
+
     /// <summary>
     ///     在 build/import/persist 三个目录下的非 Symlink 目录中搜索非 Symlink 文件
     /// </summary>
@@ -27,21 +55,8 @@ public static class AssetHelper
         var results = new List<FileInfo>();
         foreach (var storage in storages)
         {
-            var outer = storage;
-            var pass = true;
-            foreach (var segment in pathSegments)
+            if (TryResolveNonSymlinkDirectory(storage, pathSegments, out var dir))
             {
-                outer = Path.Combine(outer, segment);
-                if (!(Directory.Exists(outer) && Directory.ResolveLinkTarget(outer, false) is null))
-                {
-                    pass = false;
-                    break;
-                }
-            }
-
-            if (pass)
-            {
-                var dir = new DirectoryInfo(outer);
                 results.AddRange(
                     dir.GetFiles(pattern, SearchOption.TopDirectoryOnly)
                         .Where(x => x.LinkTarget is null)
@@ -75,21 +90,8 @@ public static class AssetHelper
         var results = new List<DirectoryInfo>();
         foreach (var storage in storages)
         {
-            var outer = storage;
-            var pass = true;
-            foreach (var segment in pathSegments)
+            if (TryResolveNonSymlinkDirectory(storage, pathSegments, out var dir))
             {
-                outer = Path.Combine(outer, segment);
-                if (!(Directory.Exists(outer) && Directory.ResolveLinkTarget(outer, false) is null))
-                {
-                    pass = false;
-                    break;
-                }
-            }
-
-            if (pass)
-            {
-                var dir = new DirectoryInfo(outer);
                 results.AddRange(
                     dir.GetDirectories(pattern, SearchOption.TopDirectoryOnly)
                         .Where(x => x.LinkTarget is null)
@@ -100,3 +102,4 @@ public static class AssetHelper
         return results;
     }
 }
+
