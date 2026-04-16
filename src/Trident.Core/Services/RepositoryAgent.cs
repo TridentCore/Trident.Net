@@ -19,7 +19,7 @@ public class RepositoryAgent
 {
     private static readonly TimeSpan EXPIRED_IN = TimeSpan.FromDays(7);
     private static readonly string USER_AGENT =
-        $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}";
+        $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
 
     private readonly MessagePackSerializerOptions _options =
         MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance);
@@ -95,9 +95,14 @@ public class RepositoryAgent
     {
         var client = _clientFactory.CreateClient();
         client.BaseAddress = new(profile.Endpoint);
-        if (profile.UserAgent is not null)
+        if (
+            !(
+                profile.UserAgent is not null
+                && client.DefaultRequestHeaders.UserAgent.TryParseAdd(new(profile.UserAgent))
+            )
+        )
         {
-            client.DefaultRequestHeaders.UserAgent.Add(new(USER_AGENT));
+            client.DefaultRequestHeaders.UserAgent.TryParseAdd(new(USER_AGENT));
         }
 
         if (profile.AuthorizationHeader is { Key: { } key, Value: { } value })

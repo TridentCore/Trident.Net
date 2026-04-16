@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,9 +86,11 @@ public static class ServiceCollectionExtensions
             .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(MicrosoftService.ENDPOINT);
-                client.DefaultRequestHeaders.Add(
-                    "User-Agent",
-                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                client.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue(
+                        "Trident.Net",
+                        Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    )
                 );
             });
         services.AddSingleton<MicrosoftService>();
@@ -107,9 +110,11 @@ public static class ServiceCollectionExtensions
             .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(XboxLiveService.XBOX_ENDPOINT);
-                client.DefaultRequestHeaders.Add(
-                    "User-Agent",
-                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                client.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue(
+                        "Trident.Net",
+                        Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    )
                 );
             });
         services
@@ -123,9 +128,11 @@ public static class ServiceCollectionExtensions
             .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(XboxLiveService.XSTS_ENDPOINT);
-                client.DefaultRequestHeaders.Add(
-                    "User-Agent",
-                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                client.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue(
+                        "Trident.Net",
+                        Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    )
                 );
             });
         services.AddSingleton<XboxLiveService>();
@@ -148,9 +155,11 @@ public static class ServiceCollectionExtensions
             .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new(MinecraftService.ENDPOINT);
-                client.DefaultRequestHeaders.Add(
-                    "User-Agent",
-                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                client.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue(
+                        "Trident.Net",
+                        Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    )
                 );
             });
         services.AddSingleton<MinecraftService>();
@@ -166,9 +175,11 @@ public static class ServiceCollectionExtensions
             .ConfigureHttpClient(client =>
             {
                 client.BaseAddress = new("https://api.mclo.gs");
-                client.DefaultRequestHeaders.Add(
-                    "User-Agent",
-                    $"Polymerium/{Assembly.GetExecutingAssembly().GetName().Version}"
+                client.DefaultRequestHeaders.UserAgent.Add(
+                    new ProductInfoHeaderValue(
+                        "Trident.Net",
+                        Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    )
                 );
             });
 
