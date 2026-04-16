@@ -3,8 +3,11 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Refit;
+using Trident.Abstractions.Lifetimes;
 using Trident.Core.Clients;
+using Trident.Core.Lifetimes;
 using Trident.Core.Services;
 
 namespace Trident.Core.Extensions;
@@ -12,6 +15,20 @@ namespace Trident.Core.Extensions;
 public static class ServiceCollectionExtensions
 {
     private static readonly RefitSettings Dummy = new();
+
+    public static IServiceCollection AddLifetimeRuntime(this IServiceCollection services)
+    {
+        services.AddSingleton<LifetimeServiceRuntime>();
+        return services;
+    }
+
+    public static IServiceCollection AddLifetimeService<T>(this IServiceCollection services)
+        where T : class, ILifetimeService
+    {
+        services.AddSingleton<T>();
+        services.AddSingleton<ILifetimeService>(sp => sp.GetRequiredService<T>());
+        return services;
+    }
 
     public static IServiceCollection AddPrismLauncher(this IServiceCollection services)
     {
