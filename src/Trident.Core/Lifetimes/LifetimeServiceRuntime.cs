@@ -60,7 +60,10 @@ public sealed class LifetimeServiceRuntime(IEnumerable<ILifetimeService> service
         }
     }
 
-    private async Task StopStartedServicesAsync(int startedCount, CancellationToken cancellationToken)
+    private async Task StopStartedServicesAsync(
+        int startedCount,
+        CancellationToken cancellationToken
+    )
     {
         var exceptions = new List<Exception>();
         for (var i = startedCount - 1; i >= 0; i--)
@@ -84,7 +87,10 @@ public sealed class LifetimeServiceRuntime(IEnumerable<ILifetimeService> service
 
         if (exceptions.Count > 1)
         {
-            throw new AggregateException("One or more lifetime services failed to stop.", exceptions);
+            throw new AggregateException(
+                "One or more lifetime services failed to stop.",
+                exceptions
+            );
         }
     }
 }
