@@ -85,7 +85,6 @@ public class Profile
             #region Rule Override
 
             public string? Destination { get; set; }
-            public bool Solidifying { get; set; }
             public bool Skipping { get; set; }
 
             #endregion

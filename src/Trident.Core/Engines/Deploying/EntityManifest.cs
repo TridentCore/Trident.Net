@@ -24,8 +24,7 @@ public class EntityManifest
         string SourcePath,
         string TargetPath,
         Uri Url,
-        string? Hash,
-        bool IsSolidifying = false
+        string? Hash
     );
 
     #endregion

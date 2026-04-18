@@ -58,8 +58,7 @@ public record LockData(
         string Vid,
         string Path,
         Uri Download,
-        string? Sha1,
-        bool IsSolidifying = false
+        string? Sha1
     );
 
     #endregion

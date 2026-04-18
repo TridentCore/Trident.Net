@@ -13,7 +13,6 @@ public static class ProfileExtensions
                 Enabled = x.Enabled,
                 Selector = x.Selector,
                 Destination = x.Destination,
-                Solidifying = x.Solidifying,
                 Skipping = x.Skipping,
             })
         );

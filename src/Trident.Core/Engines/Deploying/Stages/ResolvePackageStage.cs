@@ -91,10 +91,9 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                 if (result is { Matched: true, EffectiveRule: { } effectiveRule })
                 {
                     logger.LogDebug(
-                        "Rule {{ {skipping}, {solidifying}, {destination} }} applied to {purl}",
+                        "Rule {{ {skipping}, {destination} }} applied to {purl}",
                         entry.Purl,
                         effectiveRule.Skipping,
-                        effectiveRule.Solidifying,
                         effectiveRule.Destination ?? "<default>"
                     );
                     if (effectiveRule.Skipping)
@@ -134,8 +133,7 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                         package.VersionId,
                         target,
                         package.Download,
-                        package.Sha1,
-                        effectiveRule.Solidifying
+                        package.Sha1
                     );
                 }
                 else

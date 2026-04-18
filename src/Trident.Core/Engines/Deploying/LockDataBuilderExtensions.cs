@@ -12,9 +12,8 @@ public static class LockDataBuilderExtensions
         string vid,
         string target,
         Uri url,
-        string? sha1,
-        bool solidified = false
-    ) => self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1, solidified));
+        string? sha1
+    ) => self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1));
 
     // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
     public static LockDataBuilder AddLibraryPrismFlavor(

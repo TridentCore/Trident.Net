@@ -32,10 +32,7 @@ public class SolidifyManifestStage(
 
         foreach (var fragile in manifest.FragileFiles)
         {
-            if (
-                !fragile.IsSolidifying
-                && FileHelper.IsInDirectory(fragile.TargetPath, buildDirectory)
-            )
+            if (FileHelper.IsInDirectory(fragile.TargetPath, buildDirectory))
             {
                 UpsertProjection(
                     projections,
@@ -140,31 +137,7 @@ public class SolidifyManifestStage(
                                 await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                             }
 
-                            if (fragile.IsSolidifying)
-                            {
-                                var isSymlink =
-                                    File.Exists(fragile.TargetPath)
-                                    && File.ResolveLinkTarget(fragile.TargetPath, false)
-                                        is not null;
-                                if (isSymlink)
-                                {
-                                    File.Delete(fragile.TargetPath);
-                                }
-                                if (isSymlink || !Verify(fragile.TargetPath, fragile.Hash))
-                                {
-                                    var dir = Path.GetDirectoryName(fragile.TargetPath);
-                                    if (dir != null && !Directory.Exists(dir))
-                                    {
-                                        Directory.CreateDirectory(dir);
-                                    }
-
-                                    File.Copy(fragile.SourcePath, fragile.TargetPath, true);
-                                }
-                            }
-                            else
-                            {
-                                entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
-                            }
+                            entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
 
                             break;
                         }

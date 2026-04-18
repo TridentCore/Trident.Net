@@ -51,8 +51,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                     ),
                     Path.Combine(PathDef.Default.DirectoryOfHome(Context.Key), parcel.Path),
                     parcel.Download,
-                    parcel.Sha1,
-                    parcel.IsSolidifying
+                    parcel.Sha1
                 )
             );
         }
