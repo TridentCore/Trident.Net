@@ -426,10 +426,11 @@ public class InstanceManager(
 
                         if (process.ExitCode != 0)
                         {
+                            var code = process.ExitCode;
                             process.Close();
                             throw new ProcessFaultedException(
-                                process.ExitCode,
-                                $"The process has exited with non-zero code {process.ExitCode}"
+                                code,
+                                $"The process has exited with non-zero code {code}"
                             );
                         }
                     }
