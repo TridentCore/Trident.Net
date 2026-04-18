@@ -14,17 +14,41 @@ public class SolidifyManifestStage(
     IHttpClientFactory factory
 ) : StageBase
 {
+    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
+
     public Subject<(int, int)> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         var manifest = Context.Manifest!;
+        var buildDirectory = PathDef.Default.DirectoryOfBuild(Context.Key);
+        var liveDirectory = PathDef.Default.DirectoryOfLive(Context.Key);
+        var persistDirectory = PathDef.Default.DirectoryOfPersist(Context.Key);
 
         var files = new List<object>();
+        var projections = new Dictionary<string, ProjectionCandidate>(PathComparer);
 
         foreach (var fragile in manifest.FragileFiles)
         {
-            files.Add(fragile);
+            if (
+                !fragile.IsSolidifying
+                && FileHelper.IsInDirectory(fragile.TargetPath, buildDirectory)
+            )
+            {
+                UpsertProjection(
+                    projections,
+                    fragile.TargetPath,
+                    ProjectionPriority.Package,
+                    fragile,
+                    $"package {fragile.TargetPath}"
+                );
+            }
+            else
+            {
+                files.Add(fragile);
+            }
         }
 
         foreach (var present in manifest.PresentFiles)
@@ -34,15 +58,34 @@ public class SolidifyManifestStage(
 
         foreach (var persistent in manifest.PersistentFiles)
         {
-            files.Add(persistent);
+            var priority = GetProjectionPriority(
+                persistent,
+                buildDirectory,
+                liveDirectory,
+                persistDirectory
+            );
+            if (priority is { } actual)
+            {
+                UpsertProjection(
+                    projections,
+                    persistent.TargetPath,
+                    actual,
+                    persistent,
+                    $"persistent {persistent.TargetPath}"
+                );
+            }
+            else
+            {
+                files.Add(persistent);
+            }
         }
+
+        files.AddRange(projections.Values.Select(x => x.File));
 
         logger.LogInformation(
             "Created solidifying tasks of {}",
             files.Count + manifest.ExplosiveFiles.Count
         );
-
-        var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);
 
         var downloaded = 0;
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
@@ -425,7 +468,7 @@ public class SolidifyManifestStage(
             ProgressStream.OnNext((++downloaded, files.Count + manifest.ExplosiveFiles.Count));
         }
 
-        Snapshot.Apply(buildDir, entities.ToArray());
+        Snapshot.Apply(buildDirectory, entities.ToArray());
 
         var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
         var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
@@ -471,13 +514,13 @@ public class SolidifyManifestStage(
         }
 
         // 生成 allowed_symlinks.txt
-        if (!Path.Exists(buildDir))
+        if (!Path.Exists(buildDirectory))
         {
-            Directory.CreateDirectory(buildDir);
+            Directory.CreateDirectory(buildDirectory);
         }
 
         await File.WriteAllTextAsync(
-                Path.Combine(buildDir, "allowed_symlinks.txt"),
+                Path.Combine(buildDirectory, "allowed_symlinks.txt"),
                 $"""
                 [prefix]{PathDef.Default.CachePackageDirectory}
                 [prefix]{PathDef.Default.DirectoryOfLive(Context.Key)}
@@ -520,4 +563,74 @@ public class SolidifyManifestStage(
         base.Dispose();
         ProgressStream.Dispose();
     }
+
+    private ProjectionPriority? GetProjectionPriority(
+        EntityManifest.PersistentFile persistent,
+        string buildDir,
+        string liveDir,
+        string persistDir
+    )
+    {
+        if (!persistent.IsPhantom || !FileHelper.IsInDirectory(persistent.TargetPath, buildDir))
+        {
+            return null;
+        }
+
+        if (FileHelper.IsInDirectory(persistent.SourcePath, persistDir))
+        {
+            return ProjectionPriority.Persist;
+        }
+
+        if (FileHelper.IsInDirectory(persistent.SourcePath, liveDir))
+        {
+            return ProjectionPriority.Live;
+        }
+
+        return null;
+    }
+
+    private void UpsertProjection(
+        IDictionary<string, ProjectionCandidate> projections,
+        string targetPath,
+        ProjectionPriority priority,
+        object file,
+        string description
+    )
+    {
+        if (projections.TryGetValue(targetPath, out var existing))
+        {
+            if (priority > existing.Priority)
+            {
+                logger.LogDebug(
+                    "Projection {next} overrides {current} at {target}",
+                    description,
+                    existing.Description,
+                    targetPath
+                );
+                projections[targetPath] = new(file, priority, description);
+            }
+            else
+            {
+                logger.LogDebug(
+                    "Projection {current} keeps {target} over {skipped}",
+                    existing.Description,
+                    targetPath,
+                    description
+                );
+            }
+
+            return;
+        }
+
+        projections[targetPath] = new(file, priority, description);
+    }
+
+    private enum ProjectionPriority
+    {
+        Package = 0,
+        Live = 1,
+        Persist = 2,
+    }
+
+    private record ProjectionCandidate(object File, ProjectionPriority Priority, string Description);
 }
