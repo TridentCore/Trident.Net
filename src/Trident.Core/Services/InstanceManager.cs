@@ -123,7 +123,7 @@ public class InstanceManager(
         CancellationToken token
     )
     {
-        var stream = await client.GetStreamAsync(download, token).ConfigureAwait(false);
+        await using var stream = await client.GetStreamAsync(download, token).ConfigureAwait(false);
         var memory = new MemoryStream();
         var buffer = new byte[8 * 1024];
         int read;
@@ -137,8 +137,6 @@ public class InstanceManager(
             reporter?.OnNext(progress);
         } while (!token.IsCancellationRequested && read > 0);
 
-        stream.Close();
-
         memory.Position = 0;
         return memory;
     }
@@ -149,8 +147,10 @@ public class InstanceManager(
         HttpClient client
     )
     {
-        var iconReader = await client.GetStreamAsync(container.IconUrl).ConfigureAwait(false);
-        var iconMemory = new MemoryStream();
+        await using var iconReader = await client
+            .GetStreamAsync(container.IconUrl)
+            .ConfigureAwait(false);
+        await using var iconMemory = new MemoryStream();
         await iconReader.CopyToAsync(iconMemory).ConfigureAwait(false);
         iconMemory.Position = 0;
         var extension = FileHelper.GuessBitmapExtension(iconMemory);
@@ -162,12 +162,9 @@ public class InstanceManager(
         }
 
         iconMemory.Position = 0;
-        var iconWriter = new FileStream(iconPath, FileMode.Create);
+        await using var iconWriter = new FileStream(iconPath, FileMode.Create);
         await iconMemory.CopyToAsync(iconWriter).ConfigureAwait(false);
         await iconWriter.FlushAsync().ConfigureAwait(false);
-        iconWriter.Close();
-        iconMemory.Close();
-        iconReader.Close();
     }
 
     #endregion
