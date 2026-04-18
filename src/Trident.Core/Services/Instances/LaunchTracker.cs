@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reactive.Subjects;
 using Trident.Abstractions.Tasks;
 using Trident.Core.Engines.Launching;
@@ -12,6 +13,7 @@ public class LaunchTracker(
     CancellationToken token = default
 ) : TrackerBase(key, handler, onCompleted, token)
 {
+    public Process? Process { get; internal set; }
     public Subject<Scrap> ScrapStream { get; } = new();
     public LaunchOptions Options => options;
 

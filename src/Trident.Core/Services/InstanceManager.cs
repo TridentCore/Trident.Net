@@ -401,6 +401,7 @@ public class InstanceManager(
 
                 if (options.Mode == LaunchMode.Managed)
                 {
+                    tracker.Process = process;
                     var launcher = new LaunchEngine(process);
                     await foreach (
                         var scrap in launcher.WithCancellation(tracker.Token).ConfigureAwait(false)
@@ -410,6 +411,7 @@ public class InstanceManager(
                     }
 
                     tracker.ScrapStream.OnCompleted();
+                    tracker.Process = null;
 
                     if (tracker.Token.IsCancellationRequested)
                     {
@@ -424,6 +426,7 @@ public class InstanceManager(
 
                         if (process.ExitCode != 0)
                         {
+                            process.Close();
                             throw new ProcessFaultedException(
                                 process.ExitCode,
                                 $"The process has exited with non-zero code {process.ExitCode}"
