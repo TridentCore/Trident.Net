@@ -41,29 +41,27 @@ public abstract class TrackerBase(
     {
         State = TrackerState.Running;
         StateUpdated?.Invoke(this, State);
-        Task.Run(async () => await handler(this), Token)
-            .ContinueWith(
-                t =>
-                {
-                    if (t.IsCanceled || Token.IsCancellationRequested)
-                    {
-                        OnFault(new OperationCanceledException());
-                    }
-                    else if (t.IsFaulted)
-                    {
-                        OnFault(t.Exception);
-                    }
-                    else if (t.IsCompletedSuccessfully)
-                    {
-                        OnFinish();
-                    }
-                    else
-                    {
-                        throw new NotImplementedException();
-                    }
-                },
-                CancellationToken.None
-            );
+        _ = RunInternalAsync();
+    }
+
+    private async Task RunInternalAsync()
+    {
+        try
+        {
+            await handler(this).ConfigureAwait(false);
+            if (Token.IsCancellationRequested)
+            {
+                OnFault(new OperationCanceledException());
+            }
+            else
+            {
+                OnFinish();
+            }
+        }
+        catch (Exception ex)
+        {
+            OnFault(ex);
+        }
     }
 
     protected virtual void OnFinish()
