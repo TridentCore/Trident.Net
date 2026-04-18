@@ -142,7 +142,15 @@ public class SolidifyManifestStage(
 
                             if (fragile.IsSolidifying)
                             {
-                                if (!Verify(fragile.TargetPath, fragile.Hash))
+                                var isSymlink =
+                                    File.Exists(fragile.TargetPath)
+                                    && File.ResolveLinkTarget(fragile.TargetPath, false)
+                                        is not null;
+                                if (isSymlink)
+                                {
+                                    File.Delete(fragile.TargetPath);
+                                }
+                                if (isSymlink || !Verify(fragile.TargetPath, fragile.Hash))
                                 {
                                     var dir = Path.GetDirectoryName(fragile.TargetPath);
                                     if (dir != null && !Directory.Exists(dir))
@@ -632,5 +640,9 @@ public class SolidifyManifestStage(
         Persist = 2,
     }
 
-    private record ProjectionCandidate(object File, ProjectionPriority Priority, string Description);
+    private record ProjectionCandidate(
+        object File,
+        ProjectionPriority Priority,
+        string Description
+    );
 }
