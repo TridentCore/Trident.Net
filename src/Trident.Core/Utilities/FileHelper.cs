@@ -42,6 +42,24 @@ public static class FileHelper
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }
 
+    public static string Sanitize(string fileName)
+    {
+        var sanitized = !string.IsNullOrEmpty(fileName)
+            ? string.Join(
+                string.Empty,
+                fileName
+                    .Trim()
+                    .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
+                    .Select(x => x is ' ' or '-' ? '_' : x)
+            )
+            : "_";
+        while (sanitized.Contains("__"))
+        {
+            sanitized = sanitized.Replace("__", "_");
+        }
+        return sanitized;
+    }
+
     public static string? PickExists(string home, Span<string> candidates)
     {
         foreach (var candidate in candidates)

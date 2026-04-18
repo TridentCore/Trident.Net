@@ -17,7 +17,7 @@ public class ProfileManager : IDisposable
     #endregion
 
     private readonly List<ProfileHandle> _profiles = [];
-    internal readonly IList<ReservedKey> ReservedKeys = new List<ReservedKey>();
+    internal readonly IList<ReservedKey> ReservedKeys = [];
 
     public ProfileManager(ILogger<ProfileManager> logger)
     {
@@ -97,19 +97,7 @@ public class ProfileManager : IDisposable
 
     public ReservedKey RequestKey(string key)
     {
-        var sanitized = !string.IsNullOrEmpty(key)
-            ? string.Join(
-                string.Empty,
-                key.Trim()
-                    .ToLower()
-                    .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
-                    .Select(x => x is ' ' or '-' ? '_' : x)
-            )
-            : "_";
-        while (sanitized.Contains("__"))
-        {
-            sanitized = sanitized.Replace("__", "_");
-        }
+        var sanitized = FileHelper.Sanitize(key).ToLower();
 
         while (_profiles.Any(x => x.Key == sanitized) || ReservedKeys.Any(x => x.Key == sanitized))
         {

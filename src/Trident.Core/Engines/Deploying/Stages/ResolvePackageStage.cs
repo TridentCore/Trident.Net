@@ -96,22 +96,29 @@ public class ResolvePackageStage(ILogger<ResolvePackageStage> logger, Repository
                         effectiveRule.Skipping,
                         effectiveRule.Destination ?? "<default>"
                     );
+
                     if (effectiveRule.Skipping)
                     {
                         continue;
                     }
 
+                    var fileName = effectiveRule.Normalizing
+                        ? string.Concat(
+                            FileHelper.Sanitize(package.ProjectName),
+                            Path.GetExtension(package.FileName)
+                        )
+                        : package.FileName;
                     var target = Path.Combine(
                         PathDef.Default.DirectoryOfBuild(Context.Key),
                         FileHelper.GetAssetFolderName(package.Kind),
-                        package.FileName
+                        fileName
                     );
                     if (effectiveRule.Destination is not null)
                     {
                         target = Path.Combine(
                             PathDef.Default.DirectoryOfBuild(Context.Key),
                             effectiveRule.Destination,
-                            package.FileName
+                            fileName
                         );
                         if (
                             !FileHelper.IsInDirectory(

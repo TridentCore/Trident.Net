@@ -14,6 +14,7 @@ public static class ProfileExtensions
                 Selector = x.Selector,
                 Destination = x.Destination,
                 Skipping = x.Skipping,
+                Normalizing = x.Normalizing,
             })
         );
         var packages = new List<Profile.Rice.Entry>(

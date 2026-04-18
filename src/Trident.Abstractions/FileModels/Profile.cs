@@ -86,6 +86,7 @@ public class Profile
 
             public string? Destination { get; set; }
             public bool Skipping { get; set; }
+            public bool Normalizing { get; set; }
 
             #endregion
         }
