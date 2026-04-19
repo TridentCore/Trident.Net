@@ -108,7 +108,7 @@ public class SolidifyManifestStage(
                     {
                         case EntityManifest.FragileFile fragile:
                         {
-                            if (!Verify(fragile.SourcePath, fragile.Hash))
+                            if (!Verify(fragile.SourcePath, null, fragile.Hash))
                             {
                                 logger.LogDebug(
                                     "Starting download fragile file {src} from {url}",
@@ -143,7 +143,7 @@ public class SolidifyManifestStage(
                         }
                         case EntityManifest.PresentFile present:
                         {
-                            if (!Verify(present.Path, present.Hash))
+                            if (!Verify(present.Path, null, present.Hash))
                             {
                                 var dir = Path.GetDirectoryName(present.Path);
                                 if (dir != null && !Directory.Exists(dir))
@@ -517,10 +517,20 @@ public class SolidifyManifestStage(
         Context.IsSolidified = true;
     }
 
-    private static bool Verify(string path, string? hash)
+    private static bool Verify(string path, DateTimeOffset? modifiedTime, string? hash)
     {
         if (File.Exists(path))
         {
+            if (modifiedTime != null)
+            {
+                var mtime = File.GetLastWriteTimeUtc(path);
+                if (mtime == modifiedTime)
+                {
+                    // 没被修改，直接通过
+                    return true;
+                }
+            }
+
             if (hash != null)
             {
                 using var reader = new FileStream(
@@ -530,9 +540,24 @@ public class SolidifyManifestStage(
                     FileShare.Read
                 );
                 var computed = Convert.ToHexString(SHA1.HashData(reader));
-                return hash.Equals(computed, StringComparison.InvariantCultureIgnoreCase);
+                if (hash.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    // 文件没变，写回修改时间避免下次重复检查
+                    if (modifiedTime.HasValue)
+                    {
+                        File.SetLastAccessTimeUtc(path, modifiedTime.Value.UtcDateTime);
+                    }
+                    // 文件相同直接通过
+                    return true;
+                }
+                else
+                {
+                    // 提供了 hash 但是没通过，算判定失败
+                    return false;
+                }
             }
 
+            // 修改了，但是没有提供 hash，判定为存在性检验，直接通过
             return true;
         }
 
