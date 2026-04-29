@@ -1,11 +1,12 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Trident.Cli.Services;
 using Trident.Core.Services;
 using Profile = Trident.Abstractions.FileModels.Profile;
 
 namespace Trident.Cli.Commands;
 
-public class CreateCommand(ProfileManager profileManager)
+public class CreateCommand(ProfileManager profileManager, CliOutput output)
     : CreationCommandBase<CreateCommand.Arguments>
 {
     protected override int Execute(
@@ -14,7 +15,7 @@ public class CreateCommand(ProfileManager profileManager)
         CancellationToken cancellationToken
     )
     {
-        var key = profileManager.RequestKey(settings.Id);
+        var key = profileManager.RequestKey(settings.EffectiveIdentity);
         var profile = new Profile()
         {
             Name = settings.Name,
@@ -26,7 +27,22 @@ public class CreateCommand(ProfileManager profileManager)
             },
         };
         profileManager.Add(key, profile);
-        AnsiConsole.WriteLine($"Instance {key.Key} created");
+        var result = new
+        {
+            key = key.Key,
+            profile.Name,
+            version = profile.Setup.Version,
+            loader = profile.Setup.Loader,
+        };
+
+        if (output.UseStructuredOutput)
+        {
+            output.WriteData(result);
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"Instance [green]{key.Key}[/] created");
+        }
 
         return 0;
     }

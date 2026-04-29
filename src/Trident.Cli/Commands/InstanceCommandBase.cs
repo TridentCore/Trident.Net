@@ -1,31 +1,11 @@
-using Spectre.Console;
 using Spectre.Console.Cli;
+using Trident.Cli.Services;
 
 namespace Trident.Cli.Commands;
 
-public abstract class InstanceCommandBase<T> : Command<T>
+public abstract class InstanceCommandBase<T>(InstanceContextResolver resolver) : Command<T>
     where T : InstanceArgumentsBase
 {
-    public InstanceContext Context { get; private set; } = null!;
-
-    protected override ValidationResult Validate(CommandContext context, T settings)
-    {
-        if (settings.Profile != null)
-        {
-            // 选择特定的 profile 文件
-        }
-        else if (settings.Instance != null)
-        {
-            // 选择 trident home 里的实例
-        }
-
-        // 自动搜索
-        return ValidationResult.Success();
-    }
-
-    #region Nested type: InstanceContext
-
-    public class InstanceContext(string instanceHome) { }
-
-    #endregion
+    protected ResolvedInstanceContext ResolveInstance(T settings) =>
+        resolver.Resolve(settings.Instance, settings.Profile);
 }

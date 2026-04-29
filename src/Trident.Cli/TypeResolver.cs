@@ -3,7 +3,7 @@ using Spectre.Console.Cli;
 
 namespace Trident.Cli;
 
-public class TypeResolver : ITypeResolver
+public class TypeResolver : ITypeResolver, IDisposable
 {
     private readonly IServiceProvider _provider;
 
@@ -15,6 +15,14 @@ public class TypeResolver : ITypeResolver
     {
         ArgumentNullException.ThrowIfNull(type);
         return _provider.GetRequiredService(type);
+    }
+
+    public void Dispose()
+    {
+        if (_provider is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 
     #endregion
