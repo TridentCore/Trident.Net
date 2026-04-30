@@ -22,10 +22,35 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
     {
         var labels = settings.Label is not null ? [settings.Label] : repositories.Labels.ToArray();
         var results = new List<RepositoryStatusDto>();
-        foreach (var label in labels)
+
+        async Task CheckAsync(Action? tick)
         {
-            var status = await repositories.CheckStatusAsync(label).ConfigureAwait(false);
-            results.Add(new(label, status.SupportedLoaders, status.SupportedVersions.Count, status.SupportedKinds));
+            foreach (var label in labels)
+            {
+                var status = await repositories.CheckStatusAsync(label).ConfigureAwait(false);
+                results.Add(new(label, status.SupportedLoaders, status.SupportedVersions.Count, status.SupportedKinds));
+                tick?.Invoke();
+            }
+        }
+
+        if (output.IsInteractive && !output.UseStructuredOutput && labels.Length > 1)
+        {
+            await AnsiConsole
+                .Progress()
+                .AutoClear(false)
+                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
+                .StartAsync(async progressContext =>
+                {
+                    var task = progressContext.AddTask("[blue]Checking repositories[/]", maxValue: labels.Length);
+                    await CheckAsync(() => task.Increment(1)).ConfigureAwait(false);
+                })
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await output
+                .StatusAsync("Checking repository status...", async () => await CheckAsync(null).ConfigureAwait(false))
+                .ConfigureAwait(false);
         }
 
         if (output.UseStructuredOutput)
@@ -34,7 +59,14 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
             return;
         }
 
+        if (results.Count == 0)
+        {
+            output.WriteEmptyState("No repositories", "No repository providers are configured.");
+            return;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Repository status[/]");
         table.AddColumn("Label");
         table.AddColumn("Loaders");
         table.AddColumn("Versions");

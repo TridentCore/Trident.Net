@@ -24,12 +24,19 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
             return ExitCodes.Success;
         }
 
+        AnsiConsole.Write(
+            new Panel("Microsoft accounts use device-code login. Offline accounts are local-only and can use a generated UUID.")
+                .Header("Account types")
+                .RoundedBorder()
+                .BorderColor(Color.Blue)
+        );
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Supported account types[/]");
         table.AddColumn("Type");
         table.AddColumn("Description");
         foreach (var type in types)
         {
-            table.AddEscapedRow(type.type, type.description);
+            table.AddMarkupRow($"[cyan]{Markup.Escape(type.type)}[/]", Markup.Escape(type.description));
         }
 
         output.WriteTable(table);

@@ -23,6 +23,19 @@ trident --debug repository status --label modrinth
 
 When stdout is redirected, commands prefer structured JSON output automatically.
 
+## Output Styling
+
+Human-readable output uses Spectre Console styling for tables, summaries, status badges, spinners, progress bars, and confirmation prompts.
+
+| Mode | Behavior |
+| --- | --- |
+| Default interactive terminal | Uses colored tables, panels, status spinners, progress bars, and prompts. |
+| `--json` | Writes structured JSON and suppresses human styling on stdout. Device-code prompts still use stderr. |
+| stdout redirected | Automatically prefers structured JSON so pipeline output remains machine-readable. |
+| `--no-interactive` | Disables prompts/progress UI; destructive commands require `--yes` where supported. |
+
+Long-running commands such as `instance build`, `instance import`, `instance export`, `package search`, package dependency/version lookups, `repository status`, and Microsoft account login show progress or status feedback in interactive mode.
+
 ## Data Locations
 
 Managed instances, caches, and profiles still live under the selected Trident home.
@@ -80,6 +93,8 @@ trident instance unlock --instance cherry_picks
 trident instance reset --instance cherry_picks --yes
 trident instance delete --instance cherry_picks --yes
 ```
+
+`instance inspect` is an instance overview command. It shows core instance metadata and a small package preview; use `package list` for the complete installed package list or `package search` to find packages.
 
 Supported export formats are `trident`, `modrinth`, and `curseforge`.
 

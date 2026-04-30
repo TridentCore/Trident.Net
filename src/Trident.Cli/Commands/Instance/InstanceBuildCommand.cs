@@ -42,7 +42,12 @@ public class InstanceBuildCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} built.");
+            output.WriteKeyValueTable(
+                "Build completed",
+                ("Instance", instance.Key),
+                ("State", "finished")
+            );
+            output.WriteSuccess($"Instance {instance.Key} built.");
         }
     }
 

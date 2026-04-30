@@ -1,3 +1,4 @@
+using Spectre.Console;
 using Spectre.Console.Cli;
 using Trident.Abstractions;
 using Trident.Cli.Services;
@@ -37,7 +38,25 @@ public class InstanceResetCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} reset.");
+            output.WriteKeyValueTable(
+                "Instance reset",
+                ("Instance", instance.Key),
+                ("Deleted Items", deleted.Count.ToString())
+            );
+            if (deleted.Count > 0)
+            {
+                var table = new Table().RoundedBorder();
+                table.Title = new TableTitle("[bold]Deleted paths[/]");
+                table.AddColumn("Path");
+                foreach (var path in deleted)
+                {
+                    table.AddEscapedRow(path);
+                }
+
+                output.WriteTable(table);
+            }
+
+            output.WriteSuccess($"Instance {instance.Key} reset.");
         }
 
         return ExitCodes.Success;

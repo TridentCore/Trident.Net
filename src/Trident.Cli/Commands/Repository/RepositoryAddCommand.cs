@@ -45,7 +45,15 @@ public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutpu
         }
         else
         {
-            output.WriteMessage($"Repository {repository.Label} saved.");
+            output.WriteKeyValueTable(
+                "Repository saved",
+                ("Label", repository.Label),
+                ("Driver", repository.Driver),
+                ("Endpoint", repository.Endpoint),
+                ("Authorization", string.IsNullOrWhiteSpace(repository.ApiKey) ? "no" : "yes"),
+                ("User Agent", repository.UserAgent)
+            );
+            output.WriteSuccess($"Repository {repository.Label} saved.");
         }
 
         return ExitCodes.Success;

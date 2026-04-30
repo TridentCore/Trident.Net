@@ -40,18 +40,25 @@ public class PackageSearchCommand(
                 return;
             }
 
+            if (local.Length == 0)
+            {
+                output.WriteEmptyState("No local packages found", $"No package in {instance.Key} matched '{settings.Query}'.");
+                return;
+            }
+
             var localTable = new Table().RoundedBorder();
+            localTable.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
             localTable.AddColumn("PURL");
             localTable.AddColumn("Enabled");
             localTable.AddColumn("Source");
             localTable.AddColumn("Tags");
             foreach (var package in local)
             {
-                localTable.AddEscapedRow(
-                    package.Purl,
-                    package.Enabled.ToString(),
-                    package.Source ?? "-",
-                    package.Tags.Count == 0 ? "-" : string.Join(",", package.Tags)
+                localTable.AddMarkupRow(
+                    Markup.Escape(package.Purl),
+                    CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
+                    CliOutput.FormatValue(package.Source),
+                    package.Tags.Count == 0 ? "[dim]-[/]" : Markup.Escape(string.Join(",", package.Tags))
                 );
             }
 
@@ -64,11 +71,24 @@ public class PackageSearchCommand(
         var items = new List<ExhibitDto>();
         foreach (var label in labels)
         {
-            var handle = await repositories.SearchAsync(label, settings.Query, filter).ConfigureAwait(false);
-            await foreach (var item in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
-            {
-                items.Add(PackageDtos.FromExhibit(item));
-            }
+            var handle = await output
+                .StatusAsync(
+                    $"Searching {label}...",
+                    async () => await repositories.SearchAsync(label, settings.Query, filter).ConfigureAwait(false)
+                )
+                .ConfigureAwait(false);
+            await output
+                .StatusAsync(
+                    $"Fetching results from {label}...",
+                    async () =>
+                    {
+                        await foreach (var item in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
+                        {
+                            items.Add(PackageDtos.FromExhibit(item));
+                        }
+                    }
+                )
+                .ConfigureAwait(false);
         }
 
         if (output.UseStructuredOutput)
@@ -77,7 +97,14 @@ public class PackageSearchCommand(
             return;
         }
 
+        if (items.Count == 0)
+        {
+            output.WriteEmptyState("No packages found", $"No remote package matched '{settings.Query}'.");
+            return;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]Search results for {Markup.Escape(settings.Query)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Name");
         table.AddColumn("Kind");

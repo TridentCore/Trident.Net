@@ -52,7 +52,15 @@ public class LoaderSetCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} loader set to {settings.Loader}.");
+            output.WriteKeyValueTable(
+                "Loader updated",
+                ("Instance", instance.Key),
+                ("Old Loader", oldLoader),
+                ("New Loader", settings.Loader),
+                ("Identity", parsed.Identity),
+                ("Version", parsed.Version)
+            );
+            output.WriteSuccess($"Instance {instance.Key} loader set to {settings.Loader}.");
         }
 
         return ExitCodes.Success;

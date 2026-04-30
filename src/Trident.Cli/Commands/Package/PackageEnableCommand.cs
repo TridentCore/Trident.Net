@@ -31,7 +31,13 @@ public class PackageEnableCommand(
         }
         else
         {
-            output.WriteMessage($"Package {entry.Purl} {(enabled ? "enabled" : "disabled")}.");
+            output.WriteKeyValueTable(
+                enabled ? "Package enabled" : "Package disabled",
+                ("Instance", instance.Key),
+                ("PURL", entry.Purl),
+                ("State", enabled ? "enabled" : "disabled")
+            );
+            output.WriteSuccess($"Package {entry.Purl} {(enabled ? "enabled" : "disabled")}.");
         }
 
         return ExitCodes.Success;

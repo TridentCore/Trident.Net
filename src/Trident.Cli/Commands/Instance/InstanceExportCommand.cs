@@ -32,17 +32,28 @@ public class InstanceExportCommand(
         );
         options.IncludingTags = !settings.NoTags;
 
-        using var container = await exporterAgent
-            .ExportAsync(
-                options,
-                settings.Format,
-                instance.Key,
-                settings.Name ?? instance.Profile.Name,
-                settings.Author,
-                settings.Version
+        using var container = await output
+            .StatusAsync(
+                "Collecting export data...",
+                async () =>
+                    await exporterAgent
+                        .ExportAsync(
+                            options,
+                            settings.Format,
+                            instance.Key,
+                            settings.Name ?? instance.Profile.Name,
+                            settings.Author,
+                            settings.Version
+                        )
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
-        await using var archive = await exporterAgent.PackCompressedAsync(container).ConfigureAwait(false);
+        await using var archive = await output
+            .StatusAsync(
+                "Packing archive...",
+                async () => await exporterAgent.PackCompressedAsync(container).ConfigureAwait(false)
+            )
+            .ConfigureAwait(false);
 
         var outputPath = Path.GetFullPath(settings.Output);
         var dir = Path.GetDirectoryName(outputPath);
@@ -51,9 +62,17 @@ public class InstanceExportCommand(
             Directory.CreateDirectory(dir);
         }
 
-        await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-        await archive.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
-        await file.FlushAsync(cancellationToken).ConfigureAwait(false);
+        await output
+            .StatusAsync(
+                "Writing archive...",
+                async () =>
+                {
+                    await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+                    await archive.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+                    await file.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+            )
+            .ConfigureAwait(false);
 
         var result = new
         {
@@ -70,7 +89,16 @@ public class InstanceExportCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} exported to {outputPath}.");
+            var size = File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0;
+            output.WriteKeyValueTable(
+                "Instance exported",
+                ("Instance", instance.Key),
+                ("Format", settings.Format),
+                ("Type", settings.Type),
+                ("Output", outputPath),
+                ("Size", $"{size:n0} bytes")
+            );
+            output.WriteSuccess($"Instance {instance.Key} exported.");
         }
     }
 

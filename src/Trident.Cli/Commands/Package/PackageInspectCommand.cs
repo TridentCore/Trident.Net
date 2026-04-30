@@ -1,3 +1,4 @@
+using Spectre.Console;
 using Spectre.Console.Cli;
 using Trident.Cli.Services;
 using Trident.Core.Services;
@@ -32,11 +33,60 @@ public class PackageInspectCommand(
         }
 
         var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind, instance);
-        var package = await repositories
-            .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+        var package = await output
+            .StatusAsync(
+                "Resolving package metadata...",
+                async () => await repositories
+                    .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
+        var packageDto = PackageDtos.FromPackage(package);
 
-        output.WriteData(new { key = instance?.Key, local, package = PackageDtos.FromPackage(package) });
+        if (output.UseStructuredOutput)
+        {
+            output.WriteData(new { key = instance?.Key, local, package = packageDto });
+            return;
+        }
+
+        output.WriteKeyValueTable(
+            "Package details",
+            ("PURL", packageDto.Purl),
+            ("Project", packageDto.ProjectName),
+            ("Version", packageDto.VersionName),
+            ("Kind", packageDto.Kind.ToString()),
+            ("Release", packageDto.ReleaseType.ToString()),
+            ("Author", packageDto.Author),
+            ("File", packageDto.FileName),
+            ("Size", $"{packageDto.Size:n0} bytes"),
+            ("Published", packageDto.PublishedAt.ToString("u")),
+            ("Installed", local is null ? "no" : "yes")
+        );
+
+        if (!string.IsNullOrWhiteSpace(packageDto.Summary))
+        {
+            AnsiConsole.Write(new Panel(Markup.Escape(packageDto.Summary)).Header("Summary").RoundedBorder());
+        }
+
+        if (packageDto.Dependencies.Count == 0)
+        {
+            output.WriteEmptyState("No dependencies", "This package version does not declare dependencies.");
+            return;
+        }
+
+        var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Dependencies[/]");
+        table.AddColumn("PURL");
+        table.AddColumn("Required");
+        foreach (var dependency in packageDto.Dependencies)
+        {
+            table.AddMarkupRow(
+                Markup.Escape(dependency.Purl),
+                CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
+            );
+        }
+
+        output.WriteTable(table);
     }
 
     public class Arguments : PackageFilterSettings

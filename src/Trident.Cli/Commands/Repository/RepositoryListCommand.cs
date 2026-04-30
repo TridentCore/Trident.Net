@@ -30,7 +30,14 @@ public class RepositoryListCommand(
             return ExitCodes.Success;
         }
 
+        if (repositories.Length == 0)
+        {
+            output.WriteEmptyState("No repositories", "Add one with: trident repository add --label <label> --endpoint <uri>");
+            return ExitCodes.Success;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Repositories[/]");
         table.AddColumn("Label");
         table.AddColumn("Driver");
         table.AddColumn("Endpoint");
@@ -38,12 +45,12 @@ public class RepositoryListCommand(
         table.AddColumn("Auth");
         foreach (var repository in repositories)
         {
-            table.AddEscapedRow(
-                repository.Label,
-                repository.Driver,
-                repository.Endpoint,
-                repository.UserDefined.ToString(),
-                repository.HasAuthorization ? "yes" : "no"
+            table.AddMarkupRow(
+                $"[cyan]{Markup.Escape(repository.Label)}[/]",
+                Markup.Escape(repository.Driver),
+                Markup.Escape(repository.Endpoint),
+                CliOutput.FormatBoolean(repository.UserDefined, "user", "built-in"),
+                CliOutput.FormatBoolean(repository.HasAuthorization)
             );
         }
 

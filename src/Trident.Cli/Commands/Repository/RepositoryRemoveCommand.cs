@@ -29,7 +29,8 @@ public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOu
         }
         else
         {
-            output.WriteMessage($"Repository {settings.Label} removed.");
+            output.WriteKeyValueTable("Repository removed", ("Label", settings.Label));
+            output.WriteSuccess($"Repository {settings.Label} removed.");
         }
 
         return ExitCodes.Success;

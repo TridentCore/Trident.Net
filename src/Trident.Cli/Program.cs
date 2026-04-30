@@ -125,5 +125,5 @@ static void WriteStartupError(CliContext? context, string message, int exitCode)
         return;
     }
 
-    Console.Error.WriteLine(message);
+    Console.Error.WriteLine($"ERROR {message}");
 }

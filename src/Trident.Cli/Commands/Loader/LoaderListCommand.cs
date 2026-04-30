@@ -19,12 +19,17 @@ public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arg
         }
 
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Supported loaders[/]");
         table.AddColumn("Name");
         table.AddColumn("Loader ID");
         table.AddColumn("Prism UID");
         foreach (var loader in LoaderSupport.Supported)
         {
-            table.AddEscapedRow(loader.Name, loader.Identity, loader.PrismUid);
+            table.AddMarkupRow(
+                $"[cyan]{Markup.Escape(loader.Name)}[/]",
+                Markup.Escape(loader.Identity),
+                Markup.Escape(loader.PrismUid)
+            );
         }
 
         output.WriteTable(table);

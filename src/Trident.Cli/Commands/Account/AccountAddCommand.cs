@@ -43,7 +43,14 @@ public class AccountAddCommand(
         }
         else
         {
-            output.WriteMessage($"Account {stored.Username} added.");
+            output.WriteKeyValueTable(
+                "Account added",
+                ("Username", saved.Username),
+                ("UUID", saved.Uuid),
+                ("Type", saved.Type),
+                ("Default", saved.IsDefault ? "yes" : "no")
+            );
+            output.WriteSuccess($"Account {stored.Username} added.");
         }
     }
 
@@ -59,24 +66,54 @@ public class AccountAddCommand(
 
     private async Task<StoredAccount> AddMicrosoftAsync(CancellationToken cancellationToken)
     {
-        var code = await microsoftService.AcquireUserCodeAsync().ConfigureAwait(false);
+        var code = await output
+            .StatusAsync(
+                "Requesting Microsoft device code...",
+                async () => await microsoftService.AcquireUserCodeAsync().ConfigureAwait(false)
+            )
+            .ConfigureAwait(false);
         var verificationUri = code.VerificationUri ?? new Uri("https://aka.ms/devicelogin");
         WriteDeviceCode(code.UserCode, verificationUri, code.ExpiresIn);
 
-        var microsoft = await microsoftService
-            .AuthenticateAsync(code.DeviceCode, code.Interval, cancellationToken)
+        var microsoft = await output
+            .StatusAsync(
+                "Waiting for Microsoft authorization...",
+                async () => await microsoftService
+                    .AuthenticateAsync(code.DeviceCode, code.Interval, cancellationToken)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
-        var xbox = await xboxLiveService
-            .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
+        var xbox = await output
+            .StatusAsync(
+                "Authenticating with Xbox Live...",
+                async () => await xboxLiveService
+                    .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
-        var xsts = await xboxLiveService
-            .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
+        var xsts = await output
+            .StatusAsync(
+                "Authorizing Xbox service token...",
+                async () => await xboxLiveService
+                    .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
-        var minecraft = await minecraftService
-            .AuthenticateByXboxLiveServiceTokenAsync(xsts.Token, xsts.DisplayClaims.Xui.First().Uhs)
+        var minecraft = await output
+            .StatusAsync(
+                "Authenticating with Minecraft services...",
+                async () => await minecraftService
+                    .AuthenticateByXboxLiveServiceTokenAsync(xsts.Token, xsts.DisplayClaims.Xui.First().Uhs)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
-        var profile = await minecraftService
-            .AcquireAccountProfileByMinecraftTokenAsync(minecraft.AccessToken)
+        var profile = await output
+            .StatusAsync(
+                "Loading Minecraft profile...",
+                async () => await minecraftService
+                    .AcquireAccountProfileByMinecraftTokenAsync(minecraft.AccessToken)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
 
         return AccountStore.CreateMicrosoft(
@@ -101,10 +138,16 @@ public class AccountAddCommand(
             return;
         }
 
-        AnsiConsole.MarkupLine(
-            $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/] and enter code [green]{Markup.Escape(userCode)}[/]."
+        AnsiConsole.Write(
+            new Panel(
+                    new Markup(
+                        $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/]\nEnter code [green]{Markup.Escape(userCode)}[/]\n[dim]Code expires in {expiresIn} seconds.[/]"
+                    )
+                )
+                .Header("Microsoft device login")
+                .RoundedBorder()
+                .BorderColor(Color.Blue)
         );
-        AnsiConsole.MarkupLine($"Code expires in {expiresIn} seconds. Waiting for authorization...");
     }
 
     public class Arguments : CommandSettings

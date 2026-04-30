@@ -24,12 +24,19 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
             return ExitCodes.Success;
         }
 
+        AnsiConsole.Write(
+            new Panel("User repositories can override built-in labels. API keys are stored locally and never printed by list/status commands.")
+                .Header("Repository drivers")
+                .RoundedBorder()
+                .BorderColor(Color.Blue)
+        );
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Supported drivers[/]");
         table.AddColumn("Driver");
         table.AddColumn("API Key Header");
         foreach (var driver in drivers)
         {
-            table.AddEscapedRow(driver.driver, driver.apiKeyHeader);
+            table.AddMarkupRow($"[cyan]{Markup.Escape(driver.driver)}[/]", Markup.Escape(driver.apiKeyHeader));
         }
 
         output.WriteTable(table);

@@ -34,7 +34,14 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
             return ExitCodes.Success;
         }
 
+        if (instances.Length == 0)
+        {
+            output.WriteEmptyState("No instances", "Create one with: trident instance create --identity <key> --name <name> --version <version>");
+            return ExitCodes.Success;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Instances[/]");
         table.AddColumn("Key");
         table.AddColumn("Name");
         table.AddColumn("Version");
@@ -44,13 +51,13 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
 
         foreach (var instance in instances)
         {
-            table.AddEscapedRow(
-                instance.Key,
-                instance.Name,
-                instance.Version,
-                instance.Loader ?? "-",
-                instance.PackageCount.ToString(),
-                instance.Source ?? "-"
+            table.AddMarkupRow(
+                $"[cyan]{Markup.Escape(instance.Key)}[/]",
+                Markup.Escape(instance.Name),
+                Markup.Escape(instance.Version),
+                CliOutput.FormatValue(instance.Loader),
+                Markup.Escape(instance.PackageCount.ToString()),
+                CliOutput.FormatValue(instance.Source)
             );
         }
 

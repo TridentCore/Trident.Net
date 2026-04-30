@@ -22,18 +22,25 @@ public class PackageListCommand(InstanceContextResolver resolver, CliOutput outp
             return ExitCodes.Success;
         }
 
+        if (packages.Length == 0)
+        {
+            output.WriteEmptyState("No packages", $"Instance {instance.Key} does not have installed packages.");
+            return ExitCodes.Success;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Enabled");
         table.AddColumn("Source");
         table.AddColumn("Tags");
         foreach (var package in packages)
         {
-            table.AddEscapedRow(
-                package.Purl,
-                package.Enabled.ToString(),
-                package.Source ?? "-",
-                package.Tags.Count == 0 ? "-" : string.Join(",", package.Tags)
+            table.AddMarkupRow(
+                Markup.Escape(package.Purl),
+                CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
+                CliOutput.FormatValue(package.Source),
+                package.Tags.Count == 0 ? "[dim]-[/]" : Markup.Escape(string.Join(",", package.Tags))
             );
         }
 

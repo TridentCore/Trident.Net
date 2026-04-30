@@ -36,11 +36,21 @@ public class InstanceImportCommand(
             FileShare.Read
         );
         var memory = new MemoryStream();
-        await file.CopyToAsync(memory, cancellationToken).ConfigureAwait(false);
+        await output
+            .StatusAsync(
+                "Reading pack archive...",
+                async () => await file.CopyToAsync(memory, cancellationToken).ConfigureAwait(false)
+            )
+            .ConfigureAwait(false);
         memory.Position = 0;
 
         using var pack = new CompressedProfilePack(memory);
-        var container = await importerAgent.ImportAsync(pack).ConfigureAwait(false);
+        var container = await output
+            .StatusAsync(
+                "Inspecting pack metadata...",
+                async () => await importerAgent.ImportAsync(pack).ConfigureAwait(false)
+            )
+            .ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(settings.Name))
         {
             container.Profile.Name = settings.Name;
@@ -50,7 +60,12 @@ public class InstanceImportCommand(
             settings.Identity ?? container.Profile.Name ?? Path.GetFileNameWithoutExtension(sourcePath)
         );
         var key = profileManager.RequestKey(identity);
-        await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
+        await output
+            .StatusAsync(
+                "Extracting instance files...",
+                async () => await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false)
+            )
+            .ConfigureAwait(false);
         profileManager.Add(key, container.Profile);
 
         var result = new
@@ -68,7 +83,15 @@ public class InstanceImportCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {key.Key} imported.");
+            output.WriteKeyValueTable(
+                "Instance imported",
+                ("Key", key.Key),
+                ("Name", container.Profile.Name),
+                ("Version", container.Profile.Setup.Version),
+                ("Loader", container.Profile.Setup.Loader),
+                ("Source", sourcePath)
+            );
+            output.WriteSuccess($"Instance {key.Key} imported.");
         }
     }
 

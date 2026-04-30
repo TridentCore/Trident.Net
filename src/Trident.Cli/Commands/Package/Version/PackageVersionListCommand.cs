@@ -22,14 +22,27 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
     {
         var parsed = PackageCliHelper.ParsePurl(settings.Purl);
         var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind);
-        var handle = await repositories
-            .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
+        var handle = await output
+            .StatusAsync(
+                "Loading package versions...",
+                async () => await repositories
+                    .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
         var versions = new List<VersionDto>();
-        await foreach (var version in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
-        {
-            versions.Add(PackageDtos.FromVersion(version));
-        }
+        await output
+            .StatusAsync(
+                "Fetching version page...",
+                async () =>
+                {
+                    await foreach (var version in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
+                    {
+                        versions.Add(PackageDtos.FromVersion(version));
+                    }
+                }
+            )
+            .ConfigureAwait(false);
 
         if (string.Equals(settings.Sort, "asc", StringComparison.OrdinalIgnoreCase))
         {
@@ -46,18 +59,28 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
             return;
         }
 
+        if (versions.Count == 0)
+        {
+            output.WriteEmptyState("No versions found", $"No versions matched filters for {settings.Purl}.");
+            return;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]Versions for {Markup.Escape(settings.Purl)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Name");
         table.AddColumn("Release");
         table.AddColumn("Downloads");
         foreach (var version in versions)
         {
-            table.AddEscapedRow(
-                version.Purl,
-                version.VersionName,
-                version.ReleaseType.ToString(),
-                version.DownloadCount.ToString()
+            var releaseColor = string.Equals(version.ReleaseType.ToString(), "Release", StringComparison.OrdinalIgnoreCase)
+                ? "green"
+                : "yellow";
+            table.AddMarkupRow(
+                Markup.Escape(version.Purl),
+                Markup.Escape(version.VersionName),
+                CliOutput.FormatStatus(version.ReleaseType.ToString(), releaseColor),
+                Markup.Escape(version.DownloadCount.ToString())
             );
         }
 

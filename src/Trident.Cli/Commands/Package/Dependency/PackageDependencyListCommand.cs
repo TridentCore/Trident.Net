@@ -26,8 +26,13 @@ public class PackageDependencyListCommand(
         var parsed = PackageCliHelper.ParsePurl(settings.Purl);
         resolver.TryResolve(settings.Instance, settings.Profile, out var instance);
         var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind, instance);
-        var package = await repositories
-            .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+        var package = await output
+            .StatusAsync(
+                "Resolving package dependencies...",
+                async () => await repositories
+                    .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
         var dependencies = package.Dependencies.Select(PackageDtos.FromDependency).ToArray();
 
@@ -37,12 +42,22 @@ public class PackageDependencyListCommand(
             return;
         }
 
+        if (dependencies.Length == 0)
+        {
+            output.WriteEmptyState("No dependencies", "This package version does not declare dependencies.");
+            return;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]Dependencies for {Markup.Escape(package.ToString())}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Required");
         foreach (var dependency in dependencies)
         {
-            table.AddEscapedRow(dependency.Purl, dependency.IsRequired.ToString());
+            table.AddMarkupRow(
+                Markup.Escape(dependency.Purl),
+                CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
+            );
         }
 
         output.WriteTable(table);

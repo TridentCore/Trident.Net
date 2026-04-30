@@ -28,8 +28,13 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         }
 
         var uid = LoaderSupport.GetUid(settings.LoaderId);
-        var versions = await prismLauncher
-            .GetVersionsForMinecraftVersionAsync(uid, settings.Version, cancellationToken)
+        var versions = await output
+            .StatusAsync(
+                "Loading loader versions...",
+                async () => await prismLauncher
+                    .GetVersionsForMinecraftVersionAsync(uid, settings.Version, cancellationToken)
+                    .ConfigureAwait(false)
+            )
             .ConfigureAwait(false);
 
         var sorted = string.Equals(settings.Sort, "asc", StringComparison.OrdinalIgnoreCase)
@@ -54,7 +59,14 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
             return;
         }
 
+        if (result.Length == 0)
+        {
+            output.WriteEmptyState("No loader versions found", $"No {settings.LoaderId} versions matched Minecraft {settings.Version}.");
+            return;
+        }
+
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]");
         table.AddColumn("Version");
         table.AddColumn("LURL");
         table.AddColumn("Type");
@@ -62,12 +74,12 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         table.AddColumn("Released");
         foreach (var item in result)
         {
-            table.AddEscapedRow(
-                item.Version,
-                item.Lurl,
-                item.Type,
-                item.Recommended.ToString(),
-                item.ReleaseTime.ToString("u")
+            table.AddMarkupRow(
+                Markup.Escape(item.Version),
+                Markup.Escape(item.Lurl),
+                Markup.Escape(item.Type),
+                CliOutput.FormatBoolean(item.Recommended, "recommended", "no"),
+                Markup.Escape(item.ReleaseTime.ToString("u"))
             );
         }
 

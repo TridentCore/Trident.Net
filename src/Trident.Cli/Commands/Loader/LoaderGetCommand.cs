@@ -33,16 +33,20 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
             return ExitCodes.Success;
         }
 
-        var table = new Table().RoundedBorder().HideHeaders();
-        table.AddColumn("Field");
-        table.AddColumn("Value");
-        table.AddEscapedRow("Instance", instance.Key);
-        table.AddEscapedRow("Loader", parsed.Lurl ?? "-");
-        table.AddEscapedRow("Name", parsed.Name ?? "-");
-        table.AddEscapedRow("Identity", parsed.Identity ?? "-");
-        table.AddEscapedRow("Version", parsed.Version ?? "-");
-        table.AddEscapedRow("Supported", parsed.Supported.ToString());
-        output.WriteTable(table);
+        output.WriteKeyValueTable(
+            "Instance loader",
+            ("Instance", instance.Key),
+            ("Loader", parsed.Lurl),
+            ("Name", parsed.Name),
+            ("Identity", parsed.Identity),
+            ("Version", parsed.Version),
+            ("Supported", parsed.Supported ? "yes" : "no")
+        );
+        if (parsed.Lurl is null)
+        {
+            output.WriteWarning("This instance does not have a loader configured.");
+        }
+
         return ExitCodes.Success;
     }
 

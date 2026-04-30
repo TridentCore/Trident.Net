@@ -29,7 +29,13 @@ public class InstanceUnlockCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} unlocked.");
+            output.WriteKeyValueTable(
+                "Instance unlocked",
+                ("Instance", instance.Key),
+                ("Old Source", oldSource),
+                ("New Source", null)
+            );
+            output.WriteSuccess($"Instance {instance.Key} unlocked.");
         }
 
         return ExitCodes.Success;

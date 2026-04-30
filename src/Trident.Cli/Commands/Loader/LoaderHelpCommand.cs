@@ -25,9 +25,16 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
             return ExitCodes.Success;
         }
 
-        AnsiConsole.WriteLine("Loader URLs use the format <loader-id>:<loader-version>.");
-        AnsiConsole.WriteLine("Example: net.neoforged:21.1.200");
+        AnsiConsole.Write(
+            new Panel(
+                    new Markup("Loader URLs use the format [cyan]<loader-id>:<loader-version>[/]\nExample: [green]net.neoforged:21.1.200[/]")
+                )
+                .Header("Loader URL format")
+                .RoundedBorder()
+                .BorderColor(Color.Blue)
+        );
         var table = new Table().RoundedBorder();
+        table.Title = new TableTitle("[bold]Supported loaders[/]");
         table.AddColumn("Name");
         table.AddColumn("Loader ID");
         table.AddColumn("Prism UID");

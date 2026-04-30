@@ -8,6 +8,49 @@ public class TrackerAwaiter(CliOutput output)
 {
     public async Task AwaitDeployAsync(DeployTracker tracker, CancellationToken cancellationToken)
     {
+        if (!output.IsInteractive || output.UseStructuredOutput)
+        {
+            await AwaitCoreAsync(tracker, null, null, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        await AnsiConsole
+            .Progress()
+            .AutoClear(false)
+            .HideCompleted(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new SpinnerColumn()
+            )
+            .StartAsync(async progressContext =>
+            {
+                var task = progressContext.AddTask("[blue]Preparing build[/]", maxValue: 1);
+                await AwaitCoreAsync(
+                        tracker,
+                        stage => task.Description = $"[blue]{Markup.Escape(stage)}[/]",
+                        (current, total) =>
+                        {
+                            task.MaxValue = Math.Max(1, total);
+                            task.Value = Math.Min(current, task.MaxValue);
+                        },
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                task.Value = task.MaxValue;
+                task.StopTask();
+            })
+            .ConfigureAwait(false);
+    }
+
+    private static async Task AwaitCoreAsync(
+        DeployTracker tracker,
+        Action<string>? onStage,
+        Action<int, int>? onProgress,
+        CancellationToken cancellationToken
+    )
+    {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         void OnStateUpdated(TrackerBase sender, TrackerState state)
@@ -21,17 +64,11 @@ public class TrackerAwaiter(CliOutput output)
         tracker.StateUpdated += OnStateUpdated;
         using var stageSubscription = tracker.StageStream.Subscribe(stage =>
         {
-            if (!output.UseStructuredOutput)
-            {
-                AnsiConsole.MarkupLine($"Deploy stage: [blue]{stage}[/]");
-            }
+            onStage?.Invoke(stage.ToString());
         });
         using var progressSubscription = tracker.ProgressStream.Subscribe(progress =>
         {
-            if (!output.UseStructuredOutput)
-            {
-                AnsiConsole.MarkupLine($"Resolve packages: {progress.Item1}/{progress.Item2}");
-            }
+            onProgress?.Invoke(progress.Item1, progress.Item2);
         });
         using var cancellation = cancellationToken.Register(() =>
         {

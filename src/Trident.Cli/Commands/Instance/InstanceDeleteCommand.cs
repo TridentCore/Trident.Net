@@ -47,7 +47,14 @@ public class InstanceDeleteCommand(
         }
         else
         {
-            output.WriteMessage($"Instance {instance.Key} marked for deletion.");
+            output.WriteKeyValueTable(
+                "Instance deletion requested",
+                ("Instance", instance.Key),
+                ("Marker", bomb),
+                ("Deleted Immediately", "no")
+            );
+            output.WriteWarning("The instance directory will be removed on the next profile scan.");
+            output.WriteSuccess($"Instance {instance.Key} marked for deletion.");
         }
 
         return ExitCodes.Success;

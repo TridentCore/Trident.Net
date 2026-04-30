@@ -37,7 +37,13 @@ public class PackageVersionSetCommand(
         }
         else
         {
-            output.WriteMessage($"Package version updated to {entry.Purl}.");
+            output.WriteKeyValueTable(
+                "Package version updated",
+                ("Instance", instance.Key),
+                ("Old PURL", oldPurl),
+                ("New PURL", entry.Purl)
+            );
+            output.WriteSuccess($"Package version updated to {entry.Purl}.");
         }
 
         return ExitCodes.Success;
