@@ -267,12 +267,12 @@ Supported repository drivers:
 
 ```sh
 dotnet build "Trident.slnx"
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --help
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> create --identity smoke --name Smoke --version 1.21.1
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> list
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> inspect --instance smoke
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> loader list
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> account add --type offline --username Steve
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> repository list
-dotnet run --project "src/Trident.Cli/Trident.Cli.csproj" -- --json --home <temp-home> --no-interactive instance delete --instance smoke --yes
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --help
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> create --identity smoke --name Smoke --version 1.21.1
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> list
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> inspect --instance smoke
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> loader list
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> account add --type offline --username Steve
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> repository list
+dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> --no-interactive instance delete --instance smoke --yes
 ```

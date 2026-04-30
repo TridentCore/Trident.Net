@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>trident</ToolCommandName>
+
+        <PackageId>TridentCore.Cli</PackageId>
+        <Title>Trident CLI</Title>
+        <Authors>TridentCore</Authors>
+        <Company>TridentCore</Company>
+        <Product>Trident</Product>
+        <Description>Declarative Minecraft instance toolkit and command-line tool.</Description>
+        <PackageTags>trident;minecraft;cli;tool;modpack</PackageTags>
+        <PackageProjectUrl>https://github.com/TridentCore/Trident.Net</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/TridentCore/Trident.Net</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.6" />
+        <PackageReference Include="Spectre.Console" Version="0.55.2" />
+        <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
+        <PackageReference Include="Nanoid" Version="3.1.0" />
+        <PackageReference Include="GitVersion.MsBuild" Version="6.7.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.202" PrivateAssets="All" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\TridentCore.Core\TridentCore.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </None>
+    </ItemGroup>
+</Project>

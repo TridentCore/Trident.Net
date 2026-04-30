@@ -1,0 +1,3 @@
+namespace TridentCore.Core.Models.CurseForgeApi;
+
+public record ArrayResponse<T>(IReadOnlyList<T> Data, Pagination Pagination);

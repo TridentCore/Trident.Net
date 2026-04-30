@@ -6,7 +6,7 @@
 
 <p>
   <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white"></a>
-  <a href="https://www.nuget.org/packages/Trident.Cli"><img alt="NuGet Trident.Cli" src="https://img.shields.io/nuget/v/Trident.Cli?style=for-the-badge&logo=nuget&logoColor=white&label=Trident.Cli"></a>
+  <a href="https://www.nuget.org/packages/TridentCore.Cli"><img alt="NuGet TridentCore.Cli" src="https://img.shields.io/nuget/v/TridentCore.Cli?style=for-the-badge&logo=nuget&logoColor=white&label=TridentCore.Cli"></a>
   <a href="docs/CLI.md"><img alt="CLI Docs" src="https://img.shields.io/badge/docs-CLI-2563EB?style=for-the-badge"></a>
   <img alt="Minecraft" src="https://img.shields.io/badge/Minecraft-instance_toolkit-62B47A?style=for-the-badge">
 </p>
@@ -34,10 +34,10 @@ Trident keeps an instance declarative, rebuildable, importable, exportable, and 
 The core object in Trident is `profile.json`. It describes the game version, loader, packages, rules, and runtime overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI provides commands for creating, importing, building, running, exporting, and managing packages.
 
 ```text
-Trident.Abstractions  -> file models, repository interfaces, trackers, account interfaces
-Trident.Core          -> instance management, deploy/run engine, import/export, remote repositories, auth services
-Trident.Purl          -> Trident package URL parsing and formatting
-Trident.Cli           -> end-user trident command
+TridentCore.Abstractions  -> file models, repository interfaces, trackers, account interfaces
+TridentCore.Core          -> instance management, deploy/run engine, import/export, remote repositories, auth services
+TridentCore.Purl          -> Trident package URL parsing and formatting
+TridentCore.Cli           -> end-user trident command
 ```
 
 ## Trident As A Library
@@ -89,7 +89,7 @@ Trident only manages data under the selected home directory. By default, home is
 
 ### Integration
 
-Core is primarily integrated through dependency injection. `src/Trident.Cli/Startup.cs` is the most complete host example and shows how to register HTTP clients, caches, importers, exporters, remote services, and core managers.
+Core is primarily integrated through dependency injection. `src/TridentCore.Cli/Startup.cs` is the most complete host example and shows how to register HTTP clients, caches, importers, exporters, remote services, and core managers.
 
 ```csharp
 services.AddMemoryCache();
@@ -137,7 +137,7 @@ This section is for modpack authors, server maintainers, and users who want to m
 Install the CLI as a NuGet global tool:
 
 ```sh
-dotnet tool install --global Trident.Cli
+dotnet tool install --global TridentCore.Cli
 ```
 
 After installation, invoke the tool with the `trident` command:
@@ -149,8 +149,8 @@ trident --help
 Update or uninstall it with:
 
 ```sh
-dotnet tool update --global Trident.Cli
-dotnet tool uninstall --global Trident.Cli
+dotnet tool update --global TridentCore.Cli
+dotnet tool uninstall --global TridentCore.Cli
 ```
 
 The examples below assume `trident` is already on PATH. If a newly installed tool is not found in the current shell, verify that the .NET global tools directory has been added to PATH.
@@ -257,7 +257,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install CLI
-        run: dotnet tool install --global Trident.Cli
+        run: dotnet tool install --global TridentCore.Cli
 
       - name: Export packs
         run: |
@@ -285,10 +285,10 @@ jobs:
 
 | Path | Description |
 | --- | --- |
-| `src/Trident.Abstractions/` | Shared models, interfaces, and utilities. |
-| `src/Trident.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
-| `src/Trident.Purl/` | Trident package URL parsing and formatting. |
-| `src/Trident.Cli/` | The `trident` command-line product. |
+| `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities. |
+| `src/TridentCore.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
+| `src/TridentCore.Purl/` | Trident package URL parsing and formatting. |
+| `src/TridentCore.Cli/` | The `trident` command-line product. |
 | `docs/CLI.md` | Detailed CLI reference and validation notes. |
 
 ## Development
@@ -296,17 +296,17 @@ jobs:
 ```sh
 dotnet restore Trident.slnx
 dotnet build Trident.slnx
-dotnet pack src/Trident.Cli/Trident.Cli.csproj --configuration Release
+dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 ```
 
 ## AI Disclosure
 
 | Project | AI disclosure |
 | --- | --- |
-| `Trident.Abstractions` | Human-written |
-| `Trident.Core` | Human-written |
-| `Trident.Purl` | Human-written |
-| `Trident.Cli` | Vibe-coded (GPT-5.5) |
+| `TridentCore.Abstractions` | Human-written |
+| `TridentCore.Core` | Human-written |
+| `TridentCore.Purl` | Human-written |
+| `TridentCore.Cli` | Vibe-coded (GPT-5.5) |
 
 ---
 

@@ -6,7 +6,7 @@
 
 <p>
   <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white"></a>
-  <a href="https://www.nuget.org/packages/Trident.Cli"><img alt="NuGet Trident.Cli" src="https://img.shields.io/nuget/v/Trident.Cli?style=for-the-badge&logo=nuget&logoColor=white&label=Trident.Cli"></a>
+  <a href="https://www.nuget.org/packages/TridentCore.Cli"><img alt="NuGet TridentCore.Cli" src="https://img.shields.io/nuget/v/TridentCore.Cli?style=for-the-badge&logo=nuget&logoColor=white&label=TridentCore.Cli"></a>
   <a href="docs/CLI.md"><img alt="CLI Docs" src="https://img.shields.io/badge/docs-CLI-2563EB?style=for-the-badge"></a>
   <img alt="Minecraft" src="https://img.shields.io/badge/Minecraft-instance_toolkit-62B47A?style=for-the-badge">
 </p>
@@ -34,10 +34,10 @@ Trident 的目标是把一个实例拆成可声明、可重建、可导入导出
 Trident 的核心对象是 `profile.json`。它描述游戏版本、加载器、包列表、规则和运行覆盖项；部署时 Core 会把 profile 解析成可启动的 `.minecraft` 目录结构，CLI 则提供创建、导入、构建、运行、导出和包管理命令。
 
 ```text
-Trident.Abstractions  -> 文件模型、仓库接口、任务追踪、账号接口
-Trident.Core          -> 实例管理、部署/启动引擎、导入导出、远程仓库、认证服务
-Trident.Purl          -> Trident 使用的包 URL 解析与生成
-Trident.Cli           -> 面向终端用户的 trident 命令
+TridentCore.Abstractions  -> 文件模型、仓库接口、任务追踪、账号接口
+TridentCore.Core          -> 实例管理、部署/启动引擎、导入导出、远程仓库、认证服务
+TridentCore.Purl          -> Trident 使用的包 URL 解析与生成
+TridentCore.Cli           -> 面向终端用户的 trident 命令
 ```
 
 ## Trident 作为库
@@ -89,7 +89,7 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 
 ### 集成方式
 
-Core 以依赖注入为主要集成方式。`src/Trident.Cli/Startup.cs` 是当前最完整的宿主示例，展示了如何注册 HTTP client、缓存、导入器、导出器、远程服务和核心 manager。
+Core 以依赖注入为主要集成方式。`src/TridentCore.Cli/Startup.cs` 是当前最完整的宿主示例，展示了如何注册 HTTP client、缓存、导入器、导出器、远程服务和核心 manager。
 
 ```csharp
 services.AddMemoryCache();
@@ -137,7 +137,7 @@ services
 从 NuGet 安装 CLI global tool：
 
 ```sh
-dotnet tool install --global Trident.Cli
+dotnet tool install --global TridentCore.Cli
 ```
 
 安装后可以直接使用 `trident` 命令：
@@ -149,8 +149,8 @@ trident --help
 更新或卸载：
 
 ```sh
-dotnet tool update --global Trident.Cli
-dotnet tool uninstall --global Trident.Cli
+dotnet tool update --global TridentCore.Cli
+dotnet tool uninstall --global TridentCore.Cli
 ```
 
 下面的示例默认 `trident` 已经在 PATH 中。如果刚安装后当前 shell 找不到命令，请确认 .NET global tool 目录已经加入 PATH。
@@ -257,7 +257,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install CLI
-        run: dotnet tool install --global Trident.Cli
+        run: dotnet tool install --global TridentCore.Cli
 
       - name: Export packs
         run: |
@@ -285,10 +285,10 @@ jobs:
 
 | 路径 | 说明 |
 | --- | --- |
-| `src/Trident.Abstractions/` | 抽象模型、接口和共享工具。 |
-| `src/Trident.Core/` | 核心业务逻辑、部署/启动、导入导出、远程服务。 |
-| `src/Trident.Purl/` | Trident 包 URL 解析和生成。 |
-| `src/Trident.Cli/` | `trident` 命令行产品。 |
+| `src/TridentCore.Abstractions/` | 抽象模型、接口和共享工具。 |
+| `src/TridentCore.Core/` | 核心业务逻辑、部署/启动、导入导出、远程服务。 |
+| `src/TridentCore.Purl/` | Trident 包 URL 解析和生成。 |
+| `src/TridentCore.Cli/` | `trident` 命令行产品。 |
 | `docs/CLI.md` | CLI 详细参考和验证清单。 |
 
 ## 开发
@@ -296,17 +296,17 @@ jobs:
 ```sh
 dotnet restore Trident.slnx
 dotnet build Trident.slnx
-dotnet pack src/Trident.Cli/Trident.Cli.csproj --configuration Release
+dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 ```
 
 ## AI 声明
 
 | 项目 | AI 含量声明 |
 | --- | --- |
-| `Trident.Abstractions` | 人工编写 |
-| `Trident.Core` | 人工编写 |
-| `Trident.Purl` | 人工编写 |
-| `Trident.Cli` | 氛围编写(GPT-5.5) |
+| `TridentCore.Abstractions` | 人工编写 |
+| `TridentCore.Core` | 人工编写 |
+| `TridentCore.Purl` | 人工编写 |
+| `TridentCore.Cli` | 氛围编写(GPT-5.5) |
 
 ---
 

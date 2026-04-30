@@ -47,7 +47,7 @@ jobs:
             -   name: Pack NuGet package
                 run: |
                     export PackageReleaseNotes="$(cat ./RELEASE_NOTES.md)"
-                    dotnet pack src/Trident.Cli/Trident.Cli.csproj \
+                    dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj \
                       --configuration Release \
                       --output ./publish
 
