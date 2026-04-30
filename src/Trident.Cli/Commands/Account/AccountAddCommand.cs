@@ -101,7 +101,9 @@ public class AccountAddCommand(
             return;
         }
 
-        AnsiConsole.MarkupLine($"Open [blue]{verificationUri}[/] and enter code [green]{userCode}[/].");
+        AnsiConsole.MarkupLine(
+            $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/] and enter code [green]{Markup.Escape(userCode)}[/]."
+        );
         AnsiConsole.MarkupLine($"Code expires in {expiresIn} seconds. Waiting for authorization...");
     }
 

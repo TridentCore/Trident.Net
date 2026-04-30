@@ -29,7 +29,7 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
         table.AddColumn("API Key Header");
         foreach (var driver in drivers)
         {
-            table.AddRow(driver.driver, driver.apiKeyHeader);
+            table.AddEscapedRow(driver.driver, driver.apiKeyHeader);
         }
 
         output.WriteTable(table);

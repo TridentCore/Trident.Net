@@ -53,7 +53,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         table.AddColumn("Downloads");
         foreach (var version in versions)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 version.Purl,
                 version.VersionName,
                 version.ReleaseType.ToString(),

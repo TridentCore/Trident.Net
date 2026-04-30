@@ -29,7 +29,7 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
         table.AddColumn("Description");
         foreach (var type in types)
         {
-            table.AddRow(type.type, type.description);
+            table.AddEscapedRow(type.type, type.description);
         }
 
         output.WriteTable(table);

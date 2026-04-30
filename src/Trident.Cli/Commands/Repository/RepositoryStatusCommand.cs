@@ -41,7 +41,7 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
         table.AddColumn("Kinds");
         foreach (var result in results)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 result.Label,
                 string.Join(",", result.SupportedLoaders),
                 result.VersionCount.ToString(),

@@ -42,7 +42,7 @@ public class PackageDependencyListCommand(
         table.AddColumn("Required");
         foreach (var dependency in dependencies)
         {
-            table.AddRow(dependency.Purl, dependency.IsRequired.ToString());
+            table.AddEscapedRow(dependency.Purl, dependency.IsRequired.ToString());
         }
 
         output.WriteTable(table);

@@ -29,7 +29,7 @@ public class PackageListCommand(InstanceContextResolver resolver, CliOutput outp
         table.AddColumn("Tags");
         foreach (var package in packages)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 package.Purl,
                 package.Enabled.ToString(),
                 package.Source ?? "-",

@@ -43,7 +43,7 @@ public class CreateCommand(ProfileManager profileManager, CliOutput output)
         }
         else
         {
-            AnsiConsole.MarkupLine($"Instance [green]{key.Key}[/] created");
+            AnsiConsole.MarkupLine($"Instance [green]{Markup.Escape(key.Key)}[/] created");
         }
 
         return 0;

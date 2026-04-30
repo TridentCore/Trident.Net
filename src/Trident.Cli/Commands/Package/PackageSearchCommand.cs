@@ -47,7 +47,7 @@ public class PackageSearchCommand(
             localTable.AddColumn("Tags");
             foreach (var package in local)
             {
-                localTable.AddRow(
+                localTable.AddEscapedRow(
                     package.Purl,
                     package.Enabled.ToString(),
                     package.Source ?? "-",
@@ -84,7 +84,7 @@ public class PackageSearchCommand(
         table.AddColumn("Downloads");
         foreach (var item in items)
         {
-            table.AddRow(item.Purl, item.Name, item.Kind.ToString(), item.DownloadCount.ToString());
+            table.AddEscapedRow(item.Purl, item.Name, item.Kind.ToString(), item.DownloadCount.ToString());
         }
 
         output.WriteTable(table);

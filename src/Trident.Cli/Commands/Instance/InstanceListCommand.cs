@@ -44,7 +44,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
 
         foreach (var instance in instances)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 instance.Key,
                 instance.Name,
                 instance.Version,

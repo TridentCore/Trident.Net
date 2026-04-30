@@ -36,12 +36,12 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
         var table = new Table().RoundedBorder().HideHeaders();
         table.AddColumn("Field");
         table.AddColumn("Value");
-        table.AddRow("Instance", instance.Key);
-        table.AddRow("Loader", parsed.Lurl ?? "-");
-        table.AddRow("Name", parsed.Name ?? "-");
-        table.AddRow("Identity", parsed.Identity ?? "-");
-        table.AddRow("Version", parsed.Version ?? "-");
-        table.AddRow("Supported", parsed.Supported.ToString());
+        table.AddEscapedRow("Instance", instance.Key);
+        table.AddEscapedRow("Loader", parsed.Lurl ?? "-");
+        table.AddEscapedRow("Name", parsed.Name ?? "-");
+        table.AddEscapedRow("Identity", parsed.Identity ?? "-");
+        table.AddEscapedRow("Version", parsed.Version ?? "-");
+        table.AddEscapedRow("Supported", parsed.Supported.ToString());
         output.WriteTable(table);
         return ExitCodes.Success;
     }

@@ -38,14 +38,14 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
         var table = new Table().RoundedBorder().HideHeaders();
         table.AddColumn("Field");
         table.AddColumn("Value");
-        table.AddRow("Key", dto.Key);
-        table.AddRow("Name", dto.Name);
-        table.AddRow("Version", dto.Version);
-        table.AddRow("Loader", dto.Loader ?? "-");
-        table.AddRow("Source", dto.Source ?? "-");
-        table.AddRow("Packages", dto.PackageCount.ToString());
-        table.AddRow("Path", dto.Path);
-        table.AddRow("Profile", dto.ProfilePath);
+        table.AddEscapedRow("Key", dto.Key);
+        table.AddEscapedRow("Name", dto.Name);
+        table.AddEscapedRow("Version", dto.Version);
+        table.AddEscapedRow("Loader", dto.Loader ?? "-");
+        table.AddEscapedRow("Source", dto.Source ?? "-");
+        table.AddEscapedRow("Packages", dto.PackageCount.ToString());
+        table.AddEscapedRow("Path", dto.Path);
+        table.AddEscapedRow("Profile", dto.ProfilePath);
         output.WriteTable(table);
         return ExitCodes.Success;
     }

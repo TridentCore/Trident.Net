@@ -38,7 +38,7 @@ public class RepositoryListCommand(
         table.AddColumn("Auth");
         foreach (var repository in repositories)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 repository.Label,
                 repository.Driver,
                 repository.Endpoint,

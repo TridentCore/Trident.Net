@@ -62,7 +62,7 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         table.AddColumn("Released");
         foreach (var item in result)
         {
-            table.AddRow(
+            table.AddEscapedRow(
                 item.Version,
                 item.Lurl,
                 item.Type,

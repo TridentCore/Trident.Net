@@ -69,7 +69,7 @@ public class PackageDependentListCommand(
         table.AddColumn("Version");
         foreach (var dependent in dependents)
         {
-            table.AddRow(dependent.Purl, dependent.ProjectName, dependent.VersionName);
+            table.AddEscapedRow(dependent.Purl, dependent.ProjectName, dependent.VersionName);
         }
 
         output.WriteTable(table);

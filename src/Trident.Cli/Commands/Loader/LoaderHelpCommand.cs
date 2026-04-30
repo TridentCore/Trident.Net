@@ -33,7 +33,7 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
         table.AddColumn("Prism UID");
         foreach (var loader in LoaderSupport.Supported)
         {
-            table.AddRow(loader.Name, loader.Identity, loader.PrismUid);
+            table.AddEscapedRow(loader.Name, loader.Identity, loader.PrismUid);
         }
 
         output.WriteTable(table);

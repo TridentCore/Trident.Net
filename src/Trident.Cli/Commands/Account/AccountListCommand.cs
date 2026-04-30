@@ -27,7 +27,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         table.AddColumn("Default");
         foreach (var account in result)
         {
-            table.AddRow(account.Uuid, account.Username, account.Type, account.IsDefault.ToString());
+            table.AddEscapedRow(account.Uuid, account.Username, account.Type, account.IsDefault.ToString());
         }
 
         output.WriteTable(table);
