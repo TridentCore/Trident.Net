@@ -36,7 +36,8 @@ public static class Startup
         IServiceCollection services,
         IConfiguration configuration,
         SimpleEnvironment environment,
-        CliContext cliContext
+        CliContext cliContext,
+        bool isDebug
     )
     {
         services.AddSingleton(cliContext);
@@ -71,7 +72,7 @@ public static class Startup
             logging.ClearProviders();
             logging.AddConsole();
             logging.SetMinimumLevel(
-                cliContext.Debug
+                isDebug || cliContext.Debug
                     ? LogLevel.Debug
                     : cliContext.Verbose
                         ? LogLevel.Information

@@ -34,7 +34,22 @@ public class CliOutput(CliContext context)
 
     public void WriteWarning(string message) => WriteMarkupLine($"[yellow]WARN[/] {Markup.Escape(message)}");
 
-    public void WriteError(string message) => WriteMarkupLine($"[red]ERROR[/] {Markup.Escape(message)}");
+    public void WriteError(string message)
+    {
+        if (UseStructuredOutput)
+        {
+            WriteData(new { error = message });
+            return;
+        }
+
+        AnsiConsole.Write(
+            new Panel($"[bold red]{Markup.Escape(message)}[/]")
+                .Header("[bold red]ERROR[/]")
+                .RoundedBorder()
+                .BorderColor(Color.Red)
+                .Expand()
+        );
+    }
 
     public void WriteMarkupLine(string markup)
     {

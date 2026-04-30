@@ -1,6 +1,16 @@
 namespace Trident.Cli.Services;
 
-public class CliException(string message, int exitCode = ExitCodes.Unknown) : Exception(message)
+public class CliException : Exception
 {
-    public int ExitCode { get; } = exitCode;
+    public CliException(string message, int exitCode = ExitCodes.Unknown)
+        : base(message) => ExitCode = exitCode;
+
+    public CliException(
+        string message,
+        Exception innerException,
+        int exitCode = ExitCodes.Unknown
+    )
+        : base(message, innerException) => ExitCode = exitCode;
+
+    public int ExitCode { get; }
 }
