@@ -1,87 +1,252 @@
-# Trident
+<div align="center">
 
-下一代 Minecraft 实例管理器的文件组织结构。
+<h1>Trident.Net</h1>
 
-## Architecture
+<p><strong>Declarative Minecraft instance tooling: core libraries, modpack pipelines, and a command-line product.</strong></p>
 
-Trident 是一种 Minecraft 的文件组织结构。
-同时也是相应的一套工具链。
+<p>
+  <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white"></a>
+  <a href="https://www.nuget.org/packages/Trident.Cli"><img alt="NuGet Trident.Cli" src="https://img.shields.io/nuget/v/Trident.Cli?style=for-the-badge&logo=nuget&logoColor=white&label=Trident.Cli"></a>
+  <a href="docs/CLI.md"><img alt="CLI Docs" src="https://img.shields.io/badge/docs-CLI-2563EB?style=for-the-badge"></a>
+  <img alt="Minecraft" src="https://img.shields.io/badge/Minecraft-instance_toolkit-62B47A?style=for-the-badge">
+</p>
 
-### File Structure
+<p>
+  <a href="README.zh.md">简体中文</a>
+  ·
+  <a href="#trident-as-a-library">Library</a>
+  ·
+  <a href="#trident-as-a-cli">CLI</a>
+  ·
+  <a href="#repository-layout">Repository Layout</a>
+  ·
+  <a href="#ai-disclosure">AI Disclosure</a>
+</p>
 
-```sh
-.trident/
-├── cache/                   # Volatile directory
-│   ├── assets/              # Game Assets
-│   │   ├── indexes/         # Game Asset indexes
-│   │   └── objects/         # Game Asset objects
-│   ├── libraries/           # Game Libraries
-│   ├── packages/            # Repository packages
-│   └── runtimes/            # Java runtimes
-├── instances/               # Instance directory
-│   ├── {instance}/          # Instance root
-│   │   ├── build/           # Build output treated as .minecraft
-│   │   ├── import/          # Import layer
-│   │   ├── persist/         # Persisted layer
-│   │   ├── data.lock.json   # Version lock
-└───┴───┴── profile.json     # Metadata profile
+</div>
+
+Trident.Net is the .NET implementation of Trident: a set of core libraries for Minecraft instances, modpacks, package repositories, and accounts, plus the `trident` command-line tool built on the same core capabilities.
+
+Trident keeps an instance declarative, rebuildable, importable, exportable, and friendly to automation. The libraries define the model and execution engine; the CLI exposes those capabilities as a product-ready entry point for local play, modpack maintenance, and CI/CD publishing.
+
+## One Model, Two Entrypoints
+
+The core object in Trident is `profile.json`. It describes the game version, loader, packages, rules, and runtime overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI provides commands for creating, importing, building, running, exporting, and managing packages.
+
+```text
+Trident.Abstractions  -> file models, repository interfaces, trackers, account interfaces
+Trident.Core          -> instance management, deploy/run engine, import/export, remote repositories, auth services
+Trident.Purl          -> Trident package URL parsing and formatting
+Trident.Cli           -> end-user trident command
 ```
 
-所有数据全部都存在 `.trident` 目录，不会触碰任何目录以外的文件。
-这个目录通常位于 `$HOME` 下，但在一些实现中允许覆写，以下是一些常见的实现以及规则（优先级越靠前越高）：
+## Trident As A Library
 
-- [**Polymerium**](https://github.com/d3ara1n/Polymerium)
-  - 规则1：目录层级查找，从当前目录到根目录逐层向上查找 `.trident` 目录
-  - 兜底：`~/.trident`
-- **Trident Cli**
-  - 规则1：通过命令行参数指定
-  - 规则2：环境变量 `TRIDENT_HOME`
-  - 规则3：目录层级查找，从工作目录到根目录逐层向上查找 `.trident` 目录
-  - 兜底：`~/.trident`
+This section is for developers embedding Trident into launchers, desktop apps, server tools, or automation systems.
 
-### Deployment
+### Data Layout
 
-只需要一个 `profile.json` 文件，Trident 就能还原出一个完整的实例。
-Trident 会根据 `profile.json` 中的描述，从 `cache` 目录中查找或下载所需的文件，并将它们链接到 `build` 目录中。
-Trident 会保证 `build` 目录中的文件总是和 `profile.json` 中的描述保持一致。
+Trident only manages data under the selected home directory. By default, home is resolved by walking up from the current directory and looking for `.trident`; if none is found, Trident falls back to `~/.trident`. Host applications can override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 
-构建中涉及多个数据层，最终构建结果是这些层**增量**的覆加到 `build` 目录中：
+```text
+.trident/
+├── cache/
+│   ├── assets/              # Minecraft assets indexes/objects
+│   ├── libraries/           # Minecraft libraries
+│   ├── packages/            # repository package files and metadata
+│   └── runtimes/            # Java runtimes
+├── instances/
+│   └── {key}/
+│       ├── profile.json     # declarative instance metadata
+│       ├── data.lock.json   # deployment lock data
+│       ├── data.pack.json   # pack data
+│       ├── build/           # projected .minecraft output
+│       ├── import/          # imported layer, usually from modpacks or exportable files
+│       ├── live/            # mutable runtime layer for imported content
+│       └── persist/         # user-persistent data such as saves, screenshots, options.txt
+└── .trident.cli/
+    ├── accounts.json        # CLI-private account configuration
+    └── repositories.json    # CLI-private repository configuration
+```
 
-1. 基础层：只需要一个游戏版本即可构建，构建出原版游戏的基础和启动参数（来自 `profile.json`）
-2. 加载器层：加载器和原版游戏使用相同方法并影响相同构建*中间数据*，即库、启动参数（来自 `profile.json`）
-3. *导入层*：导入的整合包会产生导入层，内部的文件会*投影*到输出目录（来自导入的整合包）
-4. *持久层*：用于在多次构建中保持目录和文件，内部文件结构必须和构建目录的一致，文件会被加入软链接到对应的输出目录的对应位置（来自用户添加）
+### Core Concepts
 
-*中间数据*: 即**版本锁**(`data.lock.json`)中包含的数据。讲道理版本锁需要做到 portable，但此处由于这个游戏的启动参数必须包含完整路径而无法做到。
-便携化会放在未来实现，届时 `data.lock.json` 就能从 `.gitignore` 中移除了。
+- Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package PURLs, rules, and runtime overrides.
+- Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes `data.lock.json`.
+- Layer: `import/` stores modpack or exportable files, `live/` stores runtime mutations to imported content, and `persist/` stores user data.
+- Projection: deployment incrementally projects the virtual file structure into `build/`, usually by creating symlink relationships and removing stale relationships.
+- Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident PURLs.
+- Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI subscribers.
 
-*导入层*: 这一层分为两部分，`import` 的文件直接来自整合包，是只读的，会先通过存在性检测复制不存在的文件到 `live` 目录。
-`live` 目录具有和 `persist` 一样的机制，会在构建时投影到输出目录，文件会在游戏游玩过程中被更新。
-`import` 对于导入自整合包的实例该目录用于放置整合包的文件，对于自制且未来会导出到整合包的实例则用来放需要导出的文件（其实都是同一个类型的文件），打包器会将该目录的内容原样打入整合包。
-一种典型用法为将需要未来导出到整合包的文件例如模组的配置文件从输出目录移动到 `import` 作为持久化文件并交给 Git 托管以多人开发整合包
+### Capabilities
 
-*持久层*: 用于让游戏用户文件能在实例更新和重置中保持，例如 `screenshots`、`saves`、`options.txt` 这些*文件和目录*添加进持久化列表来避免丢失。
+- Create, scan, update, and delete managed instances.
+- Deploy vanilla Minecraft, loaders, runtimes, dependencies, and build artifacts.
+- Run instances with offline accounts, Microsoft accounts, memory/window options, Java home, and quick-connect settings.
+- Import and export `trident`, `modrinth`, and `curseforge` modpack formats.
+- Query packages, versions, dependencies, and reverse dependencies inside an instance.
+- Resolve Forge, NeoForge, Fabric, and Quilt loaders through PrismLauncher metadata.
 
-*投影*：实现部署的核心机制，将虚拟的目录结构投影到输出目录。使用软链接创建文件关系，**增量**添加增加的文件关系，并移除多余的文件关系。
+### Integration
 
-*文件和目录*: 如果要投影整个目录，需要在目录中添加一个空的 `.keep` 目录，例如 `screenshots/.keep`。
-这个文件还能起到 `.gitkeep` 相同的作用，但并不建议 Git 仓库里添加 `saves/.keep` 这种游戏会往里面生成大量不适合添加进 Git 的文件的目录。
+Core is primarily integrated through dependency injection. `src/Trident.Cli/Startup.cs` is the most complete host example and shows how to register HTTP clients, caches, importers, exporters, remote services, and core managers.
 
-### Modpack Creation in real world: Github Actions
+```csharp
+services.AddMemoryCache();
+services.AddDistributedMemoryCache();
 
-> [!WARNING]
-> Trident Cli 还在制作中，暂时不可用且展示的 API 在未来会发生变动。
+services
+    .AddTransient<IProfileImporter, TridentImporter>()
+    .AddTransient<IProfileImporter, CurseForgeImporter>()
+    .AddTransient<IProfileImporter, ModrinthImporter>()
+    .AddTransient<IProfileExporter, TridentExporter>()
+    .AddTransient<IProfileExporter, CurseForgeExporter>()
+    .AddTransient<IProfileExporter, ModrinthExporter>()
+    .AddLifetimeRuntime()
+    .AddPrismLauncher()
+    .AddMojangLauncher()
+    .AddMicrosoft()
+    .AddXboxLive()
+    .AddMinecraft()
+    .AddMclogs()
+    .AddSingleton<ProfileManager>()
+    .AddSingleton<RepositoryAgent>()
+    .AddSingleton<ImporterAgent>()
+    .AddSingleton<ExporterAgent>()
+    .AddSingleton<InstanceManager>();
+```
 
-在需要 CD 构建整合包的情况下可以使用 Trident Cli 在 Github Actions 中实现。
+In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent` plus `ExporterAgent` convert modpacks.
 
-以下是一个简单的示例，用于在整合包仓库(元数据文件使用 `src/profile.json`)构建 Tripack 格式的整合包并发布到 Release：
+## Trident As A CLI
+
+This section is for modpack authors, server maintainers, and users who want to manage Minecraft instances from the terminal.
+
+`trident` is the productized command-line entrypoint for Trident. It can create an instance from scratch, import existing modpacks, search and install packages, build launchable directories, log in accounts, run the game, and export the same instance into multiple modpack formats.
+
+### Use Cases
+
+- Maintain a locally rebuildable Minecraft instance.
+- Keep core modpack metadata in Git, then build and export releases from commands.
+- Generate Trident, Modrinth, or CurseForge artifacts in CI.
+- Chain scripts with JSON output, for example by piping package search results into install commands.
+- Manage multiple instances, accounts, and repository configurations under one `.trident` home.
+
+### Installation
+
+Install the CLI as a NuGet global tool:
+
+```sh
+dotnet tool install --global Trident.Cli
+```
+
+After installation, invoke the tool with the `trident` command:
+
+```sh
+trident --help
+```
+
+Update or uninstall it with:
+
+```sh
+dotnet tool update --global Trident.Cli
+dotnet tool uninstall --global Trident.Cli
+```
+
+The examples below assume `trident` is already on PATH. If a newly installed tool is not found in the current shell, verify that the .NET global tools directory has been added to PATH.
+
+### Quick Start
+
+```sh
+trident create --identity cherry_picks --name "Cherry Picks" --version 1.21.1 --loader net.neoforged:21.1.200
+trident add --instance cherry_picks modrinth:aC3cM3Vq@9I21YYxf
+trident build --instance cherry_picks
+trident run --instance cherry_picks --username Steve
+trident instance export --instance cherry_picks --format modrinth --type online --author d3ara1n --output ./releases/cherry-picks.mrpack
+```
+
+### Global Options
+
+Global options are preprocessed before command dispatch and can appear anywhere in the command line.
+
+| Option | Purpose |
+| --- | --- |
+| `--home <path>` / `--home=<path>` | Sets the Trident home directory and overrides automatic `.trident` discovery. |
+| `--json` | Forces structured JSON output. |
+| `--no-interactive` | Disables prompts, spinners, and progress UI; destructive commands also require `--yes`. |
+| `--verbose` | Enables information-level logs. |
+| `--debug` | Enables debug logs and full exceptions; also enables verbose output. |
+
+When stdout is redirected, the CLI automatically prefers JSON output for pipeline and scripting scenarios.
+
+### Command Overview
+
+| Scenario | Commands |
+| --- | --- |
+| Instances | `trident instance create/list/inspect/build/import/export/unlock/reset/delete/run` |
+| Shortcuts | `trident create/import/build/run/list/inspect` |
+| Loaders | `trident loader list/get/set`, `trident loader version list` |
+| Packages | `trident package list/search/add/inspect/enable/disable` |
+| Package relations | `trident package dependency list`, `trident package dependent list` |
+| Package versions | `trident package version list/set` |
+| Package shortcuts | `trident search`, `trident add` |
+| Accounts | `trident account list/add/remove` |
+| Repositories | `trident repository list/status/add/remove` |
+
+Commands that need an instance context resolve it in this order: `--instance <key>`, `--profile <path>`, then a managed `profile.json` in the current directory or one of its parents. Common short options include `-I|--instance`, `-R|--repository`, `-v|--version`, `-n|--name`, `-i|--id`, `-l|--loader`, `-y|--yes`, `-A|--account`, and `-u|--username`.
+
+### Workflow Examples
+
+Create and build an instance:
+
+```sh
+trident create --identity vanilla --name "Vanilla 1.21.1" --version 1.21.1
+trident build --instance vanilla --full-check
+```
+
+Import, run, and reset a modpack:
+
+```sh
+trident import --identity imported_pack --name "Imported Pack" ./modpack.zip
+trident run --instance imported_pack --username Steve --max-memory 6144
+trident instance reset --instance imported_pack --yes
+```
+
+Search, install, and switch package versions:
+
+```sh
+trident package search --repository modrinth --kind mod --version 1.21.1 --loader net.neoforged "Mouse Tweaks"
+trident package add --instance cherry_picks modrinth:aC3cM3Vq@9I21YYxf
+trident package version list --version 1.21.1 --loader net.neoforged modrinth:aC3cM3Vq
+trident package version set --instance cherry_picks modrinth:aC3cM3Vq@9I21YYxf
+```
+
+Pipe search results into an install command:
+
+```sh
+trident --json package search --repository modrinth --kind mod "Mouse Tweaks" \
+  | trident --json --no-interactive package add --instance cherry_picks
+```
+
+Accounts and repositories:
+
+```sh
+trident account add --type offline --username Steve
+trident account add --type microsoft
+trident repository add --label modrinth-cn --driver modrinth --endpoint https://api.modrinth.com --user-agent "TridentCli"
+trident repository status --label modrinth-cn
+```
+
+### CI/CD Modpack Publishing
+
+Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
 
 ```yaml
 name: Build and Publish Modpack
 
 on:
   push:
-    tag:
+    tags:
       - v*
 
 jobs:
@@ -91,37 +256,66 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0
+      - name: Install CLI
+        run: dotnet tool install --global Trident.Cli
 
-      - name: Install Trident Cli
-        run: dotnet tool install -g Trident.Cli
-
-      - name: Run Trident CLI
-        run:
-          trident export --output Releases/tripack.zip --format tripack --type online --profile src/profile.json
-          trident export --output Releases/curseforge.zip --format curseforge --type online --profile src/profile.json
-          trident export --output Releases/modrinth.zip --format modrinth --type online --profile src/profile.json
+      - name: Export packs
+        run: |
+          trident instance export --format trident --type online --author d3ara1n --output Releases/trident.zip
+          trident instance export --format curseforge --type online --author d3ara1n --output Releases/curseforge.zip
+          trident instance export --format modrinth --type online --author d3ara1n --output Releases/modrinth.mrpack
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          body: Modpack Release
           tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
           files: Releases/*
 ```
 
-## Repository
+### Output And Limitations
 
-本仓库包含了对 Trident 的各种模块的 .Net 实现。
+- Human-readable output uses Spectre Console tables, panels, status messages, and progress feedback.
+- `--json` or stdout redirection emits structured JSON; Microsoft device-code login prompts still write to stderr.
+- CLI account and repository secrets are stored in `<trident-home>/.trident.cli/*.json`; the current implementation does not encrypt them with the system keychain.
+- `package dependent list` scans local reverse dependencies inside an instance; it is not a global reverse-dependency query against remote repositories.
+- See [`docs/CLI.md`](docs/CLI.md) for more CLI details and validation notes.
 
-### Project Structure
+## Repository Layout
 
-- `src/Trident.Core/` 为核心库，包含所有业务逻辑，具有抽象接口的各个平台实现。
-- `src/Trident.Abstractions/` 为抽象库，包含所有抽象定义。
-- `src/Trident.Purl/` 为 Purl 实现，包含 Purl 的解析和生成逻辑。
+| Path | Description |
+| --- | --- |
+| `src/Trident.Abstractions/` | Shared models, interfaces, and utilities. |
+| `src/Trident.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
+| `src/Trident.Purl/` | Trident package URL parsing and formatting. |
+| `src/Trident.Cli/` | The `trident` command-line product. |
+| `docs/CLI.md` | Detailed CLI reference and validation notes. |
+
+## Development
+
+```sh
+dotnet restore Trident.slnx
+dotnet build Trident.slnx
+dotnet pack src/Trident.Cli/Trident.Cli.csproj --configuration Release
+```
+
+## AI Disclosure
+
+| Project | AI disclosure |
+| --- | --- |
+| `Trident.Abstractions` | Human-written |
+| `Trident.Core` | Human-written |
+| `Trident.Purl` | Human-written |
+| `Trident.Cli` | Vibe-coded (GPT-5.5) |
+
+---
+
+<div align="center">
+
+<strong>Trident.Net</strong> keeps Minecraft instances declarative, rebuildable, and automation-friendly.
+
+<br>
+
+Library first. CLI packaged on NuGet. Modpack workflows included.
+
+</div>
