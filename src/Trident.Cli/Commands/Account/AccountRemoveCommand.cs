@@ -12,6 +12,8 @@ public class AccountRemoveCommand(AccountStore accounts, CliOutput output)
         CancellationToken cancellationToken
     )
     {
+        output.RequireConfirmation($"Remove account '{settings.Uuid}'?", settings.Yes);
+
         if (!accounts.Remove(settings.Uuid))
         {
             throw new CliException($"Account '{settings.Uuid}' was not found.", ExitCodes.NotFound);
@@ -34,5 +36,8 @@ public class AccountRemoveCommand(AccountStore accounts, CliOutput output)
     {
         [CommandOption("--uuid <UUID>", true)]
         public required string Uuid { get; set; }
+
+        [CommandOption("-y|--yes")]
+        public bool Yes { get; set; }
     }
 }

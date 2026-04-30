@@ -54,6 +54,11 @@ catch (OperationCanceledException ex)
     WriteStartupError(invocation.Context, ex.Message, ExitCodes.Canceled);
     return ExitCodes.Canceled;
 }
+catch (CommandAppException ex)
+{
+    WriteStartupError(invocation.Context, ex.Message, ExitCodes.Usage);
+    return ExitCodes.Usage;
+}
 catch (Exception ex)
 {
     var message = invocation.Context.Debug ? ex.ToString() : ex.Message;

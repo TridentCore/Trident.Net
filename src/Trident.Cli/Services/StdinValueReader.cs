@@ -30,8 +30,15 @@ public class StdinValueReader(CliContext context)
                 .ToArray();
         }
 
-        using var document = JsonDocument.Parse(input);
-        return ReadElement(document.RootElement).ToArray();
+        try
+        {
+            using var document = JsonDocument.Parse(input);
+            return ReadElement(document.RootElement).ToArray();
+        }
+        catch (JsonException ex)
+        {
+            throw new CliException($"stdin is not valid JSON: {ex.Message}", ExitCodes.Usage);
+        }
     }
 
     private static IEnumerable<string> ReadElement(JsonElement element)
@@ -53,9 +60,15 @@ public class StdinValueReader(CliContext context)
                 {
                     yield return purl.GetString()!;
                 }
-                else if (element.TryGetProperty("items", out var items))
+
+                foreach (var property in new[] { "items", "packages", "package", "dependencies", "versions", "results", "account" })
                 {
-                    foreach (var item in ReadElement(items))
+                    if (!element.TryGetProperty(property, out var nested))
+                    {
+                        continue;
+                    }
+
+                    foreach (var item in ReadElement(nested))
                     {
                         yield return item;
                     }

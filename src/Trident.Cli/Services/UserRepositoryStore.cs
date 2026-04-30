@@ -14,7 +14,7 @@ public class UserRepositoryStore
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
 
-    private readonly string _path = Path.Combine(PathDef.Default.Home, "repositories.json");
+    private readonly string _path = CliDataPaths.File("repositories.json");
 
     public IReadOnlyList<UserRepositoryProfile> Load()
     {
@@ -32,8 +32,7 @@ public class UserRepositoryStore
 
     public void Save(IEnumerable<UserRepositoryProfile> repositories)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllText(_path, JsonSerializer.Serialize(repositories, SerializerOptions));
+        AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(repositories, SerializerOptions));
     }
 
     public void AddOrReplace(UserRepositoryProfile repository)

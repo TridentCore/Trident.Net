@@ -16,7 +16,7 @@ public class AccountStore
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
 
-    private readonly string _path = Path.Combine(PathDef.Default.Home, "accounts.json");
+    private readonly string _path = CliDataPaths.File("accounts.json");
 
     public IReadOnlyList<StoredAccount> Load()
     {
@@ -34,8 +34,7 @@ public class AccountStore
 
     public void Save(IEnumerable<StoredAccount> accounts)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllText(_path, JsonSerializer.Serialize(accounts, SerializerOptions));
+        AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(accounts, SerializerOptions));
     }
 
     public void AddOrReplace(StoredAccount account)

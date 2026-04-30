@@ -12,6 +12,8 @@ public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOu
         CancellationToken cancellationToken
     )
     {
+        output.RequireConfirmation($"Remove user repository '{settings.Label}'?", settings.Yes);
+
         if (!userRepositories.Remove(settings.Label))
         {
             throw new CliException(
@@ -37,5 +39,8 @@ public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOu
     {
         [CommandOption("--label <LABEL>", true)]
         public required string Label { get; set; }
+
+        [CommandOption("-y|--yes")]
+        public bool Yes { get; set; }
     }
 }

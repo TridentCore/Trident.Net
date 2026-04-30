@@ -14,6 +14,11 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
         }
         catch (CliException)
         {
+            if (!string.IsNullOrWhiteSpace(instance) || !string.IsNullOrWhiteSpace(profilePath))
+            {
+                throw;
+            }
+
             context = null!;
             return false;
         }

@@ -15,7 +15,9 @@ public class CreateCommand(ProfileManager profileManager, CliOutput output)
         CancellationToken cancellationToken
     )
     {
-        var key = profileManager.RequestKey(settings.EffectiveIdentity);
+        var key = profileManager.RequestKey(
+            InstanceIdentityValidator.EnsureValid(settings.EffectiveIdentity)
+        );
         var profile = new Profile()
         {
             Name = settings.Name,

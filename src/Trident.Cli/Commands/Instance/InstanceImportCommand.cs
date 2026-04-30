@@ -46,7 +46,9 @@ public class InstanceImportCommand(
             container.Profile.Name = settings.Name;
         }
 
-        var identity = settings.Identity ?? container.Profile.Name ?? Path.GetFileNameWithoutExtension(sourcePath);
+        var identity = InstanceIdentityValidator.EnsureValid(
+            settings.Identity ?? container.Profile.Name ?? Path.GetFileNameWithoutExtension(sourcePath)
+        );
         var key = profileManager.RequestKey(identity);
         await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
         profileManager.Add(key, container.Profile);

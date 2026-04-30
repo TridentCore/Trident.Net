@@ -1,6 +1,5 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using Trident.Abstractions.Repositories;
 using Trident.Cli.Services;
 using Trident.Core.Services;
 
@@ -35,7 +34,28 @@ public class PackageSearchCommand(
                 .Take(settings.Limit)
                 .Select(PackageDtos.FromEntry)
                 .ToArray();
-            output.WriteData(new { key = instance.Key, packages = local });
+            if (output.UseStructuredOutput)
+            {
+                output.WriteData(new { key = instance.Key, packages = local });
+                return;
+            }
+
+            var localTable = new Table().RoundedBorder();
+            localTable.AddColumn("PURL");
+            localTable.AddColumn("Enabled");
+            localTable.AddColumn("Source");
+            localTable.AddColumn("Tags");
+            foreach (var package in local)
+            {
+                localTable.AddRow(
+                    package.Purl,
+                    package.Enabled.ToString(),
+                    package.Source ?? "-",
+                    package.Tags.Count == 0 ? "-" : string.Join(",", package.Tags)
+                );
+            }
+
+            output.WriteTable(localTable);
             return;
         }
 
@@ -45,7 +65,7 @@ public class PackageSearchCommand(
         foreach (var label in labels)
         {
             var handle = await repositories.SearchAsync(label, settings.Query, filter).ConfigureAwait(false);
-            await foreach (var item in FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
+            await foreach (var item in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
             {
                 items.Add(PackageDtos.FromExhibit(item));
             }
@@ -68,41 +88,6 @@ public class PackageSearchCommand(
         }
 
         output.WriteTable(table);
-    }
-
-    private static async IAsyncEnumerable<T> FetchWindowAsync<T>(
-        IPaginationHandle<T> handle,
-        int index,
-        int limit,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken
-    )
-    {
-        var skipped = 0;
-        var yielded = 0;
-        var page = 0u;
-        while (yielded < limit && skipped < index + limit && skipped < (int)handle.TotalCount)
-        {
-            handle.PageIndex = page++;
-            var batch = (await handle.FetchAsync(cancellationToken).ConfigureAwait(false)).ToArray();
-            if (batch.Length == 0)
-            {
-                yield break;
-            }
-
-            foreach (var item in batch)
-            {
-                if (skipped++ < index)
-                {
-                    continue;
-                }
-
-                yield return item;
-                if (++yielded >= limit)
-                {
-                    yield break;
-                }
-            }
-        }
     }
 
     public class Arguments : PagingSettings

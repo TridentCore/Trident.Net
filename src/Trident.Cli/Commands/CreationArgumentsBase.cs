@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Trident.Cli.Services;
 
 namespace Trident.Cli.Commands;
 
@@ -17,7 +18,7 @@ public class CreationArgumentsBase : CommandSettings
     public string EffectiveIdentity => Identity ?? Id ?? string.Empty;
 
     public override ValidationResult Validate() =>
-        string.IsNullOrWhiteSpace(EffectiveIdentity)
-            ? ValidationResult.Error("Instance identity is required. Use --identity <key>.")
-            : ValidationResult.Success();
+        InstanceIdentityValidator.TryValidate(EffectiveIdentity, out var error)
+            ? ValidationResult.Success()
+            : ValidationResult.Error(error);
 }
