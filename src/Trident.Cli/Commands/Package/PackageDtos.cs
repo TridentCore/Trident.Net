@@ -1,6 +1,8 @@
 using Trident.Abstractions.FileModels;
 using Trident.Abstractions.Repositories.Resources;
 using Trident.Abstractions.Utilities;
+using Trident.Cli.Services;
+using Trident.Core.Services;
 
 namespace Trident.Cli.Commands.Package;
 
@@ -8,6 +10,51 @@ internal static class PackageDtos
 {
     public static LocalPackageDto FromEntry(Profile.Rice.Entry entry) =>
         new(entry.Purl, entry.Enabled, entry.Source, entry.Tags.ToArray());
+
+    public static async Task<IReadOnlyList<ResolvedLocalPackageDto>> ResolveEntriesAsync(
+        IEnumerable<Profile.Rice.Entry> entries,
+        RepositoryAgent repositories,
+        ResolvedInstanceContext instance
+    )
+    {
+        var entryList = entries.ToList();
+        if (entryList.Count == 0)
+        {
+            return [];
+        }
+
+        var batch = entryList
+            .Select(e => PackageHelper.TryParse(e.Purl, out var p) ? p : default)
+            .Where(p => p.Label is not null)
+            .Select(p => (p.Label, p.Namespace, p.Pid))
+            .ToList();
+
+        var filter = PackageCliHelper.BuildFilter(null, null, null, instance);
+        var projects = await repositories.QueryBatchAsync(batch).ConfigureAwait(false);
+
+        var projectLookup = projects.ToDictionary(
+            p => PackageHelper.ToPurl(p.Label, p.Namespace, p.ProjectId, null),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        return entryList
+            .Select(e =>
+            {
+                var key = PackageHelper.ExtractProjectIdentityIfValid(e.Purl);
+                var project = projectLookup.GetValueOrDefault(key);
+                return new ResolvedLocalPackageDto(
+                    e.Purl,
+                    e.Enabled,
+                    e.Source,
+                    e.Tags.ToArray(),
+                    project?.ProjectName,
+                    project?.Author,
+                    project?.Summary,
+                    project?.Kind
+                );
+            })
+            .ToList();
+    }
 
     public static ExhibitDto FromExhibit(Exhibit exhibit) =>
         new(
@@ -91,6 +138,17 @@ internal sealed record LocalPackageDto(
     bool Enabled,
     string? Source,
     IReadOnlyList<string> Tags
+);
+
+internal sealed record ResolvedLocalPackageDto(
+    string Purl,
+    bool Enabled,
+    string? Source,
+    IReadOnlyList<string> Tags,
+    string? ProjectName,
+    string? Author,
+    string? Summary,
+    ResourceKind? Kind
 );
 
 internal sealed record ExhibitDto(

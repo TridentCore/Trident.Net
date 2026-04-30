@@ -25,15 +25,32 @@ public class PackageSearchCommand(
     {
         if (resolver.TryResolve(settings.Instance, settings.Profile, out var instance))
         {
-            var local = instance
-                .Profile.Setup.Packages.Where(x =>
-                    x.Purl.Contains(settings.Query, StringComparison.OrdinalIgnoreCase)
-                    && (settings.Repository is null || x.Purl.StartsWith($"{settings.Repository}:", StringComparison.OrdinalIgnoreCase))
+            var entries = instance.Profile.Setup.Packages;
+            var resolved = entries.Count > 0
+                ? await output
+                    .StatusAsync(
+                        "Resolving package metadata...",
+                        () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
+                    )
+                    .ConfigureAwait(false)
+                : [];
+
+            var query = settings.Query;
+            var local = resolved
+                .Where(x =>
+                    (x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
+                    || (x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
+                    || (x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
+                    || x.Purl.Contains(query, StringComparison.OrdinalIgnoreCase)
+                )
+                .Where(x =>
+                    settings.Repository is null
+                    || x.Purl.StartsWith($"{settings.Repository}:", StringComparison.OrdinalIgnoreCase)
                 )
                 .Skip(settings.Index)
                 .Take(settings.Limit)
-                .Select(PackageDtos.FromEntry)
                 .ToArray();
+
             if (output.UseStructuredOutput)
             {
                 output.WriteData(new { key = instance.Key, packages = local });
@@ -48,17 +65,19 @@ public class PackageSearchCommand(
 
             var localTable = new Table().RoundedBorder();
             localTable.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
-            localTable.AddColumn("PURL");
+            localTable.AddColumn("Name");
+            localTable.AddColumn("Author");
+            localTable.AddColumn("Kind");
             localTable.AddColumn("Enabled");
-            localTable.AddColumn("Source");
-            localTable.AddColumn("Tags");
+            localTable.AddColumn("PURL");
             foreach (var package in local)
             {
                 localTable.AddMarkupRow(
-                    Markup.Escape(package.Purl),
+                    CliOutput.FormatValue(package.ProjectName),
+                    CliOutput.FormatValue(package.Author),
+                    package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
                     CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                    CliOutput.FormatValue(package.Source),
-                    package.Tags.Count == 0 ? "[dim]-[/]" : Markup.Escape(string.Join(",", package.Tags))
+                    Markup.Escape(package.Purl)
                 );
             }
 
@@ -105,13 +124,20 @@ public class PackageSearchCommand(
 
         var table = new Table().RoundedBorder();
         table.Title = new TableTitle($"[bold]Search results for {Markup.Escape(settings.Query)}[/]");
-        table.AddColumn("PURL");
         table.AddColumn("Name");
+        table.AddColumn("Author");
         table.AddColumn("Kind");
         table.AddColumn("Downloads");
+        table.AddColumn("PURL");
         foreach (var item in items)
         {
-            table.AddEscapedRow(item.Purl, item.Name, item.Kind.ToString(), item.DownloadCount.ToString());
+            table.AddMarkupRow(
+                CliOutput.FormatValue(item.Name),
+                CliOutput.FormatValue(item.Author),
+                CliOutput.FormatStatus(item.Kind.ToString(), "blue"),
+                item.DownloadCount.ToString("n0"),
+                Markup.Escape(item.Purl)
+            );
         }
 
         output.WriteTable(table);

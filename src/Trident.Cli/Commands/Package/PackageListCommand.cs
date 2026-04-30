@@ -1,11 +1,15 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Trident.Cli.Services;
+using Trident.Core.Services;
 
 namespace Trident.Cli.Commands.Package;
 
-public class PackageListCommand(InstanceContextResolver resolver, CliOutput output)
-    : InstanceCommandBase<PackageListCommand.Arguments>(resolver)
+public class PackageListCommand(
+    InstanceContextResolver resolver,
+    RepositoryAgent repositories,
+    CliOutput output
+) : InstanceCommandBase<PackageListCommand.Arguments>(resolver)
 {
     protected override int Execute(
         CommandContext context,
@@ -13,40 +17,69 @@ public class PackageListCommand(InstanceContextResolver resolver, CliOutput outp
         CancellationToken cancellationToken
     )
     {
+        ListAsync(settings, cancellationToken).GetAwaiter().GetResult();
+        return ExitCodes.Success;
+    }
+
+    private async Task ListAsync(Arguments settings, CancellationToken cancellationToken)
+    {
         var instance = ResolveInstance(settings);
-        var packages = instance.Profile.Setup.Packages.Select(PackageDtos.FromEntry).ToArray();
+        var entries = instance.Profile.Setup.Packages;
+
+        if (entries.Count == 0)
+        {
+            if (output.UseStructuredOutput)
+            {
+                output.WriteData(new { key = instance.Key, packages = Array.Empty<ResolvedLocalPackageDto>() });
+                return;
+            }
+
+            output.WriteEmptyState("No packages", $"Instance {instance.Key} does not have installed packages.");
+            return;
+        }
+
+        var resolved = await output
+            .StatusAsync(
+                "Resolving package metadata...",
+                () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
+            )
+            .ConfigureAwait(false);
+
+        var paged = resolved.Skip(settings.Index).Take(settings.Limit).ToArray();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { key = instance.Key, packages });
-            return ExitCodes.Success;
-        }
-
-        if (packages.Length == 0)
-        {
-            output.WriteEmptyState("No packages", $"Instance {instance.Key} does not have installed packages.");
-            return ExitCodes.Success;
+            output.WriteData(new { key = instance.Key, packages = paged, total = resolved.Count });
+            return;
         }
 
         var table = new Table().RoundedBorder();
         table.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
-        table.AddColumn("PURL");
+        table.AddColumn("Name");
+        table.AddColumn("Author");
+        table.AddColumn("Kind");
         table.AddColumn("Enabled");
-        table.AddColumn("Source");
-        table.AddColumn("Tags");
-        foreach (var package in packages)
+        table.AddColumn("PURL");
+        foreach (var package in paged)
         {
             table.AddMarkupRow(
-                Markup.Escape(package.Purl),
+                CliOutput.FormatValue(package.ProjectName),
+                CliOutput.FormatValue(package.Author),
+                package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
                 CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                CliOutput.FormatValue(package.Source),
-                package.Tags.Count == 0 ? "[dim]-[/]" : Markup.Escape(string.Join(",", package.Tags))
+                Markup.Escape(package.Purl)
             );
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+
+        if (resolved.Count > paged.Length)
+        {
+            output.WriteInfo(
+                $"Showing {paged.Length} of {resolved.Count} packages (offset {settings.Index}). Use --index and --limit to paginate."
+            );
+        }
     }
 
-    public class Arguments : InstanceArgumentsBase { }
+    public class Arguments : PagingSettings { }
 }

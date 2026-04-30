@@ -138,12 +138,14 @@ public static class Startup
                     instance
                         .AddCommand<InstanceDeleteCommand>("delete")
                         .WithDescription("Delete an instance.");
+                    instance.AddCommand<InstanceRunCommand>("run").WithDescription("Run an instance.");
                 }
             );
 
             config.AddCommand<CreateCommand>("create").WithDescription("Shortcut for instance create.");
             config.AddCommand<InstanceImportCommand>("import").WithDescription("Shortcut for instance import.");
             config.AddCommand<InstanceBuildCommand>("build").WithDescription("Shortcut for instance build.");
+            config.AddCommand<InstanceRunCommand>("run").WithDescription("Shortcut for instance run.");
             config.AddCommand<InstanceListCommand>("list").WithDescription("Shortcut for instance list.");
             config
                 .AddCommand<InstanceInspectCommand>("inspect")

@@ -1,11 +1,17 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Trident.Abstractions.Repositories.Resources;
+using Trident.Cli.Commands.Package;
 using Trident.Cli.Services;
+using Trident.Core.Services;
 
 namespace Trident.Cli.Commands.Instance;
 
-public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput output)
-    : InstanceCommandBase<InstanceInspectCommand.Arguments>(resolver)
+public class InstanceInspectCommand(
+    InstanceContextResolver resolver,
+    RepositoryAgent repositories,
+    CliOutput output
+) : InstanceCommandBase<InstanceInspectCommand.Arguments>(resolver)
 {
     private const int PackagePreviewLimit = 5;
 
@@ -15,7 +21,25 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
         CancellationToken cancellationToken
     )
     {
+        InspectAsync(settings, cancellationToken).GetAwaiter().GetResult();
+        return ExitCodes.Success;
+    }
+
+    private async Task InspectAsync(Arguments settings, CancellationToken cancellationToken)
+    {
         var instance = ResolveInstance(settings);
+        var entries = instance.Profile.Setup.Packages;
+        var previewEntries = entries.Take(PackagePreviewLimit).ToList();
+
+        var resolved = previewEntries.Count > 0
+            ? await output
+                .StatusAsync(
+                    "Resolving package metadata...",
+                    () => PackageDtos.ResolveEntriesAsync(previewEntries, repositories, instance)
+                )
+                .ConfigureAwait(false)
+            : [];
+
         var dto = new InstanceDetail(
             instance.Key,
             instance.Profile.Name,
@@ -24,18 +48,25 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
             instance.Profile.Setup.Source,
             instance.InstancePath,
             instance.ProfilePath,
-            instance.Profile.Setup.Packages.Count,
-            instance.Profile.Setup.Packages.Take(PackagePreviewLimit).Select(x =>
-                    new PackageSummary(x.Purl, x.Enabled, x.Source, x.Tags.ToArray())
-                )
+            entries.Count,
+            resolved
+                .Select(p => new PackageSummary(
+                    p.Purl,
+                    p.Enabled,
+                    p.Source,
+                    p.Tags,
+                    p.ProjectName,
+                    p.Author,
+                    p.Kind
+                ))
                 .ToArray(),
-            Math.Max(0, instance.Profile.Setup.Packages.Count - PackagePreviewLimit)
+            Math.Max(0, entries.Count - PackagePreviewLimit)
         );
 
         if (output.UseStructuredOutput)
         {
             output.WriteData(dto);
-            return ExitCodes.Success;
+            return;
         }
 
         output.WriteKeyValueTable(
@@ -53,22 +84,24 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
         if (dto.PackagePreview.Count == 0)
         {
             output.WriteEmptyState("No packages", "Add packages with: trident package add --instance <key> <purl>");
-            return ExitCodes.Success;
+            return;
         }
 
         var table = new Table().RoundedBorder();
         table.Title = new TableTitle("[bold]Package preview[/]");
-        table.AddColumn("PURL");
+        table.AddColumn("Name");
+        table.AddColumn("Author");
+        table.AddColumn("Kind");
         table.AddColumn("Enabled");
-        table.AddColumn("Source");
-        table.AddColumn("Tags");
+        table.AddColumn("PURL");
         foreach (var package in dto.PackagePreview)
         {
             table.AddMarkupRow(
-                Markup.Escape(package.Purl),
+                CliOutput.FormatValue(package.ProjectName),
+                CliOutput.FormatValue(package.Author),
+                package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
                 CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                CliOutput.FormatValue(package.Source),
-                package.Tags.Count == 0 ? "[dim]-[/]" : Markup.Escape(string.Join(",", package.Tags))
+                Markup.Escape(package.Purl)
             );
         }
 
@@ -79,8 +112,6 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
                 $"Showing {dto.PackagePreview.Count} of {dto.PackageCount} packages. Use 'trident package list --instance {dto.Key}' for the full list."
             );
         }
-
-        return ExitCodes.Success;
     }
 
     public class Arguments : InstanceArgumentsBase { }
@@ -102,6 +133,9 @@ public class InstanceInspectCommand(InstanceContextResolver resolver, CliOutput 
         string Purl,
         bool Enabled,
         string? Source,
-        IReadOnlyList<string> Tags
+        IReadOnlyList<string> Tags,
+        string? ProjectName,
+        string? Author,
+        ResourceKind? Kind
     );
 }
