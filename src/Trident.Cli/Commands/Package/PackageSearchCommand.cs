@@ -43,6 +43,7 @@ public class PackageSearchCommand(
                     || (x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
                     || x.Purl.Contains(query, StringComparison.OrdinalIgnoreCase)
                 )
+                .Where(x => settings.ParsedKind is null || x.Kind == settings.ParsedKind)
                 .Where(x =>
                     settings.Repository is null
                     || x.Purl.StartsWith($"{settings.Repository}:", StringComparison.OrdinalIgnoreCase)

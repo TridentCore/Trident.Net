@@ -8,7 +8,7 @@ namespace Trident.Cli.Commands.Package;
 
 public abstract class PackageFilterSettings : InstanceArgumentsBase
 {
-    [CommandOption("--game-version <VERSION>")]
+    [CommandOption("--version <VERSION>")]
     public string? GameVersion { get; set; }
 
     [CommandOption("--loader <LOADER_ID>")]
