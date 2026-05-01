@@ -5,6 +5,8 @@ namespace TridentCore.Core.Igniters;
 
 public class Igniter : IBuilder<Process>
 {
+    public const string CommandWrapperPlaceholder = "{command}";
+
     public IList<string> GameArguments { get; } = new List<string>();
     public IList<string> JvmArguments { get; } = new List<string>();
     public IList<string> Libraries { get; } = new List<string>();
@@ -31,6 +33,7 @@ public class Igniter : IBuilder<Process>
     public uint? MaxMemory { get; set; }
     public bool IsDebug { get; set; }
     public char? ClassPathSeparator { get; set; }
+    public string CommandWrapperTemplate { get; set; } = string.Empty;
 
     #region IBuilder<Process> Members
 
@@ -101,6 +104,8 @@ public class Igniter : IBuilder<Process>
             start.ArgumentList.Add("--quickPlayMultiplayer");
             start.ArgumentList.Add(address);
         }
+
+        start = ApplyCommandWrapper(start);
 
         var process = new Process { StartInfo = start };
         return process;
@@ -246,6 +251,12 @@ public class Igniter : IBuilder<Process>
         return this;
     }
 
+    public Igniter SetCommandWrapperTemplate(string template)
+    {
+        CommandWrapperTemplate = template;
+        return this;
+    }
+
     public Igniter AddGameArgument(string argument)
     {
         GameArguments.Add(argument);
@@ -262,5 +273,106 @@ public class Igniter : IBuilder<Process>
     {
         Libraries.Add(path);
         return this;
+    }
+
+    private ProcessStartInfo ApplyCommandWrapper(ProcessStartInfo start)
+    {
+        if (string.IsNullOrWhiteSpace(CommandWrapperTemplate))
+        {
+            return start;
+        }
+
+        var tokens = SplitCommandLine(CommandWrapperTemplate).ToList();
+        if (tokens.Count == 0)
+        {
+            return start;
+        }
+
+        if (!tokens.Contains(CommandWrapperPlaceholder))
+        {
+            tokens.Add(CommandWrapperPlaceholder);
+        }
+
+        var wrapped = new ProcessStartInfo
+        {
+            FileName = tokens[0] == CommandWrapperPlaceholder ? start.FileName : tokens[0],
+            WorkingDirectory = start.WorkingDirectory,
+            UseShellExecute = start.UseShellExecute,
+        };
+
+        if (tokens[0] == CommandWrapperPlaceholder)
+        {
+            AddOriginalCommandArguments(wrapped, start, false);
+        }
+
+        foreach (var token in tokens.Skip(1))
+        {
+            if (token == CommandWrapperPlaceholder)
+            {
+                AddOriginalCommandArguments(wrapped, start, true);
+            }
+            else
+            {
+                wrapped.ArgumentList.Add(token);
+            }
+        }
+
+        return wrapped;
+    }
+
+    private static void AddOriginalCommandArguments(
+        ProcessStartInfo destination,
+        ProcessStartInfo source,
+        bool includeFileName
+    )
+    {
+        if (includeFileName)
+        {
+            destination.ArgumentList.Add(source.FileName);
+        }
+
+        foreach (var argument in source.ArgumentList)
+        {
+            destination.ArgumentList.Add(argument);
+        }
+    }
+
+    private static IEnumerable<string> SplitCommandLine(string commandLine)
+    {
+        var current = new System.Text.StringBuilder();
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+
+        foreach (var c in commandLine)
+        {
+            if (char.IsWhiteSpace(c) && !inSingleQuote && !inDoubleQuote)
+            {
+                if (current.Length > 0)
+                {
+                    yield return current.ToString();
+                    current.Clear();
+                }
+
+                continue;
+            }
+
+            switch (c)
+            {
+                case '\'' when !inDoubleQuote:
+                    inSingleQuote = !inSingleQuote;
+                    break;
+                case '"' when !inSingleQuote:
+                    inDoubleQuote = !inDoubleQuote;
+                    break;
+                default:
+                    current.Append(c);
+                    break;
+            }
+        }
+
+        if (current.Length > 0)
+        {
+            yield return current.ToString();
+        }
     }
 }

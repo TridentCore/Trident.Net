@@ -46,6 +46,37 @@ public class InstanceManager(
         _trackers.Remove(tracker.Key);
     }
 
+    private static string FormatCommandLine(ProcessStartInfo startInfo)
+    {
+        if (!string.IsNullOrEmpty(startInfo.Arguments))
+        {
+            return string.Join(
+                ' ',
+                QuoteCommandLineArgument(startInfo.FileName),
+                startInfo.Arguments
+            );
+        }
+
+        return string.Join(
+            ' ',
+            new[] { startInfo.FileName }
+                .Concat(startInfo.ArgumentList)
+                .Select(QuoteCommandLineArgument)
+        );
+    }
+
+    private static string QuoteCommandLineArgument(string argument)
+    {
+        if (argument.Length == 0)
+        {
+            return "\"\"";
+        }
+
+        return argument.Any(char.IsWhiteSpace) || argument.Contains('"')
+            ? $"\"{argument.Replace("\"", "\\\"")}\""
+            : argument;
+    }
+
     public bool IsTracking(string key, [MaybeNullWhen(false)] out TrackerBase tracker)
     {
         if (_trackers.TryGetValue(key, out var value))
@@ -363,6 +394,7 @@ public class InstanceManager(
                     .SetVersionName(profile.Setup.Version)
                     .SetWindowSize(options.WindowSize)
                     .SetMaxMemory(options.MaxMemory)
+                    .SetCommandWrapperTemplate(options.CommandWrapperTemplate)
                     .SetReleaseType(options.Brand);
                 if (!string.IsNullOrEmpty(options.QuickConnectAddress))
                 {
@@ -386,9 +418,7 @@ public class InstanceManager(
                     Directory.CreateDirectory(build);
                 }
 
-                tracker.CommandLine = !string.IsNullOrEmpty(process.StartInfo.Arguments)
-                    ? process.StartInfo.Arguments
-                    : string.Join(' ', process.StartInfo.ArgumentList);
+                tracker.CommandLine = FormatCommandLine(process.StartInfo);
 
                 if (options.Mode == LaunchMode.Debug)
                 {

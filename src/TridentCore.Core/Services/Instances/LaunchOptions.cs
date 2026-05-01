@@ -10,7 +10,8 @@ public class LaunchOptions(
     (uint, uint)? windowSize = null,
     string? quickConnectAddress = null,
     uint maxMemory = 4096,
-    string? additionalArguments = null
+    string? additionalArguments = null,
+    string? commandWrapperTemplate = null
 )
 {
     public LaunchMode Mode { get; set; } = launchMode;
@@ -20,6 +21,7 @@ public class LaunchOptions(
     public (uint, uint) WindowSize { get; set; } = windowSize ?? (1270, 720);
     public string? QuickConnectAddress { get; set; } = quickConnectAddress;
     public string AdditionalArguments { get; set; } = additionalArguments ?? string.Empty;
+    public string CommandWrapperTemplate { get; set; } = commandWrapperTemplate ?? string.Empty;
 
     public string Brand { get; set; } = brand ?? "Trident";
 }
