@@ -51,7 +51,9 @@ public class TrackerAwaiter(CliOutput output)
         CancellationToken cancellationToken
     )
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
 
         void OnStateUpdated(TrackerBase sender, TrackerState state)
         {

@@ -24,16 +24,24 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
     {
         if (!LoaderSupport.IsSupported(settings.LoaderId))
         {
-            throw new CliException($"Loader '{settings.LoaderId}' is not supported.", ExitCodes.Usage);
+            throw new CliException(
+                $"Loader '{settings.LoaderId}' is not supported.",
+                ExitCodes.Usage
+            );
         }
 
         var uid = LoaderSupport.GetUid(settings.LoaderId);
         var versions = await output
             .StatusAsync(
                 "Loading loader versions...",
-                async () => await prismLauncher
-                    .GetVersionsForMinecraftVersionAsync(uid, settings.Version, cancellationToken)
-                    .ConfigureAwait(false)
+                async () =>
+                    await prismLauncher
+                        .GetVersionsForMinecraftVersionAsync(
+                            uid,
+                            settings.Version,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
 
@@ -61,12 +69,17 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
         if (result.Length == 0)
         {
-            output.WriteEmptyState("No loader versions found", $"No {settings.LoaderId} versions matched Minecraft {settings.Version}.");
+            output.WriteEmptyState(
+                "No loader versions found",
+                $"No {settings.LoaderId} versions matched Minecraft {settings.Version}."
+            );
             return;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]");
+        table.Title = new TableTitle(
+            $"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]"
+        );
         table.AddColumn("Version");
         table.AddColumn("LURL");
         table.AddColumn("Type");
@@ -118,8 +131,10 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
         public override ValidationResult Validate()
         {
-            if (!string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase))
+            if (
+                !string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 return ValidationResult.Error("--sort must be asc or desc.");
             }

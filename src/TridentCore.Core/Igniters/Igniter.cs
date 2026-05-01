@@ -92,7 +92,7 @@ public class Igniter : IBuilder<Process>
             start.ArgumentList.Add(line);
         }
 
-        if (WindowSize is (var width, var height))
+        if (WindowSize is var (width, height))
         {
             start.ArgumentList.Add("--width");
             start.ArgumentList.Add(width.ToString());

@@ -30,7 +30,13 @@ public class PackageVersionSetCommand(
         entry.Purl = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
         guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
-        var result = new { action = "package.version.set", key = instance.Key, oldPurl, entry.Purl };
+        var result = new
+        {
+            action = "package.version.set",
+            key = instance.Key,
+            oldPurl,
+            entry.Purl,
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);

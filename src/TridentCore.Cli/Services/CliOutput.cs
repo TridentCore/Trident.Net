@@ -5,8 +5,10 @@ namespace TridentCore.Cli.Services;
 
 public class CliOutput(CliContext context)
 {
-    private static readonly JsonSerializerOptions JsonOptions =
-        new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+    };
 
     public bool UseStructuredOutput => context.UseStructuredOutput;
     public bool IsInteractive => context.IsInteractive;
@@ -28,11 +30,14 @@ public class CliOutput(CliContext context)
         Console.Out.WriteLine(message);
     }
 
-    public void WriteInfo(string message) => WriteMarkupLine($"[blue]INFO[/] {Markup.Escape(message)}");
+    public void WriteInfo(string message) =>
+        WriteMarkupLine($"[blue]INFO[/] {Markup.Escape(message)}");
 
-    public void WriteSuccess(string message) => WriteMarkupLine($"[green]OK[/] {Markup.Escape(message)}");
+    public void WriteSuccess(string message) =>
+        WriteMarkupLine($"[green]OK[/] {Markup.Escape(message)}");
 
-    public void WriteWarning(string message) => WriteMarkupLine($"[yellow]WARN[/] {Markup.Escape(message)}");
+    public void WriteWarning(string message) =>
+        WriteMarkupLine($"[yellow]WARN[/] {Markup.Escape(message)}");
 
     public void WriteError(string message)
     {
@@ -143,8 +148,11 @@ public class CliOutput(CliContext context)
     public static string FormatValue(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "[dim]-[/]" : Markup.Escape(value);
 
-    public static string FormatBoolean(bool value, string trueLabel = "yes", string falseLabel = "no") =>
-        value ? $"[green]{Markup.Escape(trueLabel)}[/]" : $"[dim]{Markup.Escape(falseLabel)}[/]";
+    public static string FormatBoolean(
+        bool value,
+        string trueLabel = "yes",
+        string falseLabel = "no"
+    ) => value ? $"[green]{Markup.Escape(trueLabel)}[/]" : $"[dim]{Markup.Escape(falseLabel)}[/]";
 
     public static string FormatStatus(string value, string color) =>
         $"[{color}]{Markup.Escape(value)}[/]";

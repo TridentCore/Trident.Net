@@ -68,7 +68,8 @@ catch (Exception ex)
     return ExitCodes.Unknown;
 }
 
-LookupContext LookupHome(string? homeOverride) => LookupHomeInternal(Environment.CurrentDirectory, homeOverride);
+LookupContext LookupHome(string? homeOverride) =>
+    LookupHomeInternal(Environment.CurrentDirectory, homeOverride);
 
 LookupContext LookupHomeInternal(string startDir, string? homeOverride)
 {
@@ -125,7 +126,12 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
     {
         Console.Error.WriteLine(
             JsonSerializer.Serialize(
-                new { error = message, detail, exitCode },
+                new
+                {
+                    error = message,
+                    detail,
+                    exitCode,
+                },
                 new JsonSerializerOptions(JsonSerializerDefaults.Web)
             )
         );

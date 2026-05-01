@@ -31,7 +31,10 @@ public class AccountAddCommand(
         {
             "offline" => AddOffline(settings),
             "microsoft" => await AddMicrosoftAsync(cancellationToken).ConfigureAwait(false),
-            _ => throw new CliException($"Account type '{settings.Type}' is not supported.", ExitCodes.Usage),
+            _ => throw new CliException(
+                $"Account type '{settings.Type}' is not supported.",
+                ExitCodes.Usage
+            ),
         };
 
         accounts.AddOrReplace(stored);
@@ -78,41 +81,49 @@ public class AccountAddCommand(
         var microsoft = await output
             .StatusAsync(
                 "Waiting for Microsoft authorization...",
-                async () => await microsoftService
-                    .AuthenticateAsync(code.DeviceCode, code.Interval, cancellationToken)
-                    .ConfigureAwait(false)
+                async () =>
+                    await microsoftService
+                        .AuthenticateAsync(code.DeviceCode, code.Interval, cancellationToken)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var xbox = await output
             .StatusAsync(
                 "Authenticating with Xbox Live...",
-                async () => await xboxLiveService
-                    .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
-                    .ConfigureAwait(false)
+                async () =>
+                    await xboxLiveService
+                        .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var xsts = await output
             .StatusAsync(
                 "Authorizing Xbox service token...",
-                async () => await xboxLiveService
-                    .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
-                    .ConfigureAwait(false)
+                async () =>
+                    await xboxLiveService
+                        .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var minecraft = await output
             .StatusAsync(
                 "Authenticating with Minecraft services...",
-                async () => await minecraftService
-                    .AuthenticateByXboxLiveServiceTokenAsync(xsts.Token, xsts.DisplayClaims.Xui.First().Uhs)
-                    .ConfigureAwait(false)
+                async () =>
+                    await minecraftService
+                        .AuthenticateByXboxLiveServiceTokenAsync(
+                            xsts.Token,
+                            xsts.DisplayClaims.Xui.First().Uhs
+                        )
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var profile = await output
             .StatusAsync(
                 "Loading Minecraft profile...",
-                async () => await minecraftService
-                    .AcquireAccountProfileByMinecraftTokenAsync(minecraft.AccessToken)
-                    .ConfigureAwait(false)
+                async () =>
+                    await minecraftService
+                        .AcquireAccountProfileByMinecraftTokenAsync(minecraft.AccessToken)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
 
@@ -140,10 +151,10 @@ public class AccountAddCommand(
 
         AnsiConsole.Write(
             new Panel(
-                    new Markup(
-                        $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/]\nEnter code [green]{Markup.Escape(userCode)}[/]\n[dim]Code expires in {expiresIn} seconds.[/]"
-                    )
+                new Markup(
+                    $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/]\nEnter code [green]{Markup.Escape(userCode)}[/]\n[dim]Code expires in {expiresIn} seconds.[/]"
                 )
+            )
                 .Header("Microsoft device login")
                 .RoundedBorder()
                 .BorderColor(Color.Blue)

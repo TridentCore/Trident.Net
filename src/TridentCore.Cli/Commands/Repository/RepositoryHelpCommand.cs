@@ -25,7 +25,9 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
         }
 
         AnsiConsole.Write(
-            new Panel("User repositories can override built-in labels. API keys are stored locally and never printed by list/status commands.")
+            new Panel(
+                "User repositories can override built-in labels. API keys are stored locally and never printed by list/status commands."
+            )
                 .Header("Repository drivers")
                 .RoundedBorder()
                 .BorderColor(Color.Blue)
@@ -36,7 +38,10 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
         table.AddColumn("API Key Header");
         foreach (var driver in drivers)
         {
-            table.AddMarkupRow($"[cyan]{Markup.Escape(driver.driver)}[/]", Markup.Escape(driver.apiKeyHeader));
+            table.AddMarkupRow(
+                $"[cyan]{Markup.Escape(driver.driver)}[/]",
+                Markup.Escape(driver.apiKeyHeader)
+            );
         }
 
         output.WriteTable(table);

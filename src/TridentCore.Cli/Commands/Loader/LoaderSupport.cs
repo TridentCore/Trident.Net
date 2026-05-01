@@ -7,9 +7,11 @@ internal static class LoaderSupport
 {
     public static IReadOnlyList<LoaderInfo> Supported { get; } =
     [
-        .. PrismLauncherService.UidMappings.Select(x =>
-            new LoaderInfo(x.Key, LoaderHelper.ToDisplayName(x.Key), x.Value)
-        ),
+        .. PrismLauncherService.UidMappings.Select(x => new LoaderInfo(
+            x.Key,
+            LoaderHelper.ToDisplayName(x.Key),
+            x.Value
+        )),
     ];
 
     public static bool IsSupported(string identity) =>
@@ -18,7 +20,10 @@ internal static class LoaderSupport
     public static string GetUid(string identity) =>
         PrismLauncherService.UidMappings.TryGetValue(identity, out var uid)
             ? uid
-            : throw new ArgumentException($"Loader '{identity}' is not supported.", nameof(identity));
+            : throw new ArgumentException(
+                $"Loader '{identity}' is not supported.",
+                nameof(identity)
+            );
 }
 
 internal sealed record LoaderInfo(string Identity, string Name, string PrismUid);

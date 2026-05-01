@@ -40,7 +40,12 @@ public class PackageAddCommand(
         void ProcessPurl(string purl)
         {
             var parsed = PackageCliHelper.ParsePurl(purl);
-            var normalized = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            var normalized = PackageHelper.ToPurl(
+                parsed.Label,
+                parsed.Namespace,
+                parsed.Pid,
+                parsed.Vid
+            );
             if (PackageCliHelper.ContainsProject(guard.Value, normalized))
             {
                 results.Add(new(normalized, false, "already-installed"));
@@ -63,10 +68,17 @@ public class PackageAddCommand(
             AnsiConsole
                 .Progress()
                 .AutoClear(false)
-                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn())
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn()
+                )
                 .Start(progressContext =>
                 {
-                    var task = progressContext.AddTask("[blue]Processing packages[/]", maxValue: uniquePurls.Length);
+                    var task = progressContext.AddTask(
+                        "[blue]Processing packages[/]",
+                        maxValue: uniquePurls.Length
+                    );
                     foreach (var purl in uniquePurls)
                     {
                         ProcessPurl(purl);
@@ -84,7 +96,12 @@ public class PackageAddCommand(
 
         guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
-        var result = new { action = "package.add", key = instance.Key, results };
+        var result = new
+        {
+            action = "package.add",
+            key = instance.Key,
+            results,
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
@@ -92,7 +109,9 @@ public class PackageAddCommand(
         else
         {
             var table = new Table().RoundedBorder();
-            table.Title = new TableTitle($"[bold]Package add results for {Markup.Escape(instance.Key)}[/]");
+            table.Title = new TableTitle(
+                $"[bold]Package add results for {Markup.Escape(instance.Key)}[/]"
+            );
             table.AddColumn("PURL");
             table.AddColumn("Status");
             table.AddColumn("Reason");

@@ -40,8 +40,10 @@ public class InstanceRunCommand(
 
         var account = ResolveAccount(settings);
         var profile = instance.Profile;
-        var width = settings.Width ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u);
-        var height = settings.Height ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u);
+        var width =
+            settings.Width ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u);
+        var height =
+            settings.Height ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u);
 
         var launchOptions = new LaunchOptions(
             launchMode: settings.Mode ?? LaunchMode.Managed,
@@ -63,7 +65,8 @@ public class InstanceRunCommand(
         );
 
         var locator = JavaHelper.MakeLocator(
-            _ => settings.JavaHome ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME),
+            _ =>
+                settings.JavaHome ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME),
             true
         );
 
@@ -79,7 +82,9 @@ public class InstanceRunCommand(
         }
 
         var deployTracker = instanceManager.Deploy(instance.Key, deployOptions, locator);
-        await trackerAwaiter.AwaitDeployAsync(deployTracker, cancellationToken).ConfigureAwait(false);
+        await trackerAwaiter
+            .AwaitDeployAsync(deployTracker, cancellationToken)
+            .ConfigureAwait(false);
 
         var tracker = instanceManager.Launch(instance.Key, launchOptions, locator);
 
@@ -93,10 +98,7 @@ public class InstanceRunCommand(
         }
     }
 
-    private async Task AwaitLaunchAsync(
-        LaunchTracker tracker,
-        CancellationToken cancellationToken
-    )
+    private async Task AwaitLaunchAsync(LaunchTracker tracker, CancellationToken cancellationToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
@@ -189,7 +191,13 @@ public class InstanceRunCommand(
         if (output.UseStructuredOutput)
         {
             output.WriteData(
-                new { action = "run", key = tracker.Key, mode = "fire-and-forget", state = "launched" }
+                new
+                {
+                    action = "run",
+                    key = tracker.Key,
+                    mode = "fire-and-forget",
+                    state = "launched",
+                }
             );
         }
         else
@@ -215,7 +223,9 @@ public class InstanceRunCommand(
             .SpinnerStyle(Style.Parse("green"))
             .StartAsync(
                 $"[green]Starting game[/] [cyan]{Markup.Escape(tracker.Key)}[/]...",
-                async _ => await AwaitLaunchStartCoreAsync(tracker, cancellationToken).ConfigureAwait(false)
+                async _ =>
+                    await AwaitLaunchStartCoreAsync(tracker, cancellationToken)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
     }
@@ -275,7 +285,9 @@ public class InstanceRunCommand(
         CancellationToken cancellationToken
     )
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
 
         void OnStateUpdated(TrackerBase sender, TrackerState state)
         {
@@ -334,7 +346,7 @@ public class InstanceRunCommand(
         var message = Markup.Escape(scrap.Message);
 
         AnsiConsole.MarkupLine(
-            $"{time} [{color}]{level,-5}[/] [grey]{thread}[/]{sender} {message}"
+            $"{time} [{color}]{level, -5}[/] [grey]{thread}[/]{sender} {message}"
         );
     }
 
@@ -360,8 +372,7 @@ public class InstanceRunCommand(
             );
         }
 
-        var defaultAccount = accounts.FirstOrDefault(a => a.IsDefault)
-            ?? accounts.FirstOrDefault();
+        var defaultAccount = accounts.FirstOrDefault(a => a.IsDefault) ?? accounts.FirstOrDefault();
 
         if (defaultAccount != null)
         {
@@ -398,18 +409,10 @@ public class InstanceRunCommand(
         var offline = JsonSerializer.Deserialize<StoredOfflineAccount>(stored.Data);
         if (offline != null)
         {
-            return new OfflineAccount
-            {
-                Username = offline.Username,
-                Uuid = offline.Uuid,
-            };
+            return new OfflineAccount { Username = offline.Username, Uuid = offline.Uuid };
         }
 
-        return new OfflineAccount
-        {
-            Username = stored.Username,
-            Uuid = stored.Uuid,
-        };
+        return new OfflineAccount { Username = stored.Username, Uuid = stored.Uuid };
     }
 
     public class Arguments : InstanceArgumentsBase

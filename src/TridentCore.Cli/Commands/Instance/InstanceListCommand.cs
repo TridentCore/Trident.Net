@@ -36,7 +36,10 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
 
         if (instances.Length == 0)
         {
-            output.WriteEmptyState("No instances", "Create one with: trident instance create --identity <key> --name <name> --version <version>");
+            output.WriteEmptyState(
+                "No instances",
+                "Create one with: trident instance create --identity <key> --name <name> --version <version>"
+            );
             return ExitCodes.Success;
         }
 

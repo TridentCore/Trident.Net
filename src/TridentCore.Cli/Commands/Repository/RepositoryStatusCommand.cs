@@ -28,7 +28,14 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
             foreach (var label in labels)
             {
                 var status = await repositories.CheckStatusAsync(label).ConfigureAwait(false);
-                results.Add(new(label, status.SupportedLoaders, status.SupportedVersions.Count, status.SupportedKinds));
+                results.Add(
+                    new(
+                        label,
+                        status.SupportedLoaders,
+                        status.SupportedVersions.Count,
+                        status.SupportedKinds
+                    )
+                );
                 tick?.Invoke();
             }
         }
@@ -38,10 +45,18 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
             await AnsiConsole
                 .Progress()
                 .AutoClear(false)
-                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn()
+                )
                 .StartAsync(async progressContext =>
                 {
-                    var task = progressContext.AddTask("[blue]Checking repositories[/]", maxValue: labels.Length);
+                    var task = progressContext.AddTask(
+                        "[blue]Checking repositories[/]",
+                        maxValue: labels.Length
+                    );
                     await CheckAsync(() => task.Increment(1)).ConfigureAwait(false);
                 })
                 .ConfigureAwait(false);
@@ -49,7 +64,10 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
         else
         {
             await output
-                .StatusAsync("Checking repository status...", async () => await CheckAsync(null).ConfigureAwait(false))
+                .StatusAsync(
+                    "Checking repository status...",
+                    async () => await CheckAsync(null).ConfigureAwait(false)
+                )
                 .ConfigureAwait(false);
         }
 

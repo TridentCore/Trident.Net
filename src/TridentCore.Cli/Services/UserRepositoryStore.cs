@@ -7,12 +7,13 @@ namespace TridentCore.Cli.Services;
 
 public class UserRepositoryStore
 {
-    private static readonly JsonSerializerOptions SerializerOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        };
+    private static readonly JsonSerializerOptions SerializerOptions = new(
+        JsonSerializerDefaults.Web
+    )
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     private readonly string _path = CliDataPaths.File("repositories.json");
 
@@ -32,13 +33,18 @@ public class UserRepositoryStore
 
     public void Save(IEnumerable<UserRepositoryProfile> repositories)
     {
-        AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(repositories, SerializerOptions));
+        AtomicFileWriter.WriteAllText(
+            _path,
+            JsonSerializer.Serialize(repositories, SerializerOptions)
+        );
     }
 
     public void AddOrReplace(UserRepositoryProfile repository)
     {
         var repositories = Load()
-            .Where(x => !string.Equals(x.Label, repository.Label, StringComparison.OrdinalIgnoreCase))
+            .Where(x =>
+                !string.Equals(x.Label, repository.Label, StringComparison.OrdinalIgnoreCase)
+            )
             .Append(repository)
             .OrderBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -60,7 +66,9 @@ public class UserRepositoryStore
         return true;
     }
 
-    public static IRepositoryProviderAccessor.ProviderProfile.DriverType ParseDriver(string driver) =>
+    public static IRepositoryProviderAccessor.ProviderProfile.DriverType ParseDriver(
+        string driver
+    ) =>
         driver.ToLowerInvariant() switch
         {
             "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge,

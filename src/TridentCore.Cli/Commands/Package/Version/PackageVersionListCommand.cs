@@ -21,13 +21,18 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var parsed = PackageCliHelper.ParsePurl(settings.Purl);
-        var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind);
+        var filter = PackageCliHelper.BuildFilter(
+            settings.GameVersion,
+            settings.Loader,
+            settings.ParsedKind
+        );
         var handle = await output
             .StatusAsync(
                 "Loading package versions...",
-                async () => await repositories
-                    .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
-                    .ConfigureAwait(false)
+                async () =>
+                    await repositories
+                        .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var versions = new List<VersionDto>();
@@ -36,7 +41,14 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
                 "Fetching version page...",
                 async () =>
                 {
-                    await foreach (var version in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
+                    await foreach (
+                        var version in PaginationHelper.FetchWindowAsync(
+                            handle,
+                            settings.Index,
+                            settings.Limit,
+                            cancellationToken
+                        )
+                    )
                     {
                         versions.Add(PackageDtos.FromVersion(version));
                     }
@@ -55,13 +67,23 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { project = settings.Purl, total = handle.TotalCount, versions });
+            output.WriteData(
+                new
+                {
+                    project = settings.Purl,
+                    total = handle.TotalCount,
+                    versions,
+                }
+            );
             return;
         }
 
         if (versions.Count == 0)
         {
-            output.WriteEmptyState("No versions found", $"No versions matched filters for {settings.Purl}.");
+            output.WriteEmptyState(
+                "No versions found",
+                $"No versions matched filters for {settings.Purl}."
+            );
             return;
         }
 
@@ -73,7 +95,11 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         table.AddColumn("Downloads");
         foreach (var version in versions)
         {
-            var releaseColor = string.Equals(version.ReleaseType.ToString(), "Release", StringComparison.OrdinalIgnoreCase)
+            var releaseColor = string.Equals(
+                version.ReleaseType.ToString(),
+                "Release",
+                StringComparison.OrdinalIgnoreCase
+            )
                 ? "green"
                 : "yellow";
             table.AddMarkupRow(

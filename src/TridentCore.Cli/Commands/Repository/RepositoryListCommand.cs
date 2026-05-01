@@ -16,7 +16,8 @@ public class RepositoryListCommand(
         CancellationToken cancellationToken
     )
     {
-        var userLabels = userRepositories.Load()
+        var userLabels = userRepositories
+            .Load()
             .Select(x => x.Label)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var repositories = combined
@@ -32,7 +33,10 @@ public class RepositoryListCommand(
 
         if (repositories.Length == 0)
         {
-            output.WriteEmptyState("No repositories", "Add one with: trident repository add --label <label> --endpoint <uri>");
+            output.WriteEmptyState(
+                "No repositories",
+                "Add one with: trident repository add --label <label> --endpoint <uri>"
+            );
             return ExitCodes.Success;
         }
 

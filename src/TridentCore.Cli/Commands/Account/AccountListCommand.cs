@@ -22,7 +22,10 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
 
         if (result.Length == 0)
         {
-            output.WriteEmptyState("No accounts", "Add one with: trident account add --type offline --username <name>");
+            output.WriteEmptyState(
+                "No accounts",
+                "Add one with: trident account add --type offline --username <name>"
+            );
             return ExitCodes.Success;
         }
 
@@ -36,7 +39,11 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         table.AddColumn("Last Used");
         foreach (var account in result)
         {
-            var typeColor = string.Equals(account.Type, "microsoft", StringComparison.OrdinalIgnoreCase)
+            var typeColor = string.Equals(
+                account.Type,
+                "microsoft",
+                StringComparison.OrdinalIgnoreCase
+            )
                 ? "green"
                 : "yellow";
             table.AddMarkupRow(
@@ -45,7 +52,9 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
                 CliOutput.FormatStatus(account.Type, typeColor),
                 CliOutput.FormatBoolean(account.IsDefault, "default", "no"),
                 Markup.Escape(account.EnrolledAt.ToString("u")),
-                account.LastUsedAt is null ? "[dim]-[/]" : Markup.Escape(account.LastUsedAt.Value.ToString("u"))
+                account.LastUsedAt is null
+                    ? "[dim]-[/]"
+                    : Markup.Escape(account.LastUsedAt.Value.ToString("u"))
             );
         }
 

@@ -9,12 +9,13 @@ namespace TridentCore.Cli.Services;
 
 public class AccountStore
 {
-    private static readonly JsonSerializerOptions SerializerOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        };
+    private static readonly JsonSerializerOptions SerializerOptions = new(
+        JsonSerializerDefaults.Web
+    )
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     private readonly string _path = CliDataPaths.File("accounts.json");
 
@@ -28,8 +29,7 @@ public class AccountStore
         return JsonSerializer.Deserialize<List<StoredAccount>>(
                 File.ReadAllText(_path),
                 SerializerOptions
-            )
-            ?? [];
+            ) ?? [];
     }
 
     public void Save(IEnumerable<StoredAccount> accounts)
@@ -41,7 +41,9 @@ public class AccountStore
     {
         var accounts = Load().ToList();
         var isDefault = accounts.Count == 0 || account.IsDefault;
-        accounts.RemoveAll(x => string.Equals(x.Uuid, account.Uuid, StringComparison.OrdinalIgnoreCase));
+        accounts.RemoveAll(x =>
+            string.Equals(x.Uuid, account.Uuid, StringComparison.OrdinalIgnoreCase)
+        );
         if (isDefault)
         {
             accounts = [.. accounts.Select(x => x with { IsDefault = false })];
@@ -54,7 +56,9 @@ public class AccountStore
     public bool Remove(string uuid)
     {
         var accounts = Load().ToList();
-        var removed = accounts.RemoveAll(x => string.Equals(x.Uuid, uuid, StringComparison.OrdinalIgnoreCase)) > 0;
+        var removed =
+            accounts.RemoveAll(x => string.Equals(x.Uuid, uuid, StringComparison.OrdinalIgnoreCase))
+            > 0;
         if (!removed)
         {
             return false;
@@ -82,7 +86,12 @@ public class AccountStore
     public static StoredAccount CreateMicrosoft(MicrosoftAccount account) =>
         FromPayload("microsoft", account.Uuid, account.Username, account);
 
-    private static StoredAccount FromPayload<T>(string type, string uuid, string username, T payload) =>
+    private static StoredAccount FromPayload<T>(
+        string type,
+        string uuid,
+        string username,
+        T payload
+    ) =>
         new(
             uuid,
             username,

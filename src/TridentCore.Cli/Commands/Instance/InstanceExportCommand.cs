@@ -67,7 +67,11 @@ public class InstanceExportCommand(
                 "Writing archive...",
                 async () =>
                 {
-                    await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+                    await using var file = new FileStream(
+                        outputPath,
+                        FileMode.Create,
+                        FileAccess.Write
+                    );
                     await archive.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
                     await file.FlushAsync(cancellationToken).ConfigureAwait(false);
                 }

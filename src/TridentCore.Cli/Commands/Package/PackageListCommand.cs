@@ -30,11 +30,16 @@ public class PackageListCommand(
         {
             if (output.UseStructuredOutput)
             {
-                output.WriteData(new { key = instance.Key, packages = Array.Empty<ResolvedLocalPackageDto>() });
+                output.WriteData(
+                    new { key = instance.Key, packages = Array.Empty<ResolvedLocalPackageDto>() }
+                );
                 return;
             }
 
-            output.WriteEmptyState("No packages", $"Instance {instance.Key} does not have installed packages.");
+            output.WriteEmptyState(
+                "No packages",
+                $"Instance {instance.Key} does not have installed packages."
+            );
             return;
         }
 
@@ -49,7 +54,14 @@ public class PackageListCommand(
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { key = instance.Key, packages = paged, total = resolved.Count });
+            output.WriteData(
+                new
+                {
+                    key = instance.Key,
+                    packages = paged,
+                    total = resolved.Count,
+                }
+            );
             return;
         }
 
@@ -65,7 +77,9 @@ public class PackageListCommand(
             table.AddMarkupRow(
                 CliOutput.FormatValue(package.ProjectName),
                 CliOutput.FormatValue(package.Author),
-                package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
+                package.Kind?.ToString() is string k
+                    ? CliOutput.FormatStatus(k, "blue")
+                    : "[dim]-[/]",
                 CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
                 Markup.Escape(package.Purl)
             );

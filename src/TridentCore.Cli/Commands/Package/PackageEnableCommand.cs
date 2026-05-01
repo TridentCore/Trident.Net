@@ -24,7 +24,13 @@ public class PackageEnableCommand(
         entry.Enabled = enabled;
         guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
-        var result = new { action = enabled ? "package.enable" : "package.disable", key = instance.Key, entry.Purl, entry.Enabled };
+        var result = new
+        {
+            action = enabled ? "package.enable" : "package.disable",
+            key = instance.Key,
+            entry.Purl,
+            entry.Enabled,
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);

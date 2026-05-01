@@ -26,14 +26,15 @@ public class PackageSearchCommand(
         if (resolver.TryResolve(settings.Instance, settings.Profile, out var instance))
         {
             var entries = instance.Profile.Setup.Packages;
-            var resolved = entries.Count > 0
-                ? await output
-                    .StatusAsync(
-                        "Resolving package metadata...",
-                        () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
-                    )
-                    .ConfigureAwait(false)
-                : [];
+            var resolved =
+                entries.Count > 0
+                    ? await output
+                        .StatusAsync(
+                            "Resolving package metadata...",
+                            () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
+                        )
+                        .ConfigureAwait(false)
+                    : [];
 
             var query = settings.Query;
             var local = resolved
@@ -46,7 +47,10 @@ public class PackageSearchCommand(
                 .Where(x => settings.ParsedKind is null || x.Kind == settings.ParsedKind)
                 .Where(x =>
                     settings.Repository is null
-                    || x.Purl.StartsWith($"{settings.Repository}:", StringComparison.OrdinalIgnoreCase)
+                    || x.Purl.StartsWith(
+                        $"{settings.Repository}:",
+                        StringComparison.OrdinalIgnoreCase
+                    )
                 )
                 .Skip(settings.Index)
                 .Take(settings.Limit)
@@ -60,12 +64,17 @@ public class PackageSearchCommand(
 
             if (local.Length == 0)
             {
-                output.WriteEmptyState("No local packages found", $"No package in {instance.Key} matched '{settings.Query}'.");
+                output.WriteEmptyState(
+                    "No local packages found",
+                    $"No package in {instance.Key} matched '{settings.Query}'."
+                );
                 return;
             }
 
             var localTable = new Table().RoundedBorder();
-            localTable.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
+            localTable.Title = new TableTitle(
+                $"[bold]Packages in {Markup.Escape(instance.Key)}[/]"
+            );
             localTable.AddColumn("Name");
             localTable.AddColumn("Author");
             localTable.AddColumn("Kind");
@@ -76,7 +85,9 @@ public class PackageSearchCommand(
                 localTable.AddMarkupRow(
                     CliOutput.FormatValue(package.ProjectName),
                     CliOutput.FormatValue(package.Author),
-                    package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
+                    package.Kind?.ToString() is string k
+                        ? CliOutput.FormatStatus(k, "blue")
+                        : "[dim]-[/]",
                     CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
                     Markup.Escape(package.Purl)
                 );
@@ -86,15 +97,24 @@ public class PackageSearchCommand(
             return;
         }
 
-        var labels = settings.Repository is not null ? [settings.Repository] : repositories.Labels.ToArray();
-        var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind);
+        var labels = settings.Repository is not null
+            ? [settings.Repository]
+            : repositories.Labels.ToArray();
+        var filter = PackageCliHelper.BuildFilter(
+            settings.GameVersion,
+            settings.Loader,
+            settings.ParsedKind
+        );
         var items = new List<ExhibitDto>();
         foreach (var label in labels)
         {
             var handle = await output
                 .StatusAsync(
                     $"Searching {label}...",
-                    async () => await repositories.SearchAsync(label, settings.Query, filter).ConfigureAwait(false)
+                    async () =>
+                        await repositories
+                            .SearchAsync(label, settings.Query, filter)
+                            .ConfigureAwait(false)
                 )
                 .ConfigureAwait(false);
             await output
@@ -102,7 +122,14 @@ public class PackageSearchCommand(
                     $"Fetching results from {label}...",
                     async () =>
                     {
-                        await foreach (var item in PaginationHelper.FetchWindowAsync(handle, settings.Index, settings.Limit, cancellationToken))
+                        await foreach (
+                            var item in PaginationHelper.FetchWindowAsync(
+                                handle,
+                                settings.Index,
+                                settings.Limit,
+                                cancellationToken
+                            )
+                        )
                         {
                             items.Add(PackageDtos.FromExhibit(item));
                         }
@@ -119,12 +146,17 @@ public class PackageSearchCommand(
 
         if (items.Count == 0)
         {
-            output.WriteEmptyState("No packages found", $"No remote package matched '{settings.Query}'.");
+            output.WriteEmptyState(
+                "No packages found",
+                $"No remote package matched '{settings.Query}'."
+            );
             return;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]Search results for {Markup.Escape(settings.Query)}[/]");
+        table.Title = new TableTitle(
+            $"[bold]Search results for {Markup.Escape(settings.Query)}[/]"
+        );
         table.AddColumn("Name");
         table.AddColumn("Author");
         table.AddColumn("Kind");

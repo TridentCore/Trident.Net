@@ -29,23 +29,44 @@ public class PackageInspectCommand(
         if (resolver.TryResolve(settings.Instance, settings.Profile, out var resolved))
         {
             instance = resolved;
-            local = PackageDtos.FromEntry(PackageCliHelper.FindEntry(resolved.Profile, settings.Purl));
+            local = PackageDtos.FromEntry(
+                PackageCliHelper.FindEntry(resolved.Profile, settings.Purl)
+            );
         }
 
-        var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind, instance);
+        var filter = PackageCliHelper.BuildFilter(
+            settings.GameVersion,
+            settings.Loader,
+            settings.ParsedKind,
+            instance
+        );
         var package = await output
             .StatusAsync(
                 "Resolving package metadata...",
-                async () => await repositories
-                    .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
-                    .ConfigureAwait(false)
+                async () =>
+                    await repositories
+                        .ResolveAsync(
+                            parsed.Label,
+                            parsed.Namespace,
+                            parsed.Pid,
+                            parsed.Vid,
+                            filter
+                        )
+                        .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
         var packageDto = PackageDtos.FromPackage(package);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { key = instance?.Key, local, package = packageDto });
+            output.WriteData(
+                new
+                {
+                    key = instance?.Key,
+                    local,
+                    package = packageDto,
+                }
+            );
             return;
         }
 
@@ -65,12 +86,17 @@ public class PackageInspectCommand(
 
         if (!string.IsNullOrWhiteSpace(packageDto.Summary))
         {
-            AnsiConsole.Write(new Panel(Markup.Escape(packageDto.Summary)).Header("Summary").RoundedBorder());
+            AnsiConsole.Write(
+                new Panel(Markup.Escape(packageDto.Summary)).Header("Summary").RoundedBorder()
+            );
         }
 
         if (packageDto.Dependencies.Count == 0)
         {
-            output.WriteEmptyState("No dependencies", "This package version does not declare dependencies.");
+            output.WriteEmptyState(
+                "No dependencies",
+                "This package version does not declare dependencies."
+            );
             return;
         }
 

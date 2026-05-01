@@ -21,17 +21,28 @@ public class InstanceResetCommand(
         var instance = ResolveInstance(settings);
         if (instanceManager.IsInUse(instance.Key))
         {
-            throw new CliException($"Instance '{instance.Key}' is currently in use.", ExitCodes.Usage);
+            throw new CliException(
+                $"Instance '{instance.Key}' is currently in use.",
+                ExitCodes.Usage
+            );
         }
 
-        output.RequireConfirmation($"Reset build artifacts for instance '{instance.Key}'?", settings.Yes);
+        output.RequireConfirmation(
+            $"Reset build artifacts for instance '{instance.Key}'?",
+            settings.Yes
+        );
 
         var deleted = new List<string>();
         DeleteDirectory(PathDef.Default.DirectoryOfBuild(instance.Key), deleted);
         DeleteDirectory(PathDef.Default.DirectoryOfLive(instance.Key), deleted);
         DeleteFile(PathDef.Default.FileOfLockData(instance.Key), deleted);
 
-        var result = new { action = "reset", key = instance.Key, deleted };
+        var result = new
+        {
+            action = "reset",
+            key = instance.Key,
+            deleted,
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);

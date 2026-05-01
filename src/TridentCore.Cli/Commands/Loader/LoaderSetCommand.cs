@@ -27,7 +27,10 @@ public class LoaderSetCommand(
 
         if (!LoaderSupport.IsSupported(parsed.Identity))
         {
-            throw new CliException($"Loader '{parsed.Identity}' is not supported.", ExitCodes.Usage);
+            throw new CliException(
+                $"Loader '{parsed.Identity}' is not supported.",
+                ExitCodes.Usage
+            );
         }
 
         var instance = ResolveInstance(settings);

@@ -33,8 +33,10 @@ public abstract class PagingSettings : PackageFilterSettings
 
     public override ValidationResult Validate()
     {
-        if (!string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase))
+        if (
+            !string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase)
+        )
         {
             return ValidationResult.Error("--sort must be asc or desc.");
         }

@@ -35,7 +35,12 @@ public class InstanceBuildCommand(
         var tracker = instanceManager.Deploy(instance.Key, options, locator);
         await trackerAwaiter.AwaitDeployAsync(tracker, cancellationToken).ConfigureAwait(false);
 
-        var result = new { action = "build", key = instance.Key, state = "finished" };
+        var result = new
+        {
+            action = "build",
+            key = instance.Key,
+            state = "finished",
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);

@@ -22,7 +22,12 @@ public class InstanceUnlockCommand(
         guard.Value.Setup.Source = null;
         guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
-        var result = new { action = "unlock", key = instance.Key, oldSource };
+        var result = new
+        {
+            action = "unlock",
+            key = instance.Key,
+            oldSource,
+        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);

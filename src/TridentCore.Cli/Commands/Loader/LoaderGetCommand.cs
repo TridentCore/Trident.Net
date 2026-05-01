@@ -16,15 +16,16 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
     {
         var instance = ResolveInstance(settings);
         var lurl = instance.Profile.Setup.Loader;
-        var parsed = !string.IsNullOrWhiteSpace(lurl) && LoaderHelper.TryParse(lurl, out var result)
-            ? new LoaderState(
-                lurl,
-                result.Identity,
-                result.Version,
-                LoaderHelper.ToDisplayName(result.Identity),
-                LoaderSupport.IsSupported(result.Identity)
-            )
-            : new LoaderState(lurl, null, null, null, false);
+        var parsed =
+            !string.IsNullOrWhiteSpace(lurl) && LoaderHelper.TryParse(lurl, out var result)
+                ? new LoaderState(
+                    lurl,
+                    result.Identity,
+                    result.Version,
+                    LoaderHelper.ToDisplayName(result.Identity),
+                    LoaderSupport.IsSupported(result.Identity)
+                )
+                : new LoaderState(lurl, null, null, null, false);
 
         var dto = new { key = instance.Key, loader = parsed };
         if (output.UseStructuredOutput)

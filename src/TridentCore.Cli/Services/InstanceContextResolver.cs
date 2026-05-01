@@ -5,7 +5,11 @@ namespace TridentCore.Cli.Services;
 
 public class InstanceContextResolver(ProfileManager profileManager, LookupContext lookup)
 {
-    public bool TryResolve(string? instance, string? profilePath, out ResolvedInstanceContext context)
+    public bool TryResolve(
+        string? instance,
+        string? profilePath,
+        out ResolvedInstanceContext context
+    )
     {
         try
         {
@@ -61,7 +65,9 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
     private ResolvedInstanceContext ResolveByProfilePath(string profilePath)
     {
         var fullProfilePath = Path.GetFullPath(profilePath);
-        var instanceDir = EnsureTrailingSeparator(Path.GetFullPath(PathDef.Default.InstanceDirectory));
+        var instanceDir = EnsureTrailingSeparator(
+            Path.GetFullPath(PathDef.Default.InstanceDirectory)
+        );
         var comparison = OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;

@@ -31,14 +31,16 @@ public class InstanceInspectCommand(
         var entries = instance.Profile.Setup.Packages;
         var previewEntries = entries.Take(PackagePreviewLimit).ToList();
 
-        var resolved = previewEntries.Count > 0
-            ? await output
-                .StatusAsync(
-                    "Resolving package metadata...",
-                    () => PackageDtos.ResolveEntriesAsync(previewEntries, repositories, instance)
-                )
-                .ConfigureAwait(false)
-            : [];
+        var resolved =
+            previewEntries.Count > 0
+                ? await output
+                    .StatusAsync(
+                        "Resolving package metadata...",
+                        () =>
+                            PackageDtos.ResolveEntriesAsync(previewEntries, repositories, instance)
+                    )
+                    .ConfigureAwait(false)
+                : [];
 
         var dto = new InstanceDetail(
             instance.Key,
@@ -83,7 +85,10 @@ public class InstanceInspectCommand(
 
         if (dto.PackagePreview.Count == 0)
         {
-            output.WriteEmptyState("No packages", "Add packages with: trident package add --instance <key> <purl>");
+            output.WriteEmptyState(
+                "No packages",
+                "Add packages with: trident package add --instance <key> <purl>"
+            );
             return;
         }
 
@@ -99,7 +104,9 @@ public class InstanceInspectCommand(
             table.AddMarkupRow(
                 CliOutput.FormatValue(package.ProjectName),
                 CliOutput.FormatValue(package.Author),
-                package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
+                package.Kind?.ToString() is string k
+                    ? CliOutput.FormatStatus(k, "blue")
+                    : "[dim]-[/]",
                 CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
                 Markup.Escape(package.Purl)
             );

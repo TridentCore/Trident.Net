@@ -72,7 +72,9 @@ internal static class PackageDtos
             exhibit.UpdatedAt
         );
 
-    public static PackageDto FromPackage(TridentCore.Abstractions.Repositories.Resources.Package package) =>
+    public static PackageDto FromPackage(
+        TridentCore.Abstractions.Repositories.Resources.Package package
+    ) =>
         new(
             PackageHelper.ToPurl(
                 package.Label,
@@ -98,7 +100,9 @@ internal static class PackageDtos
             package.Dependencies.Select(FromDependency).ToArray()
         );
 
-    public static VersionDto FromVersion(TridentCore.Abstractions.Repositories.Resources.Version version) =>
+    public static VersionDto FromVersion(
+        TridentCore.Abstractions.Repositories.Resources.Version version
+    ) =>
         new(
             PackageHelper.ToPurl(
                 version.Label,
@@ -117,7 +121,9 @@ internal static class PackageDtos
             version.Dependencies.Select(FromDependency).ToArray()
         );
 
-    public static DependencyDto FromDependency(TridentCore.Abstractions.Repositories.Resources.Dependency dependency) =>
+    public static DependencyDto FromDependency(
+        TridentCore.Abstractions.Repositories.Resources.Dependency dependency
+    ) =>
         new(
             PackageHelper.ToPurl(
                 dependency.Label,

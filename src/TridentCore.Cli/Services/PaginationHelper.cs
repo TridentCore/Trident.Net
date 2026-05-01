@@ -18,7 +18,9 @@ public static class PaginationHelper
         while (yielded < limit && skipped < index + limit && skipped < (int)handle.TotalCount)
         {
             handle.PageIndex = page++;
-            var batch = (await handle.FetchAsync(cancellationToken).ConfigureAwait(false)).ToArray();
+            var batch = (
+                await handle.FetchAsync(cancellationToken).ConfigureAwait(false)
+            ).ToArray();
             if (batch.Length == 0)
             {
                 yield break;

@@ -26,11 +26,16 @@ public class PackageDependentListCommand(
     {
         var instance = ResolveInstance(settings);
         var target = PackageCliHelper.ParsePurl(settings.Purl);
-        var filter = PackageCliHelper.BuildFilter(settings.GameVersion, settings.Loader, settings.ParsedKind, instance);
+        var filter = PackageCliHelper.BuildFilter(
+            settings.GameVersion,
+            settings.Loader,
+            settings.ParsedKind,
+            instance
+        );
         var dependents = new List<DependentDto>();
         var failed = new List<string>();
-        var candidates = instance.Profile.Setup.Packages
-            .Where(x => x.Enabled && PackageHelper.TryParse(x.Purl, out _))
+        var candidates = instance
+            .Profile.Setup.Packages.Where(x => x.Enabled && PackageHelper.TryParse(x.Purl, out _))
             .ToArray();
 
         async Task ScanAsync(Action? tick)
@@ -46,13 +51,21 @@ public class PackageDependentListCommand(
                 try
                 {
                     var package = await repositories
-                        .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+                        .ResolveAsync(
+                            parsed.Label,
+                            parsed.Namespace,
+                            parsed.Pid,
+                            parsed.Vid,
+                            filter
+                        )
                         .ConfigureAwait(false);
-                    if (package.Dependencies.Any(x =>
+                    if (
+                        package.Dependencies.Any(x =>
                             x.Label == target.Label
                             && x.Namespace == target.Namespace
                             && x.ProjectId == target.Pid
-                        ))
+                        )
+                    )
                     {
                         dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
                     }
@@ -71,10 +84,18 @@ public class PackageDependentListCommand(
             await AnsiConsole
                 .Progress()
                 .AutoClear(false)
-                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn()
+                )
                 .StartAsync(async progressContext =>
                 {
-                    var task = progressContext.AddTask("[blue]Scanning installed packages[/]", maxValue: candidates.Length);
+                    var task = progressContext.AddTask(
+                        "[blue]Scanning installed packages[/]",
+                        maxValue: candidates.Length
+                    );
                     await ScanAsync(() => task.Increment(1)).ConfigureAwait(false);
                 })
                 .ConfigureAwait(false);
@@ -82,7 +103,10 @@ public class PackageDependentListCommand(
         else
         {
             await output
-                .StatusAsync("Scanning installed packages...", async () => await ScanAsync(null).ConfigureAwait(false))
+                .StatusAsync(
+                    "Scanning installed packages...",
+                    async () => await ScanAsync(null).ConfigureAwait(false)
+                )
                 .ConfigureAwait(false);
         }
 
@@ -93,7 +117,10 @@ public class PackageDependentListCommand(
 
         if (dependents.Count == 0 && !output.UseStructuredOutput)
         {
-            output.WriteEmptyState("No dependents found", $"No enabled package in {instance.Key} depends on {settings.Purl}.");
+            output.WriteEmptyState(
+                "No dependents found",
+                $"No enabled package in {instance.Key} depends on {settings.Purl}."
+            );
             if (failed.Count > 0)
             {
                 var failedTable = new Table().RoundedBorder();
@@ -112,7 +139,16 @@ public class PackageDependentListCommand(
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { key = instance.Key, target = settings.Purl, scope = "instance", dependents, failed });
+            output.WriteData(
+                new
+                {
+                    key = instance.Key,
+                    target = settings.Purl,
+                    scope = "instance",
+                    dependents,
+                    failed,
+                }
+            );
             return;
         }
 

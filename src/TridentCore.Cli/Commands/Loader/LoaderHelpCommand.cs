@@ -27,8 +27,10 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
 
         AnsiConsole.Write(
             new Panel(
-                    new Markup("Loader URLs use the format [cyan]<loader-id>:<loader-version>[/]\nExample: [green]net.neoforged:21.1.200[/]")
+                new Markup(
+                    "Loader URLs use the format [cyan]<loader-id>:<loader-version>[/]\nExample: [green]net.neoforged:21.1.200[/]"
                 )
+            )
                 .Header("Loader URL format")
                 .RoundedBorder()
                 .BorderColor(Color.Blue)
