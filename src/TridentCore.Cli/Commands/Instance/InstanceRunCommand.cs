@@ -54,7 +54,9 @@ public class InstanceRunCommand(
             maxMemory: settings.MaxMemory
                 ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_MAX_MEMORY, 4096u),
             additionalArguments: settings.AdditionalArguments
-                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS)
+                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS),
+            commandWrapperTemplate: settings.CommandWrapper
+                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)
         );
         var deployOptions = new DeployOptions(
             settings.FastMode
@@ -449,6 +451,9 @@ public class InstanceRunCommand(
 
         [CommandOption("--additional-arguments <ARGS>")]
         public string? AdditionalArguments { get; set; }
+
+        [CommandOption("--command-wrapper <TEMPLATE>")]
+        public string? CommandWrapper { get; set; }
 
         [CommandOption("--fast")]
         public bool? FastMode { get; set; }
