@@ -6,6 +6,7 @@ using TridentCore.Abstractions.Exporters;
 using TridentCore.Abstractions.Importers;
 using TridentCore.Cli.Commands;
 using TridentCore.Cli.Commands.Account;
+using TridentCore.Cli.Commands.Config;
 using TridentCore.Cli.Commands.Instance;
 using TridentCore.Cli.Commands.Loader;
 using TridentCore.Cli.Commands.Package;
@@ -49,6 +50,7 @@ public static class Startup
         services.AddSingleton<UserRepositoryStore>();
         services.AddSingleton<CliRepositoryProviderAccessor>();
         services.AddSingleton<AccountStore>();
+        services.AddSingleton<CliConfigurationStore>();
         services.AddTransient<IRepositoryProviderAccessor>(sp =>
             sp.GetRequiredService<CliRepositoryProviderAccessor>()
         );
@@ -275,6 +277,26 @@ public static class Startup
             config
                 .AddCommand<PackageAddCommand>("add")
                 .WithDescription("Shortcut for package add.");
+
+            config.AddBranch(
+                "config",
+                configCommand =>
+                {
+                    configCommand.SetDescription("Manage CLI global config and instance overrides.");
+                    configCommand
+                        .AddCommand<ConfigGetCommand>("get")
+                        .WithDescription("Get a configuration value.");
+                    configCommand
+                        .AddCommand<ConfigSetCommand>("set")
+                        .WithDescription("Set a configuration value.");
+                    configCommand
+                        .AddCommand<ConfigUnsetCommand>("unset")
+                        .WithDescription("Remove a configuration value.");
+                    configCommand
+                        .AddCommand<ConfigListCommand>("list")
+                        .WithDescription("List configuration values.");
+                }
+            );
 
             config.AddBranch(
                 "repository",

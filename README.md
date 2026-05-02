@@ -66,7 +66,8 @@ Trident only manages data under the selected home directory. By default, home is
 │       └── persist/         # user-persistent data such as saves, screenshots, options.txt
 └── .trident.cli/
     ├── accounts.json        # CLI-private account configuration
-    └── repositories.json    # CLI-private repository configuration
+    ├── repositories.json    # CLI-private repository configuration
+    └── settings.json        # CLI-global launch defaults and other config
 ```
 
 ### Core Concepts
@@ -190,6 +191,7 @@ When stdout is redirected, the CLI automatically prefers JSON output for pipelin
 | Package relations | `trident package dependency list`, `trident package dependent list` |
 | Package versions | `trident package version list/set` |
 | Package shortcuts | `trident search`, `trident add` |
+| Configuration | `trident config list/get/set/unset` |
 | Accounts | `trident account list/add/remove` |
 | Repositories | `trident repository list/status/add/remove` |
 
@@ -208,9 +210,13 @@ Import, run, and reset a modpack:
 
 ```sh
 trident import --identity imported_pack --name "Imported Pack" ./modpack.zip
+trident config set --name java.max_memory --value 8192
+trident config set --instance imported_pack --name behavior.command.wrapper --value "prime-run {command}" --type string
 trident run --instance imported_pack --username Steve --max-memory 6144
 trident instance reset --instance imported_pack --yes
 ```
+
+`trident config` without an instance manages CLI-global defaults in `<trident-home>/.trident.cli/settings.json`; `--instance <key>` or `--profile <path>` manages that instance's `profile.json` overrides. Launch options use `command-line option > instance override > CLI-global setting > built-in default`.
 
 Search, install, and switch package versions:
 

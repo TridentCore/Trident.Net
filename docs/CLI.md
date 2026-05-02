@@ -45,6 +45,7 @@ CLI-owned configuration is stored under the private brand directory:
 ```text
 <trident-home>/.trident.cli/accounts.json
 <trident-home>/.trident.cli/repositories.json
+<trident-home>/.trident.cli/settings.json
 ```
 
 Secrets such as repository API keys and Microsoft refresh tokens are never printed, but the first implementation stores them in the local JSON files without OS keychain encryption.
@@ -79,6 +80,46 @@ Short option mapping used by implemented commands:
 | `trident search` | `trident package search` |
 | `trident add` | `trident package add` |
 
+## Configuration Commands
+
+```sh
+trident config list
+trident config get --name java.max_memory
+trident config set --name java.max_memory --value 16384
+trident config set --name behavior.command.wrapper --value "prime-run {command}" --type string
+trident config unset --name behavior.command.wrapper
+
+trident config list --instance cherry_picks
+trident config get --instance cherry_picks --name java.max_memory
+trident config set --instance cherry_picks --name java.max_memory --value 16384
+trident config set --instance cherry_picks --name behavior.deploy.fastmode --value true
+trident config unset --instance cherry_picks --name behavior.deploy.fastmode
+```
+
+Without `--instance` or `--profile`, `config` reads and writes CLI-global settings in `<trident-home>/.trident.cli/settings.json`. With `--instance <key>` or `--profile <path>`, it reads and writes that instance's `profile.json` overrides.
+
+`config set` infers value types automatically: `true`/`false` become booleans, integer text becomes an integer, floating-point text becomes a number, and everything else becomes a string. Use `--type string`, `--type bool`, `--type integer`, or `--type number` to force a type.
+
+Common launch override keys:
+
+| Key | Type | Used By |
+| --- | --- | --- |
+| `java.home` | string | Java runtime selection. |
+| `java.max_memory` | integer | Max JVM memory in MB. |
+| `java.additional_arguments` | string | Extra JVM arguments. |
+| `window.width` | integer | Initial window width. |
+| `window.height` | integer | Initial window height. |
+| `behavior.connect.address` | string | Quick-connect server address. |
+| `behavior.command.wrapper` | string | Command wrapper template, for example `prime-run {command}`. |
+| `behavior.deploy.fastmode` | bool | Fast deploy mode. |
+| `behavior.resolve.dependency` | bool | Resolve package dependencies during deploy. |
+
+`run` resolves launch configuration in this order:
+
+```text
+command-line option > instance override > CLI-global setting > built-in default
+```
+
 ## Instance Commands
 
 ```sh
@@ -92,6 +133,7 @@ trident instance export --instance cherry_picks --format trident --type offline 
 trident instance unlock --instance cherry_picks
 trident instance reset --instance cherry_picks --yes
 trident instance delete --instance cherry_picks --yes
+trident instance run --instance cherry_picks --max-memory 8192 --command-wrapper "prime-run {command}"
 ```
 
 `instance inspect` is an instance overview command. It shows core instance metadata and a small package preview; use `package list` for the complete installed package list or `package search` to find packages.

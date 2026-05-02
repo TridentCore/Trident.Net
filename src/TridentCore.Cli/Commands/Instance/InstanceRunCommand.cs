@@ -21,6 +21,7 @@ public class InstanceRunCommand(
     InstanceManager instanceManager,
     AccountStore accountStore,
     TrackerAwaiter trackerAwaiter,
+    CliConfigurationStore configuration,
     CliOutput output
 ) : InstanceCommandBase<InstanceRunCommand.Arguments>(resolver)
 {
@@ -41,34 +42,64 @@ public class InstanceRunCommand(
         var account = ResolveAccount(settings);
         var profile = instance.Profile;
         var width =
-            settings.Width ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u);
+            settings.Width
+            ?? profile.GetOverride(
+                TridentProfile.OVERRIDE_WINDOW_WIDTH,
+                configuration.Get(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u)
+            );
         var height =
-            settings.Height ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u);
+            settings.Height
+            ?? profile.GetOverride(
+                TridentProfile.OVERRIDE_WINDOW_HEIGHT,
+                configuration.Get(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u)
+            );
 
         var launchOptions = new LaunchOptions(
             launchMode: settings.Mode ?? LaunchMode.Managed,
             account: account,
             windowSize: (width, height),
             quickConnectAddress: settings.QuickConnect
-                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER),
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER,
+                    configuration.Get<string>(TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER)
+                ),
             maxMemory: settings.MaxMemory
-                ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_MAX_MEMORY, 4096u),
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_JAVA_MAX_MEMORY,
+                    configuration.Get(TridentProfile.OVERRIDE_JAVA_MAX_MEMORY, 4096u)
+                ),
             additionalArguments: settings.AdditionalArguments
-                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS),
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS,
+                    configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS)
+                ),
             commandWrapperTemplate: settings.CommandWrapper
-                ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER,
+                    configuration.Get<string>(TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)
+                )
         );
         var deployOptions = new DeployOptions(
             settings.FastMode
-                ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE, false),
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
+                    configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE, false)
+                ),
             settings.ResolveDependency
-                ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY, false),
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
+                    configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY, false)
+                ),
             settings.FullCheck
         );
 
         var locator = JavaHelper.MakeLocator(
             _ =>
-                settings.JavaHome ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME),
+                settings.JavaHome
+                ?? profile.GetOverride(
+                    TridentProfile.OVERRIDE_JAVA_HOME,
+                    configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_HOME)
+                ),
             true
         );
 
