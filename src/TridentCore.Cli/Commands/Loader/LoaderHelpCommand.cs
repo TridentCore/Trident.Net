@@ -36,7 +36,7 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
                 .BorderColor(Color.Blue)
         );
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Supported loaders[/]");
+        table.Title = new("[bold]Supported loaders[/]");
         table.AddColumn("Name");
         table.AddColumn("Loader ID");
         table.AddColumn("Prism UID");

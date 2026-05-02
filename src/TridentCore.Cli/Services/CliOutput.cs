@@ -75,7 +75,7 @@ public class CliOutput(CliContext context)
     public void WriteKeyValueTable(string title, params (string Key, string? Value)[] rows)
     {
         var table = new Table().RoundedBorder().HideHeaders();
-        table.Title = new TableTitle($"[bold]{Markup.Escape(title)}[/]");
+        table.Title = new($"[bold]{Markup.Escape(title)}[/]");
         table.AddColumn("Field");
         table.AddColumn("Value");
         foreach (var row in rows)

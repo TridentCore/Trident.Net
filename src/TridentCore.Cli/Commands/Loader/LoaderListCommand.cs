@@ -19,7 +19,7 @@ public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arg
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Supported loaders[/]");
+        table.Title = new("[bold]Supported loaders[/]");
         table.AddColumn("Name");
         table.AddColumn("Loader ID");
         table.AddColumn("Prism UID");

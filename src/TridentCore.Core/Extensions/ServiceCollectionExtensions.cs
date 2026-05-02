@@ -104,10 +104,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = new(MicrosoftService.ENDPOINT);
                 client.DefaultRequestHeaders.UserAgent.Add(
-                    new ProductInfoHeaderValue(
+                    new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    )
+                       )
                 );
             });
         services.AddSingleton<MicrosoftService>();
@@ -128,10 +128,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = new(XboxLiveService.XBOX_ENDPOINT);
                 client.DefaultRequestHeaders.UserAgent.Add(
-                    new ProductInfoHeaderValue(
+                    new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    )
+                       )
                 );
             });
         services
@@ -146,10 +146,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = new(XboxLiveService.XSTS_ENDPOINT);
                 client.DefaultRequestHeaders.UserAgent.Add(
-                    new ProductInfoHeaderValue(
+                    new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    )
+                       )
                 );
             });
         services.AddSingleton<XboxLiveService>();
@@ -173,10 +173,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = new(MinecraftService.ENDPOINT);
                 client.DefaultRequestHeaders.UserAgent.Add(
-                    new ProductInfoHeaderValue(
+                    new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    )
+                       )
                 );
             });
         services.AddSingleton<MinecraftService>();
@@ -193,10 +193,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = new("https://api.mclo.gs");
                 client.DefaultRequestHeaders.UserAgent.Add(
-                    new ProductInfoHeaderValue(
+                    new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                    )
+                       )
                 );
             });
 

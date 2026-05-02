@@ -37,7 +37,7 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
                 .BorderColor(Color.Blue)
         );
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Supported account types[/]");
+        table.Title = new("[bold]Supported account types[/]");
         table.AddColumn("Type");
         table.AddColumn("Description");
         foreach (var type in types)

@@ -146,7 +146,7 @@ public class PackageDependentListCommand(
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]Dependents of {Markup.Escape(settings.Purl)}[/]");
+        table.Title = new($"[bold]Dependents of {Markup.Escape(settings.Purl)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Project");
         table.AddColumn("Version");
@@ -166,7 +166,7 @@ public class PackageDependentListCommand(
     private static Table CreateFailedInspectionTable(IEnumerable<string> failed)
     {
         var failedTable = new Table().RoundedBorder();
-        failedTable.Title = new TableTitle("[yellow]Failed inspections[/]");
+        failedTable.Title = new("[yellow]Failed inspections[/]");
         failedTable.AddColumn("PURL");
         foreach (var purl in failed)
         {

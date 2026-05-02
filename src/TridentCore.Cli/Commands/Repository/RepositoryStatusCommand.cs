@@ -84,7 +84,7 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Repository status[/]");
+        table.Title = new("[bold]Repository status[/]");
         table.AddColumn("Label");
         table.AddColumn("Loaders");
         table.AddColumn("Versions");

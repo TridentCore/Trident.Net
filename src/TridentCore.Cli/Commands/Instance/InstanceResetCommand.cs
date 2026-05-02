@@ -57,7 +57,7 @@ public class InstanceResetCommand(
             if (deleted.Count > 0)
             {
                 var table = new Table().RoundedBorder();
-                table.Title = new TableTitle("[bold]Deleted paths[/]");
+                table.Title = new("[bold]Deleted paths[/]");
                 table.AddColumn("Path");
                 foreach (var path in deleted)
                 {

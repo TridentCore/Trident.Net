@@ -61,7 +61,7 @@ public static class LockDataBuilderExtensions
         return split.Length switch
         {
             4 => new(split[0], split[1], split[2], split[3], extension),
-            3 => new LockData.Library.Identity(split[0], split[1], split[2], null, extension),
+            3 => new(split[0], split[1], split[2], null, extension),
             _ => throw new NotSupportedException($"Not recognized package name format: {fullname}"),
         };
     }

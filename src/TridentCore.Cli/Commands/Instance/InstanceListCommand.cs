@@ -44,7 +44,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Instances[/]");
+        table.Title = new("[bold]Instances[/]");
         table.AddColumn("Key");
         table.AddColumn("Name");
         table.AddColumn("Version");

@@ -28,7 +28,7 @@ public static class AssetHelper
             }
         }
 
-        directory = new DirectoryInfo(current);
+        directory = new(current);
         return true;
     }
 

@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.Versioning;
+using Microsoft.Win32;
 using TridentCore.Abstractions;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services.Instances;
@@ -7,10 +10,247 @@ namespace TridentCore.Core.Utilities;
 
 public static class JavaHelper
 {
+    private static readonly string[] WindowsRegistryJavaRoots =
+    [
+        @"SOFTWARE\JavaSoft\Java Runtime Environment",
+        @"SOFTWARE\JavaSoft\JRE",
+        @"SOFTWARE\JavaSoft\Java Development Kit",
+        @"SOFTWARE\JavaSoft\JDK",
+        @"SOFTWARE\Eclipse Adoptium\JDK",
+        @"SOFTWARE\Eclipse Foundation\JDK",
+        @"SOFTWARE\AdoptOpenJDK\JDK",
+        @"SOFTWARE\Microsoft\JDK",
+    ];
+
+    private static readonly string[] WindowsJavaHomeValueNames =
+    [
+        "JavaHome",
+        "InstallationPath",
+        "InstallLocation",
+        "InstallDir",
+        "Home",
+        "Path",
+    ];
+
     public static JavaHomeLocatorDelegate MakeLocator(
         Func<uint, string?> javaHomeSelector,
         bool withFallback = true
     ) => major => Locate(major, javaHomeSelector(major), withFallback);
+
+    public static async Task<IReadOnlyList<JavaRuntimeCandidate>> ScanJavaRuntimesAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        var raw = OperatingSystem.IsWindows()
+            ? DiscoverJavaRuntimesWindows()
+            : OperatingSystem.IsMacOS()
+                ? await DiscoverJavaRuntimesMacOsAsync(cancellationToken).ConfigureAwait(false)
+                : [];
+
+        if (raw.Count == 0)
+        {
+            return [];
+        }
+
+        var results = new ConcurrentBag<JavaRuntimeCandidate>();
+        await Task.WhenAll(
+                raw.Select(item => ProbeAndBuildCandidateAsync(
+                    item.Home,
+                    item.Vendor,
+                    item.Version,
+                    item.Source,
+                    results,
+                    cancellationToken
+                ))
+            )
+            .ConfigureAwait(false);
+        return SortJavaRuntimeCandidates(results);
+    }
+
+    private static async Task ProbeAndBuildCandidateAsync(
+        string home,
+        string? vendor,
+        string? version,
+        string source,
+        ConcurrentBag<JavaRuntimeCandidate> results,
+        CancellationToken cancellationToken
+    )
+    {
+        var info = await ProbeHomeAsync(home, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        results.Add(
+            new(
+                home,
+                info?.Vendor ?? vendor,
+                info?.Version ?? version,
+                info?.Major ?? ParseJavaMajor(version),
+                source
+            )
+        );
+    }
+
+    #region Discovery
+
+    private static List<(string Home, string? Vendor, string? Version, string Source)> DiscoverJavaRuntimesWindows()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return [];
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var results = new List<(string, string?, string?, string)>();
+
+        foreach (var hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+        {
+            foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+            {
+                using var baseKey = OpenBaseKey(hive, view);
+                if (baseKey == null)
+                {
+                    continue;
+                }
+
+                foreach (var rootPath in WindowsRegistryJavaRoots)
+                {
+                    using var root = baseKey.OpenSubKey(rootPath);
+                    if (root == null)
+                    {
+                        continue;
+                    }
+
+                    CollectWindowsRegistryHomes(results, seen, root, rootPath);
+                    if (root.GetValue("CurrentVersion") is string currentVersion)
+                    {
+                        CollectWindowsRegistrySubHomes(results, seen, root, rootPath, currentVersion);
+                    }
+
+                    foreach (var subKeyName in root.GetSubKeyNames())
+                    {
+                        CollectWindowsRegistrySubHomes(results, seen, root, rootPath, subKeyName);
+                    }
+                }
+            }
+        }
+
+        return results;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void CollectWindowsRegistryHomes(
+        List<(string, string?, string?, string)> results,
+        HashSet<string> seen,
+        RegistryKey key,
+        string source,
+        string? version = null
+    )
+    {
+        foreach (var valueName in WindowsJavaHomeValueNames)
+        {
+            if (key.GetValue(valueName) is not string rawHome)
+            {
+                continue;
+            }
+
+            var home = NormalizeJavaHome(rawHome);
+            if (home != null && seen.Add(home))
+            {
+                results.Add((home, null, version, $@"Registry: {source}"));
+            }
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void CollectWindowsRegistrySubHomes(
+        List<(string, string?, string?, string)> results,
+        HashSet<string> seen,
+        RegistryKey root,
+        string rootPath,
+        string subKeyName
+    )
+    {
+        using var subKey = root.OpenSubKey(subKeyName);
+        if (subKey == null)
+        {
+            return;
+        }
+
+        CollectWindowsRegistryHomes(results, seen, subKey, $@"{rootPath}\{subKeyName}", subKeyName);
+    }
+
+    private static async Task<List<(string Home, string? Vendor, string? Version, string Source)>> DiscoverJavaRuntimesMacOsAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return [];
+        }
+
+        const string javaHomeTool = "/usr/libexec/java_home";
+        if (!File.Exists(javaHomeTool))
+        {
+            return [];
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var results = new List<(string, string?, string?, string)>();
+
+        var output = await RunAndCaptureAsync(javaHomeTool, 5000, cancellationToken, null, "-V")
+            .ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(output))
+        {
+            using var reader = new StringReader(output);
+            while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+            {
+                CollectMacOsJavaHomeLine(results, seen, line);
+            }
+        }
+
+        if (results.Count == 0)
+        {
+            var defaultOutput = await RunAndCaptureAsync(javaHomeTool, 5000, cancellationToken)
+                .ConfigureAwait(false);
+            var defaultHome = defaultOutput?.Trim();
+            if (defaultHome != null)
+            {
+                var home = NormalizeJavaHome(defaultHome);
+                if (home != null && seen.Add(home))
+                {
+                    results.Add((home, null, null, "java_home"));
+                }
+            }
+        }
+
+        return results;
+    }
+
+    private static void CollectMacOsJavaHomeLine(
+        List<(string, string?, string?, string)> results,
+        HashSet<string> seen,
+        string line
+    )
+    {
+        var trimmed = line.Trim();
+        var pathStart = trimmed.LastIndexOf(" /", StringComparison.Ordinal);
+        if (pathStart < 0)
+        {
+            return;
+        }
+
+        var rawHome = trimmed[(pathStart + 1)..].Trim();
+        var home = NormalizeJavaHome(rawHome);
+        if (home == null || !seen.Add(home))
+        {
+            return;
+        }
+
+        var version = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        var vendor = ExtractQuotedSegment(trimmed, 0);
+        results.Add((home, vendor, version, "java_home"));
+    }
+
+    #endregion
 
     public static async Task<JavaRuntimeInfo?> ProbeHomeAsync(
         string home,
@@ -27,34 +267,24 @@ public static class JavaHelper
             }
 
             var output =
-                await RunJavaAndCaptureMetadataAsync(
+                await RunAndCaptureAsync(
                         path,
-                        home,
                         timeoutMilliseconds,
                         cancellationToken,
+                        home,
                         "-XshowSettings:properties",
                         "-version"
                     )
                     .ConfigureAwait(false)
-                ?? await RunJavaAndCaptureMetadataAsync(
+                ?? await RunAndCaptureAsync(
                         path,
-                        home,
                         timeoutMilliseconds,
                         cancellationToken,
+                        home,
                         "-version"
                     )
                     .ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(output))
-            {
-                return null;
-            }
-
-            var vendor = ExtractJavaProperty(output, "java.vendor");
-            var version = ExtractJavaProperty(output, "java.version") ?? ExtractJavaVersion(output);
-            var major = ParseJavaMajor(version);
-            return vendor == null && version == null && major == null
-                ? null
-                : new(vendor, version, major);
+            return string.IsNullOrWhiteSpace(output) ? null : ParseRuntimeInfoFromOutput(output);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -64,6 +294,16 @@ public static class JavaHelper
         {
             return null;
         }
+    }
+
+    private static JavaRuntimeInfo? ParseRuntimeInfoFromOutput(string output)
+    {
+        var vendor = ExtractJavaProperty(output, "java.vendor");
+        var version = ExtractJavaProperty(output, "java.version") ?? ExtractJavaVersion(output);
+        var major = ParseJavaMajor(version);
+        return vendor == null && version == null && major == null
+            ? null
+            : new(vendor, version, major);
     }
 
     private static string Locate(uint major, string? home, bool withFallback = true)
@@ -95,49 +335,89 @@ public static class JavaHelper
         return candidates.FirstOrDefault(File.Exists);
     }
 
-    private static string? RunJavaAndCaptureMetadata(
-        string executable,
-        string workingDirectory,
-        int timeoutMilliseconds,
-        params string[] arguments
-    )
+    [SupportedOSPlatform("windows")]
+    private static RegistryKey? OpenBaseKey(RegistryHive hive, RegistryView view)
     {
-        using var process = new Process
+        try
         {
-            StartInfo = BuildJavaMetadataStartInfo(executable, workingDirectory, arguments),
-        };
-
-        process.Start();
-
-        var stdoutTask = process.StandardOutput.ReadToEndAsync();
-        var stderrTask = process.StandardError.ReadToEndAsync();
-
-        if (!process.WaitForExit(timeoutMilliseconds))
-        {
-            process.Kill(true);
-            process.WaitForExit();
+            return RegistryKey.OpenBaseKey(hive, view);
         }
+        catch
+        {
+            return null;
+        }
+    }
 
-        var streamTasks = new Task[] { stdoutTask, stderrTask };
-        if (!Task.WaitAll(streamTasks, timeoutMilliseconds))
+    private static string? ExtractQuotedSegment(string value, int index)
+    {
+        var start = value.IndexOf('"', index);
+        if (start < 0)
         {
             return null;
         }
 
-        return string.Join(Environment.NewLine, stdoutTask.Result, stderrTask.Result);
+        var end = value.IndexOf('"', start + 1);
+        return end > start ? value[(start + 1)..end] : null;
     }
 
-    private static async Task<string?> RunJavaAndCaptureMetadataAsync(
+    private static string? NormalizeJavaHome(string? home)
+    {
+        if (string.IsNullOrWhiteSpace(home))
+        {
+            return null;
+        }
+
+        home = home.Trim().Trim('"');
+        if (File.Exists(home))
+        {
+            home = Path.GetDirectoryName(Path.GetDirectoryName(home)) ?? home;
+        }
+        else if (
+            Directory.Exists(home)
+            && string.Equals(Path.GetFileName(home), "bin", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            home = Path.GetDirectoryName(home) ?? home;
+        }
+
+        if (!Directory.Exists(home) || ResolveJavaExecutable(home) == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.GetFullPath(home)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+        catch
+        {
+            return home.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+    }
+
+    private static IReadOnlyList<JavaRuntimeCandidate> SortJavaRuntimeCandidates(
+        IEnumerable<JavaRuntimeCandidate> candidates
+    ) =>
+        [
+            .. candidates
+                .OrderByDescending(x => x.Major ?? 0)
+                .ThenBy(x => x.Vendor ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Version ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Home, StringComparer.OrdinalIgnoreCase),
+        ];
+
+    private static async Task<string?> RunAndCaptureAsync(
         string executable,
-        string workingDirectory,
         int timeoutMilliseconds,
         CancellationToken cancellationToken,
+        string? workingDirectory = null,
         params string[] arguments
     )
     {
         using var process = new Process
         {
-            StartInfo = BuildJavaMetadataStartInfo(executable, workingDirectory, arguments),
+            StartInfo = BuildStartInfo(executable, arguments, workingDirectory),
         };
 
         process.Start();
@@ -193,20 +473,24 @@ public static class JavaHelper
         }
     }
 
-    private static ProcessStartInfo BuildJavaMetadataStartInfo(
+    private static ProcessStartInfo BuildStartInfo(
         string executable,
-        string workingDirectory,
-        IEnumerable<string> arguments
+        IEnumerable<string> arguments,
+        string? workingDirectory = null
     )
     {
         var startInfo = new ProcessStartInfo(executable)
         {
-            WorkingDirectory = workingDirectory,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+
+        if (workingDirectory != null)
+        {
+            startInfo.WorkingDirectory = workingDirectory;
+        }
 
         foreach (var argument in arguments)
         {
@@ -271,6 +555,14 @@ public static class JavaHelper
 
         return null;
     }
+
+    public readonly record struct JavaRuntimeCandidate(
+        string Home,
+        string? Vendor,
+        string? Version,
+        int? Major,
+        string Source
+    );
 }
 
 public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);

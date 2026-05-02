@@ -139,7 +139,7 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
     }
 
     var error = AnsiConsole.Create(
-        new AnsiConsoleSettings { Out = new AnsiConsoleOutput(Console.Error) }
+        new() { Out = new AnsiConsoleOutput(Console.Error) }
     );
     var body = $"[bold red]{Markup.Escape(message)}[/]";
     if (!string.IsNullOrWhiteSpace(detail))

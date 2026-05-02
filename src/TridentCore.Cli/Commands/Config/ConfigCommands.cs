@@ -237,7 +237,7 @@ public class ConfigListCommand(
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]Configuration: {Markup.Escape(scope.DisplayName)}[/]");
+        table.Title = new($"[bold]Configuration: {Markup.Escape(scope.DisplayName)}[/]");
         table.AddColumn("Name");
         table.AddColumn("Type");
         table.AddColumn("Value");

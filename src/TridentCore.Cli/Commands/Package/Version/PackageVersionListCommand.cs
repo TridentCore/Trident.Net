@@ -89,7 +89,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]Versions for {Markup.Escape(settings.Purl)}[/]");
+        table.Title = new($"[bold]Versions for {Markup.Escape(settings.Purl)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Name");
         table.AddColumn("Release");

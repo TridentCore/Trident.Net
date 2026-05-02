@@ -33,7 +33,7 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
                 .BorderColor(Color.Blue)
         );
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Supported drivers[/]");
+        table.Title = new("[bold]Supported drivers[/]");
         table.AddColumn("Driver");
         table.AddColumn("API Key Header");
         foreach (var driver in drivers)

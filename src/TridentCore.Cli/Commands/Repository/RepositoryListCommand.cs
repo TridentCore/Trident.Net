@@ -41,7 +41,7 @@ public class RepositoryListCommand(
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Repositories[/]");
+        table.Title = new("[bold]Repositories[/]");
         table.AddColumn("Label");
         table.AddColumn("Driver");
         table.AddColumn("Endpoint");

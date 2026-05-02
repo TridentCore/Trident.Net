@@ -71,7 +71,7 @@ public static class PackageCliHelper
     public static Table CreatePackageTable(string title, IEnumerable<IPackageTableRow> packages)
     {
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]{Markup.Escape(title)}[/]");
+        table.Title = new($"[bold]{Markup.Escape(title)}[/]");
         table.AddColumn("Name");
         table.AddColumn("Author");
         table.AddColumn("Kind");
@@ -99,7 +99,7 @@ public static class PackageCliHelper
     )
     {
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]{Markup.Escape(title)}[/]");
+        table.Title = new($"[bold]{Markup.Escape(title)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Required");
         foreach (var dependency in dependencies)

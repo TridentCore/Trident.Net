@@ -128,7 +128,7 @@ public class AccountAddCommand(
             .ConfigureAwait(false);
 
         return AccountStore.CreateMicrosoft(
-            new MicrosoftAccount
+            new()
             {
                 AccessToken = minecraft.AccessToken,
                 AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(minecraft.ExpiresIn),

@@ -30,7 +30,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Accounts[/]");
+        table.Title = new("[bold]Accounts[/]");
         table.AddColumn("UUID");
         table.AddColumn("Username");
         table.AddColumn("Type");
