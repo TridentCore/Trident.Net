@@ -47,7 +47,7 @@ public class ResolvePackageStage(
                               plan.Namespace,
                               plan.ProjectId,
                               plan.VersionId,
-                              Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key), plan.TargetPath),
+                              Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key), plan.RelativeTargetPath),
                               plan.Url,
                               plan.Sha1);
         }
