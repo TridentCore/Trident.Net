@@ -41,10 +41,10 @@ public abstract class TrackerBase(
     {
         State = TrackerState.Running;
         StateUpdated?.Invoke(this, State);
-        _ = RunInternalAsync();
+        _ = RunCoreAsync();
     }
 
-    private async Task RunInternalAsync()
+    private async Task RunCoreAsync()
     {
         try
         {

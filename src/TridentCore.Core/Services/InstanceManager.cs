@@ -128,7 +128,7 @@ public class InstanceManager(
         var tracker = new DeployTracker(
             key,
             async t =>
-                await DeployInternalAsync((DeployTracker)t, deploy, javaHomeLocator)
+                await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
                     .ConfigureAwait(false),
             t =>
             {
@@ -216,7 +216,7 @@ public class InstanceManager(
         var tracker = new DeployTracker(
             key,
             async t =>
-                await DeployInternalAsync((DeployTracker)t, options, javaHomeLocator)
+                await DeployCoreAsync((DeployTracker)t, options, javaHomeLocator)
                     .ConfigureAwait(false),
             TrackerOnCompleted
         );
@@ -226,7 +226,7 @@ public class InstanceManager(
         return tracker;
     }
 
-    private async Task DeployInternalAsync(
+    private async Task DeployCoreAsync(
         DeployTracker tracker,
         DeployOptions options,
         JavaHomeLocatorDelegate javaHomeLocator
@@ -323,7 +323,7 @@ public class InstanceManager(
             key,
             options,
             async t =>
-                await LaunchInternalAsync((LaunchTracker)t, options, javaHomeLocator)
+                await LaunchCoreAsync((LaunchTracker)t, options, javaHomeLocator)
                     .ConfigureAwait(false),
             TrackerOnCompleted
         );
@@ -333,7 +333,7 @@ public class InstanceManager(
         return tracker;
     }
 
-    private async Task LaunchInternalAsync(
+    private async Task LaunchCoreAsync(
         LaunchTracker tracker,
         LaunchOptions options,
         JavaHomeLocatorDelegate javaHomeLocator
@@ -496,7 +496,7 @@ public class InstanceManager(
         var tracker = new InstallTracker(
             reserved.Key,
             async t =>
-                await InstallInternalAsync((InstallTracker)t, reserved, label, ns, pid, vid)
+                await InstallCoreAsync((InstallTracker)t, reserved, label, ns, pid, vid)
                     .ConfigureAwait(false),
             TrackerOnCompleted
         );
@@ -506,7 +506,7 @@ public class InstanceManager(
         return tracker;
     }
 
-    private async Task InstallInternalAsync(
+    private async Task InstallCoreAsync(
         InstallTracker tracker,
         ReservedKey key,
         string label,
@@ -556,7 +556,7 @@ public class InstanceManager(
         var tracker = new UpdateTracker(
             key,
             async t =>
-                await UpdateInternalAsync((UpdateTracker)t, key, label, ns, pid, vid)
+                await UpdateCoreAsync((UpdateTracker)t, key, label, ns, pid, vid)
                     .ConfigureAwait(false),
             TrackerOnCompleted
         );
@@ -566,7 +566,7 @@ public class InstanceManager(
         return tracker;
     }
 
-    private async Task UpdateInternalAsync(
+    private async Task UpdateCoreAsync(
         UpdateTracker tracker,
         string key,
         string label,

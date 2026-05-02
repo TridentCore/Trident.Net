@@ -69,9 +69,9 @@ catch (Exception ex)
 }
 
 LookupContext LookupHome(string? homeOverride) =>
-    LookupHomeInternal(Environment.CurrentDirectory, homeOverride);
+    LookupHomeCore(Environment.CurrentDirectory, homeOverride);
 
-LookupContext LookupHomeInternal(string startDir, string? homeOverride)
+LookupContext LookupHomeCore(string startDir, string? homeOverride)
 {
     string? home = null;
     string? profile = null;
