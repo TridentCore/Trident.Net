@@ -399,14 +399,20 @@ public class InstanceRunCommand(
     {
         if (stored.Type == "microsoft")
         {
-            var payload = JsonSerializer.Deserialize<MicrosoftAccount>(stored.Data);
+            var payload = JsonSerializer.Deserialize<MicrosoftAccount>(
+                stored.Data,
+                AccountStore.SerializerOptions
+            );
             if (payload != null)
             {
                 return payload;
             }
         }
 
-        var offline = JsonSerializer.Deserialize<StoredOfflineAccount>(stored.Data);
+        var offline = JsonSerializer.Deserialize<StoredOfflineAccount>(
+            stored.Data,
+            AccountStore.SerializerOptions
+        );
         if (offline != null)
         {
             return new OfflineAccount { Username = offline.Username, Uuid = offline.Uuid };

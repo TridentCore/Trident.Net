@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Services;
 
 public class AccountStore
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(
+    internal static readonly JsonSerializerOptions SerializerOptions = new(
         JsonSerializerDefaults.Web
     )
     {
