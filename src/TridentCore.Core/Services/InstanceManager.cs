@@ -523,36 +523,13 @@ public class InstanceManager(
         var package = await repositories
             .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
             .ConfigureAwait(false);
-        var size = package.Size;
-        logger.LogDebug(
-            "Downloading package file {} sized {} bytes",
-            package.Download.AbsoluteUri,
-            size
-        );
-        var client = clientFactory.CreateClient();
-
-        var memory = await DownloadFileAsync(
-                package.Download,
-                size,
+        var (pack, container) = await DownloadAndImportPackageAsync(
+                key.Key,
+                package,
                 tracker.ProgressStream,
-                client,
                 tracker.Token
             )
             .ConfigureAwait(false);
-
-        logger.LogDebug("Downloaded {} bytes", memory.Length);
-
-        tracker.ProgressStream.OnNext(100d);
-        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-
-        tracker.ProgressStream.OnNext(null);
-        CompressedProfilePack pack = new(memory) { Reference = package };
-        var container = await importers.ImportAsync(pack).ConfigureAwait(false);
-
-        if (container.IconUrl is not null)
-        {
-            await ExtractIconFileAsync(key.Key, container, client).ConfigureAwait(false);
-        }
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
@@ -563,8 +540,6 @@ public class InstanceManager(
         profileManager.Add(key, container.Profile);
 
         logger.LogInformation("{} added", key.Key);
-
-        client.Dispose();
     }
 
     #endregion
@@ -608,36 +583,13 @@ public class InstanceManager(
         var package = await repositories
             .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
             .ConfigureAwait(false);
-        var size = package.Size;
-        logger.LogDebug(
-            "Downloading package file {url} sized {size} bytes",
-            package.Download.AbsoluteUri,
-            size
-        );
-        var client = clientFactory.CreateClient();
-
-        var memory = await DownloadFileAsync(
-                package.Download,
-                size,
+        var (pack, container) = await DownloadAndImportPackageAsync(
+                key,
+                package,
                 tracker.ProgressStream,
-                client,
                 tracker.Token
             )
             .ConfigureAwait(false);
-
-        logger.LogDebug("Downloaded {length} bytes", memory.Length);
-
-        tracker.ProgressStream.OnNext(100d);
-        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-
-        tracker.ProgressStream.OnNext(null);
-        CompressedProfilePack pack = new(memory) { Reference = package };
-        var container = await importers.ImportAsync(pack).ConfigureAwait(false);
-
-        if (container.IconUrl is not null)
-        {
-            await ExtractIconFileAsync(key, container, client).ConfigureAwait(false);
-        }
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
@@ -670,8 +622,50 @@ public class InstanceManager(
         );
 
         logger.LogInformation("{key} updated", key);
+    }
 
-        client.Dispose();
+    private async Task<(
+        CompressedProfilePack Pack,
+        ImportedProfileContainer Container
+    )> DownloadAndImportPackageAsync(
+        string key,
+        Package package,
+        Subject<double?> progressStream,
+        CancellationToken cancellationToken
+    )
+    {
+        var size = package.Size;
+        logger.LogDebug(
+            "Downloading package file {url} sized {size} bytes",
+            package.Download.AbsoluteUri,
+            size
+        );
+        using var client = clientFactory.CreateClient();
+
+        var memory = await DownloadFileAsync(
+                package.Download,
+                size,
+                progressStream,
+                client,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        logger.LogDebug("Downloaded {length} bytes", memory.Length);
+
+        progressStream.OnNext(100d);
+        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+
+        progressStream.OnNext(null);
+        CompressedProfilePack pack = new(memory) { Reference = package };
+        var container = await importers.ImportAsync(pack).ConfigureAwait(false);
+
+        if (container.IconUrl is not null)
+        {
+            await ExtractIconFileAsync(key, container, client).ConfigureAwait(false);
+        }
+
+        return (pack, container);
     }
 
     #endregion

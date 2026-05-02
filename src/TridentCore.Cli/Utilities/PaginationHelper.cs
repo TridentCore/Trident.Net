@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using TridentCore.Abstractions.Repositories;
 
-namespace TridentCore.Cli.Services;
+namespace TridentCore.Cli.Utilities;
 
 public static class PaginationHelper
 {

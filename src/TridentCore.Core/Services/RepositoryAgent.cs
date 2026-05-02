@@ -172,24 +172,14 @@ public class RepositoryAgent
     )
     {
         var batchArray = batch.ToArray();
-        var cachedTasks = batchArray
-            .Select(async x =>
-                (
-                    Purl: x,
-                    Cached: await RetrieveCachedAsync<Package>(
-                            $"package:{PackageHelper.Identify(x.Repository, x.Namespace, x.Identity, x.Version, filter)}"
-                        )
-                        .ConfigureAwait(false)
-                )
+        var cached = await RetrieveCachedBatchAsync<PackageIdentifier, Package>(
+                batchArray,
+                x =>
+                    $"package:{PackageHelper.Identify(x.Repository, x.Namespace, x.Identity, x.Version, filter)}"
             )
-            .ToList();
-        await Task.WhenAll(cachedTasks).ConfigureAwait(false);
-        var cached = cachedTasks
-            .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
-            .Select(x => x.Result)
-            .ToList();
+            .ConfigureAwait(false);
 
-        var toResolve = batchArray.Except(cached.Select(x => x.Purl)).GroupBy(x => x.Repository);
+        var toResolve = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.Repository);
         var resolveTasks = toResolve
             .Select(async x =>
                 (
@@ -216,7 +206,7 @@ public class RepositoryAgent
                 .ConfigureAwait(false);
         }
 
-        return cached.Select(x => (x.Purl, x.Cached!)).Concat(resolved).ToList();
+        return cached.Select(x => (x.Item, x.Cached)).Concat(resolved).ToList();
     }
 
     public Task<Project> QueryAsync(string label, string? ns, string pid) =>
@@ -230,24 +220,13 @@ public class RepositoryAgent
     )
     {
         var batchArray = batch.ToArray();
-        var cachedTasks = batchArray
-            .Select(async x =>
-                (
-                    Meta: x,
-                    Cached: await RetrieveCachedAsync<Project>(
-                            $"project:{PackageHelper.Identify(x.label, x.ns, x.pid, null, null)}"
-                        )
-                        .ConfigureAwait(false)
-                )
-            )
-            .ToList();
-        await Task.WhenAll(cachedTasks).ConfigureAwait(false);
-        var cached = cachedTasks
-            .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
-            .Select(x => x.Result)
-            .ToList();
+        var cached = await RetrieveCachedBatchAsync<
+            (string label, string? ns, string pid),
+            Project
+        >(batchArray, x => $"project:{PackageHelper.Identify(x.label, x.ns, x.pid, null, null)}")
+            .ConfigureAwait(false);
 
-        var toQuery = batchArray.Except(cached.Select(x => x.Meta)).GroupBy(x => x.label);
+        var toQuery = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.label);
         var queryTasks = toQuery
             .Select(async x =>
                 (
@@ -272,7 +251,7 @@ public class RepositoryAgent
                 .ConfigureAwait(false);
         }
 
-        return cached.Select(x => x.Cached!).Concat(queried.Select(x => x.Project)).ToList();
+        return cached.Select(x => x.Cached).Concat(queried.Select(x => x.Project)).ToList();
     }
 
     public Task<string> ReadDescriptionAsync(string label, string? ns, string pid) =>
@@ -359,6 +338,28 @@ public class RepositoryAgent
         }
 
         return default;
+    }
+
+    private async Task<List<(TItem Item, TValue Cached)>> RetrieveCachedBatchAsync<TItem, TValue>(
+        IReadOnlyList<TItem> batch,
+        Func<TItem, string> keySelector
+    )
+        where TValue : class
+    {
+        var cachedTasks = batch
+            .Select(async x =>
+                (
+                    Item: x,
+                    Cached: await RetrieveCachedAsync<TValue>(keySelector(x)).ConfigureAwait(false)
+                )
+            )
+            .ToList();
+        await Task.WhenAll(cachedTasks).ConfigureAwait(false);
+
+        return cachedTasks
+            .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
+            .Select(x => (x.Result.Item, x.Result.Cached!))
+            .ToList();
     }
 
     private async Task CacheObjectAsync<T>(string key, T value)

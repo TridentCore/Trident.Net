@@ -3,6 +3,7 @@ using Spectre.Console.Cli;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Cli.Commands;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 
 namespace TridentCore.Cli.Commands.Package;
 
@@ -33,20 +34,28 @@ public abstract class PagingSettings : PackageFilterSettings
 
     public override ValidationResult Validate()
     {
+        return PagingValidation.Validate(Sort, Index, Limit);
+    }
+}
+
+public static class PagingValidation
+{
+    public static ValidationResult Validate(string sort, int index, int limit)
+    {
         if (
-            !string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase)
+            !string.Equals(sort, "asc", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(sort, "desc", StringComparison.OrdinalIgnoreCase)
         )
         {
             return ValidationResult.Error("--sort must be asc or desc.");
         }
 
-        if (Index < 0)
+        if (index < 0)
         {
             return ValidationResult.Error("--index must be greater than or equal to 0.");
         }
 
-        return Limit <= 0
+        return limit <= 0
             ? ValidationResult.Error("--limit must be greater than 0.")
             : ValidationResult.Success();
     }

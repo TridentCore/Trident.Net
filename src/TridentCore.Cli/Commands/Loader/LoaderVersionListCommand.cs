@@ -1,6 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Services;
@@ -129,25 +130,8 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         [CommandArgument(0, "<LOADER_ID>")]
         public required string LoaderId { get; set; }
 
-        public override ValidationResult Validate()
-        {
-            if (
-                !string.Equals(Sort, "asc", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(Sort, "desc", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                return ValidationResult.Error("--sort must be asc or desc.");
-            }
-
-            if (Index < 0)
-            {
-                return ValidationResult.Error("--index must be greater than or equal to 0.");
-            }
-
-            return Limit <= 0
-                ? ValidationResult.Error("--limit must be greater than 0.")
-                : ValidationResult.Success();
-        }
+        public override ValidationResult Validate() =>
+            PagingValidation.Validate(Sort, Index, Limit);
     }
 
     private sealed record LoaderVersionDto(

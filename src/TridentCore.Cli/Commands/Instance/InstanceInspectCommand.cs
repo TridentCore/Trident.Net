@@ -1,8 +1,8 @@
-using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
@@ -92,27 +92,9 @@ public class InstanceInspectCommand(
             return;
         }
 
-        var table = new Table().RoundedBorder();
-        table.Title = new TableTitle("[bold]Package preview[/]");
-        table.AddColumn("Name");
-        table.AddColumn("Author");
-        table.AddColumn("Kind");
-        table.AddColumn("Enabled");
-        table.AddColumn("PURL");
-        foreach (var package in dto.PackagePreview)
-        {
-            table.AddMarkupRow(
-                CliOutput.FormatValue(package.ProjectName),
-                CliOutput.FormatValue(package.Author),
-                package.Kind?.ToString() is string k
-                    ? CliOutput.FormatStatus(k, "blue")
-                    : "[dim]-[/]",
-                CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                Markup.Escape(package.Purl)
-            );
-        }
-
-        output.WriteTable(table);
+        output.WriteTable(
+            PackageCliHelper.CreatePackageTable("Package preview", dto.PackagePreview)
+        );
         if (dto.HiddenPackageCount > 0)
         {
             output.WriteInfo(
@@ -144,5 +126,5 @@ public class InstanceInspectCommand(
         string? ProjectName,
         string? Author,
         ResourceKind? Kind
-    );
+    ) : IPackageTableRow;
 }

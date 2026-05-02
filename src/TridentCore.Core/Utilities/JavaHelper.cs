@@ -102,20 +102,10 @@ public static class JavaHelper
         params string[] arguments
     )
     {
-        using var process = new Process();
-        process.StartInfo = new(executable)
+        using var process = new Process
         {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
+            StartInfo = BuildJavaMetadataStartInfo(executable, workingDirectory, arguments),
         };
-
-        foreach (var argument in arguments)
-        {
-            process.StartInfo.ArgumentList.Add(argument);
-        }
 
         process.Start();
 
@@ -145,20 +135,10 @@ public static class JavaHelper
         params string[] arguments
     )
     {
-        using var process = new Process();
-        process.StartInfo = new(executable)
+        using var process = new Process
         {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
+            StartInfo = BuildJavaMetadataStartInfo(executable, workingDirectory, arguments),
         };
-
-        foreach (var argument in arguments)
-        {
-            process.StartInfo.ArgumentList.Add(argument);
-        }
 
         process.Start();
 
@@ -211,6 +191,29 @@ public static class JavaHelper
         {
             // Best-effort cleanup.
         }
+    }
+
+    private static ProcessStartInfo BuildJavaMetadataStartInfo(
+        string executable,
+        string workingDirectory,
+        IEnumerable<string> arguments
+    )
+    {
+        var startInfo = new ProcessStartInfo(executable)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return startInfo;
     }
 
     private static string? ExtractJavaProperty(string output, string propertyName)

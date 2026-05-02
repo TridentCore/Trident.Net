@@ -43,29 +43,14 @@ public static class AssetHelper
         string key,
         string pattern,
         ReadOnlySpan<string> pathSegments
-    )
-    {
-        var storages = new[]
-        {
-            PathDef.Default.DirectoryOfBuild(key),
-            PathDef.Default.DirectoryOfImport(key),
-            PathDef.Default.DirectoryOfPersist(key),
-        };
-
-        var results = new List<FileInfo>();
-        foreach (var storage in storages)
-        {
-            if (TryResolveNonSymlinkDirectory(storage, pathSegments, out var dir))
-            {
-                results.AddRange(
-                    dir.GetFiles(pattern, SearchOption.TopDirectoryOnly)
-                        .Where(x => x.LinkTarget is null)
-                );
-            }
-        }
-
-        return results;
-    }
+    ) =>
+        ScanNonSymlink(
+            key,
+            pathSegments,
+            dir =>
+                dir.GetFiles(pattern, SearchOption.TopDirectoryOnly)
+                    .Where(x => x.LinkTarget is null)
+        );
 
     /// <summary>
     ///     在 build/import/persist 三个目录下的非 Symlink 目录中搜索非 Symlink 目录
@@ -78,6 +63,19 @@ public static class AssetHelper
         string key,
         string pattern,
         ReadOnlySpan<string> pathSegments
+    ) =>
+        ScanNonSymlink(
+            key,
+            pathSegments,
+            dir =>
+                dir.GetDirectories(pattern, SearchOption.TopDirectoryOnly)
+                    .Where(x => x.LinkTarget is null)
+        );
+
+    private static IReadOnlyList<T> ScanNonSymlink<T>(
+        string key,
+        ReadOnlySpan<string> pathSegments,
+        Func<DirectoryInfo, IEnumerable<T>> selector
     )
     {
         var storages = new[]
@@ -87,15 +85,12 @@ public static class AssetHelper
             PathDef.Default.DirectoryOfPersist(key),
         };
 
-        var results = new List<DirectoryInfo>();
+        var results = new List<T>();
         foreach (var storage in storages)
         {
             if (TryResolveNonSymlinkDirectory(storage, pathSegments, out var dir))
             {
-                results.AddRange(
-                    dir.GetDirectories(pattern, SearchOption.TopDirectoryOnly)
-                        .Where(x => x.LinkTarget is null)
-                );
+                results.AddRange(selector(dir));
             }
         }
 

@@ -1,6 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Dependency;
@@ -63,21 +64,9 @@ public class PackageDependencyListCommand(
             return;
         }
 
-        var table = new Table().RoundedBorder();
-        table.Title = new TableTitle(
-            $"[bold]Dependencies for {Markup.Escape(package.ToString())}[/]"
+        output.WriteTable(
+            PackageCliHelper.CreateDependencyTable($"Dependencies for {package}", dependencies)
         );
-        table.AddColumn("PURL");
-        table.AddColumn("Required");
-        foreach (var dependency in dependencies)
-        {
-            table.AddMarkupRow(
-                Markup.Escape(dependency.Purl),
-                CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
-            );
-        }
-
-        output.WriteTable(table);
     }
 
     public class Arguments : PackageFilterSettings

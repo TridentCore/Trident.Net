@@ -24,25 +24,11 @@ public static class LockDataBuilderExtensions
     {
         var exactUrl = url.AbsoluteUri.EndsWith('/') ? url : new(url.AbsoluteUri + '/');
         // 当迁移到 TridentCore/launcher-meta 的之后移除该函数
-        var extension = "jar";
-        var index = fullname.IndexOf('@');
-        if (index > 0)
-        {
-            extension = fullname[(index + 1)..];
-            fullname = fullname[..index];
-        }
-
-        var split = fullname.Split(':');
-        var id = split.Length switch
-        {
-            4 => new(split[0], split[1], split[2], split[3], extension),
-            3 => new LockData.Library.Identity(split[0], split[1], split[2], null, extension),
-            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}"),
-        };
+        var id = ParseLibraryIdentity(fullname);
 
         var fullUrl = new Uri(
             exactUrl,
-            $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{extension}"
+            $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}"
         );
         return self.AddLibrary(new(id, fullUrl, null));
     }
@@ -56,7 +42,13 @@ public static class LockDataBuilderExtensions
         bool present = true
     )
     {
-        LockData.Library.Identity id;
+        var id = ParseLibraryIdentity(fullname);
+
+        return self.AddLibrary(new(id, url, sha1, native, present));
+    }
+
+    private static LockData.Library.Identity ParseLibraryIdentity(string fullname)
+    {
         var extension = "jar";
         var index = fullname.IndexOf('@');
         if (index > 0)
@@ -66,20 +58,12 @@ public static class LockDataBuilderExtensions
         }
 
         var split = fullname.Split(':');
-        if (split.Length == 4)
+        return split.Length switch
         {
-            id = new(split[0], split[1], split[2], split[3], extension);
-        }
-        else if (split.Length == 3)
-        {
-            id = new(split[0], split[1], split[2], null, extension);
-        }
-        else
-        {
-            throw new NotSupportedException($"Not recognized package name format: {fullname}");
-        }
-
-        return self.AddLibrary(new(id, url, sha1, native, present));
+            4 => new(split[0], split[1], split[2], split[3], extension),
+            3 => new LockData.Library.Identity(split[0], split[1], split[2], null, extension),
+            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}"),
+        };
     }
 
     public static LockDataBuilder SetAssetIndex(

@@ -157,7 +157,7 @@ public class InstanceRunCommand(
 
         try
         {
-            await AwaitLaunchCompletionAsync(tracker, cts.Token).ConfigureAwait(false);
+            await TrackerAwaiter.AwaitCompletionAsync(tracker, cts.Token).ConfigureAwait(false);
 
             if (tracker.State == TrackerState.Faulted)
             {
@@ -204,7 +204,7 @@ public class InstanceRunCommand(
         await output
             .StatusAsync(
                 $"Launching instance {tracker.Key}...",
-                () => AwaitLaunchCompletionAsync(tracker, cancellationToken)
+                () => TrackerAwaiter.AwaitCompletionAsync(tracker, cancellationToken)
             )
             .ConfigureAwait(false);
 
@@ -310,45 +310,6 @@ public class InstanceRunCommand(
         catch (InvalidOperationException)
         {
             return false;
-        }
-    }
-
-    private static async Task AwaitLaunchCompletionAsync(
-        LaunchTracker tracker,
-        CancellationToken cancellationToken
-    )
-    {
-        var completion = new TaskCompletionSource(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
-
-        void OnStateUpdated(TrackerBase sender, TrackerState state)
-        {
-            if (state is TrackerState.Finished or TrackerState.Faulted)
-            {
-                completion.TrySetResult();
-            }
-        }
-
-        tracker.StateUpdated += OnStateUpdated;
-        using var cancelReg = cancellationToken.Register(() =>
-        {
-            tracker.Abort();
-            completion.TrySetCanceled(cancellationToken);
-        });
-
-        try
-        {
-            if (tracker.State is TrackerState.Finished or TrackerState.Faulted)
-            {
-                completion.TrySetResult();
-            }
-
-            await completion.Task.ConfigureAwait(false);
-        }
-        finally
-        {
-            tracker.StateUpdated -= OnStateUpdated;
         }
     }
 

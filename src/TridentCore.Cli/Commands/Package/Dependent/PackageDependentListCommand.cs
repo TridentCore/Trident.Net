@@ -2,6 +2,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Dependent;
@@ -123,15 +124,7 @@ public class PackageDependentListCommand(
             );
             if (failed.Count > 0)
             {
-                var failedTable = new Table().RoundedBorder();
-                failedTable.Title = new TableTitle("[yellow]Failed inspections[/]");
-                failedTable.AddColumn("PURL");
-                foreach (var purl in failed)
-                {
-                    failedTable.AddEscapedRow(purl);
-                }
-
-                output.WriteTable(failedTable);
+                output.WriteTable(CreateFailedInspectionTable(failed));
             }
 
             return;
@@ -166,16 +159,21 @@ public class PackageDependentListCommand(
 
         if (failed.Count > 0)
         {
-            var failedTable = new Table().RoundedBorder();
-            failedTable.Title = new TableTitle("[yellow]Failed inspections[/]");
-            failedTable.AddColumn("PURL");
-            foreach (var purl in failed)
-            {
-                failedTable.AddEscapedRow(purl);
-            }
-
-            output.WriteTable(failedTable);
+            output.WriteTable(CreateFailedInspectionTable(failed));
         }
+    }
+
+    private static Table CreateFailedInspectionTable(IEnumerable<string> failed)
+    {
+        var failedTable = new Table().RoundedBorder();
+        failedTable.Title = new TableTitle("[yellow]Failed inspections[/]");
+        failedTable.AddColumn("PURL");
+        foreach (var purl in failed)
+        {
+            failedTable.AddEscapedRow(purl);
+        }
+
+        return failedTable;
     }
 
     private sealed record DependentDto(string Purl, string ProjectName, string VersionName);

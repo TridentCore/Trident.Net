@@ -3,6 +3,7 @@ using Spectre.Console.Cli;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package;

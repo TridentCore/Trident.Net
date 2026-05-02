@@ -51,6 +51,27 @@ public class TrackerAwaiter(CliOutput output)
         CancellationToken cancellationToken
     )
     {
+        using var stageSubscription = tracker.StageStream.Subscribe(stage =>
+        {
+            onStage?.Invoke(stage.ToString());
+        });
+        using var progressSubscription = tracker.ProgressStream.Subscribe(progress =>
+        {
+            onProgress?.Invoke(progress.Item1, progress.Item2);
+        });
+
+        await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
+        if (tracker.State == TrackerState.Faulted)
+        {
+            throw tracker.FailureReason ?? new InvalidOperationException("Deploy failed.");
+        }
+    }
+
+    public static async Task AwaitCompletionAsync(
+        TrackerBase tracker,
+        CancellationToken cancellationToken
+    )
+    {
         var completion = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
@@ -64,14 +85,6 @@ public class TrackerAwaiter(CliOutput output)
         }
 
         tracker.StateUpdated += OnStateUpdated;
-        using var stageSubscription = tracker.StageStream.Subscribe(stage =>
-        {
-            onStage?.Invoke(stage.ToString());
-        });
-        using var progressSubscription = tracker.ProgressStream.Subscribe(progress =>
-        {
-            onProgress?.Invoke(progress.Item1, progress.Item2);
-        });
         using var cancellation = cancellationToken.Register(() =>
         {
             tracker.Abort();
@@ -86,10 +99,6 @@ public class TrackerAwaiter(CliOutput output)
             }
 
             await completion.Task.ConfigureAwait(false);
-            if (tracker.State == TrackerState.Faulted)
-            {
-                throw tracker.FailureReason ?? new InvalidOperationException("Deploy failed.");
-            }
         }
         finally
         {

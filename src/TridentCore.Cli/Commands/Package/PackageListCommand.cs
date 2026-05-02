@@ -1,6 +1,6 @@
-using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package;
@@ -65,27 +65,9 @@ public class PackageListCommand(
             return;
         }
 
-        var table = new Table().RoundedBorder();
-        table.Title = new TableTitle($"[bold]Packages in {Markup.Escape(instance.Key)}[/]");
-        table.AddColumn("Name");
-        table.AddColumn("Author");
-        table.AddColumn("Kind");
-        table.AddColumn("Enabled");
-        table.AddColumn("PURL");
-        foreach (var package in paged)
-        {
-            table.AddMarkupRow(
-                CliOutput.FormatValue(package.ProjectName),
-                CliOutput.FormatValue(package.Author),
-                package.Kind?.ToString() is string k
-                    ? CliOutput.FormatStatus(k, "blue")
-                    : "[dim]-[/]",
-                CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                Markup.Escape(package.Purl)
-            );
-        }
-
-        output.WriteTable(table);
+        output.WriteTable(
+            PackageCliHelper.CreatePackageTable($"Packages in {instance.Key}", paged)
+        );
 
         if (resolved.Count > paged.Length)
         {

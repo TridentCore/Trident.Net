@@ -2,6 +2,7 @@ using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;
+using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package;
@@ -155,7 +156,7 @@ internal sealed record ResolvedLocalPackageDto(
     string? Author,
     string? Summary,
     ResourceKind? Kind
-);
+) : IPackageTableRow;
 
 internal sealed record ExhibitDto(
     string Purl,
@@ -212,4 +213,4 @@ internal sealed record DependencyDto(
     string ProjectId,
     string? VersionId,
     bool IsRequired
-);
+) : IDependencyTableRow;

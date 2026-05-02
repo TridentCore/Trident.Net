@@ -1,9 +1,11 @@
-using TridentCore.Abstractions.FileModels;
+using Spectre.Console;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Services;
+using Profile = TridentCore.Abstractions.FileModels.Profile;
 
-namespace TridentCore.Cli.Services;
+namespace TridentCore.Cli.Utilities;
 
 public static class PackageCliHelper
 {
@@ -65,4 +67,64 @@ public static class PackageCliHelper
             dependency.ProjectId,
             dependency.VersionId
         );
+
+    public static Table CreatePackageTable(string title, IEnumerable<IPackageTableRow> packages)
+    {
+        var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]{Markup.Escape(title)}[/]");
+        table.AddColumn("Name");
+        table.AddColumn("Author");
+        table.AddColumn("Kind");
+        table.AddColumn("Enabled");
+        table.AddColumn("PURL");
+        foreach (var package in packages)
+        {
+            table.AddMarkupRow(
+                CliOutput.FormatValue(package.ProjectName),
+                CliOutput.FormatValue(package.Author),
+                package.Kind?.ToString() is string k
+                    ? CliOutput.FormatStatus(k, "blue")
+                    : "[dim]-[/]",
+                CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
+                Markup.Escape(package.Purl)
+            );
+        }
+
+        return table;
+    }
+
+    public static Table CreateDependencyTable(
+        string title,
+        IEnumerable<IDependencyTableRow> dependencies
+    )
+    {
+        var table = new Table().RoundedBorder();
+        table.Title = new TableTitle($"[bold]{Markup.Escape(title)}[/]");
+        table.AddColumn("PURL");
+        table.AddColumn("Required");
+        foreach (var dependency in dependencies)
+        {
+            table.AddMarkupRow(
+                Markup.Escape(dependency.Purl),
+                CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
+            );
+        }
+
+        return table;
+    }
+}
+
+public interface IPackageTableRow
+{
+    string Purl { get; }
+    bool Enabled { get; }
+    string? ProjectName { get; }
+    string? Author { get; }
+    ResourceKind? Kind { get; }
+}
+
+public interface IDependencyTableRow
+{
+    string Purl { get; }
+    bool IsRequired { get; }
 }
