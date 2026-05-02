@@ -68,7 +68,7 @@ public static class ProfileExtensions
 
         public void SetOverride<T>(string key, T? value)
         {
-            if (value is null or "")
+            if (value is null)
             {
                 profile.Overrides.Remove(key);
             }
