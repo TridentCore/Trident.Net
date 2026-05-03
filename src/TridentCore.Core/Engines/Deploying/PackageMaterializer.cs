@@ -8,7 +8,7 @@ public class PackageMaterializer(ILogger<PackageMaterializer> logger, IHttpClien
 {
     public async Task MaterializeAsync(
         IReadOnlyList<PackagePlan> plans,
-        Action<PackagePlan, int>? callback = null,
+        Action<PackagePlan, int, string>? callback = null,
         CancellationToken token = default)
     {
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
@@ -57,7 +57,7 @@ public class PackageMaterializer(ILogger<PackageMaterializer> logger, IHttpClien
                                 await writer.FlushAsync(token).ConfigureAwait(false);
                             }
 
-                            callback?.Invoke(plan, index);
+                            callback?.Invoke(plan, index, cachePath);
                         }
                         catch (OperationCanceledException)
                         {
