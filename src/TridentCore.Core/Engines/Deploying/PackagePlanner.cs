@@ -44,9 +44,9 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
                 if (result is { Matched: true, EffectiveRule: { } effectiveRule })
                 {
                     logger.LogDebug("Rule {{ {skipping}, {destination} }} applied to {purl}",
-                                    entry.Purl,
                                     effectiveRule.Skipping,
-                                    effectiveRule.Destination ?? "<default>");
+                                    effectiveRule.Destination ?? "<default>",
+                                    entry.Purl);
 
                     var fileName = effectiveRule.Normalizing
                                        ? string.Concat(FileHelper.Sanitize(package.ProjectName),

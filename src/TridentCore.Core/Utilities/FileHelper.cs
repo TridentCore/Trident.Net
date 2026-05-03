@@ -14,22 +14,10 @@ public static class FileHelper
 
     public static readonly string[] SupportedBitmapMimes =
     [
-        "image/jpeg",
-        "image/png",
-        "image/bmp",
-        "image/gif",
-        "image/tiff",
+        "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff",
     ];
 
-    public static readonly string[] SupportedBitmapExtensions =
-    [
-        "jpeg",
-        "jpg",
-        "png",
-        "bmp",
-        "gif",
-        "tiff",
-    ];
+    public static readonly string[] SupportedBitmapExtensions = ["jpeg", "jpg", "png", "bmp", "gif", "tiff",];
 
     private static readonly IContentInspector Inspector = new ContentInspectorBuilder
     {
@@ -46,14 +34,12 @@ public static class FileHelper
     public static string Sanitize(string fileName)
     {
         var sanitized = !string.IsNullOrEmpty(fileName)
-            ? string.Join(
-                string.Empty,
-                fileName
-                    .Trim()
-                    .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
-                    .Select(x => x is ' ' or '-' ? '_' : x)
-            )
-            : "_";
+                            ? string.Join(string.Empty,
+                                          fileName
+                                             .Trim()
+                                             .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
+                                             .Select(x => x is ' ' or '-' ? '_' : x))
+                            : "_";
         while (sanitized.Contains("__"))
         {
             sanitized = sanitized.Replace("__", "_");
@@ -91,24 +77,16 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        Inspector
-            .Inspect(stream)
-            .ByFileExtension()
-            .OrderBy(x => -x.Points)
-            .Select(x => x.Extension)
-            .FirstOrDefault()
-        ?? fallback;
+        Inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
+     ?? fallback;
 
     public static bool IsInDirectory(string file, string directory) =>
-        Path.GetFullPath(file)
-            .StartsWith(
-                Path.GetFullPath(directory),
-                OperatingSystem.IsWindows()
-                    ? StringComparison.OrdinalIgnoreCase
-                    : StringComparison.Ordinal
-            );
+        Path
+           .GetFullPath(file)
+           .StartsWith(Path.GetFullPath(directory),
+                       OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
-    public static bool IsPathEquivalent(string path1, string path2)
+    public static bool IsPathEquivalent(string? path1, string? path2)
     {
         if (string.IsNullOrEmpty(path1) || string.IsNullOrEmpty(path2))
         {
@@ -117,21 +95,17 @@ public static class FileHelper
 
         var normalizedLeft = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path1));
         var normalizedRight = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path2));
-        return normalizedLeft.Equals(
-            normalizedRight,
-            OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal
-        );
+        return normalizedLeft.Equals(normalizedRight,
+                                     OperatingSystem.IsWindows()
+                                         ? StringComparison.OrdinalIgnoreCase
+                                         : StringComparison.Ordinal);
     }
 
-    public static bool IsFileNameEquivalent(string name1, string name2) =>
-        name1.Equals(
-            name2,
-            OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal
-        );
+    public static bool IsFileNameEquivalent(string? name1, string? name2) =>
+        !string.IsNullOrEmpty(name1)
+     && !string.IsNullOrEmpty(name2)
+     && name1.Equals(name2,
+                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {
@@ -180,21 +154,17 @@ public static class FileHelper
 
         var directory = new DirectoryInfo(path);
         var (size, count) = directory
-            .GetFiles()
-            .Aggregate(
-                (0ul, 0ul),
-                (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1)
-            );
+                           .GetFiles()
+                           .Aggregate((0ul, 0ul),
+                                      (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1));
         return directory
-            .GetDirectories()
-            .Aggregate(
-                (size, count),
-                (current, dir) =>
-                {
-                    var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
-                    return (current.size + subSize, current.count + subCount);
-                }
-            );
+              .GetDirectories()
+              .Aggregate((size, count),
+                         (current, dir) =>
+                         {
+                             var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
+                             return (current.size + subSize, current.count + subCount);
+                         });
     }
 
     public static bool VerifyModified(string path, DateTimeOffset? modifiedTime, string? hash)
@@ -213,19 +183,14 @@ public static class FileHelper
 
             if (hash != null)
             {
-                using var reader = new FileStream(
-                    path,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read
-                );
+                using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 var computed = Convert.ToHexString(SHA1.HashData(reader));
                 if (hash.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
                 {
                     // 文件没变，写回修改时间避免下次重复检查
                     if (modifiedTime.HasValue)
                     {
-                        File.SetLastAccessTimeUtc(path, modifiedTime.Value.UtcDateTime);
+                        File.SetLastWriteTimeUtc(path, modifiedTime.Value.UtcDateTime);
                     }
 
                     // 文件相同直接通过
@@ -249,11 +214,7 @@ public static class FileHelper
 
     private class SystemObjectNewtonsoftCompatibleConverter : JsonConverter<object>
     {
-        public override object? Read(
-            ref Utf8JsonReader reader,
-            Type typeToConvert,
-            JsonSerializerOptions options
-        )
+        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             switch (reader.TokenType)
             {
@@ -270,20 +231,17 @@ public static class FileHelper
                 case JsonTokenType.String:
                     return reader.GetString();
                 default:
-                    {
-                        // Use JsonElement as fallback.
-                        // Newtonsoft uses JArray or JObject.
-                        using var document = JsonDocument.ParseValue(ref reader);
-                        return document.RootElement.Clone();
-                    }
+                {
+                    // Use JsonElement as fallback.
+                    // Newtonsoft uses JArray or JObject.
+                    using var document = JsonDocument.ParseValue(ref reader);
+                    return document.RootElement.Clone();
+                }
             }
         }
 
-        public override void Write(
-            Utf8JsonWriter writer,
-            object value,
-            JsonSerializerOptions options
-        ) => writer.WriteRawValue(JsonSerializer.Serialize(value));
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
+            writer.WriteRawValue(JsonSerializer.Serialize(value));
     }
 
     #endregion
