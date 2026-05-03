@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MimeDetective;
@@ -13,22 +14,10 @@ public static class FileHelper
 
     public static readonly string[] SupportedBitmapMimes =
     [
-        "image/jpeg",
-        "image/png",
-        "image/bmp",
-        "image/gif",
-        "image/tiff",
+        "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff",
     ];
 
-    public static readonly string[] SupportedBitmapExtensions =
-    [
-        "jpeg",
-        "jpg",
-        "png",
-        "bmp",
-        "gif",
-        "tiff",
-    ];
+    public static readonly string[] SupportedBitmapExtensions = ["jpeg", "jpg", "png", "bmp", "gif", "tiff",];
 
     private static readonly IContentInspector Inspector = new ContentInspectorBuilder
     {
@@ -45,14 +34,12 @@ public static class FileHelper
     public static string Sanitize(string fileName)
     {
         var sanitized = !string.IsNullOrEmpty(fileName)
-            ? string.Join(
-                string.Empty,
-                fileName
-                    .Trim()
-                    .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
-                    .Select(x => x is ' ' or '-' ? '_' : x)
-            )
-            : "_";
+                            ? string.Join(string.Empty,
+                                          fileName
+                                             .Trim()
+                                             .Where(x => !Path.GetInvalidFileNameChars().Contains(x))
+                                             .Select(x => x is ' ' or '-' ? '_' : x))
+                            : "_";
         while (sanitized.Contains("__"))
         {
             sanitized = sanitized.Replace("__", "_");
@@ -90,22 +77,14 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        Inspector
-            .Inspect(stream)
-            .ByFileExtension()
-            .OrderBy(x => -x.Points)
-            .Select(x => x.Extension)
-            .FirstOrDefault()
-        ?? fallback;
+        Inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
+     ?? fallback;
 
     public static bool IsInDirectory(string file, string directory) =>
-        Path.GetFullPath(file)
-            .StartsWith(
-                Path.GetFullPath(directory),
-                OperatingSystem.IsWindows()
-                    ? StringComparison.OrdinalIgnoreCase
-                    : StringComparison.Ordinal
-            );
+        Path
+           .GetFullPath(file)
+           .StartsWith(Path.GetFullPath(directory),
+                       OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     public static bool IsPathEquivalent(string path1, string path2)
     {
@@ -116,21 +95,15 @@ public static class FileHelper
 
         var normalizedLeft = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path1));
         var normalizedRight = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path2));
-        return normalizedLeft.Equals(
-            normalizedRight,
-            OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal
-        );
+        return normalizedLeft.Equals(normalizedRight,
+                                     OperatingSystem.IsWindows()
+                                         ? StringComparison.OrdinalIgnoreCase
+                                         : StringComparison.Ordinal);
     }
 
     public static bool IsFileNameEquivalent(string name1, string name2) =>
-        name1.Equals(
-            name2,
-            OperatingSystem.IsWindows()
-                ? StringComparison.OrdinalIgnoreCase
-                : StringComparison.Ordinal
-        );
+        name1.Equals(name2,
+                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {
@@ -179,32 +152,67 @@ public static class FileHelper
 
         var directory = new DirectoryInfo(path);
         var (size, count) = directory
-            .GetFiles()
-            .Aggregate(
-                (0ul, 0ul),
-                (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1)
-            );
+                           .GetFiles()
+                           .Aggregate((0ul, 0ul),
+                                      (current, file) => (current.Item1 + (ulong)file.Length, current.Item2 + 1));
         return directory
-            .GetDirectories()
-            .Aggregate(
-                (size, count),
-                (current, dir) =>
+              .GetDirectories()
+              .Aggregate((size, count),
+                         (current, dir) =>
+                         {
+                             var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
+                             return (current.size + subSize, current.count + subCount);
+                         });
+    }
+
+    public static bool VerifyModified(string path, DateTimeOffset? modifiedTime, string? hash)
+    {
+        if (File.Exists(path))
+        {
+            if (modifiedTime != null)
+            {
+                var mtime = File.GetLastWriteTimeUtc(path);
+                if (mtime == modifiedTime)
                 {
-                    var (subSize, subCount) = CalculateDirectorySize(dir.FullName);
-                    return (current.size + subSize, current.count + subCount);
+                    // 没被修改，直接通过
+                    return true;
                 }
-            );
+            }
+
+            if (hash != null)
+            {
+                using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var computed = Convert.ToHexString(SHA1.HashData(reader));
+                if (hash.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    // 文件没变，写回修改时间避免下次重复检查
+                    if (modifiedTime.HasValue)
+                    {
+                        File.SetLastAccessTimeUtc(path, modifiedTime.Value.UtcDateTime);
+                    }
+
+                    // 文件相同直接通过
+                    return true;
+                }
+                else
+                {
+                    // 提供了 hash 但是没通过，算判定失败
+                    return false;
+                }
+            }
+
+            // 修改了，但是没有提供 hash，判定为存在性检验，直接通过
+            return true;
+        }
+
+        return false;
     }
 
     #region Nested type: SystemObjectNewtonsoftCompatibleConverter
 
     private class SystemObjectNewtonsoftCompatibleConverter : JsonConverter<object>
     {
-        public override object? Read(
-            ref Utf8JsonReader reader,
-            Type typeToConvert,
-            JsonSerializerOptions options
-        )
+        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             switch (reader.TokenType)
             {
@@ -230,11 +238,8 @@ public static class FileHelper
             }
         }
 
-        public override void Write(
-            Utf8JsonWriter writer,
-            object value,
-            JsonSerializerOptions options
-        ) => writer.WriteRawValue(JsonSerializer.Serialize(value));
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
+            writer.WriteRawValue(JsonSerializer.Serialize(value));
     }
 
     #endregion
