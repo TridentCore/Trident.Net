@@ -340,7 +340,7 @@ public class InstanceRunCommand(
         var message = Markup.Escape(scrap.Message);
 
         AnsiConsole.MarkupLine(
-            $"{time} [{color}]{level, -5}[/] [grey]{thread}[/]{sender} {message}"
+            $"{time} [{color}]{level,-5}[/] [grey]{thread}[/]{sender} {message}"
         );
     }
 

@@ -11,8 +11,7 @@ using TridentCore.Purl;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-public class ResolvePackageStage(
-    PackagePlanner planner) : StageBase
+public class ResolvePackageStage(PackagePlanner planner) : StageBase
 {
     public Subject<(int, int)> ProgressStream { get; } = new();
 
@@ -29,7 +28,9 @@ public class ResolvePackageStage(
             }
             else
             {
-                throw new FormatException($"{Context.Setup.Loader} is not well formatted loader string");
+                throw new FormatException(
+                    $"{Context.Setup.Loader} is not well formatted loader string"
+                );
             }
         }
 
@@ -41,19 +42,28 @@ public class ResolvePackageStage(
 
         ProgressStream.OnNext((0, packages.Count));
 
-        await foreach (var plan in planner.PlanAsync(packages, context).WithCancellation(token).ConfigureAwait(false))
+        await foreach (
+            var plan in planner
+                .PlanAsync(packages, context)
+                .WithCancellation(token)
+                .ConfigureAwait(false)
+        )
         {
-            builder.AddParcel(plan.Label,
-                              plan.Namespace,
-                              plan.ProjectId,
-                              plan.VersionId,
-                              Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key), plan.RelativeTargetPath),
-                              plan.Url,
-                              plan.Sha1);
+            builder.AddParcel(
+                plan.Label,
+                plan.Namespace,
+                plan.ProjectId,
+                plan.VersionId,
+                Path.Combine(
+                    PathDef.Default.DirectoryOfBuild(Context.Key),
+                    plan.RelativeTargetPath
+                ),
+                plan.Url,
+                plan.Sha1
+            );
         }
 
         ProgressStream.OnNext((packages.Count, packages.Count));
-
 
         if (token.IsCancellationRequested)
         {

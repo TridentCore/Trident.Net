@@ -1,4 +1,4 @@
-﻿namespace TridentCore.Abstractions.FileModels;
+namespace TridentCore.Abstractions.FileModels;
 
 // 打包器配置
 public class PackData

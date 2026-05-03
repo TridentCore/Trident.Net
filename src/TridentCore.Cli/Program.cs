@@ -138,9 +138,7 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
         return;
     }
 
-    var error = AnsiConsole.Create(
-        new() { Out = new AnsiConsoleOutput(Console.Error) }
-    );
+    var error = AnsiConsole.Create(new() { Out = new AnsiConsoleOutput(Console.Error) });
     var body = $"[bold red]{Markup.Escape(message)}[/]";
     if (!string.IsNullOrWhiteSpace(detail))
     {

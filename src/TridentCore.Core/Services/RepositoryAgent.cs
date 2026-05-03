@@ -52,39 +52,39 @@ public class RepositoryAgent
             switch (profile.Driver)
             {
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
-                {
-                    var curseforge = new CurseForgeRepository(
-                        profile.Label,
-                        RestService.For<ICurseForgeClient>(
-                            BuildClient(profile),
-                            new RefitSettings(
-                                new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))
-                            )
-                        )
-                    );
-                    built.Add(profile.Label, curseforge);
-                    break;
-                }
-                case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
-                {
-                    var modrinth = new ModrinthRepository(
-                        profile.Label,
-                        RestService.For<IModrinthClient>(
-                            BuildClient(profile),
-                            new RefitSettings(
-                                new SystemTextJsonContentSerializer(
-                                    new(JsonSerializerDefaults.Web)
-                                    {
-                                        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                                    }
+                    {
+                        var curseforge = new CurseForgeRepository(
+                            profile.Label,
+                            RestService.For<ICurseForgeClient>(
+                                BuildClient(profile),
+                                new RefitSettings(
+                                    new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))
                                 )
                             )
-                        )
-                    );
+                        );
+                        built.Add(profile.Label, curseforge);
+                        break;
+                    }
+                case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
+                    {
+                        var modrinth = new ModrinthRepository(
+                            profile.Label,
+                            RestService.For<IModrinthClient>(
+                                BuildClient(profile),
+                                new RefitSettings(
+                                    new SystemTextJsonContentSerializer(
+                                        new(JsonSerializerDefaults.Web)
+                                        {
+                                            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                                        }
+                                    )
+                                )
+                            )
+                        );
 
-                    built.Add(profile.Label, modrinth);
-                    break;
-                }
+                        built.Add(profile.Label, modrinth);
+                        break;
+                    }
             }
         }
 

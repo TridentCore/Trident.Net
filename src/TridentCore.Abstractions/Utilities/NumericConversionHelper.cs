@@ -34,9 +34,9 @@ public static class NumericConversionHelper
                 return true;
             }
         }
-        catch (Exception ex) when (ex is InvalidCastException or OverflowException or FormatException)
-        {
-        }
+        catch (Exception ex)
+            when (ex is InvalidCastException or OverflowException or FormatException)
+        { }
 
         value = default!;
         return false;
@@ -91,9 +91,9 @@ public static class NumericConversionHelper
                 return true;
             }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or FormatException or OverflowException)
-        {
-        }
+        catch (Exception ex)
+            when (ex is InvalidOperationException or FormatException or OverflowException)
+        { }
 
         value = default!;
         return false;

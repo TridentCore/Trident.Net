@@ -41,11 +41,11 @@ public static class JavaHelper
         CancellationToken cancellationToken = default
     )
     {
-        var raw = OperatingSystem.IsWindows()
-            ? DiscoverJavaRuntimesWindows()
+        var raw =
+            OperatingSystem.IsWindows() ? DiscoverJavaRuntimesWindows()
             : OperatingSystem.IsMacOS()
                 ? await DiscoverJavaRuntimesMacOsAsync(cancellationToken).ConfigureAwait(false)
-                : [];
+            : [];
 
         if (raw.Count == 0)
         {
@@ -54,14 +54,16 @@ public static class JavaHelper
 
         var results = new ConcurrentBag<JavaRuntimeCandidate>();
         await Task.WhenAll(
-                raw.Select(item => ProbeAndBuildCandidateAsync(
-                    item.Home,
-                    item.Vendor,
-                    item.Version,
-                    item.Source,
-                    results,
-                    cancellationToken
-                ))
+                raw.Select(item =>
+                    ProbeAndBuildCandidateAsync(
+                        item.Home,
+                        item.Vendor,
+                        item.Version,
+                        item.Source,
+                        results,
+                        cancellationToken
+                    )
+                )
             )
             .ConfigureAwait(false);
         return SortJavaRuntimeCandidates(results);
@@ -91,7 +93,12 @@ public static class JavaHelper
 
     #region Discovery
 
-    private static List<(string Home, string? Vendor, string? Version, string Source)> DiscoverJavaRuntimesWindows()
+    private static List<(
+        string Home,
+        string? Vendor,
+        string? Version,
+        string Source
+    )> DiscoverJavaRuntimesWindows()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -122,7 +129,13 @@ public static class JavaHelper
                     CollectWindowsRegistryHomes(results, seen, root, rootPath);
                     if (root.GetValue("CurrentVersion") is string currentVersion)
                     {
-                        CollectWindowsRegistrySubHomes(results, seen, root, rootPath, currentVersion);
+                        CollectWindowsRegistrySubHomes(
+                            results,
+                            seen,
+                            root,
+                            rootPath,
+                            currentVersion
+                        );
                     }
 
                     foreach (var subKeyName in root.GetSubKeyNames())
@@ -178,9 +191,9 @@ public static class JavaHelper
         CollectWindowsRegistryHomes(results, seen, subKey, $@"{rootPath}\{subKeyName}", subKeyName);
     }
 
-    private static async Task<List<(string Home, string? Vendor, string? Version, string Source)>> DiscoverJavaRuntimesMacOsAsync(
-        CancellationToken cancellationToken
-    )
+    private static async Task<
+        List<(string Home, string? Vendor, string? Version, string Source)>
+    > DiscoverJavaRuntimesMacOsAsync(CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsMacOS())
         {

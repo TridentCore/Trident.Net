@@ -79,8 +79,8 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
         var table = new Table().RoundedBorder();
         table.Title = new(
-                          $"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]"
-                         );
+            $"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]"
+        );
         table.AddColumn("Version");
         table.AddColumn("LURL");
         table.AddColumn("Type");

@@ -107,7 +107,7 @@ public static class ServiceCollectionExtensions
                     new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                       )
+                    )
                 );
             });
         services.AddSingleton<MicrosoftService>();
@@ -131,7 +131,7 @@ public static class ServiceCollectionExtensions
                     new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                       )
+                    )
                 );
             });
         services
@@ -149,7 +149,7 @@ public static class ServiceCollectionExtensions
                     new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                       )
+                    )
                 );
             });
         services.AddSingleton<XboxLiveService>();
@@ -176,7 +176,7 @@ public static class ServiceCollectionExtensions
                     new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                       )
+                    )
                 );
             });
         services.AddSingleton<MinecraftService>();
@@ -196,7 +196,7 @@ public static class ServiceCollectionExtensions
                     new(
                         "Trident.Net",
                         Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                       )
+                    )
                 );
             });
 

@@ -110,9 +110,7 @@ public class PackageAddCommand(
         else
         {
             var table = new Table().RoundedBorder();
-            table.Title = new(
-                              $"[bold]Package add results for {Markup.Escape(instance.Key)}[/]"
-                             );
+            table.Title = new($"[bold]Package add results for {Markup.Escape(instance.Key)}[/]");
             table.AddColumn("PURL");
             table.AddColumn("Status");
             table.AddColumn("Reason");

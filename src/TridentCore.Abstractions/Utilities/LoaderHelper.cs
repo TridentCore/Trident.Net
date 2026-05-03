@@ -27,15 +27,22 @@ public static class LoaderHelper
     public static string ToDisplayLabel(string identity, string version) =>
         $"{ToDisplayName(identity)} {version}";
 
-    public static bool TryParse(string lurl, out (string Identity, string Version) result)
+    public static bool TryParse(string? lurl, out (string Identity, string Version) result)
     {
-        var match = Pattern.Match(lurl);
-        if (match.Success && match.Groups["identity"].Success && match.Groups["version"].Success)
+        if (lurl is not null)
         {
-            result.Identity = match.Groups["identity"].Value;
-            result.Version = match.Groups["version"].Value;
+            var match = Pattern.Match(lurl);
+            if (
+                match.Success
+                && match.Groups["identity"].Success
+                && match.Groups["version"].Success
+            )
+            {
+                result.Identity = match.Groups["identity"].Value;
+                result.Version = match.Groups["version"].Value;
 
-            return true;
+                return true;
+            }
         }
 
         result = default;

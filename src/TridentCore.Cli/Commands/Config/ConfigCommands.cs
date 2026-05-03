@@ -13,7 +13,10 @@ public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : C
 {
     protected ConfigScope ResolveScope(T settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.Instance) && string.IsNullOrWhiteSpace(settings.Profile))
+        if (
+            string.IsNullOrWhiteSpace(settings.Instance)
+            && string.IsNullOrWhiteSpace(settings.Profile)
+        )
         {
             return ConfigScope.Global;
         }
@@ -351,12 +354,21 @@ public static class ConfigValueParser
             return boolean;
         }
 
-        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+        if (
+            long.TryParse(
+                value,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var integer
+            )
+        )
         {
             return integer;
         }
 
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+        if (
+            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+        )
         {
             return number;
         }
@@ -375,10 +387,7 @@ public static class ConfigValueParser
     private static long ParseInteger(string value) =>
         long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
             ? result
-            : throw new CliException(
-                $"'{value}' is not a valid integer value.",
-                ExitCodes.Usage
-            );
+            : throw new CliException($"'{value}' is not a valid integer value.", ExitCodes.Usage);
 
     private static double ParseNumber(string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result)

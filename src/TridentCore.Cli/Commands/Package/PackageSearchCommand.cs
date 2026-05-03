@@ -135,9 +135,7 @@ public class PackageSearchCommand(
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new(
-                          $"[bold]Search results for {Markup.Escape(settings.Query)}[/]"
-                         );
+        table.Title = new($"[bold]Search results for {Markup.Escape(settings.Query)}[/]");
         table.AddColumn("Name");
         table.AddColumn("Author");
         table.AddColumn("Kind");
