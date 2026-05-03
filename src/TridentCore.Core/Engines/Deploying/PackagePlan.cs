@@ -7,6 +7,7 @@ public record PackagePlan(
     string VersionId,
     string RelativeTargetPath,
     Uri Url,
-    string? Sha1
-)
-{ }
+    string? Sha1)
+{
+    public bool IsSkipping { get; init; }
+}

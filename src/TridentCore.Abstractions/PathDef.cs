@@ -88,11 +88,6 @@ public class PathDef(string home)
             ? Path.Combine(CachePackageDirectory, label, ns, pid, $"{vid}{extension}")
             : Path.Combine(CachePackageDirectory, label, pid, $"{vid}{extension}");
 
-    public string FileOfPackageMetadata(string label, string? ns, string pid, string vid) =>
-        ns != null
-            ? Path.Combine(CachePackageDirectory, label, ns, pid, $"{vid}.json")
-            : Path.Combine(CachePackageDirectory, label, pid, $"{vid}.json");
-
     public string FileOfAssetIndex(string index) =>
         Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json");
 

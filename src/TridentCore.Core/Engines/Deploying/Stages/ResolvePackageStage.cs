@@ -28,9 +28,7 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
             }
             else
             {
-                throw new FormatException(
-                    $"{Context.Setup.Loader} is not well formatted loader string"
-                );
+                throw new FormatException($"{Context.Setup.Loader} is not well formatted loader string");
             }
         }
 
@@ -42,25 +40,20 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
 
         ProgressStream.OnNext((0, packages.Count));
 
-        await foreach (
-            var plan in planner
-                .PlanAsync(packages, context)
-                .WithCancellation(token)
-                .ConfigureAwait(false)
-        )
+        await foreach (var plan in planner.PlanAsync(packages, context).WithCancellation(token).ConfigureAwait(false))
         {
-            builder.AddParcel(
-                plan.Label,
-                plan.Namespace,
-                plan.ProjectId,
-                plan.VersionId,
-                Path.Combine(
-                    PathDef.Default.DirectoryOfBuild(Context.Key),
-                    plan.RelativeTargetPath
-                ),
-                plan.Url,
-                plan.Sha1
-            );
+            if (plan.IsSkipping)
+            {
+                continue;
+            }
+
+            builder.AddParcel(plan.Label,
+                              plan.Namespace,
+                              plan.ProjectId,
+                              plan.VersionId,
+                              Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key), plan.RelativeTargetPath),
+                              plan.Url,
+                              plan.Sha1);
         }
 
         ProgressStream.OnNext((packages.Count, packages.Count));
