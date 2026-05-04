@@ -1,8 +1,12 @@
+using TridentCore.Abstractions.Repositories;
+
 namespace TridentCore.Core.Services;
 
 public interface IRepositoryProviderAccessor
 {
     IReadOnlyList<ProviderProfile> Build();
+
+    IReadOnlyList<ProviderCustom> BuildCustom();
 
     #region Nested type: ProviderProfile
 
@@ -26,5 +30,13 @@ public interface IRepositoryProviderAccessor
         #endregion
     }
 
+    #endregion
+
+    #region Nested type: ProviderCustom
+
+    record struct ProviderCustom(string Label, IRepository Instance)
+    {
+
+    }
     #endregion
 }

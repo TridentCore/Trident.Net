@@ -1,3 +1,4 @@
+using TridentCore.Abstractions.Repositories;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
@@ -25,4 +26,6 @@ public class BuiltinRepositoryProviderAccessor : IRepositoryProviderAccessor
 
         return [curseforge, modrinth];
     }
+
+    public IReadOnlyList<IRepositoryProviderAccessor.ProviderCustom> BuildCustom() => [];
 }
