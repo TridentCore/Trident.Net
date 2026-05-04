@@ -48,12 +48,6 @@ public class InstanceExportCommand(
                         .ConfigureAwait(false)
             )
             .ConfigureAwait(false);
-        await using var archive = await output
-            .StatusAsync(
-                "Packing archive...",
-                async () => await exporterAgent.PackCompressedAsync(container).ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
 
         var outputPath = Path.GetFullPath(settings.Output);
         var dir = Path.GetDirectoryName(outputPath);
@@ -64,7 +58,7 @@ public class InstanceExportCommand(
 
         await output
             .StatusAsync(
-                "Writing archive...",
+                "Packing and writing archive...",
                 async () =>
                 {
                     await using var file = new FileStream(
@@ -72,7 +66,7 @@ public class InstanceExportCommand(
                         FileMode.Create,
                         FileAccess.Write
                     );
-                    await archive.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+                    await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
                     await file.FlushAsync(cancellationToken).ConfigureAwait(false);
                 }
             )

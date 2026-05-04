@@ -14,8 +14,7 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         string key,
         string name,
         string author,
-        string version
-    )
+        string version)
     {
         var exporter = exporters.FirstOrDefault(x => x.Label == label);
         if (exporter is not null)
@@ -25,22 +24,16 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
                 if (options.ExcludedTags.Count > 0)
                 {
                     var excluded = options.ExcludedTags.ToHashSet();
+                    // 后面传递进去的 profile 需要是 clone 避免对包的筛选影响到原来的数据。
                     profile = profile.Clone();
-                    var toRemove = profile
-                        .Setup.Packages.Where(p => p.Tags.Any(t => excluded.Contains(t)))
-                        .ToList();
+                    var toRemove = profile.Setup.Packages.Where(p => p.Tags.Any(excluded.Contains)).ToList();
                     foreach (var p in toRemove)
+                    {
                         profile.Setup.Packages.Remove(p);
+                    }
                 }
 
-                var pack = new UncompressedProfilePack(
-                    key,
-                    profile,
-                    options,
-                    name,
-                    author,
-                    version
-                );
+                var pack = new UncompressedProfilePack(key, profile, options, name, author, version);
                 return await exporter.PackAsync(pack).ConfigureAwait(false);
             }
 
@@ -50,15 +43,20 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         throw new ExporterNotFoundException(label);
     }
 
-    public async Task<Stream> PackCompressedAsync(PackedProfileContainer container)
+    public async Task PackCompressedAsync(Stream writer, PackedProfileContainer container)
     {
-        var output = new MemoryStream();
-        var zip = new ZipArchive(output, ZipArchiveMode.Create, true);
+        // 如果 import 内有同名的会选择替换掉 Files 列表的项目
+        // Attachments > import > Files
+
+        var added = new HashSet<string>();
+        await using var zip = new ZipArchive(writer, ZipArchiveMode.Create, true);
         foreach (var (name, stream) in container.Attachments)
         {
-            var entry = zip.CreateEntry(name);
-            await using var writer = await entry.OpenAsync().ConfigureAwait(false);
-            await stream.CopyToAsync(writer).ConfigureAwait(false);
+            var entryPath = name.Replace('\\', '/');
+            var entry = zip.CreateEntry(entryPath);
+            await using var entryWriter = await entry.OpenAsync().ConfigureAwait(false);
+            await stream.CopyToAsync(entryWriter).ConfigureAwait(false);
+            added.Add(entryPath);
         }
 
         var import = PathDef.Default.DirectoryOfImport(container.Key);
@@ -79,22 +77,39 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             foreach (var file in Directory.GetFiles(dir))
             {
                 var relative = Path.GetRelativePath(import, file);
-                var entry = zip.CreateEntry(
-                    Path.Combine(container.OverrideDirectoryName, relative)
-                );
-                await using var writer = await entry.OpenAsync().ConfigureAwait(false);
-                await using var reader = new FileStream(
-                    file,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read
-                );
-                await reader.CopyToAsync(writer).ConfigureAwait(false);
+                var entryPath = Path.Combine(container.OverrideDirectoryName, relative).Replace('\\', '/');
+                if (added.Contains(entryPath))
+                {
+                    continue;
+                }
+
+                var entry = zip.CreateEntry(entryPath);
+                await using var fileWriter = await entry.OpenAsync().ConfigureAwait(false);
+                await using var reader = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+                await reader.CopyToAsync(fileWriter).ConfigureAwait(false);
+                added.Add(entryPath);
             }
         }
 
-        await zip.DisposeAsync().ConfigureAwait(false);
-        output.Position = 0;
-        return output;
+        foreach (var (rel, abs) in container.Files)
+        {
+            var relative = rel.Replace('\\', '/');
+            if (added.Contains(relative))
+            {
+                // 被 import 内的项目替代
+                continue;
+            }
+
+            if (!File.Exists(abs))
+            {
+                // 文件不存在直接报错
+                throw new FileNotFoundException(abs);
+            }
+
+            var entry = zip.CreateEntry(relative);
+            await using var fileWriter = await entry.OpenAsync().ConfigureAwait(false);
+            await using var reader = new FileStream(abs, FileMode.Open, FileAccess.Read, FileShare.Read);
+            await reader.CopyToAsync(fileWriter).ConfigureAwait(false);
+        }
     }
 }
