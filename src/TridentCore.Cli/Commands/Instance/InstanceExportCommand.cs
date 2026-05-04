@@ -5,17 +5,10 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceExportCommand(
-    InstanceContextResolver resolver,
-    ExporterAgent exporterAgent,
-    CliOutput output
-) : InstanceCommandBase<InstanceExportCommand.Arguments>(resolver)
+public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAgent exporterAgent, CliOutput output)
+    : InstanceCommandBase<InstanceExportCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExportAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.Success;
@@ -24,30 +17,23 @@ public class InstanceExportCommand(
     private async Task ExportAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
-        var options = PackData.CreateDefault();
-        options.IncludingSource = string.Equals(
-            settings.Type,
-            "offline",
-            StringComparison.OrdinalIgnoreCase
-        );
-        options.IncludingTags = !settings.NoTags;
+        var options = new PackData
+        {
+            IncludingSource = string.Equals(settings.Type, "offline", StringComparison.OrdinalIgnoreCase),
+            IncludingTags = !settings.NoTags
+        };
 
         using var container = await output
-            .StatusAsync(
-                "Collecting export data...",
-                async () =>
-                    await exporterAgent
-                        .ExportAsync(
-                            options,
-                            settings.Format,
-                            instance.Key,
-                            settings.Name ?? instance.Profile.Name,
-                            settings.Author,
-                            settings.Version
-                        )
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                                   .StatusAsync("Collecting export data...",
+                                                async () => await exporterAgent
+                                                                 .ExportAsync(options,
+                                                                              settings.Format,
+                                                                              instance.Key,
+                                                                              settings.Name ?? instance.Profile.Name,
+                                                                              settings.Author,
+                                                                              settings.Version)
+                                                                 .ConfigureAwait(false))
+                                   .ConfigureAwait(false);
 
         var outputPath = Path.GetFullPath(settings.Output);
         var dir = Path.GetDirectoryName(outputPath);
@@ -57,20 +43,14 @@ public class InstanceExportCommand(
         }
 
         await output
-            .StatusAsync(
-                "Packing and writing archive...",
-                async () =>
-                {
-                    await using var file = new FileStream(
-                        outputPath,
-                        FileMode.Create,
-                        FileAccess.Write
-                    );
-                    await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
-                    await file.FlushAsync(cancellationToken).ConfigureAwait(false);
-                }
-            )
-            .ConfigureAwait(false);
+             .StatusAsync("Packing and writing archive...",
+                          async () =>
+                          {
+                              await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+                              await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
+                              await file.FlushAsync(cancellationToken).ConfigureAwait(false);
+                          })
+             .ConfigureAwait(false);
 
         var result = new
         {
@@ -88,14 +68,12 @@ public class InstanceExportCommand(
         else
         {
             var size = File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0;
-            output.WriteKeyValueTable(
-                "Instance exported",
-                ("Instance", instance.Key),
-                ("Format", settings.Format),
-                ("Type", settings.Type),
-                ("Output", outputPath),
-                ("Size", $"{size:n0} bytes")
-            );
+            output.WriteKeyValueTable("Instance exported",
+                                      ("Instance", instance.Key),
+                                      ("Format", settings.Format),
+                                      ("Type", settings.Type),
+                                      ("Output", outputPath),
+                                      ("Size", $"{size:n0} bytes"));
             output.WriteSuccess($"Instance {instance.Key} exported.");
         }
     }
