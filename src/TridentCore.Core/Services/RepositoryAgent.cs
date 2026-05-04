@@ -36,14 +36,14 @@ public class RepositoryAgent
         _logger = logger;
         _cache = cache;
         _clientFactory = clientFactory;
-        _repositories = BuildRepositories(accessors).AsReadOnly();
+        _repositories = BuildRepositories(accessors.ToList()).AsReadOnly();
     }
 
     public int Count => _repositories.Count;
     public IEnumerable<string> Labels => _repositories.Keys;
 
     private IDictionary<string, IRepository> BuildRepositories(
-        IEnumerable<IRepositoryProviderAccessor> accessors
+        IReadOnlyList<IRepositoryProviderAccessor> accessors
     )
     {
         var built = new Dictionary<string, IRepository>();
@@ -86,6 +86,10 @@ public class RepositoryAgent
                         break;
                     }
             }
+        }
+
+        foreach (var custom in accessors.SelectMany(x => x.BuildCustom()))
+        {
         }
 
         return built;

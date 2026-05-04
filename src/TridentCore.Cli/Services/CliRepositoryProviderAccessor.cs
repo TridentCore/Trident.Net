@@ -1,3 +1,4 @@
+using TridentCore.Abstractions.Repositories;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Services;
@@ -24,6 +25,8 @@ public class CliRepositoryProviderAccessor(
 
         return [.. map.Values.OrderBy(x => x.Label, StringComparer.OrdinalIgnoreCase)];
     }
+
+    public IReadOnlyList<IRepositoryProviderAccessor.ProviderCustom> BuildCustom() => [];
 
     private static (string Key, string Value)? BuildAuthorizationHeader(
         IRepositoryProviderAccessor.ProviderProfile.DriverType driver,
