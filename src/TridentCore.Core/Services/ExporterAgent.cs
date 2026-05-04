@@ -21,11 +21,12 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         {
             if (profileManager.TryGetImmutable(key, out var profile))
             {
+                // Exporter 会直接对 Profile 进行修改，所以必须 clone 避免影响原始数据。
+                profile = profile.Clone();
+
                 if (options.ExcludedTags.Count > 0)
                 {
                     var excluded = options.ExcludedTags.ToHashSet();
-                    // 后面传递进去的 profile 需要是 clone 避免对包的筛选影响到原来的数据。
-                    profile = profile.Clone();
                     var toRemove = profile.Setup.Packages.Where(p => p.Tags.Any(excluded.Contains)).ToList();
                     foreach (var p in toRemove)
                     {

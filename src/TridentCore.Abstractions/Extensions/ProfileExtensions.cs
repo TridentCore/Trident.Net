@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
 
@@ -8,33 +9,8 @@ public static class ProfileExtensions
 {
     public static Profile.Rice Clone(this Profile.Rice self)
     {
-        var rules = new List<Profile.Rice.Rule>(
-            self.Rules.Select(x => new Profile.Rice.Rule()
-            {
-                Enabled = x.Enabled,
-                Selector = x.Selector,
-                Destination = x.Destination,
-                Skipping = x.Skipping,
-                Normalizing = x.Normalizing,
-            })
-        );
-        var packages = new List<Profile.Rice.Entry>(
-            self.Packages.Select(x => new Profile.Rice.Entry
-            {
-                Enabled = x.Enabled,
-                Purl = x.Purl,
-                Source = x.Source,
-                Tags = x.Tags,
-            })
-        );
-        return new()
-        {
-            Version = self.Version,
-            Loader = self.Loader,
-            Source = self.Source,
-            Packages = packages,
-            Rules = self.Rules,
-        };
+        var json = JsonSerializer.Serialize(self);
+        return JsonSerializer.Deserialize<Profile.Rice>(json)!;
     }
 
     #region Nested type: $extension
