@@ -28,11 +28,7 @@ public class PathDef(string home)
             dir = Path.GetDirectoryName(dir);
         }
 
-        return home
-            ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".trident"
-            );
+        return home ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".trident");
     }
 
     #region Private Folder
@@ -54,45 +50,28 @@ public class PathDef(string home)
     public string CachePackageDirectory => Path.Combine(CacheDirectory, "packages");
     public string CacheRuntimeDirectory => Path.Combine(CacheDirectory, "runtimes");
 
-    public string DirectoryOfRuntime(uint major) =>
-        Path.Combine(CacheRuntimeDirectory, major.ToString());
+    public string DirectoryOfRuntime(uint major) => Path.Combine(CacheRuntimeDirectory, major.ToString());
 
-    public string FileOfLibrary(
-        string ns,
-        string name,
-        string version,
-        string? platform,
-        string extension
-    )
+    public string FileOfLibrary(string ns, string name, string version, string? platform, string extension)
     {
         var nsDir = string.Join(Path.DirectorySeparatorChar, ns.Split('.'));
-        return Path.Combine(
-            CacheLibraryDirectory,
-            nsDir,
-            name,
-            version,
-            platform != null
-                ? $"{name}-{version}-{platform}.{extension}"
-                : $"{name}-{version}.{extension}"
-        );
+        return Path.Combine(CacheLibraryDirectory,
+                            nsDir,
+                            name,
+                            version,
+                            platform != null
+                                ? $"{name}-{version}-{platform}.{extension}"
+                                : $"{name}-{version}.{extension}");
     }
 
-    public string FileOfPackageObject(
-        string label,
-        string? ns,
-        string pid,
-        string vid,
-        string extension
-    ) =>
+    public string FileOfPackageObject(string label, string? ns, string pid, string vid, string extension) =>
         ns != null
             ? Path.Combine(CachePackageDirectory, label, ns, pid, $"{vid}{extension}")
             : Path.Combine(CachePackageDirectory, label, pid, $"{vid}{extension}");
 
-    public string FileOfAssetIndex(string index) =>
-        Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json");
+    public string FileOfAssetIndex(string index) => Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json");
 
-    public string FileOfAssetObject(string hash) =>
-        Path.Combine(CacheAssetDirectory, "objects", hash[..2], hash);
+    public string FileOfAssetObject(string hash) => Path.Combine(CacheAssetDirectory, "objects", hash[..2], hash);
 
     #endregion
 
@@ -105,14 +84,11 @@ public class PathDef(string home)
     public string FileOfIcon(string key, string extensionGuess) =>
         Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
 
-    public string FileOfLockData(string key) =>
-        Path.Combine(InstanceDirectory, key, "data.lock.json");
+    public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
 
-    public string FileOfPackData(string key) =>
-        Path.Combine(InstanceDirectory, key, "data.pack.json");
+    public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
 
-    public string FileOfBomb(string key) =>
-        Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
+    public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
 
     public string DirectoryOfHome(string key) => Path.Combine(InstanceDirectory, key);
 
@@ -125,6 +101,13 @@ public class PathDef(string home)
     public string DirectoryOfLive(string key) => Path.Combine(InstanceDirectory, key, "live");
 
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
+
+    public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
+
+    public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");
+
+    public string FileOfSnapshotObject(string key, string hash) =>
+        Path.Combine(DirectoryOfSnapshots(key), hash[..2], hash);
 
     #endregion
 }
