@@ -5,10 +5,8 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
-using TridentCore.Core.Models.CurseForgeApi;
 using TridentCore.Core.Utilities;
 using TridentCore.Purl;
-using FileInfo = TridentCore.Core.Models.CurseForgeApi.FileInfo;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Core.Repositories;

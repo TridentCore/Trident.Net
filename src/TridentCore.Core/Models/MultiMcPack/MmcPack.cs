@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace TridentCore.Core.Models.MultiMcPack;
 
 public record MmcPack(

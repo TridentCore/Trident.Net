@@ -1,4 +1,3 @@
-using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;

@@ -1,4 +1,3 @@
-using System;
 using TridentCore.Abstractions.Accounts;
 
 namespace TridentCore.Core.Accounts;

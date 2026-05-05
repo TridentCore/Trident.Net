@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reactive.Subjects;
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Core.Utilities;

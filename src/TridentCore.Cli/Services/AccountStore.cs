@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using TridentCore.Abstractions;
 using TridentCore.Core.Accounts;
 
 namespace TridentCore.Cli.Services;

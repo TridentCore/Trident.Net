@@ -1,9 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Polly;
-using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.Repositories;
-using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;

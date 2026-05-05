@@ -1,8 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Cli.Commands;
-using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 
 namespace TridentCore.Cli.Commands.Package;

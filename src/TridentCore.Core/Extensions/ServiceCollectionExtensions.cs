@@ -1,9 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Refit;
 using TridentCore.Abstractions.Lifetimes;
 using TridentCore.Abstractions.Snapshots;
