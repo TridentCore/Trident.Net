@@ -20,7 +20,8 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
         var options = new PackData
         {
             IncludingSource = string.Equals(settings.Type, "offline", StringComparison.OrdinalIgnoreCase),
-            IncludingTags = !settings.NoTags
+            IncludingTags = !settings.NoTags,
+            OfflineMode = string.Equals(settings.Type, "offline", StringComparison.OrdinalIgnoreCase),
         };
 
         using var container = await output
