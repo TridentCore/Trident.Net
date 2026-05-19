@@ -11,6 +11,11 @@ public static class HashHelper
         using var writer = new BinaryWriter(stream);
         writer.Write(JsonSerializer.Serialize(obj));
         stream.Position = 0;
-        return Convert.ToHexString(SHA1.HashData(stream));
+        return FlattenHashBytes(SHA1.HashData(stream));
+    }
+
+    public static string FlattenHashBytes(byte[] hash)
+    {
+        return Convert.ToHexString(hash);
     }
 }
