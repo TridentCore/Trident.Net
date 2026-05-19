@@ -107,7 +107,7 @@ public class PathDef(string home)
     public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");
 
     public string FileOfSnapshotObject(string key, string hash) =>
-        Path.Combine(DirectoryOfSnapshots(key), hash[..2], hash);
+        Path.Combine(DirectoryOfSnapshotObjects(key), hash[..2], hash);
 
     #endregion
 }

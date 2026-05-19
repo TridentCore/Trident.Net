@@ -2,7 +2,7 @@
 
 public interface ISnapshotStore : IDisposable
 {
-    void Save(SnapshotInfo snapshot, IEnumerable<ReferenceInfo> references);
+    void InsertSnapshot(SnapshotInfo snapshot, IEnumerable<ReferenceInfo> references);
 
     IReadOnlyList<SnapshotInfo> GetSnapshots();
 
