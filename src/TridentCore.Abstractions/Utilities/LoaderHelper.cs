@@ -9,9 +9,7 @@ public static class LoaderHelper
     public const string LOADERID_FABRIC = "net.fabricmc";
     public const string LOADERID_QUILT = "org.quiltmc";
     public const string LOADERID_FLINT = "net.flintloader";
-    private static readonly Regex Pattern = new(
-        "^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$"
-    );
+    private static readonly Regex Pattern = new("^(?<identity>[a-z0-9.]+):(?<version>[a-zA-Z0-9_.-]+)$");
 
     public static string ToDisplayName(string identity) =>
         identity switch
@@ -24,19 +22,17 @@ public static class LoaderHelper
             _ => identity,
         };
 
-    public static string ToDisplayLabel(string identity, string version) =>
-        $"{ToDisplayName(identity)} {version}";
+    public static string ToDisplayLabel(string identity, string version) => $"{ToDisplayName(identity)} {version}";
+
+    public static string ToDisplayLabel(string? lurl) =>
+        TryParse(lurl, out var tuple) ? ToDisplayLabel(tuple.Identity, tuple.Version) : "None";
 
     public static bool TryParse(string? lurl, out (string Identity, string Version) result)
     {
         if (lurl is not null)
         {
             var match = Pattern.Match(lurl);
-            if (
-                match.Success
-                && match.Groups["identity"].Success
-                && match.Groups["version"].Success
-            )
+            if (match.Success && match.Groups["identity"].Success && match.Groups["version"].Success)
             {
                 result.Identity = match.Groups["identity"].Value;
                 result.Version = match.Groups["version"].Value;
