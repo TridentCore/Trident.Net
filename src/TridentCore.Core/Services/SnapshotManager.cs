@@ -148,12 +148,18 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             CancellationToken token = default) =>
             manager.TakeAsync(key, collected, processed, token);
 
-        public SnapshotInfo? GetSnapshot(object id) => store.GetSnapshot(id);
+        public SnapshotInfo? Get(object id) => store.GetSnapshot(id);
 
-        public bool TryGetSnapshot(object id, [MaybeNullWhen(false)] out SnapshotInfo snapshot)
+        public bool TryGet(object id, [MaybeNullWhen(false)] out SnapshotInfo snapshot)
         {
-            snapshot = GetSnapshot(id);
+            snapshot = Get(id);
             return snapshot != null;
+        }
+
+        public async Task SaveAsync(SnapshotInfo? snapshot, IReadOnlyList<ReferenceInfo> references)
+        {
+            // 事务提交
+
         }
     }
 
