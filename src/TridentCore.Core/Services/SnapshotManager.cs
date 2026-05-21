@@ -24,29 +24,40 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         {
             FullMode = BoundedChannelFullMode.Wait,
         });
-        var dir = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
         var totalCollected = 0;
         var totalProcessed = 0;
         var totalSize = 0L;
         var bag = new ConcurrentBag<ReferenceInfo>();
         var setup = profileManager.GetImmutable(key).Setup.Clone();
 
+        var home = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
+        var dirs = new[]
+        {
+            PathDef.Default.DirectoryOfLive(key),
+            PathDef.Default.DirectoryOfImport(key),
+            PathDef.Default.DirectoryOfPersist(key)
+        };
+
+
         var producer = Task.Run(async () =>
                                 {
-                                    if (!dir.Exists)
-                                    {
-                                        return;
-                                    }
-
                                     try
                                     {
-                                        foreach (var file in dir.EnumerateFiles("*.*", SearchOption.AllDirectories))
+                                        foreach (var dir in dirs)
                                         {
-                                            await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
-                                            Interlocked.Increment(ref totalCollected);
-                                            if (totalCollected % 1000 == 0)
+                                            var directory = new DirectoryInfo(dir);
+                                            if (!directory.Exists)
                                             {
-                                                collected?.Report(totalCollected);
+                                                continue;
+                                            }
+                                            foreach (var file in directory.EnumerateFiles("*.*", SearchOption.AllDirectories))
+                                            {
+                                                await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
+                                                Interlocked.Increment(ref totalCollected);
+                                                if (totalCollected % 1000 == 0)
+                                                {
+                                                    collected?.Report(totalCollected);
+                                                }
                                             }
                                         }
                                     }
@@ -81,7 +92,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                                      var hash = await SHA1
                                                                      .HashDataAsync(reader, token)
                                                                      .ConfigureAwait(false);
-                                                     var relative = Path.GetRelativePath(dir.FullName, file.FullName);
+                                                     var relative = Path.GetRelativePath(home.FullName, file.FullName);
                                                      var lastModified = file.LastWriteTime;
                                                      var attributes = file.Attributes;
 
@@ -116,6 +127,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         {
             collected?.Report(totalCollected);
         }
+
         if (totalProcessed % 1000 != 0)
         {
             processed?.Report(totalProcessed);
