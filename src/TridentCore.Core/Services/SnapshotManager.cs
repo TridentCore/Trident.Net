@@ -136,6 +136,41 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         return (snapshot, bag.ToImmutableList());
     }
 
+    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references)
+    {
+        return Task.Run(() =>
+        {
+            var home = PathDef.Default.DirectoryOfHome(key);
+
+            foreach (var reference in references)
+            {
+                var sourcePath = Path.Combine(home, reference.RelativePath);
+                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+
+                if (File.Exists(objectPath))
+                {
+                    var existingSize = new FileInfo(objectPath).Length;
+                    if (existingSize != reference.Size)
+                    {
+                        throw new InvalidDataException(
+                            $"Snapshot store corruption: object {reference.Hash} size mismatch (expected {reference.Size}, actual {existingSize})");
+                    }
+
+                    continue;
+                }
+
+                var prefix = Path.GetDirectoryName(objectPath)!;
+                Directory.CreateDirectory(prefix);
+                var tempPath = Path.Combine(prefix, $"{Guid.NewGuid():N}.tmp");
+
+                File.Copy(sourcePath, tempPath);
+                File.Move(tempPath, objectPath, overwrite: true);
+            }
+
+            store.InsertSnapshot(snapshot, references);
+        });
+    }
+
     #region Nested type: InstanceSnapshots
 
     public class InstanceSnapshots(SnapshotManager manager, string key, ISnapshotStore store) : IDisposable
@@ -156,11 +191,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             return snapshot != null;
         }
 
-        public async Task SaveAsync(SnapshotInfo? snapshot, IReadOnlyList<ReferenceInfo> references)
-        {
-            // 事务提交
-
-        }
+        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references) => manager.CommitAsync(store, key, snapshot, references);
     }
 
     #endregion
