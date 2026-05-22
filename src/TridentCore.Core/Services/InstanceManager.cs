@@ -243,7 +243,7 @@ public class InstanceManager(
             {
                 FastMode = options.FastMode,
                 ResolveDependency = options.ResolveDependency,
-                FullCheckMode = options.FullCheckMod,
+                FullCheckMode = options.FullCheckMode,
             },
             HashHelper.ComputeObjectHash(options),
             javaHomeLocator
