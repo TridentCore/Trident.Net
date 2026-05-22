@@ -1,4 +1,4 @@
-﻿using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Utilities;
 

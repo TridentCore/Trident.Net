@@ -110,6 +110,6 @@ public partial class LaunchEngine : IAsyncEnumerable<Scrap>
 
         private void ProcessOnExited(object? sender, EventArgs e) => _channel.Writer.TryComplete();
 
-    #endregion
+        #endregion
     }
 }

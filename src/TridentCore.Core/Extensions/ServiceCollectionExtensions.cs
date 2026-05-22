@@ -204,9 +204,9 @@ public static class ServiceCollectionExtensions
             return services;
         }
 
-        public IServiceCollection AddSnapshots<TFactory>() where TFactory: class, ISnapshotStoreFactory
+        public IServiceCollection AddSnapshots<TFactory>() where TFactory : class, ISnapshotStoreFactory
         {
-            services.AddSingleton<ISnapshotStoreFactory,TFactory>();
+            services.AddSingleton<ISnapshotStoreFactory, TFactory>();
             services.AddSingleton<SnapshotManager>();
 
             return services;

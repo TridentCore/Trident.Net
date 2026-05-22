@@ -1,4 +1,4 @@
-﻿namespace TridentCore.Abstractions.Snapshots;
+namespace TridentCore.Abstractions.Snapshots;
 
 public interface ISnapshotStoreFactory
 {
