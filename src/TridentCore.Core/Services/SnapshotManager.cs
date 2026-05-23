@@ -135,11 +135,12 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         return (snapshot, bag.ToArray());
     }
 
-    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references)
+    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null)
     {
         return Task.Run(() =>
         {
             var home = PathDef.Default.DirectoryOfHome(key);
+            var processed = 0;
 
             foreach (var reference in references)
             {
@@ -155,6 +156,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                             $"Snapshot store corruption: object {reference.Hash} size mismatch (expected {reference.Size}, actual {existingSize})");
                     }
 
+                    processed++;
+                    copied?.Report(processed);
                     continue;
                 }
 
@@ -164,6 +167,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                 File.Copy(sourcePath, tempPath);
                 File.Move(tempPath, objectPath, overwrite: true);
+
+                processed++;
+                copied?.Report(processed);
             }
 
             store.InsertSnapshot(snapshot, references);
@@ -190,7 +196,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             return snapshot != null;
         }
 
-        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references) => manager.CommitAsync(store, key, snapshot, references);
+        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null) => manager.CommitAsync(store, key, snapshot, references, copied);
     }
 
     #endregion
