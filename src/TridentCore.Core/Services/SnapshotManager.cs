@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Threading.Channels;
@@ -133,7 +132,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             processed?.Report(totalProcessed);
         }
 
-        return (snapshot, bag.ToImmutableList());
+        return (snapshot, bag.ToArray());
     }
 
     public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references)
