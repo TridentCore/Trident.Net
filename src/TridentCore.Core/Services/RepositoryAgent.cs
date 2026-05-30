@@ -278,16 +278,6 @@ public class RepositoryAgent
         Filter filter
     ) => Redirect(label).InspectAsync(ns, pid, filter);
 
-    public Task<byte[]> SeeAsync(Uri url) =>
-        RetrieveCachedAsync(
-            $"thumbnail:{url}",
-            async () =>
-            {
-                using var client = _clientFactory.CreateClient();
-                return await client.GetByteArrayAsync(url).ConfigureAwait(false);
-            }
-        );
-
     private async Task<T> RetrieveCachedAsync<T>(
         string key,
         Func<Task<T>> factory,
