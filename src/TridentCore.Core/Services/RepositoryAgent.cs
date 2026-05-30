@@ -267,7 +267,7 @@ public class RepositoryAgent
 
     public Task<string> ReadChangelogAsync(string label, string? ns, string pid, string vid) =>
         RetrieveCachedAsync(
-            $"Changelog:{PackageHelper.Identify(label, ns, pid, vid, null)}",
+            $"changelog:{PackageHelper.Identify(label, ns, pid, vid, null)}",
             () => Redirect(label).ReadChangelogAsync(ns, pid, vid)
         );
 
