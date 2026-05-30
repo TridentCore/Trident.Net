@@ -176,6 +176,96 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         });
     }
 
+    public Task RestoreAsync(ISnapshotStore store, string key, object snapshotId, IProgress<int>? restored = null)
+    {
+        return Task.Run(() =>
+        {
+            var snapshot = store.GetSnapshot(snapshotId)
+                ?? throw new InvalidOperationException($"Snapshot {snapshotId} not found");
+
+            var home = PathDef.Default.DirectoryOfHome(key);
+            var references = store.GetReferences(snapshotId);
+            var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
+            var processed = 0;
+            var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var dirs = new[]
+            {
+                PathDef.Default.DirectoryOfLive(key),
+                PathDef.Default.DirectoryOfImport(key),
+                PathDef.Default.DirectoryOfPersist(key)
+            };
+
+            foreach (var dir in dirs)
+            {
+                if (!Directory.Exists(dir)) continue;
+                var root = new DirectoryInfo(dir);
+
+                foreach (var file in root.EnumerateFiles("*.*", SearchOption.AllDirectories))
+                {
+                    var relative = Path.GetRelativePath(home, file.FullName);
+
+                    if (refByPath.TryGetValue(relative, out var reference))
+                    {
+                        matched.Add(reference.RelativePath);
+
+                        var changed = file.Length != reference.Size;
+
+                        if (!changed)
+                        {
+                            using var stream = File.OpenRead(file.FullName);
+                            var hash = SHA1.HashData(stream);
+                            changed = HashHelper.FlattenHashBytes(hash) != reference.Hash;
+                        }
+
+                        if (changed)
+                        {
+                            var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                            File.Copy(objectPath, file.FullName, overwrite: true);
+                        }
+
+                        if (file.Attributes != reference.Attributes)
+                            file.Attributes = reference.Attributes;
+
+                        if (file.LastWriteTime != reference.LastModifiedAt)
+                            File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                    }
+                    else
+                    {
+                        file.Delete();
+                    }
+
+                    processed++;
+                    restored?.Report(processed);
+                }
+
+                foreach (var d in root.EnumerateDirectories("*", SearchOption.AllDirectories)
+                             .OrderByDescending(d => d.FullName.Length))
+                {
+                    if (!d.EnumerateFileSystemInfos().Any())
+                        d.Delete(false);
+                }
+            }
+
+            foreach (var reference in references)
+            {
+                if (matched.Contains(reference.RelativePath))
+                    continue;
+
+                var targetPath = Path.Combine(home, reference.RelativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+
+                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                File.Copy(objectPath, targetPath, overwrite: false);
+                File.SetAttributes(targetPath, reference.Attributes);
+                File.SetLastWriteTime(targetPath, reference.LastModifiedAt);
+
+                processed++;
+                restored?.Report(processed);
+            }
+        });
+    }
+
     #region Nested type: InstanceSnapshots
 
     public class InstanceSnapshots(SnapshotManager manager, string key, ISnapshotStore store) : IDisposable
@@ -203,6 +293,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         public void Delete(object id) => store.DeleteSnapshot(id);
 
         public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null) => manager.CommitAsync(store, key, snapshot, references, copied);
+
+        public Task RestoreAsync(object snapshotId, IProgress<int>? restored = null) => manager.RestoreAsync(store, key, snapshotId, restored);
     }
 
     #endregion
