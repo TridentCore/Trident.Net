@@ -188,6 +188,10 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             CancellationToken token = default) =>
             manager.TakeAsync(key, collected, processed, token);
 
+        public IReadOnlyList<SnapshotInfo> List() => store.GetSnapshots();
+
+        public IReadOnlyList<ReferenceInfo> GetReferences(object snapshotId) => store.GetReferences(snapshotId);
+
         public SnapshotInfo? Get(object id) => store.GetSnapshot(id);
 
         public bool TryGet(object id, [MaybeNullWhen(false)] out SnapshotInfo snapshot)
@@ -195,6 +199,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             snapshot = Get(id);
             return snapshot != null;
         }
+
+        public void Delete(object id) => store.DeleteSnapshot(id);
 
         public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null) => manager.CommitAsync(store, key, snapshot, references, copied);
     }
