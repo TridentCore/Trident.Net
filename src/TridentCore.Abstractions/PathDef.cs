@@ -46,6 +46,7 @@ public class PathDef(string home)
     public string CacheDirectory => Path.Combine(Home, "cache");
 
     public string CacheAssetDirectory => Path.Combine(CacheDirectory, "assets");
+    public string CacheIconDirectory => Path.Combine(CacheDirectory, "icons");
     public string CacheLibraryDirectory => Path.Combine(CacheDirectory, "libraries");
     public string CachePackageDirectory => Path.Combine(CacheDirectory, "packages");
     public string CacheRuntimeDirectory => Path.Combine(CacheDirectory, "runtimes");
@@ -72,6 +73,8 @@ public class PathDef(string home)
     public string FileOfAssetIndex(string index) => Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json");
 
     public string FileOfAssetObject(string hash) => Path.Combine(CacheAssetDirectory, "objects", hash[..2], hash);
+
+    public string FileOfIconObject(string hash) => Path.Combine(CacheIconDirectory, hash[..2], hash);
 
     #endregion
 
