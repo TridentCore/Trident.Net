@@ -67,8 +67,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                 },
                                 token);
 
+        var consumerCount = Math.Clamp(Environment.ProcessorCount / 2, 1, 8);
         var consumers = Enumerable
-                       .Range(0, Environment.ProcessorCount / 2 + 1)
+                       .Range(0, consumerCount)
                        .Select(_ => Task.Run(async () =>
                                              {
                                                  await foreach (var file in channel
@@ -135,7 +136,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         return (snapshot, bag.ToArray());
     }
 
-    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null)
+    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
@@ -144,6 +145,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
             foreach (var reference in references)
             {
+                token.ThrowIfCancellationRequested();
+
                 var sourcePath = Path.Combine(home, reference.RelativePath);
                 var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
 
@@ -173,13 +176,15 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             }
 
             store.InsertSnapshot(snapshot, references);
-        });
+        }, token);
     }
 
-    public Task RestoreAsync(ISnapshotStore store, string key, object snapshotId, IProgress<int>? restored = null)
+    public Task RestoreAsync(ISnapshotStore store, string key, object snapshotId, IProgress<int>? restored = null, CancellationToken token = default)
     {
         return Task.Run(() =>
         {
+            token.ThrowIfCancellationRequested();
+
             var snapshot = store.GetSnapshot(snapshotId)
                 ?? throw new InvalidOperationException($"Snapshot {snapshotId} not found");
 
@@ -203,6 +208,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                 foreach (var file in root.EnumerateFiles("*.*", SearchOption.AllDirectories))
                 {
+                    token.ThrowIfCancellationRequested();
+
                     var relative = Path.GetRelativePath(home, file.FullName);
 
                     if (refByPath.TryGetValue(relative, out var reference))
@@ -249,6 +256,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
             foreach (var reference in references)
             {
+                token.ThrowIfCancellationRequested();
+
                 if (matched.Contains(reference.RelativePath))
                     continue;
 
@@ -263,7 +272,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                 processed++;
                 restored?.Report(processed);
             }
-        });
+        }, token);
     }
 
     #region Nested type: InstanceSnapshots
@@ -292,9 +301,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
         public void Delete(object id) => store.DeleteSnapshot(id);
 
-        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null) => manager.CommitAsync(store, key, snapshot, references, copied);
+        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null, CancellationToken token = default) => manager.CommitAsync(store, key, snapshot, references, copied, token);
 
-        public Task RestoreAsync(object snapshotId, IProgress<int>? restored = null) => manager.RestoreAsync(store, key, snapshotId, restored);
+        public Task RestoreAsync(object snapshotId, IProgress<int>? restored = null, CancellationToken token = default) => manager.RestoreAsync(store, key, snapshotId, restored, token);
     }
 
     #endregion
