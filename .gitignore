@@ -365,6 +365,7 @@ FodyWeavers.xsd
 
 .idea/
 .vscode/
+.codegraph/
 
 appsettings.*.json
 build/
