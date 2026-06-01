@@ -1,7 +1,6 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
-using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Version;
@@ -18,39 +17,22 @@ public class PackageVersionSetCommand(
         CancellationToken cancellationToken
     )
     {
-        var parsed = PackageCliHelper.ParsePurl(settings.Purl);
-        if (string.IsNullOrWhiteSpace(parsed.Vid))
-        {
-            throw new CliException("A version purl with @version is required.", ExitCodes.Usage);
-        }
-
         var instance = ResolveInstance(settings);
-        var guard = profileManager.GetMutable(instance.Key);
-        var entry = PackageCliHelper.FindEntry(guard.Value, settings.Purl);
-        var oldPurl = entry.Purl;
-        entry.Purl = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
-        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        var result = PackageOperation.VersionSet(resolver, profileManager, settings.Purl, instance.Key, settings.Profile);
 
-        var result = new
-        {
-            action = "package.version.set",
-            key = instance.Key,
-            oldPurl,
-            entry.Purl,
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "package.version.set", key = result.Key, oldPurl = result.OldPurl, purl = result.NewPurl });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Package version updated",
-                ("Instance", instance.Key),
-                ("Old PURL", oldPurl),
-                ("New PURL", entry.Purl)
+                ("Instance", result.Key),
+                ("Old PURL", result.OldPurl),
+                ("New PURL", result.NewPurl)
             );
-            output.WriteSuccess($"Package version updated to {entry.Purl}.");
+            output.WriteSuccess($"Package version updated to {result.NewPurl}.");
         }
 
         return ExitCodes.Success;

@@ -167,6 +167,130 @@ internal static class PackageOperation
             guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
+
+    public static async Task<PackageDependencyListResult> DependencyList(
+        RepositoryAgent repositories,
+        InstanceContextResolver resolver,
+        string purl,
+        string? gameVersion,
+        string? loader,
+        ResourceKind? kind,
+        string? instance,
+        string? profile)
+    {
+        var parsed = PackageCliHelper.ParsePurl(purl);
+        resolver.TryResolve(instance, profile, out var ctx);
+        var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
+        var package = await repositories.ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter).ConfigureAwait(false);
+        var dependencies = package.Dependencies.Select(PackageDtos.FromDependency).ToArray();
+        return new(package.ToString(), dependencies);
+    }
+
+    public static async Task<PackageDependentListResult> DependentList(
+        InstanceContextResolver resolver,
+        RepositoryAgent repositories,
+        string purl,
+        string? gameVersion,
+        string? loader,
+        ResourceKind? kind,
+        string instance,
+        string? profile)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var target = PackageCliHelper.ParsePurl(purl);
+        var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
+        var dependents = new List<DependentDto>();
+        var failed = new List<string>();
+        var candidates = ctx
+            .Profile.Setup.Packages
+            .Where(x => x.Enabled && PackageHelper.TryParse(x.Purl, out _))
+            .ToArray();
+
+        foreach (var entry in candidates)
+        {
+            if (!PackageHelper.TryParse(entry.Purl, out var parsed))
+            {
+                continue;
+            }
+
+            try
+            {
+                var package = await repositories
+                    .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
+                    .ConfigureAwait(false);
+                if (package.Dependencies.Any(x =>
+                        x.Label == target.Label
+                        && x.Namespace == target.Namespace
+                        && x.ProjectId == target.Pid))
+                {
+                    dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
+                }
+            }
+            catch
+            {
+                failed.Add(entry.Purl);
+            }
+        }
+
+        return new(ctx.Key, purl, dependents, failed);
+    }
+
+    public static async Task<PackageVersionListResult> VersionList(
+        RepositoryAgent repositories,
+        string purl,
+        string? gameVersion,
+        string? loader,
+        ResourceKind? kind,
+        string sort,
+        int index,
+        int limit)
+    {
+        var parsed = PackageCliHelper.ParsePurl(purl);
+        var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind);
+        var handle = await repositories
+            .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
+            .ConfigureAwait(false);
+
+        var versions = new List<VersionDto>();
+        await foreach (var version in PaginationHelper.FetchWindowAsync(handle, index, limit, CancellationToken.None))
+        {
+            versions.Add(PackageDtos.FromVersion(version));
+        }
+
+        versions = string.Equals(sort, "asc", StringComparison.OrdinalIgnoreCase)
+            ? [.. versions.OrderBy(x => x.PublishedAt)]
+            : [.. versions.OrderByDescending(x => x.PublishedAt)];
+
+        return new(purl, (int)handle.TotalCount, versions);
+    }
+
+    public static PackageVersionSetResult VersionSet(
+        InstanceContextResolver resolver,
+        ProfileManager profileManager,
+        string purl,
+        string instance,
+        string? profile)
+    {
+        var parsed = PackageCliHelper.ParsePurl(purl);
+        if (string.IsNullOrWhiteSpace(parsed.Vid))
+        {
+            throw new CliException("A version purl with @version is required.", ExitCodes.Usage);
+        }
+
+        var ctx = resolver.Resolve(instance, profile);
+        var guard = profileManager.GetMutable(ctx.Key);
+        try
+        {
+            var entry = PackageCliHelper.FindEntry(guard.Value, purl);
+            var oldPurl = entry.Purl;
+            entry.Purl = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            return new(ctx.Key, oldPurl, entry.Purl);
+        }
+        finally
+        {
+            guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+    }
 }
 
 internal sealed record PackageListResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
@@ -174,3 +298,8 @@ internal sealed record PackageSearchLocalResult(string Key, IReadOnlyList<Resolv
 internal sealed record PackageAddResult(string Purl, bool Added, string? Reason, string Key);
 internal sealed record PackageInspectResult(string? Key, LocalPackageDto? Local, PackageDto Package);
 internal sealed record PackageSetEnabledResult(string Action, string Key, string Purl, bool Enabled);
+internal sealed record PackageDependencyListResult(string Purl, IReadOnlyList<DependencyDto> Dependencies);
+internal sealed record DependentDto(string Purl, string? ProjectName, string? VersionName);
+internal sealed record PackageDependentListResult(string Key, string Target, IReadOnlyList<DependentDto> Dependents, IReadOnlyList<string> Failed);
+internal sealed record PackageVersionListResult(string Purl, int Total, IReadOnlyList<VersionDto> Versions);
+internal sealed record PackageVersionSetResult(string Key, string OldPurl, string NewPurl);

@@ -35,6 +35,44 @@ internal static class RepositoryOperation
 
         return results;
     }
+
+    public static RepositoryAddResult Add(
+        UserRepositoryStore userRepositories,
+        string label,
+        string? driver,
+        string endpoint,
+        string? apiKey,
+        string? userAgent)
+    {
+        var resolvedDriver = driver ?? label;
+        UserRepositoryStore.ParseDriver(resolvedDriver);
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out _))
+        {
+            throw new CliException("--endpoint must be an absolute URI.", ExitCodes.Usage);
+        }
+
+        var repository = new UserRepositoryProfile(label, resolvedDriver, endpoint, apiKey, userAgent);
+        userRepositories.AddOrReplace(repository);
+        return new(
+            repository.Label,
+            repository.Driver,
+            repository.Endpoint,
+            !string.IsNullOrWhiteSpace(repository.ApiKey),
+            repository.UserAgent
+        );
+    }
+
+    public static RepositoryRemoveResult Remove(
+        UserRepositoryStore userRepositories,
+        string label)
+    {
+        if (!userRepositories.Remove(label))
+        {
+            throw new CliException($"User repository '{label}' was not found.", ExitCodes.NotFound);
+        }
+
+        return new(label);
+    }
 }
 
 public sealed record RepositoryStatusItem(
@@ -43,3 +81,13 @@ public sealed record RepositoryStatusItem(
     int VersionCount,
     IReadOnlyList<TridentCore.Abstractions.Repositories.Resources.ResourceKind> SupportedKinds
 );
+
+internal sealed record RepositoryAddResult(
+    string Label,
+    string Driver,
+    string Endpoint,
+    bool HasAuthorization,
+    string? UserAgent
+);
+
+internal sealed record RepositoryRemoveResult(string Label);

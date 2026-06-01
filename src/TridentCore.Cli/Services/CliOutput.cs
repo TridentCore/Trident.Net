@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Spectre.Console;
 
 namespace TridentCore.Cli.Services;
@@ -8,6 +9,7 @@ public class CliOutput(CliContext context)
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
     public bool UseStructuredOutput => context.UseStructuredOutput;

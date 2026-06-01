@@ -1,5 +1,5 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.FileModels;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -10,73 +10,38 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
 {
     protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        ExportAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task ExportAsync(Arguments settings, CancellationToken cancellationToken)
-    {
         var instance = ResolveInstance(settings);
-        var options = new PackData
-        {
-            IncludingSource = string.Equals(settings.Type, "offline", StringComparison.OrdinalIgnoreCase),
-            IncludingTags = !settings.NoTags,
-            OfflineMode = string.Equals(settings.Type, "offline", StringComparison.OrdinalIgnoreCase),
-        };
-
-        using var container = await output
-                                   .StatusAsync("Collecting export data...",
-                                                async () => await exporterAgent
-                                                                 .ExportAsync(options,
-                                                                              settings.Format,
-                                                                              instance.Key,
-                                                                              settings.Name ?? instance.Profile.Name,
-                                                                              settings.Author,
-                                                                              settings.Version)
-                                                                 .ConfigureAwait(false))
-                                   .ConfigureAwait(false);
-
-        var outputPath = Path.GetFullPath(settings.Output);
-        var dir = Path.GetDirectoryName(outputPath);
-        if (dir is not null)
-        {
-            Directory.CreateDirectory(dir);
-        }
-
-        await output
-             .StatusAsync("Packing and writing archive...",
-                          async () =>
-                          {
-                              await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-                              await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
-                              await file.FlushAsync(cancellationToken).ConfigureAwait(false);
-                          })
-             .ConfigureAwait(false);
-
-        var result = new
-        {
-            action = "export",
-            key = instance.Key,
-            format = settings.Format,
-            type = settings.Type,
-            output = outputPath,
-        };
+        var result = InstanceOperation.ExportAsync(
+            resolver,
+            exporterAgent,
+            instance.Key,
+            settings.Profile,
+            settings.Format,
+            settings.Type,
+            settings.Name,
+            settings.Author,
+            settings.Version,
+            settings.Output,
+            settings.NoTags
+        ).GetAwaiter().GetResult();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "export", key = result.Key, format = result.Format, type = result.Type, output = result.Output });
         }
         else
         {
-            var size = File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0;
+            var size = File.Exists(result.Output) ? new FileInfo(result.Output).Length : 0;
             output.WriteKeyValueTable("Instance exported",
-                                      ("Instance", instance.Key),
-                                      ("Format", settings.Format),
-                                      ("Type", settings.Type),
-                                      ("Output", outputPath),
-                                      ("Size", $"{size:n0} bytes"));
-            output.WriteSuccess($"Instance {instance.Key} exported.");
+                ("Instance", result.Key),
+                ("Format", result.Format),
+                ("Type", result.Type),
+                ("Output", result.Output),
+                ("Size", $"{size:n0} bytes"));
+            output.WriteSuccess($"Instance {result.Key} exported.");
         }
+
+        return ExitCodes.Success;
     }
 
     public class Arguments : InstanceArgumentsBase

@@ -1,7 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
-using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Version;
@@ -15,77 +15,30 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         CancellationToken cancellationToken
     )
     {
-        ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
-    {
-        var parsed = PackageCliHelper.ParsePurl(settings.Purl);
-        var filter = PackageCliHelper.BuildFilter(
+        var result = PackageOperation.VersionList(
+            repositories,
+            settings.Purl,
             settings.GameVersion,
             settings.Loader,
-            settings.ParsedKind
-        );
-        var handle = await output
-            .StatusAsync(
-                "Loading package versions...",
-                async () =>
-                    await repositories
-                        .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
-        var versions = new List<VersionDto>();
-        await output
-            .StatusAsync(
-                "Fetching version page...",
-                async () =>
-                {
-                    await foreach (
-                        var version in PaginationHelper.FetchWindowAsync(
-                            handle,
-                            settings.Index,
-                            settings.Limit,
-                            cancellationToken
-                        )
-                    )
-                    {
-                        versions.Add(PackageDtos.FromVersion(version));
-                    }
-                }
-            )
-            .ConfigureAwait(false);
-
-        if (string.Equals(settings.Sort, "asc", StringComparison.OrdinalIgnoreCase))
-        {
-            versions = [.. versions.OrderBy(x => x.PublishedAt)];
-        }
-        else
-        {
-            versions = [.. versions.OrderByDescending(x => x.PublishedAt)];
-        }
+            settings.ParsedKind,
+            settings.Sort,
+            settings.Index,
+            settings.Limit
+        ).GetAwaiter().GetResult();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    project = settings.Purl,
-                    total = handle.TotalCount,
-                    versions,
-                }
-            );
-            return;
+            output.WriteData(result);
+            return ExitCodes.Success;
         }
 
-        if (versions.Count == 0)
+        if (result.Versions.Count == 0)
         {
             output.WriteEmptyState(
                 "No versions found",
                 $"No versions matched filters for {settings.Purl}."
             );
-            return;
+            return ExitCodes.Success;
         }
 
         var table = new Table().RoundedBorder();
@@ -94,7 +47,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         table.AddColumn("Name");
         table.AddColumn("Release");
         table.AddColumn("Downloads");
-        foreach (var version in versions)
+        foreach (var version in result.Versions)
         {
             var releaseColor = string.Equals(
                 version.ReleaseType.ToString(),
@@ -112,6 +65,8 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         }
 
         output.WriteTable(table);
+
+        return ExitCodes.Success;
     }
 
     public class Arguments : PagingSettings

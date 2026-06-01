@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -17,30 +18,21 @@ public class InstanceUnlockCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        var guard = profileManager.GetMutable(instance.Key);
-        var oldSource = guard.Value.Setup.Source;
-        guard.Value.Setup.Source = null;
-        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        var result = InstanceOperation.Unlock(resolver, profileManager, instance.Key, settings.Profile);
 
-        var result = new
-        {
-            action = "unlock",
-            key = instance.Key,
-            oldSource,
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "unlock", key = result.Key, oldSource = result.OldSource });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Instance unlocked",
-                ("Instance", instance.Key),
-                ("Old Source", oldSource),
-                ("New Source", null)
+                ("Instance", result.Key),
+                ("Old Source", result.OldSource),
+                ("New Source", (string?)null)
             );
-            output.WriteSuccess($"Instance {instance.Key} unlocked.");
+            output.WriteSuccess($"Instance {result.Key} unlocked.");
         }
 
         return ExitCodes.Success;

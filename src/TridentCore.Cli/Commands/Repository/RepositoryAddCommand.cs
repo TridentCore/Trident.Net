@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Repository;
@@ -12,47 +13,38 @@ public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutpu
         CancellationToken cancellationToken
     )
     {
-        var driver = settings.Driver ?? settings.Label;
-        UserRepositoryStore.ParseDriver(driver);
-        if (!Uri.TryCreate(settings.Endpoint, UriKind.Absolute, out _))
-        {
-            throw new CliException("--endpoint must be an absolute URI.", ExitCodes.Usage);
-        }
-
-        var repository = new UserRepositoryProfile(
+        var result = RepositoryOperation.Add(
+            userRepositories,
             settings.Label,
-            driver,
+            settings.Driver,
             settings.Endpoint,
             settings.ApiKey,
             settings.UserAgent
         );
-        userRepositories.AddOrReplace(repository);
-
-        var result = new
-        {
-            action = "repository.add",
-            repository.Label,
-            repository.Driver,
-            repository.Endpoint,
-            hasAuthorization = !string.IsNullOrWhiteSpace(repository.ApiKey),
-            repository.UserAgent,
-        };
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new
+            {
+                action = "repository.add",
+                result.Label,
+                result.Driver,
+                result.Endpoint,
+                hasAuthorization = result.HasAuthorization,
+                result.UserAgent,
+            });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Repository saved",
-                ("Label", repository.Label),
-                ("Driver", repository.Driver),
-                ("Endpoint", repository.Endpoint),
-                ("Authorization", string.IsNullOrWhiteSpace(repository.ApiKey) ? "no" : "yes"),
-                ("User Agent", repository.UserAgent)
+                ("Label", result.Label),
+                ("Driver", result.Driver),
+                ("Endpoint", result.Endpoint),
+                ("Authorization", result.HasAuthorization ? "yes" : "no"),
+                ("User Agent", result.UserAgent)
             );
-            output.WriteSuccess($"Repository {repository.Label} saved.");
+            output.WriteSuccess($"Repository {result.Label} saved.");
         }
 
         return ExitCodes.Success;

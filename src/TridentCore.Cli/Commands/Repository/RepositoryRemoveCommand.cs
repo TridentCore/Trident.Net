@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Repository;
@@ -13,24 +14,16 @@ public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOu
     )
     {
         output.RequireConfirmation($"Remove user repository '{settings.Label}'?", settings.Yes);
+        var result = RepositoryOperation.Remove(userRepositories, settings.Label);
 
-        if (!userRepositories.Remove(settings.Label))
-        {
-            throw new CliException(
-                $"User repository '{settings.Label}' was not found.",
-                ExitCodes.NotFound
-            );
-        }
-
-        var result = new { action = "repository.remove", settings.Label };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "repository.remove", result.Label });
         }
         else
         {
-            output.WriteKeyValueTable("Repository removed", ("Label", settings.Label));
-            output.WriteSuccess($"Repository {settings.Label} removed.");
+            output.WriteKeyValueTable("Repository removed", ("Label", result.Label));
+            output.WriteSuccess($"Repository {result.Label} removed.");
         }
 
         return ExitCodes.Success;

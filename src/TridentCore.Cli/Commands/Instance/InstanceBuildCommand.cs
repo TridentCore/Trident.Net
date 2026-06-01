@@ -1,8 +1,8 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 using TridentCore.Core.Services.Instances;
-using TridentCore.Core.Utilities;
 
 namespace TridentCore.Cli.Commands.Instance;
 
@@ -19,41 +19,33 @@ public class InstanceBuildCommand(
         CancellationToken cancellationToken
     )
     {
-        BuildAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task BuildAsync(Arguments settings, CancellationToken cancellationToken)
-    {
         var instance = ResolveInstance(settings);
-        var options = new DeployOptions(
-            settings.FastMode,
-            settings.ResolveDependency,
-            settings.FullCheck
-        );
-        var locator = JavaHelper.MakeLocator(_ => settings.JavaHome, true);
-        var tracker = instanceManager.Deploy(instance.Key, options, locator);
-        await trackerAwaiter.AwaitDeployAsync(tracker, cancellationToken).ConfigureAwait(false);
+        var result = InstanceOperation.BuildAsync(
+            resolver,
+            instanceManager,
+            instance.Key,
+            settings.Profile,
+            settings.FastMode ?? false,
+            settings.ResolveDependency ?? false,
+            settings.FullCheck ?? false,
+            settings.JavaHome
+        ).GetAwaiter().GetResult();
 
-        var result = new
-        {
-            action = "build",
-            key = instance.Key,
-            state = "finished",
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "build", key = result.Key, state = result.State });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Build completed",
-                ("Instance", instance.Key),
-                ("State", "finished")
+                ("Instance", result.Key),
+                ("State", result.State)
             );
-            output.WriteSuccess($"Instance {instance.Key} built.");
+            output.WriteSuccess($"Instance {result.Key} built.");
         }
+
+        return ExitCodes.Success;
     }
 
     public class Arguments : InstanceArgumentsBase

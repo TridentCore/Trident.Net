@@ -1,8 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
-using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Dependent;
@@ -19,164 +18,56 @@ public class PackageDependentListCommand(
         CancellationToken cancellationToken
     )
     {
-        ExecuteAsync(settings).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task ExecuteAsync(Arguments settings)
-    {
         var instance = ResolveInstance(settings);
-        var target = PackageCliHelper.ParsePurl(settings.Purl);
-        var filter = PackageCliHelper.BuildFilter(
+        var result = PackageOperation.DependentList(
+            resolver,
+            repositories,
+            settings.Purl,
             settings.GameVersion,
             settings.Loader,
             settings.ParsedKind,
-            instance
-        );
-        var dependents = new List<DependentDto>();
-        var failed = new List<string>();
-        var candidates = instance
-            .Profile.Setup.Packages.Where(x => x.Enabled && PackageHelper.TryParse(x.Purl, out _))
-            .ToArray();
+            instance.Key,
+            settings.Profile
+        ).GetAwaiter().GetResult();
 
-        async Task ScanAsync(Action? tick)
+        if (output.UseStructuredOutput)
         {
-            foreach (var entry in candidates)
-            {
-                if (!PackageHelper.TryParse(entry.Purl, out var parsed))
-                {
-                    tick?.Invoke();
-                    continue;
-                }
-
-                try
-                {
-                    var package = await repositories
-                        .ResolveAsync(
-                            parsed.Label,
-                            parsed.Namespace,
-                            parsed.Pid,
-                            parsed.Vid,
-                            filter
-                        )
-                        .ConfigureAwait(false);
-                    if (
-                        package.Dependencies.Any(x =>
-                            x.Label == target.Label
-                            && x.Namespace == target.Namespace
-                            && x.ProjectId == target.Pid
-                        )
-                    )
-                    {
-                        dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
-                    }
-                }
-                catch
-                {
-                    failed.Add(entry.Purl);
-                }
-
-                tick?.Invoke();
-            }
+            output.WriteData(result);
+            return ExitCodes.Success;
         }
 
-        if (output.IsInteractive && !output.UseStructuredOutput && candidates.Length > 1)
+        if (result.Failed.Count > 0)
         {
-            await AnsiConsole
-                .Progress()
-                .AutoClear(false)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new SpinnerColumn()
-                )
-                .StartAsync(async progressContext =>
-                {
-                    var task = progressContext.AddTask(
-                        "[blue]Scanning installed packages[/]",
-                        maxValue: candidates.Length
-                    );
-                    await ScanAsync(() => task.Increment(1)).ConfigureAwait(false);
-                })
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await output
-                .StatusAsync(
-                    "Scanning installed packages...",
-                    async () => await ScanAsync(null).ConfigureAwait(false)
-                )
-                .ConfigureAwait(false);
+            output.WriteWarning($"Failed to inspect {result.Failed.Count} package(s).");
         }
 
-        if (failed.Count > 0 && !output.UseStructuredOutput)
-        {
-            output.WriteWarning($"Failed to inspect {failed.Count} package(s).");
-        }
-
-        if (dependents.Count == 0 && !output.UseStructuredOutput)
+        if (result.Dependents.Count == 0)
         {
             output.WriteEmptyState(
                 "No dependents found",
                 $"No enabled package in {instance.Key} depends on {settings.Purl}."
             );
-            if (failed.Count > 0)
-            {
-                output.WriteTable(CreateFailedInspectionTable(failed));
-            }
-
-            return;
-        }
-
-        if (output.UseStructuredOutput)
-        {
-            output.WriteData(
-                new
-                {
-                    key = instance.Key,
-                    target = settings.Purl,
-                    scope = "instance",
-                    dependents,
-                    failed,
-                }
-            );
-            return;
+            return ExitCodes.Success;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new($"[bold]Dependents of {Markup.Escape(settings.Purl)}[/]");
+        table.Title = new($"[bold]Dependents for {Markup.Escape(settings.Purl)}[/]");
         table.AddColumn("PURL");
         table.AddColumn("Project");
         table.AddColumn("Version");
-        foreach (var dependent in dependents)
+        foreach (var dep in result.Dependents)
         {
-            table.AddEscapedRow(dependent.Purl, dependent.ProjectName, dependent.VersionName);
+            table.AddMarkupRow(
+                Markup.Escape(dep.Purl),
+                Markup.Escape(dep.ProjectName ?? "-"),
+                Markup.Escape(dep.VersionName ?? "-")
+            );
         }
 
         output.WriteTable(table);
 
-        if (failed.Count > 0)
-        {
-            output.WriteTable(CreateFailedInspectionTable(failed));
-        }
+        return ExitCodes.Success;
     }
-
-    private static Table CreateFailedInspectionTable(IEnumerable<string> failed)
-    {
-        var failedTable = new Table().RoundedBorder();
-        failedTable.Title = new("[yellow]Failed inspections[/]");
-        failedTable.AddColumn("PURL");
-        foreach (var purl in failed)
-        {
-            failedTable.AddEscapedRow(purl);
-        }
-
-        return failedTable;
-    }
-
-    private sealed record DependentDto(string Purl, string ProjectName, string VersionName);
 
     public class Arguments : PackageFilterSettings
     {

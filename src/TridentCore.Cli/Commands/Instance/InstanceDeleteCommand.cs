@@ -1,5 +1,5 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -23,38 +23,22 @@ public class InstanceDeleteCommand(
             settings.Yes
         );
 
-        var bomb = PathDef.Default.FileOfBomb(instance.Key);
-        var dir = Path.GetDirectoryName(bomb);
-        if (dir is not null)
-        {
-            Directory.CreateDirectory(dir);
-        }
-
-        File.WriteAllText(bomb, "delete requested by trident cli");
-        profileManager.Remove(instance.Key);
-
-        var result = new
-        {
-            action = "delete",
-            key = instance.Key,
-            bomb,
-            deletedImmediately = false,
-        };
+        var result = InstanceOperation.Delete(resolver, profileManager, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "delete", key = result.Key, bomb = result.Bomb, deletedImmediately = false });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Instance deletion requested",
-                ("Instance", instance.Key),
-                ("Marker", bomb),
+                ("Instance", result.Key),
+                ("Marker", result.Bomb),
                 ("Deleted Immediately", "no")
             );
             output.WriteWarning("The instance directory will be removed on the next profile scan.");
-            output.WriteSuccess($"Instance {instance.Key} marked for deletion.");
+            output.WriteSuccess($"Instance {result.Key} marked for deletion.");
         }
 
         return ExitCodes.Success;

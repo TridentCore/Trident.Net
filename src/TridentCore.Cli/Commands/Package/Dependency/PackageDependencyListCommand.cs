@@ -1,6 +1,6 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
-using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package.Dependency;
@@ -17,55 +17,37 @@ public class PackageDependencyListCommand(
         CancellationToken cancellationToken
     )
     {
-        ExecuteAsync(settings).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task ExecuteAsync(Arguments settings)
-    {
-        var parsed = PackageCliHelper.ParsePurl(settings.Purl);
-        resolver.TryResolve(settings.Instance, settings.Profile, out var instance);
-        var filter = PackageCliHelper.BuildFilter(
+        var result = PackageOperation.DependencyList(
+            repositories,
+            resolver,
+            settings.Purl,
             settings.GameVersion,
             settings.Loader,
             settings.ParsedKind,
-            instance
-        );
-        var package = await output
-            .StatusAsync(
-                "Resolving package dependencies...",
-                async () =>
-                    await repositories
-                        .ResolveAsync(
-                            parsed.Label,
-                            parsed.Namespace,
-                            parsed.Pid,
-                            parsed.Vid,
-                            filter
-                        )
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
-        var dependencies = package.Dependencies.Select(PackageDtos.FromDependency).ToArray();
+            settings.Instance,
+            settings.Profile
+        ).GetAwaiter().GetResult();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { purl = package.ToString(), dependencies });
-            return;
+            output.WriteData(result);
+            return ExitCodes.Success;
         }
 
-        if (dependencies.Length == 0)
+        if (result.Dependencies.Count == 0)
         {
             output.WriteEmptyState(
                 "No dependencies",
                 "This package version does not declare dependencies."
             );
-            return;
+            return ExitCodes.Success;
         }
 
         output.WriteTable(
-            PackageCliHelper.CreateDependencyTable($"Dependencies for {package}", dependencies)
+            Utilities.PackageCliHelper.CreateDependencyTable($"Dependencies for {result.Purl}", result.Dependencies)
         );
+
+        return ExitCodes.Success;
     }
 
     public class Arguments : PackageFilterSettings

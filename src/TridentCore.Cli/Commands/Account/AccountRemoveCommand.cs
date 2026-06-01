@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Account;
@@ -13,21 +14,16 @@ public class AccountRemoveCommand(AccountStore accounts, CliOutput output)
     )
     {
         output.RequireConfirmation($"Remove account '{settings.Uuid}'?", settings.Yes);
+        var result = AccountOperation.Remove(accounts, settings.Uuid);
 
-        if (!accounts.Remove(settings.Uuid))
-        {
-            throw new CliException($"Account '{settings.Uuid}' was not found.", ExitCodes.NotFound);
-        }
-
-        var result = new { action = "account.remove", uuid = settings.Uuid };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "account.remove", uuid = result.Uuid });
         }
         else
         {
-            output.WriteKeyValueTable("Account removed", ("UUID", settings.Uuid));
-            output.WriteSuccess($"Account {settings.Uuid} removed.");
+            output.WriteKeyValueTable("Account removed", ("UUID", result.Uuid));
+            output.WriteSuccess($"Account {result.Uuid} removed.");
         }
 
         return ExitCodes.Success;

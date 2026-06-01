@@ -10,14 +10,14 @@ namespace TridentCore.Cli.Tools;
 [McpServerToolType]
 public class ConfigTools(InstanceContextResolver resolver, CliConfigurationStore configuration, ProfileManager profileManager)
 {
-    [McpServerTool, Description("Get a configuration value by name.")]
+    [McpServerTool(Name = "trident_config_get"), Description("Get a configuration value by name.")]
     public string Get(
         [Description("Configuration key name")] string name,
         [Description("Instance key (optional)")] string? instance = null,
         [Description("Profile file path (optional)")] string? profile = null)
         => JsonSerializer.Serialize(ConfigOperation.Get(resolver, configuration, name, instance, profile), McpJson.Options);
 
-    [McpServerTool, Description("Set a configuration value.")]
+    [McpServerTool(Name = "trident_config_set"), Description("Set a configuration value.")]
     public string Set(
         [Description("Configuration key name")] string name,
         [Description("Configuration value")] string value,
@@ -26,7 +26,7 @@ public class ConfigTools(InstanceContextResolver resolver, CliConfigurationStore
         [Description("Profile file path (optional)")] string? profile = null)
         => JsonSerializer.Serialize(ConfigOperation.Set(resolver, configuration, profileManager, name, value, type, instance, profile), McpJson.Options);
 
-    [McpServerTool, Description("Remove a configuration value.")]
+    [McpServerTool(Name = "trident_config_unset"), Description("Remove a configuration value.")]
     public string Unset(
         [Description("Configuration key name")] string name,
         [Description("Instance key (optional)")] string? instance = null,
@@ -36,7 +36,7 @@ public class ConfigTools(InstanceContextResolver resolver, CliConfigurationStore
         return JsonSerializer.Serialize(new { action = "config.unset", name }, McpJson.Options);
     }
 
-    [McpServerTool, Description("List all configuration values.")]
+    [McpServerTool(Name = "trident_config_list"), Description("List all configuration values.")]
     public string List(
         [Description("Instance key (optional)")] string? instance = null,
         [Description("Profile file path (optional)")] string? profile = null)

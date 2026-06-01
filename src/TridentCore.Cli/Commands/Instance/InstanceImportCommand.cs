@@ -1,5 +1,5 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Importers;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -17,70 +17,13 @@ public class InstanceImportCommand(
         CancellationToken cancellationToken
     )
     {
-        ImportAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
-    }
-
-    private async Task ImportAsync(Arguments settings, CancellationToken cancellationToken)
-    {
-        var sourcePath = Path.GetFullPath(settings.Path);
-        if (!File.Exists(sourcePath))
-        {
-            throw new CliException($"Pack file '{sourcePath}' was not found.", ExitCodes.NotFound);
-        }
-
-        await using var file = new FileStream(
-            sourcePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read
-        );
-        var memory = new MemoryStream();
-        await output
-            .StatusAsync(
-                "Reading pack archive...",
-                async () => await file.CopyToAsync(memory, cancellationToken).ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
-        memory.Position = 0;
-
-        using var pack = new CompressedProfilePack(memory);
-        var container = await output
-            .StatusAsync(
-                "Inspecting pack metadata...",
-                async () => await importerAgent.ImportAsync(pack).ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(settings.Name))
-        {
-            container.Profile.Name = settings.Name;
-        }
-
-        var identity = InstanceIdentityValidator.EnsureValid(
+        var result = InstanceOperation.ImportAsync(
+            profileManager,
+            importerAgent,
+            settings.Path,
+            settings.Name,
             settings.Identity
-                ?? container.Profile.Name
-                ?? Path.GetFileNameWithoutExtension(sourcePath)
-        );
-        var key = profileManager.RequestKey(identity);
-        await output
-            .StatusAsync(
-                "Extracting instance files...",
-                async () =>
-                    await importerAgent
-                        .ExtractFilesAsync(key.Key, container, pack)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
-        profileManager.Add(key, container.Profile);
-
-        var result = new
-        {
-            key = key.Key,
-            name = container.Profile.Name,
-            version = container.Profile.Setup.Version,
-            loader = container.Profile.Setup.Loader,
-            path = sourcePath,
-        };
+        ).GetAwaiter().GetResult();
 
         if (output.UseStructuredOutput)
         {
@@ -90,14 +33,16 @@ public class InstanceImportCommand(
         {
             output.WriteKeyValueTable(
                 "Instance imported",
-                ("Key", key.Key),
-                ("Name", container.Profile.Name),
-                ("Version", container.Profile.Setup.Version),
-                ("Loader", container.Profile.Setup.Loader),
-                ("Source", sourcePath)
+                ("Key", result.Key),
+                ("Name", result.Name),
+                ("Version", result.Version),
+                ("Loader", result.Loader),
+                ("Source", result.Path)
             );
-            output.WriteSuccess($"Instance {key.Key} imported.");
+            output.WriteSuccess($"Instance {result.Key} imported.");
         }
+
+        return ExitCodes.Success;
     }
 
     public class Arguments : CommandSettings

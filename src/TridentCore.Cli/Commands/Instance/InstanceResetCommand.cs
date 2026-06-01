@@ -1,6 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Abstractions;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -19,47 +19,30 @@ public class InstanceResetCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        if (instanceManager.IsInUse(instance.Key))
-        {
-            throw new CliException(
-                $"Instance '{instance.Key}' is currently in use.",
-                ExitCodes.Usage
-            );
-        }
-
         output.RequireConfirmation(
             $"Reset build artifacts for instance '{instance.Key}'?",
             settings.Yes
         );
 
-        var deleted = new List<string>();
-        DeleteDirectory(PathDef.Default.DirectoryOfBuild(instance.Key), deleted);
-        DeleteDirectory(PathDef.Default.DirectoryOfLive(instance.Key), deleted);
-        DeleteFile(PathDef.Default.FileOfLockData(instance.Key), deleted);
+        var result = InstanceOperation.Reset(resolver, instanceManager, instance.Key, settings.Profile);
 
-        var result = new
-        {
-            action = "reset",
-            key = instance.Key,
-            deleted,
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "reset", key = result.Key, deleted = result.Deleted });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Instance reset",
-                ("Instance", instance.Key),
-                ("Deleted Items", deleted.Count.ToString())
+                ("Instance", result.Key),
+                ("Deleted Items", result.Deleted.Count.ToString())
             );
-            if (deleted.Count > 0)
+            if (result.Deleted.Count > 0)
             {
                 var table = new Table().RoundedBorder();
                 table.Title = new("[bold]Deleted paths[/]");
                 table.AddColumn("Path");
-                foreach (var path in deleted)
+                foreach (var path in result.Deleted)
                 {
                     table.AddEscapedRow(path);
                 }
@@ -67,32 +50,10 @@ public class InstanceResetCommand(
                 output.WriteTable(table);
             }
 
-            output.WriteSuccess($"Instance {instance.Key} reset.");
+            output.WriteSuccess($"Instance {result.Key} reset.");
         }
 
         return ExitCodes.Success;
-    }
-
-    private static void DeleteDirectory(string path, IList<string> deleted)
-    {
-        if (!Directory.Exists(path))
-        {
-            return;
-        }
-
-        Directory.Delete(path, true);
-        deleted.Add(path);
-    }
-
-    private static void DeleteFile(string path, IList<string> deleted)
-    {
-        if (!File.Exists(path))
-        {
-            return;
-        }
-
-        File.Delete(path);
-        deleted.Add(path);
     }
 
     public class Arguments : InstanceArgumentsBase

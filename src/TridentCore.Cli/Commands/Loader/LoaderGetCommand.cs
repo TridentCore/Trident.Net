@@ -1,5 +1,5 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Loader;
@@ -14,35 +14,25 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
     )
     {
         var instance = ResolveInstance(settings);
-        var lurl = instance.Profile.Setup.Loader;
-        var parsed =
-            !string.IsNullOrWhiteSpace(lurl) && LoaderHelper.TryParse(lurl, out var result)
-                ? new LoaderState(
-                    lurl,
-                    result.Identity,
-                    result.Version,
-                    LoaderHelper.ToDisplayName(result.Identity),
-                    LoaderSupport.IsSupported(result.Identity)
-                )
-                : new LoaderState(lurl, null, null, null, false);
+        var result = LoaderOperation.Get(resolver, instance.Key, settings.Profile);
+        var loader = result.Loader;
 
-        var dto = new { key = instance.Key, loader = parsed };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(dto);
+            output.WriteData(new { key = result.Key, loader });
             return ExitCodes.Success;
         }
 
         output.WriteKeyValueTable(
             "Instance loader",
-            ("Instance", instance.Key),
-            ("Loader", parsed.Lurl),
-            ("Name", parsed.Name),
-            ("Identity", parsed.Identity),
-            ("Version", parsed.Version),
-            ("Supported", parsed.Supported ? "yes" : "no")
+            ("Instance", result.Key),
+            ("Loader", loader.Lurl),
+            ("Name", loader.Name),
+            ("Identity", loader.Identity),
+            ("Version", loader.Version),
+            ("Supported", loader.Supported ? "yes" : "no")
         );
-        if (parsed.Lurl is null)
+        if (loader.Lurl is null)
         {
             output.WriteWarning("This instance does not have a loader configured.");
         }
@@ -51,12 +41,4 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
     }
 
     public class Arguments : InstanceArgumentsBase { }
-
-    private sealed record LoaderState(
-        string? Lurl,
-        string? Identity,
-        string? Version,
-        string? Name,
-        bool Supported
-    );
 }

@@ -1,8 +1,12 @@
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Importers;
 using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
+using TridentCore.Core.Services.Instances;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Cli.Operations;
 
@@ -52,6 +56,204 @@ internal static class InstanceOperation
             Math.Max(0, entries.Count - previewLimit)
         );
     }
+
+    public static InstanceCreateResult Create(
+        ProfileManager profileManager,
+        string name,
+        string version,
+        string? loader,
+        string? identity)
+    {
+        var key = profileManager.RequestKey(
+            InstanceIdentityValidator.EnsureValid(identity ?? name)
+        );
+        var profile = new Profile()
+        {
+            Name = name,
+            Setup = new()
+            {
+                Version = version,
+                Source = null,
+                Loader = loader,
+            },
+        };
+        profileManager.Add(key, profile);
+        return new(key.Key, profile.Name, profile.Setup.Version, profile.Setup.Loader);
+    }
+
+    public static InstanceUnlockResult Unlock(
+        InstanceContextResolver resolver,
+        ProfileManager profileManager,
+        string instance,
+        string? profile)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var guard = profileManager.GetMutable(ctx.Key);
+        var oldSource = guard.Value.Setup.Source;
+        guard.Value.Setup.Source = null;
+        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        return new(ctx.Key, oldSource);
+    }
+
+    public static InstanceDeleteResult Delete(
+        InstanceContextResolver resolver,
+        ProfileManager profileManager,
+        string instance,
+        string? profile)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var bomb = PathDef.Default.FileOfBomb(ctx.Key);
+        var dir = Path.GetDirectoryName(bomb);
+        if (dir is not null)
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        File.WriteAllText(bomb, "delete requested by trident cli");
+        profileManager.Remove(ctx.Key);
+        return new(ctx.Key, bomb);
+    }
+
+    public static InstanceResetResult Reset(
+        InstanceContextResolver resolver,
+        InstanceManager instanceManager,
+        string instance,
+        string? profile)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        if (instanceManager.IsInUse(ctx.Key))
+        {
+            throw new CliException($"Instance '{ctx.Key}' is currently in use.", ExitCodes.Usage);
+        }
+
+        var deleted = new List<string>();
+        DeleteDirectory(PathDef.Default.DirectoryOfBuild(ctx.Key), deleted);
+        DeleteDirectory(PathDef.Default.DirectoryOfLive(ctx.Key), deleted);
+        DeleteFile(PathDef.Default.FileOfLockData(ctx.Key), deleted);
+        return new(ctx.Key, deleted);
+    }
+
+    public static async Task<InstanceBuildResult> BuildAsync(
+        InstanceContextResolver resolver,
+        InstanceManager instanceManager,
+        string instance,
+        string? profile,
+        bool fastMode,
+        bool resolveDependency,
+        bool fullCheck,
+        string? javaHome)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var options = new DeployOptions(fastMode, resolveDependency, fullCheck);
+        var locator = JavaHelper.MakeLocator(_ => javaHome, true);
+        var tracker = instanceManager.Deploy(ctx.Key, options, locator);
+        await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None).ConfigureAwait(false);
+        return new(ctx.Key, "finished");
+    }
+
+    public static async Task<InstanceExportResult> ExportAsync(
+        InstanceContextResolver resolver,
+        ExporterAgent exporterAgent,
+        string instance,
+        string? profile,
+        string format,
+        string type,
+        string? name,
+        string author,
+        string version,
+        string output,
+        bool noTags)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var options = new PackData
+        {
+            IncludingSource = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase),
+            IncludingTags = !noTags,
+            OfflineMode = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase),
+        };
+
+        using var container = await exporterAgent
+            .ExportAsync(options, format, ctx.Key, name ?? ctx.Profile.Name, author, version)
+            .ConfigureAwait(false);
+
+        var outputPath = Path.GetFullPath(output);
+        var dir = Path.GetDirectoryName(outputPath);
+        if (dir is not null)
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        await using var file = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+        await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
+        await file.FlushAsync().ConfigureAwait(false);
+
+        return new(ctx.Key, format, type, outputPath);
+    }
+
+    public static async Task<InstanceImportResult> ImportAsync(
+        ProfileManager profileManager,
+        ImporterAgent importerAgent,
+        string path,
+        string? name,
+        string? identity)
+    {
+        var sourcePath = Path.GetFullPath(path);
+        if (!File.Exists(sourcePath))
+        {
+            throw new CliException($"Pack file '{sourcePath}' was not found.", ExitCodes.NotFound);
+        }
+
+        await using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var memory = new MemoryStream();
+        await fileStream.CopyToAsync(memory).ConfigureAwait(false);
+        memory.Position = 0;
+
+        using var pack = new CompressedProfilePack(memory);
+        var container = await importerAgent.ImportAsync(pack).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            container.Profile.Name = name;
+        }
+
+        var id = InstanceIdentityValidator.EnsureValid(
+            identity
+                ?? container.Profile.Name
+                ?? Path.GetFileNameWithoutExtension(sourcePath)
+        );
+        var key = profileManager.RequestKey(id);
+        await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
+        profileManager.Add(key, container.Profile);
+
+        return new(
+            key.Key,
+            container.Profile.Name,
+            container.Profile.Setup.Version,
+            container.Profile.Setup.Loader,
+            sourcePath
+        );
+    }
+
+    private static void DeleteDirectory(string path, IList<string> deleted)
+    {
+        if (!Directory.Exists(path))
+        {
+            return;
+        }
+
+        Directory.Delete(path, true);
+        deleted.Add(path);
+    }
+
+    private static void DeleteFile(string path, IList<string> deleted)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        File.Delete(path);
+        deleted.Add(path);
+    }
 }
 
 public sealed record InstanceSummary(
@@ -86,3 +288,11 @@ public sealed record PackagePreview(
     string? Author,
     TridentCore.Abstractions.Repositories.Resources.ResourceKind? Kind
 ) : IPackageTableRow;
+
+internal sealed record InstanceCreateResult(string Key, string Name, string Version, string? Loader);
+internal sealed record InstanceUnlockResult(string Key, string? OldSource);
+internal sealed record InstanceDeleteResult(string Key, string Bomb);
+internal sealed record InstanceResetResult(string Key, IReadOnlyList<string> Deleted);
+internal sealed record InstanceBuildResult(string Key, string State);
+internal sealed record InstanceExportResult(string Key, string Format, string Type, string Output);
+internal sealed record InstanceImportResult(string Key, string Name, string Version, string? Loader, string Path);

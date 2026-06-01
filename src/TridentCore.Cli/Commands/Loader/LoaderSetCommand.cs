@@ -1,5 +1,5 @@
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -17,53 +17,24 @@ public class LoaderSetCommand(
         CancellationToken cancellationToken
     )
     {
-        if (!LoaderHelper.TryParse(settings.Loader, out var parsed))
-        {
-            throw new CliException(
-                $"Loader '{settings.Loader}' is not a valid lurl. Use <loader-id>:<version>.",
-                ExitCodes.Usage
-            );
-        }
-
-        if (!LoaderSupport.IsSupported(parsed.Identity))
-        {
-            throw new CliException(
-                $"Loader '{parsed.Identity}' is not supported.",
-                ExitCodes.Usage
-            );
-        }
-
         var instance = ResolveInstance(settings);
-        var guard = profileManager.GetMutable(instance.Key);
-        var oldLoader = guard.Value.Setup.Loader;
-        guard.Value.Setup.Loader = settings.Loader;
-        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
-
-        var result = new
-        {
-            action = "loader.set",
-            key = instance.Key,
-            oldLoader,
-            loader = settings.Loader,
-            identity = parsed.Identity,
-            version = parsed.Version,
-        };
+        var result = LoaderOperation.Set(resolver, profileManager, settings.Loader, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "loader.set", key = result.Key, oldLoader = result.OldLoader, loader = result.Loader, identity = result.Identity, version = result.Version });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Loader updated",
-                ("Instance", instance.Key),
-                ("Old Loader", oldLoader),
-                ("New Loader", settings.Loader),
-                ("Identity", parsed.Identity),
-                ("Version", parsed.Version)
+                ("Instance", result.Key),
+                ("Old Loader", result.OldLoader),
+                ("New Loader", result.Loader),
+                ("Identity", result.Identity),
+                ("Version", result.Version)
             );
-            output.WriteSuccess($"Instance {instance.Key} loader set to {settings.Loader}.");
+            output.WriteSuccess($"Instance {result.Key} loader set to {result.Loader}.");
         }
 
         return ExitCodes.Success;

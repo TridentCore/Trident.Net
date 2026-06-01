@@ -39,6 +39,45 @@ internal static class LoaderOperation
 
         return new(loaderId, version, versions.Count, page);
     }
+
+    public static LoaderGetResult Get(
+        InstanceContextResolver resolver,
+        string instance,
+        string? profile)
+    {
+        var ctx = resolver.Resolve(instance, profile);
+        var lurl = ctx.Profile.Setup.Loader;
+        var parsed =
+            !string.IsNullOrWhiteSpace(lurl) && LoaderHelper.TryParse(lurl, out var result)
+                ? new LoaderState(lurl, result.Identity, result.Version, LoaderHelper.ToDisplayName(result.Identity), LoaderSupport.IsSupported(result.Identity))
+                : new LoaderState(lurl, null, null, null, false);
+        return new(ctx.Key, parsed);
+    }
+
+    public static LoaderSetResult Set(
+        InstanceContextResolver resolver,
+        ProfileManager profileManager,
+        string loader,
+        string instance,
+        string? profile)
+    {
+        if (!LoaderHelper.TryParse(loader, out var parsed))
+        {
+            throw new CliException($"Loader '{loader}' is not a valid lurl. Use <loader-id>:<version>.", ExitCodes.Usage);
+        }
+
+        if (!LoaderSupport.IsSupported(parsed.Identity))
+        {
+            throw new CliException($"Loader '{parsed.Identity}' is not supported.", ExitCodes.Usage);
+        }
+
+        var ctx = resolver.Resolve(instance, profile);
+        var guard = profileManager.GetMutable(ctx.Key);
+        var oldLoader = guard.Value.Setup.Loader;
+        guard.Value.Setup.Loader = loader;
+        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        return new(ctx.Key, oldLoader, loader, parsed.Identity, parsed.Version);
+    }
 }
 
 public sealed record LoaderVersionListResult(
@@ -55,3 +94,7 @@ public sealed record LoaderVersionItem(
     bool Recommended,
     DateTimeOffset ReleaseTime
 );
+
+internal sealed record LoaderState(string? Lurl, string? Identity, string? Version, string? Name, bool Supported);
+internal sealed record LoaderGetResult(string Key, LoaderState Loader);
+internal sealed record LoaderSetResult(string Key, string? OldLoader, string Loader, string Identity, string? Version);

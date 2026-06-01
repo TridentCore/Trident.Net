@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -25,44 +26,44 @@ public class AccountAddCommand(
 
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
     {
-        var stored = settings.Type.ToLowerInvariant() switch
+        if (settings.Type.ToLowerInvariant() == "offline")
         {
-            "offline" => AddOffline(settings),
-            "microsoft" => await AddMicrosoftAsync(cancellationToken).ConfigureAwait(false),
-            _ => throw new CliException(
+            var result = AccountOperation.AddOffline(accounts, settings.Username, settings.Uuid);
+            WriteResult(result);
+            return;
+        }
+
+        if (settings.Type.ToLowerInvariant() != "microsoft")
+        {
+            throw new CliException(
                 $"Account type '{settings.Type}' is not supported.",
                 ExitCodes.Usage
-            ),
-        };
+            );
+        }
 
+        var stored = await AddMicrosoftAsync(cancellationToken).ConfigureAwait(false);
         accounts.AddOrReplace(stored);
         var saved = accounts.Load().First(x => x.Uuid == stored.Uuid);
-        var result = new { action = "account.add", account = AccountDtos.FromStored(saved) };
+        WriteResult(AccountDtos.FromStored(saved));
+    }
+
+    private void WriteResult(AccountDto account)
+    {
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "account.add", account });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Account added",
-                ("Username", saved.Username),
-                ("UUID", saved.Uuid),
-                ("Type", saved.Type),
-                ("Default", saved.IsDefault ? "yes" : "no")
+                ("Username", account.Username),
+                ("UUID", account.Uuid),
+                ("Type", account.Type),
+                ("Default", account.IsDefault ? "yes" : "no")
             );
-            output.WriteSuccess($"Account {stored.Username} added.");
+            output.WriteSuccess($"Account {account.Username} added.");
         }
-    }
-
-    private static StoredAccount AddOffline(Arguments settings)
-    {
-        if (string.IsNullOrWhiteSpace(settings.Username))
-        {
-            throw new CliException("--username is required for offline accounts.", ExitCodes.Usage);
-        }
-
-        return AccountStore.CreateOffline(settings.Username, settings.Uuid);
     }
 
     private async Task<StoredAccount> AddMicrosoftAsync(CancellationToken cancellationToken)
