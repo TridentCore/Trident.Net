@@ -39,6 +39,11 @@ services.AddSingleton<IConfiguration>(configuration);
 services.AddSingleton<IEnvironment>(environment);
 services.AddSingleton(lookup);
 
+if (invocation.Context.Mcp)
+{
+    return await McpHost.RunAsync(services);
+}
+
 var registrar = new TypeRegistrar(services);
 var app = new CommandApp(registrar);
 Startup.ConfigureCommands(app);

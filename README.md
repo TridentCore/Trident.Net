@@ -38,6 +38,9 @@ TridentCore.Abstractions  -> file models, repository interfaces, trackers, accou
 TridentCore.Core          -> instance management, deploy/run engine, import/export, remote repositories, auth services
 TridentCore.Purl          -> Trident package URL parsing and formatting
 TridentCore.Cli           -> end-user trident command
+  ├── Operations/         -> shared business logic (used by both Commands and Tools)
+  ├── Commands/           -> Spectre.Console.Cli command entry points + rich output formatting
+  ├── Tools/              -> MCP tool entry points + JSON serialization
 ```
 
 ## Trident As A Library
@@ -177,6 +180,7 @@ Global options are preprocessed before command dispatch and can appear anywhere 
 | `--no-interactive` | Disables prompts, spinners, and progress UI; destructive commands also require `--yes`. |
 | `--verbose` | Enables information-level logs. |
 | `--debug` | Enables debug logs and full exceptions; also enables verbose output. |
+| `--mcp` | Starts Trident as an MCP (Model Context Protocol) server over stdio. Implies `--json` and `--no-interactive`. |
 
 When stdout is redirected, the CLI automatically prefers JSON output for pipeline and scripting scenarios.
 
@@ -243,6 +247,45 @@ trident repository add --label modrinth-cn --driver modrinth --endpoint https://
 trident repository status --label modrinth-cn
 ```
 
+### MCP Server
+
+Trident can run as an MCP (Model Context Protocol) server, exposing its capabilities as tools to AI agents and MCP clients:
+
+```sh
+trident --mcp
+```
+
+The server communicates over stdio. Configure it in an MCP client (e.g. Claude Desktop, opencode):
+
+```json
+{
+  "mcpServers": {
+    "trident": {
+      "command": "trident",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+Available tools:
+
+| Tool | Description |
+| --- | --- |
+| `List` (InstanceTools) | List all Trident instances. |
+| `Inspect` (InstanceTools) | Inspect an instance with package preview. |
+| `List` (PackageTools) | List packages installed in an instance. |
+| `Search` (PackageTools) | Search packages in remote repositories or within an instance. |
+| `Add` (PackageTools) | Add a package to an instance by PURL. |
+| `Inspect` (PackageTools) | Inspect a package by PURL. |
+| `SetEnabled` (PackageTools) | Enable or disable an installed package. |
+| `Get` / `Set` / `Unset` / `List` (ConfigTools) | Manage configuration values. |
+| `List` / `Status` (RepositoryTools) | List repositories and check their status. |
+| `List` (AccountTools) | List registered accounts. |
+| `List` / `VersionList` (LoaderTools) | List supported loaders and query versions. |
+
+All tools return JSON. The `--home` option is also respected in MCP mode.
+
 ### CI/CD Modpack Publishing
 
 Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
@@ -294,7 +337,7 @@ jobs:
 | `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities. |
 | `src/TridentCore.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
 | `src/TridentCore.Purl/` | Trident package URL parsing and formatting. |
-| `src/TridentCore.Cli/` | The `trident` command-line product. |
+| `src/TridentCore.Cli/` | The `trident` command-line product (CLI + MCP server). |
 | `docs/CLI.md` | Detailed CLI reference and validation notes. |
 
 ## Development

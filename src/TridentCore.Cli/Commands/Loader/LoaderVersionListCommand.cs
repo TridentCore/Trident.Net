@@ -1,9 +1,8 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Commands.Package;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
-using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Loader;
@@ -23,52 +22,17 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
     {
-        if (!LoaderSupport.IsSupported(settings.LoaderId))
-        {
-            throw new CliException(
-                $"Loader '{settings.LoaderId}' is not supported.",
-                ExitCodes.Usage
-            );
-        }
-
-        var uid = LoaderSupport.GetUid(settings.LoaderId);
-        var versions = await output
-            .StatusAsync(
-                "Loading loader versions...",
-                async () =>
-                    await prismLauncher
-                        .GetVersionsForMinecraftVersionAsync(
-                            uid,
-                            settings.Version,
-                            cancellationToken
-                        )
-                        .ConfigureAwait(false)
-            )
+        var result = await LoaderOperation
+            .VersionList(prismLauncher, settings.LoaderId, settings.Version, settings.Sort, settings.Index, settings.Limit)
             .ConfigureAwait(false);
-
-        var sorted = string.Equals(settings.Sort, "asc", StringComparison.OrdinalIgnoreCase)
-            ? versions.OrderBy(x => x.ReleaseTime)
-            : versions.OrderByDescending(x => x.ReleaseTime);
-        var page = sorted.Skip(settings.Index).Take(settings.Limit).ToArray();
-        var result = page.Select(x => ToDto(settings.LoaderId, x)).ToArray();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    loader = settings.LoaderId,
-                    gameVersion = settings.Version,
-                    total = versions.Count,
-                    index = settings.Index,
-                    limit = settings.Limit,
-                    items = result,
-                }
-            );
+            output.WriteData(result);
             return;
         }
 
-        if (result.Length == 0)
+        if (result.Items.Count == 0)
         {
             output.WriteEmptyState(
                 "No loader versions found",
@@ -86,7 +50,7 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         table.AddColumn("Type");
         table.AddColumn("Recommended");
         table.AddColumn("Released");
-        foreach (var item in result)
+        foreach (var item in result.Items)
         {
             table.AddMarkupRow(
                 Markup.Escape(item.Version),
@@ -99,19 +63,6 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
         output.WriteTable(table);
     }
-
-    private static LoaderVersionDto ToDto(
-        string loaderId,
-        ComponentIndex.ComponentVersion version
-    ) =>
-        new(
-            version.Version,
-            LoaderHelper.ToLurl(loaderId, version.Version),
-            version.Type,
-            version.Recommended,
-            version.ReleaseTime,
-            version.Sha256
-        );
 
     public class Arguments : CommandSettings
     {
@@ -133,13 +84,4 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         public override ValidationResult Validate() =>
             PagingValidation.Validate(Sort, Index, Limit);
     }
-
-    private sealed record LoaderVersionDto(
-        string Version,
-        string Lurl,
-        string Type,
-        bool Recommended,
-        DateTimeOffset ReleaseTime,
-        string Sha256
-    );
 }

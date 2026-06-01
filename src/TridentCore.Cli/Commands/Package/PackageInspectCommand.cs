@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
@@ -24,75 +25,40 @@ public class PackageInspectCommand(
 
     private async Task InspectAsync(Arguments settings)
     {
-        var parsed = PackageCliHelper.ParsePurl(settings.Purl);
-        ResolvedInstanceContext? instance = null;
-        LocalPackageDto? local = null;
-        if (resolver.TryResolve(settings.Instance, settings.Profile, out var resolved))
-        {
-            instance = resolved;
-            local = PackageDtos.FromEntry(
-                PackageCliHelper.FindEntry(resolved.Profile, settings.Purl)
-            );
-        }
-
-        var filter = PackageCliHelper.BuildFilter(
-            settings.GameVersion,
-            settings.Loader,
-            settings.ParsedKind,
-            instance
-        );
-        var package = await output
-            .StatusAsync(
-                "Resolving package metadata...",
-                async () =>
-                    await repositories
-                        .ResolveAsync(
-                            parsed.Label,
-                            parsed.Namespace,
-                            parsed.Pid,
-                            parsed.Vid,
-                            filter
-                        )
-                        .ConfigureAwait(false)
-            )
+        var result = await PackageOperation
+            .Inspect(resolver, repositories, settings.Purl,
+                settings.GameVersion, settings.Loader, settings.Kind,
+                settings.Instance, settings.Profile)
             .ConfigureAwait(false);
-        var packageDto = PackageDtos.FromPackage(package);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    key = instance?.Key,
-                    local,
-                    package = packageDto,
-                }
-            );
+            output.WriteData(result);
             return;
         }
 
         output.WriteKeyValueTable(
             "Package details",
-            ("PURL", packageDto.Purl),
-            ("Project", packageDto.ProjectName),
-            ("Version", packageDto.VersionName),
-            ("Kind", packageDto.Kind.ToString()),
-            ("Release", packageDto.ReleaseType.ToString()),
-            ("Author", packageDto.Author),
-            ("File", packageDto.FileName),
-            ("Size", $"{packageDto.Size:n0} bytes"),
-            ("Published", packageDto.PublishedAt.ToString("u")),
-            ("Installed", local is null ? "no" : "yes")
+            ("PURL", result.Package.Purl),
+            ("Project", result.Package.ProjectName),
+            ("Version", result.Package.VersionName),
+            ("Kind", result.Package.Kind.ToString()),
+            ("Release", result.Package.ReleaseType.ToString()),
+            ("Author", result.Package.Author),
+            ("File", result.Package.FileName),
+            ("Size", $"{result.Package.Size:n0} bytes"),
+            ("Published", result.Package.PublishedAt.ToString("u")),
+            ("Installed", result.Local is null ? "no" : "yes")
         );
 
-        if (!string.IsNullOrWhiteSpace(packageDto.Summary))
+        if (!string.IsNullOrWhiteSpace(result.Package.Summary))
         {
             AnsiConsole.Write(
-                new Panel(Markup.Escape(packageDto.Summary)).Header("Summary").RoundedBorder()
+                new Panel(Markup.Escape(result.Package.Summary)).Header("Summary").RoundedBorder()
             );
         }
 
-        if (packageDto.Dependencies.Count == 0)
+        if (result.Package.Dependencies.Count == 0)
         {
             output.WriteEmptyState(
                 "No dependencies",
@@ -102,7 +68,7 @@ public class PackageInspectCommand(
         }
 
         output.WriteTable(
-            PackageCliHelper.CreateDependencyTable("Dependencies", packageDto.Dependencies)
+            PackageCliHelper.CreateDependencyTable("Dependencies", result.Package.Dependencies)
         );
     }
 

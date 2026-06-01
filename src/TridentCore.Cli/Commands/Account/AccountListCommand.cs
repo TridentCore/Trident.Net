@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Account;
@@ -13,14 +14,14 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         CancellationToken cancellationToken
     )
     {
-        var result = accounts.Load().Select(AccountDtos.FromStored).ToArray();
+        var result = AccountOperation.List(accounts);
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
             return ExitCodes.Success;
         }
 
-        if (result.Length == 0)
+        if (result.Count == 0)
         {
             output.WriteEmptyState(
                 "No accounts",

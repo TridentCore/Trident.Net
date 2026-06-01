@@ -1,5 +1,7 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Commands.Package;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
@@ -24,100 +26,40 @@ public class PackageSearchCommand(
 
     private async Task SearchAsync(Arguments settings, CancellationToken cancellationToken)
     {
+        var kind = PackageCliHelper.ParseKind(settings.Kind);
+
         if (resolver.TryResolve(settings.Instance, settings.Profile, out var instance))
         {
-            var entries = instance.Profile.Setup.Packages;
-            var resolved =
-                entries.Count > 0
-                    ? await output
-                        .StatusAsync(
-                            "Resolving package metadata...",
-                            () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
-                        )
-                        .ConfigureAwait(false)
-                    : [];
-
-            var query = settings.Query;
-            var local = resolved
-                .Where(x =>
-                    (x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                    || (x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                    || (x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                    || x.Purl.Contains(query, StringComparison.OrdinalIgnoreCase)
-                )
-                .Where(x => settings.ParsedKind is null || x.Kind == settings.ParsedKind)
-                .Where(x =>
-                    settings.Repository is null
-                    || x.Purl.StartsWith(
-                        $"{settings.Repository}:",
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
-                .Skip(settings.Index)
-                .Take(settings.Limit)
-                .ToArray();
+            var local = await PackageOperation
+                .SearchLocal(resolver, repositories, settings.Query, settings.Repository,
+                    kind, settings.Instance, settings.Profile, settings.Index, settings.Limit)
+                .ConfigureAwait(false);
 
             if (output.UseStructuredOutput)
             {
-                output.WriteData(new { key = instance.Key, packages = local });
+                output.WriteData(local);
                 return;
             }
 
-            if (local.Length == 0)
+            if (local.Packages.Count == 0)
             {
                 output.WriteEmptyState(
                     "No local packages found",
-                    $"No package in {instance.Key} matched '{settings.Query}'."
+                    $"No package in {local.Key} matched '{settings.Query}'."
                 );
                 return;
             }
 
             output.WriteTable(
-                PackageCliHelper.CreatePackageTable($"Packages in {instance.Key}", local)
+                PackageCliHelper.CreatePackageTable($"Packages in {local.Key}", local.Packages)
             );
             return;
         }
 
-        var labels = settings.Repository is not null
-            ? [settings.Repository]
-            : repositories.Labels.ToArray();
-        var filter = PackageCliHelper.BuildFilter(
-            settings.GameVersion,
-            settings.Loader,
-            settings.ParsedKind
-        );
-        var items = new List<ExhibitDto>();
-        foreach (var label in labels)
-        {
-            var handle = await output
-                .StatusAsync(
-                    $"Searching {label}...",
-                    async () =>
-                        await repositories
-                            .SearchAsync(label, settings.Query, filter)
-                            .ConfigureAwait(false)
-                )
-                .ConfigureAwait(false);
-            await output
-                .StatusAsync(
-                    $"Fetching results from {label}...",
-                    async () =>
-                    {
-                        await foreach (
-                            var item in PaginationHelper.FetchWindowAsync(
-                                handle,
-                                settings.Index,
-                                settings.Limit,
-                                cancellationToken
-                            )
-                        )
-                        {
-                            items.Add(PackageDtos.FromExhibit(item));
-                        }
-                    }
-                )
-                .ConfigureAwait(false);
-        }
+        var items = await PackageOperation
+            .SearchRemote(repositories, settings.Query, settings.Repository,
+                settings.GameVersion, settings.Loader, kind, settings.Index, settings.Limit)
+            .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)
         {

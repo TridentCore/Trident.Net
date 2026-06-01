@@ -38,6 +38,9 @@ TridentCore.Abstractions  -> 文件模型、仓库接口、任务追踪、账号
 TridentCore.Core          -> 实例管理、部署/启动引擎、导入导出、远程仓库、认证服务
 TridentCore.Purl          -> Trident 使用的包 URL 解析与生成
 TridentCore.Cli           -> 面向终端用户的 trident 命令
+  ├── Operations/         -> 共享业务逻辑（Commands 和 Tools 共用）
+  ├── Commands/           -> Spectre.Console.Cli 命令入口 + 富文本输出
+  ├── Tools/              -> MCP Tool 入口 + JSON 序列化
 ```
 
 ## Trident 作为库
@@ -176,6 +179,7 @@ trident instance export --instance cherry_picks --format modrinth --type online 
 | `--no-interactive` | 禁用提示、spinner 和进度 UI；破坏性命令需要配合 `--yes`。 |
 | `--verbose` | 输出信息级日志。 |
 | `--debug` | 输出调试日志和完整异常；同时启用 verbose。 |
+| `--mcp` | 以 MCP（Model Context Protocol）服务器模式启动，通过 stdio 通信。隐含 `--json` 和 `--no-interactive`。 |
 
 当 stdout 被重定向时，CLI 会自动倾向输出 JSON，方便管道和脚本消费。
 
@@ -237,6 +241,45 @@ trident repository add --label modrinth-cn --driver modrinth --endpoint https://
 trident repository status --label modrinth-cn
 ```
 
+### MCP 服务器
+
+Trident 可以作为 MCP（Model Context Protocol）服务器运行，把各项能力作为工具暴露给 AI agent 和 MCP 客户端：
+
+```sh
+trident --mcp
+```
+
+服务器通过 stdio 通信。在 MCP 客户端（如 Claude Desktop、opencode）中配置：
+
+```json
+{
+  "mcpServers": {
+    "trident": {
+      "command": "trident",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+可用工具：
+
+| 工具 | 说明 |
+| --- | --- |
+| `List` (InstanceTools) | 列出所有实例。 |
+| `Inspect` (InstanceTools) | 查看实例详情和包预览。 |
+| `List` (PackageTools) | 列出实例中的已安装包。 |
+| `Search` (PackageTools) | 在远程仓库或实例内搜索包。 |
+| `Add` (PackageTools) | 通过 PURL 添加包到实例。 |
+| `Inspect` (PackageTools) | 通过 PURL 查看包详情。 |
+| `SetEnabled` (PackageTools) | 启用或禁用已安装的包。 |
+| `Get` / `Set` / `Unset` / `List` (ConfigTools) | 管理配置值。 |
+| `List` / `Status` (RepositoryTools) | 列出仓库和检查状态。 |
+| `List` (AccountTools) | 列出已注册账号。 |
+| `List` / `VersionList` (LoaderTools) | 列出支持的加载器和查询版本。 |
+
+所有工具返回 JSON。MCP 模式下同样支持 `--home` 选项。
+
 ### CI/CD 发布整合包
 
 Trident CLI 可以在 GitHub Actions 中把同一个实例导出为多个发行格式。下面示例假定仓库内有可被 CLI 管理的 `.trident` home，或者通过 `--home` 指定构建用目录。
@@ -288,7 +331,7 @@ jobs:
 | `src/TridentCore.Abstractions/` | 抽象模型、接口和共享工具。 |
 | `src/TridentCore.Core/` | 核心业务逻辑、部署/启动、导入导出、远程服务。 |
 | `src/TridentCore.Purl/` | Trident 包 URL 解析和生成。 |
-| `src/TridentCore.Cli/` | `trident` 命令行产品。 |
+| `src/TridentCore.Cli/` | `trident` 命令行产品（CLI + MCP 服务器）。 |
 | `docs/CLI.md` | CLI 详细参考和验证清单。 |
 
 ## 开发

@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Repository;
@@ -16,14 +17,7 @@ public class RepositoryListCommand(
         CancellationToken cancellationToken
     )
     {
-        var userLabels = userRepositories
-            .Load()
-            .Select(x => x.Label)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var repositories = combined
-            .Build()
-            .Select(x => RepositoryDtos.FromProvider(x, userLabels.Contains(x.Label)))
-            .ToArray();
+        var repositories = RepositoryOperation.List(userRepositories, combined);
 
         if (output.UseStructuredOutput)
         {
@@ -31,7 +25,7 @@ public class RepositoryListCommand(
             return ExitCodes.Success;
         }
 
-        if (repositories.Length == 0)
+        if (repositories.Count == 0)
         {
             output.WriteEmptyState(
                 "No repositories",
@@ -47,14 +41,14 @@ public class RepositoryListCommand(
         table.AddColumn("Endpoint");
         table.AddColumn("User");
         table.AddColumn("Auth");
-        foreach (var repository in repositories)
+        foreach (var repo in repositories)
         {
             table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(repository.Label)}[/]",
-                Markup.Escape(repository.Driver),
-                Markup.Escape(repository.Endpoint),
-                CliOutput.FormatBoolean(repository.UserDefined, "user", "built-in"),
-                CliOutput.FormatBoolean(repository.HasAuthorization)
+                $"[cyan]{Markup.Escape(repo.Label)}[/]",
+                Markup.Escape(repo.Driver),
+                Markup.Escape(repo.Endpoint),
+                CliOutput.FormatBoolean(repo.UserDefined, "user", "built-in"),
+                CliOutput.FormatBoolean(repo.HasAuthorization)
             );
         }
 

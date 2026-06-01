@@ -3,6 +3,7 @@ using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using TridentCore.Abstractions.Extensions;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -37,19 +38,8 @@ public class ConfigGetCommand(
         CancellationToken cancellationToken
     )
     {
-        var scope = ResolveScope(settings);
-        IReadOnlyDictionary<string, object> values = scope.IsGlobal
-            ? configuration.Load()
-            : scope.Instance!.Profile.Overrides.ToDictionary();
-        if (!values.TryGetValue(settings.Name, out var value))
-        {
-            throw new CliException(
-                $"Configuration '{settings.Name}' was not found in {scope.DisplayName}.",
-                ExitCodes.NotFound
-            );
-        }
+        var result = ConfigOperation.Get(resolver, configuration, settings.Name, settings.Instance, settings.Profile);
 
-        var result = ConfigResult.From(scope, settings.Name, value);
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
@@ -58,10 +48,10 @@ public class ConfigGetCommand(
         {
             output.WriteKeyValueTable(
                 "Configuration value",
-                ("Scope", scope.DisplayName),
+                ("Scope", result.Scope),
                 ("Name", settings.Name),
-                ("Type", ConfigValueParser.Describe(value)),
-                ("Value", ConfigValueParser.Format(value))
+                ("Type", ConfigValueParser.Describe(result.Value)),
+                ("Value", ConfigValueParser.Format(result.Value))
             );
         }
 
@@ -88,20 +78,9 @@ public class ConfigSetCommand(
         CancellationToken cancellationToken
     )
     {
-        var value = ConfigValueParser.Parse(settings.Value, settings.Type);
-        var scope = ResolveScope(settings);
-        if (scope.IsGlobal)
-        {
-            configuration.Set(settings.Name, value);
-        }
-        else
-        {
-            var guard = profileManager.GetMutable(scope.Instance!.Key);
-            guard.Value.SetOverride(settings.Name, value);
-            guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
+        var result = ConfigOperation.Set(resolver, configuration, profileManager,
+            settings.Name, settings.Value, settings.Type, settings.Instance, settings.Profile);
 
-        var result = ConfigResult.From(scope, settings.Name, value, "config.set");
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
@@ -110,12 +89,12 @@ public class ConfigSetCommand(
         {
             output.WriteKeyValueTable(
                 "Configuration saved",
-                ("Scope", scope.DisplayName),
+                ("Scope", result.Scope),
                 ("Name", settings.Name),
-                ("Type", ConfigValueParser.Describe(value)),
-                ("Value", ConfigValueParser.Format(value))
+                ("Type", ConfigValueParser.Describe(result.Value)),
+                ("Value", ConfigValueParser.Format(result.Value))
             );
-            output.WriteSuccess($"Configuration {settings.Name} saved in {scope.DisplayName}.");
+            output.WriteSuccess($"Configuration {settings.Name} saved.");
         }
 
         return ExitCodes.Success;
@@ -147,46 +126,19 @@ public class ConfigUnsetCommand(
         CancellationToken cancellationToken
     )
     {
-        var scope = ResolveScope(settings);
-        var removed = false;
-        if (scope.IsGlobal)
-        {
-            removed = configuration.Remove(settings.Name);
-        }
-        else
-        {
-            var guard = profileManager.GetMutable(scope.Instance!.Key);
-            removed = guard.Value.Overrides.Remove(settings.Name);
-            guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
+        ConfigOperation.Unset(resolver, configuration, profileManager, settings.Name, settings.Instance, settings.Profile);
 
-        if (!removed)
-        {
-            throw new CliException(
-                $"Configuration '{settings.Name}' was not found in {scope.DisplayName}.",
-                ExitCodes.NotFound
-            );
-        }
-
-        var result = new
-        {
-            action = "config.unset",
-            scope = scope.ScopeName,
-            key = scope.Instance?.Key,
-            name = settings.Name,
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { action = "config.unset", name = settings.Name });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Configuration removed",
-                ("Scope", scope.DisplayName),
                 ("Name", settings.Name)
             );
-            output.WriteSuccess($"Configuration {settings.Name} removed from {scope.DisplayName}.");
+            output.WriteSuccess($"Configuration {settings.Name} removed.");
         }
 
         return ExitCodes.Success;
@@ -211,43 +163,32 @@ public class ConfigListCommand(
         CancellationToken cancellationToken
     )
     {
-        var scope = ResolveScope(settings);
-        IReadOnlyDictionary<string, object> values = scope.IsGlobal
-            ? configuration.Load()
-            : scope.Instance!.Profile.Overrides.ToDictionary();
-        var items = values.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase).ToArray();
+        var result = ConfigOperation.List(resolver, configuration, settings.Instance, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    scope = scope.ScopeName,
-                    key = scope.Instance?.Key,
-                    values = items.Select(x => ConfigResult.From(scope, x.Key, x.Value)).ToArray(),
-                }
-            );
+            output.WriteData(result);
             return ExitCodes.Success;
         }
 
-        if (items.Length == 0)
+        if (result.Values.Count == 0)
         {
             output.WriteEmptyState(
                 "No configuration values",
-                $"Set values with: trident config set --name <key> --value <value>{scope.InstanceSuffix}"
+                "Set values with: trident config set --name <key> --value <value>"
             );
             return ExitCodes.Success;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new($"[bold]Configuration: {Markup.Escape(scope.DisplayName)}[/]");
+        table.Title = new($"[bold]Configuration: {Markup.Escape(result.Scope)}[/]");
         table.AddColumn("Name");
         table.AddColumn("Type");
         table.AddColumn("Value");
-        foreach (var item in items)
+        foreach (var item in result.Values)
         {
             table.AddRow(
-                Markup.Escape(item.Key),
+                Markup.Escape(item.Name),
                 Markup.Escape(ConfigValueParser.Describe(item.Value)),
                 Markup.Escape(ConfigValueParser.Format(item.Value))
             );
@@ -349,40 +290,16 @@ public static class ConfigValueParser
 
     private static object ParseAuto(string value)
     {
-        if (bool.TryParse(value, out var boolean))
-        {
-            return boolean;
-        }
-
-        if (
-            long.TryParse(
-                value,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out var integer
-            )
-        )
-        {
-            return integer;
-        }
-
-        if (
-            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-        )
-        {
-            return number;
-        }
-
+        if (bool.TryParse(value, out var boolean)) return boolean;
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer)) return integer;
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return number;
         return value;
     }
 
     private static bool ParseBoolean(string value) =>
         bool.TryParse(value, out var result)
             ? result
-            : throw new CliException(
-                $"'{value}' is not a valid bool value. Use true or false.",
-                ExitCodes.Usage
-            );
+            : throw new CliException($"'{value}' is not a valid bool value. Use true or false.", ExitCodes.Usage);
 
     private static long ParseInteger(string value) =>
         long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)

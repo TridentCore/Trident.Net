@@ -1,6 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Abstractions;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -15,18 +15,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
         CancellationToken cancellationToken
     )
     {
-        var instances = profileManager
-            .Profiles.Select(x => new InstanceSummary(
-                x.Item1,
-                x.Item2.Name,
-                x.Item2.Setup.Version,
-                x.Item2.Setup.Loader,
-                x.Item2.Setup.Source,
-                x.Item2.Setup.Packages.Count,
-                PathDef.Default.DirectoryOfHome(x.Item1)
-            ))
-            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var instances = InstanceOperation.List(profileManager);
 
         if (output.UseStructuredOutput)
         {
@@ -34,7 +23,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
             return ExitCodes.Success;
         }
 
-        if (instances.Length == 0)
+        if (instances.Count == 0)
         {
             output.WriteEmptyState(
                 "No instances",
@@ -69,14 +58,4 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
     }
 
     public class Arguments : CommandSettings { }
-
-    private sealed record InstanceSummary(
-        string Key,
-        string Name,
-        string Version,
-        string? Loader,
-        string? Source,
-        int PackageCount,
-        string Path
-    );
 }

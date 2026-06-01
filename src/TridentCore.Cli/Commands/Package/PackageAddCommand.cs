@@ -1,6 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Abstractions.Utilities;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
@@ -32,35 +32,13 @@ public class PackageAddCommand(
             throw new CliException("A package purl or stdin input is required.", ExitCodes.Usage);
         }
 
-        var instance = ResolveInstance(settings);
-        var guard = profileManager.GetMutable(instance.Key);
-        var results = new List<AddResult>();
         var uniquePurls = purls.Distinct(StringComparer.Ordinal).ToArray();
+        var results = new List<PackageAddResult>();
 
         void ProcessPurl(string purl)
         {
-            var parsed = PackageCliHelper.ParsePurl(purl);
-            var normalized = PackageHelper.ToPurl(
-                parsed.Label,
-                parsed.Namespace,
-                parsed.Pid,
-                parsed.Vid
-            );
-            if (PackageCliHelper.ContainsProject(guard.Value, normalized))
-            {
-                results.Add(new(normalized, false, "already-installed"));
-                return;
-            }
-
-            guard.Value.Setup.Packages.Add(
-                new()
-                {
-                    Enabled = true,
-                    Purl = normalized,
-                    Source = null,
-                }
-            );
-            results.Add(new(normalized, true, null));
+            var result = PackageOperation.Add(resolver, profileManager, purl, settings.Instance!, settings.Profile);
+            results.Add(result);
         }
 
         if (output.IsInteractive && !output.UseStructuredOutput && uniquePurls.Length > 1)
@@ -94,22 +72,14 @@ public class PackageAddCommand(
             }
         }
 
-        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
-
-        var result = new
-        {
-            action = "package.add",
-            key = instance.Key,
-            results,
-        };
         if (output.UseStructuredOutput)
         {
-            output.WriteData(result);
+            output.WriteData(new { results });
         }
         else
         {
             var table = new Table().RoundedBorder();
-            table.Title = new($"[bold]Package add results for {Markup.Escape(instance.Key)}[/]");
+            table.Title = new($"[bold]Package add results[/]");
             table.AddColumn("PURL");
             table.AddColumn("Status");
             table.AddColumn("Reason");
@@ -123,7 +93,7 @@ public class PackageAddCommand(
             }
 
             output.WriteTable(table);
-            output.WriteSuccess($"Processed {results.Count} package(s) for {instance.Key}.");
+            output.WriteSuccess($"Processed {results.Count} package(s).");
         }
 
         return results.Any(x => !x.Added) ? ExitCodes.Partial : ExitCodes.Success;
@@ -134,6 +104,4 @@ public class PackageAddCommand(
         [CommandArgument(0, "[PURL]")]
         public string? Purl { get; set; }
     }
-
-    private sealed record AddResult(string Purl, bool Added, string? Reason);
 }

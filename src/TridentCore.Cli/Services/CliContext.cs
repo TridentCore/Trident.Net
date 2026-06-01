@@ -7,6 +7,7 @@ public sealed class CliContext
         bool noInteractive,
         bool verbose,
         bool debug,
+        bool mcp,
         bool inputRedirected,
         bool outputRedirected
     )
@@ -15,6 +16,7 @@ public sealed class CliContext
         NoInteractive = noInteractive;
         Verbose = verbose;
         Debug = debug;
+        Mcp = mcp;
         InputRedirected = inputRedirected;
         OutputRedirected = outputRedirected;
     }
@@ -23,6 +25,7 @@ public sealed class CliContext
     public bool NoInteractive { get; }
     public bool Verbose { get; }
     public bool Debug { get; }
+    public bool Mcp { get; }
     public bool InputRedirected { get; }
     public bool OutputRedirected { get; }
     public bool UseStructuredOutput => Json || OutputRedirected;
@@ -36,6 +39,7 @@ public sealed class CliContext
         var noInteractive = false;
         var verbose = false;
         var debug = false;
+        var mcp = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -54,6 +58,11 @@ public sealed class CliContext
                 case "--debug":
                     debug = true;
                     verbose = true;
+                    break;
+                case "--mcp":
+                    mcp = true;
+                    json = true;
+                    noInteractive = true;
                     break;
                 case "--home":
                     if (i + 1 >= args.Length)
@@ -82,6 +91,7 @@ public sealed class CliContext
             noInteractive,
             verbose,
             debug,
+            mcp,
             Console.IsInputRedirected,
             Console.IsOutputRedirected
         );

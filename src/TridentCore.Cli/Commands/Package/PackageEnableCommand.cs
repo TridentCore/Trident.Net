@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
@@ -15,23 +16,10 @@ public class PackageEnableCommand(
         CommandContext context,
         Arguments settings,
         CancellationToken cancellationToken
-    ) => SetEnabled(settings, true);
-
-    protected int SetEnabled(Arguments settings, bool enabled)
+    )
     {
-        var instance = ResolveInstance(settings);
-        var guard = profileManager.GetMutable(instance.Key);
-        var entry = PackageCliHelper.FindEntry(guard.Value, settings.Purl);
-        entry.Enabled = enabled;
-        guard.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        var result = PackageOperation.SetEnabled(resolver, profileManager, settings.Purl, settings.Instance!, true, settings.Profile);
 
-        var result = new
-        {
-            action = enabled ? "package.enable" : "package.disable",
-            key = instance.Key,
-            entry.Purl,
-            entry.Enabled,
-        };
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
@@ -39,12 +27,12 @@ public class PackageEnableCommand(
         else
         {
             output.WriteKeyValueTable(
-                enabled ? "Package enabled" : "Package disabled",
-                ("Instance", instance.Key),
-                ("PURL", entry.Purl),
-                ("State", enabled ? "enabled" : "disabled")
+                "Package enabled",
+                ("Instance", result.Key),
+                ("PURL", result.Purl),
+                ("State", "enabled")
             );
-            output.WriteSuccess($"Package {entry.Purl} {(enabled ? "enabled" : "disabled")}.");
+            output.WriteSuccess($"Package {result.Purl} enabled.");
         }
 
         return ExitCodes.Success;

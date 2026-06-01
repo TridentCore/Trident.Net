@@ -1,4 +1,5 @@
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
@@ -23,56 +24,33 @@ public class PackageListCommand(
 
     private async Task ListAsync(Arguments settings, CancellationToken cancellationToken)
     {
-        var instance = ResolveInstance(settings);
-        var entries = instance.Profile.Setup.Packages;
-
-        if (entries.Count == 0)
-        {
-            if (output.UseStructuredOutput)
-            {
-                output.WriteData(
-                    new { key = instance.Key, packages = Array.Empty<ResolvedLocalPackageDto>() }
-                );
-                return;
-            }
-
-            output.WriteEmptyState(
-                "No packages",
-                $"Instance {instance.Key} does not have installed packages."
-            );
-            return;
-        }
-
-        var resolved = await output
-            .StatusAsync(
-                "Resolving package metadata...",
-                () => PackageDtos.ResolveEntriesAsync(entries, repositories, instance)
-            )
+        var result = await PackageOperation
+            .List(resolver, repositories, settings.Instance!, settings.Profile, settings.Index, settings.Limit)
             .ConfigureAwait(false);
-
-        var paged = resolved.Skip(settings.Index).Take(settings.Limit).ToArray();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    key = instance.Key,
-                    packages = paged,
-                    total = resolved.Count,
-                }
+            output.WriteData(result);
+            return;
+        }
+
+        if (result.Packages.Count == 0)
+        {
+            output.WriteEmptyState(
+                "No packages",
+                $"Instance {result.Key} does not have installed packages."
             );
             return;
         }
 
         output.WriteTable(
-            PackageCliHelper.CreatePackageTable($"Packages in {instance.Key}", paged)
+            PackageCliHelper.CreatePackageTable($"Packages in {result.Key}", result.Packages)
         );
 
-        if (resolved.Count > paged.Length)
+        if (result.Total > result.Packages.Count)
         {
             output.WriteInfo(
-                $"Showing {paged.Length} of {resolved.Count} packages (offset {settings.Index}). Use --index and --limit to paginate."
+                $"Showing {result.Packages.Count} of {result.Total} packages (offset {settings.Index}). Use --index and --limit to paginate."
             );
         }
     }

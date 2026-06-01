@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
 
@@ -14,62 +15,13 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
         CancellationToken cancellationToken
     )
     {
-        ExecuteAsync(settings).GetAwaiter().GetResult();
+        ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.Success;
     }
 
-    private async Task ExecuteAsync(Arguments settings)
+    private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
     {
-        var labels = settings.Label is not null ? [settings.Label] : repositories.Labels.ToArray();
-        var results = new List<RepositoryStatusDto>();
-
-        async Task CheckAsync(Action? tick)
-        {
-            foreach (var label in labels)
-            {
-                var status = await repositories.CheckStatusAsync(label).ConfigureAwait(false);
-                results.Add(
-                    new(
-                        label,
-                        status.SupportedLoaders,
-                        status.SupportedVersions.Count,
-                        status.SupportedKinds
-                    )
-                );
-                tick?.Invoke();
-            }
-        }
-
-        if (output.IsInteractive && !output.UseStructuredOutput && labels.Length > 1)
-        {
-            await AnsiConsole
-                .Progress()
-                .AutoClear(false)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new SpinnerColumn()
-                )
-                .StartAsync(async progressContext =>
-                {
-                    var task = progressContext.AddTask(
-                        "[blue]Checking repositories[/]",
-                        maxValue: labels.Length
-                    );
-                    await CheckAsync(() => task.Increment(1)).ConfigureAwait(false);
-                })
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            await output
-                .StatusAsync(
-                    "Checking repository status...",
-                    async () => await CheckAsync(null).ConfigureAwait(false)
-                )
-                .ConfigureAwait(false);
-        }
+        var results = await RepositoryOperation.Status(repositories, settings.Label).ConfigureAwait(false);
 
         if (output.UseStructuredOutput)
         {
@@ -101,13 +53,6 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
 
         output.WriteTable(table);
     }
-
-    private sealed record RepositoryStatusDto(
-        string Label,
-        IReadOnlyList<string> SupportedLoaders,
-        int VersionCount,
-        IReadOnlyList<TridentCore.Abstractions.Repositories.Resources.ResourceKind> SupportedKinds
-    );
 
     public class Arguments : CommandSettings
     {
