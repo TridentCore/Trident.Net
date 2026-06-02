@@ -51,39 +51,51 @@ public class PackageSearchCommand(
             }
 
             output.WriteTable(
-                PackageCliHelper.CreatePackageTable($"Packages in {local.Key}", local.Packages)
+                PackageCliHelper.CreatePackageTable(
+                    $"Packages in {local.Key} ({local.Total} total, showing {local.Packages.Count})",
+                    local.Packages)
             );
             return;
         }
 
-        var items = await PackageOperation
+        if (settings.Repository is null)
+        {
+            throw new CliException(
+                "--repository is required for remote search. Use -R <label> to specify a repository.",
+                ExitCodes.Usage
+            );
+        }
+
+        var result = await PackageOperation
             .SearchRemote(repositories, settings.Query, settings.Repository,
                 settings.GameVersion, settings.Loader, kind, settings.Index, settings.Limit)
             .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(items);
+            output.WriteData(result);
             return;
         }
 
-        if (items.Count == 0)
+        if (result.Packages.Count == 0)
         {
             output.WriteEmptyState(
                 "No packages found",
-                $"No remote package matched '{settings.Query}'."
+                $"No remote package matched '{settings.Query}' in {settings.Repository}."
             );
             return;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new($"[bold]Search results for {Markup.Escape(settings.Query)}[/]");
+        table.Title = new(
+            $"[bold]Search results for {Markup.Escape(settings.Query)}[/] in {settings.Repository} ({result.Total} total, showing {result.Packages.Count})"
+        );
         table.AddColumn("Name");
         table.AddColumn("Author");
         table.AddColumn("Kind");
         table.AddColumn("Downloads");
         table.AddColumn("PURL");
-        foreach (var item in items)
+        foreach (var item in result.Packages)
         {
             table.AddMarkupRow(
                 CliOutput.FormatValue(item.Name),

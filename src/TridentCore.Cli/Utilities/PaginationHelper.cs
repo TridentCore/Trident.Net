@@ -12,12 +12,19 @@ public static class PaginationHelper
         [EnumeratorCancellation] CancellationToken cancellationToken
     )
     {
-        var skipped = 0;
-        var yielded = 0;
-        var page = 0u;
-        while (yielded < limit && skipped < index + limit && skipped < (int)handle.TotalCount)
+        if (limit <= 0 || index < 0 || (ulong)index >= handle.TotalCount)
         {
-            handle.PageIndex = page++;
+            yield break;
+        }
+
+        var startPage = (uint)(index / (int)handle.PageSize);
+        var skipInPage = index % (int)handle.PageSize;
+        var yielded = 0;
+        var isFirstPage = true;
+
+        for (var page = startPage; yielded < limit; page++)
+        {
+            handle.PageIndex = page;
             var batch = (
                 await handle.FetchAsync(cancellationToken).ConfigureAwait(false)
             ).ToArray();
@@ -26,14 +33,12 @@ public static class PaginationHelper
                 yield break;
             }
 
-            foreach (var item in batch)
-            {
-                if (skipped++ < index)
-                {
-                    continue;
-                }
+            var localStart = isFirstPage ? skipInPage : 0;
+            isFirstPage = false;
 
-                yield return item;
+            for (var i = localStart; i < batch.Length; i++)
+            {
+                yield return batch[i];
                 if (++yielded >= limit)
                 {
                     yield break;

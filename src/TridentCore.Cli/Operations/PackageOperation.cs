@@ -46,7 +46,7 @@ internal static class PackageOperation
             ? await PackageDtos.ResolveEntriesAsync(entries, repositories, ctx).ConfigureAwait(false)
             : [];
 
-        var filtered = resolved
+        var matched = resolved
             .Where(x =>
                 (x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
                 || (x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
@@ -54,37 +54,32 @@ internal static class PackageOperation
                 || x.Purl.Contains(query, StringComparison.OrdinalIgnoreCase))
             .Where(x => kind is null || x.Kind == kind)
             .Where(x => repository is null || x.Purl.StartsWith($"{repository}:", StringComparison.OrdinalIgnoreCase))
-            .Skip(index)
-            .Take(limit)
             .ToArray();
 
-        return new(ctx.Key, filtered);
+        var paged = matched.Skip(index).Take(limit).ToArray();
+        return new(ctx.Key, paged, matched.Length);
     }
 
-    public static async Task<IReadOnlyList<ExhibitDto>> SearchRemote(
+    public static async Task<PackageSearchRemoteResult> SearchRemote(
         RepositoryAgent repositories,
         string query,
-        string? repository,
+        string repository,
         string? gameVersion,
         string? loader,
         ResourceKind? kind,
         int index,
         int limit)
     {
-        var labels = repository is not null ? [repository] : repositories.Labels.ToArray();
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind);
+        var handle = await repositories.SearchAsync(repository, query, filter).ConfigureAwait(false);
         var items = new List<ExhibitDto>();
 
-        foreach (var label in labels)
+        await foreach (var item in PaginationHelper.FetchWindowAsync(handle, index, limit, CancellationToken.None))
         {
-            var handle = await repositories.SearchAsync(label, query, filter).ConfigureAwait(false);
-            await foreach (var item in PaginationHelper.FetchWindowAsync<Exhibit>(handle, index, limit, CancellationToken.None))
-            {
-                items.Add(PackageDtos.FromExhibit(item));
-            }
+            items.Add(PackageDtos.FromExhibit(item));
         }
 
-        return items;
+        return new(repository, (int)handle.TotalCount, items);
     }
 
     public static PackageAddResult Add(
@@ -294,7 +289,7 @@ internal static class PackageOperation
 }
 
 internal sealed record PackageListResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
-internal sealed record PackageSearchLocalResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages);
+internal sealed record PackageSearchLocalResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
 internal sealed record PackageAddResult(string Purl, bool Added, string? Reason, string Key);
 internal sealed record PackageInspectResult(string? Key, LocalPackageDto? Local, PackageDto Package);
 internal sealed record PackageSetEnabledResult(string Action, string Key, string Purl, bool Enabled);
@@ -302,4 +297,5 @@ internal sealed record PackageDependencyListResult(string Purl, IReadOnlyList<De
 internal sealed record DependentDto(string Purl, string? ProjectName, string? VersionName);
 internal sealed record PackageDependentListResult(string Key, string Target, IReadOnlyList<DependentDto> Dependents, IReadOnlyList<string> Failed);
 internal sealed record PackageVersionListResult(string Purl, int Total, IReadOnlyList<VersionDto> Versions);
+internal sealed record PackageSearchRemoteResult(string Repository, int Total, IReadOnlyList<ExhibitDto> Packages);
 internal sealed record PackageVersionSetResult(string Key, string OldPurl, string NewPurl);
