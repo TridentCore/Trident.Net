@@ -1,9 +1,11 @@
+using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
+using TridentCore.Purl;
 
 namespace TridentCore.Cli.Operations;
 
@@ -194,36 +196,58 @@ internal static class PackageOperation
         var ctx = resolver.Resolve(instance, profile);
         var target = PackageCliHelper.ParsePurl(purl);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
-        var dependents = new List<DependentDto>();
-        var failed = new List<string>();
-        var candidates = ctx
-            .Profile.Setup.Packages
-            .Where(x => x.Enabled && PackageHelper.TryParse(x.Purl, out _))
+
+        var parsed = new List<(Profile.Rice.Entry Entry, (string Label, string? Namespace, string Pid, string? Vid) Parsed)>();
+        foreach (var entry in ctx.Profile.Setup.Packages.Where(x => x.Enabled))
+        {
+            if (PackageHelper.TryParse(entry.Purl, out var p))
+            {
+                parsed.Add((entry, p));
+            }
+        }
+
+        if (parsed.Count == 0)
+        {
+            return new(ctx.Key, purl, [], []);
+        }
+
+        var identifiers = parsed
+            .Select(x => new PackageIdentifier(x.Parsed.Label, x.Parsed.Namespace, x.Parsed.Pid, x.Parsed.Vid))
             .ToArray();
 
-        foreach (var entry in candidates)
+        IReadOnlyList<(PackageIdentifier, Package)> resolved;
+        try
         {
-            if (!PackageHelper.TryParse(entry.Purl, out var parsed))
+            resolved = await repositories
+                .ResolveBatchAsync(identifiers, filter)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            return new(ctx.Key, purl, [], parsed.Select(x => x.Entry.Purl).ToArray());
+        }
+
+        var lookup = resolved.ToDictionary(
+            x => (x.Item1.Namespace, x.Item1.Identity),
+            x => x.Item2
+        );
+        var dependents = new List<DependentDto>();
+        var failed = new List<string>();
+
+        foreach (var (entry, p) in parsed)
+        {
+            if (!lookup.TryGetValue((p.Namespace, p.Pid), out var package))
             {
+                failed.Add(entry.Purl);
                 continue;
             }
 
-            try
+            if (package.Dependencies.Any(x =>
+                    x.Label == target.Label
+                    && x.Namespace == target.Namespace
+                    && x.ProjectId == target.Pid))
             {
-                var package = await repositories
-                    .ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter)
-                    .ConfigureAwait(false);
-                if (package.Dependencies.Any(x =>
-                        x.Label == target.Label
-                        && x.Namespace == target.Namespace
-                        && x.ProjectId == target.Pid))
-                {
-                    dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
-                }
-            }
-            catch
-            {
-                failed.Add(entry.Purl);
+                dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
             }
         }
 
