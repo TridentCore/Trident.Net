@@ -74,45 +74,27 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
             await yggdrasil.ValidateAsync(new(accessToken, clientToken), token).ConfigureAwait(false);
             return true;
         }
-        catch
+        catch (ApiException)
         {
             return false;
         }
     }
 
-    public async Task<AuthlibAccount> RefreshAsync(
-        AuthlibAccount account,
-        YggdrasilGameProfile? selectedProfile,
+    public async Task<YggdrasilAuthenticateResponse> RefreshAsync(
+        string serverUrl,
+        string accessToken,
+        string clientToken,
+        YggdrasilGameProfile? selectedProfile = null,
         CancellationToken token = default
     )
     {
         var client = clientFactory.CreateClient();
-        client.BaseAddress = new (account.ServerUrl);
+        client.BaseAddress = new(serverUrl);
         var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
 
-        var request = new YggdrasilRefreshRequest(
-            account.AccessToken,
-            account.ClientToken ?? throw new InvalidOperationException("ClientToken is missing"),
-            true,
-            selectedProfile
-        );
+        var request = new YggdrasilRefreshRequest(accessToken, clientToken, true, selectedProfile);
 
-        var response = await yggdrasil.RefreshAsync(request, token).ConfigureAwait(false);
-
-        account.AccessToken = response.AccessToken;
-        account.ClientToken = response.ClientToken;
-
-        if (response.SelectedProfile is not null)
-        {
-            account.Uuid = response.SelectedProfile.Id;
-            account.Username = response.SelectedProfile.Name;
-        }
-
-        var skinUrl = await GetSkinUrlAsync(account.ServerUrl, account.Uuid, token)
-            .ConfigureAwait(false);
-        account.SkinUrl = skinUrl?.ToString();
-
-        return account;
+        return await yggdrasil.RefreshAsync(request, token).ConfigureAwait(false);
     }
 
     public async Task<string> GetMetadataBase64Async(

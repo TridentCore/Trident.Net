@@ -539,7 +539,7 @@ public class InstanceManager(
                 var minecraftService = provider.GetRequiredService<MinecraftService>();
                 try
                 {
-                    _ = await minecraftService.AcquireAccountProfileByMinecraftTokenAsync(
+                    await minecraftService.AcquireAccountProfileByMinecraftTokenAsync(
                              msa.AccessToken
                             ).ConfigureAwait(false);
                 }
@@ -589,9 +589,14 @@ public class InstanceManager(
 
                 try
                 {
-                    var refreshed = await yggdrasilService.RefreshAsync(ai, null, token).ConfigureAwait(false);
-                    ai.AccessToken = refreshed.AccessToken;
-                    ai.ClientToken = refreshed.ClientToken;
+                    var response = await yggdrasilService.RefreshAsync(
+                        ai.ServerUrl,
+                        ai.AccessToken,
+                        ai.ClientToken!,
+                        selectedProfile: new(ai.Uuid, ai.Username),
+                        token: token).ConfigureAwait(false);
+                    ai.AccessToken = response.AccessToken;
+                    ai.ClientToken = response.ClientToken;
                     AccountUpdated?.Invoke(this, ai);
                 }
                 catch

@@ -14,9 +14,9 @@ public class AuthlibAccount : IAccount
 
     #region IAccount Members
 
-    public required string Username { get; set; }
+    public required string Username { get; init; }
 
-    public required string Uuid { get; set; }
+    public required string Uuid { get; init; }
 
     string IAccount.UserType => "mojang";
 
