@@ -58,7 +58,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
                                      package.VersionId,
                                      target,
                                      package.Download,
-                                     package.Sha1)
+                                     package.Hash)
                     { IsSkipping = effectiveRule.Skipping, };
                 }
                 else
@@ -69,7 +69,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
                                      package.VersionId,
                                      Path.Combine(FileHelper.GetAssetFolderName(package.Kind), package.FileName),
                                      package.Download,
-                                     package.Sha1);
+                                     package.Hash);
                 }
             }
         }

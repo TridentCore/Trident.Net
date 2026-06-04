@@ -2,6 +2,7 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.ModrinthApi;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Core.Utilities;
@@ -199,7 +200,7 @@ public static class ModrinthHelper
             file.Url,
             file.Size,
             file.Filename,
-            file.Hashes.Sha1,
+            FileHash.Sha1(file.Hashes.Sha1),
             ToRequirement(version),
             ToDependencies(label, version)
         );

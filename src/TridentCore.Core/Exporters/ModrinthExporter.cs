@@ -85,7 +85,8 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
                           .Select(package =>
                                       new
                                           PackIndex.IndexFile($"{FileHelper.GetAssetFolderName(package.Kind)}/{package.FileName}",
-                                                              new(package.Sha1, null),
+                                                              new(package.Hash is { Algorithm: TridentCore.Abstractions.Utilities.HashAlgorithm.Sha1 } h ? h.Value : null,
+                                                                  package.Hash is { Algorithm: TridentCore.Abstractions.Utilities.HashAlgorithm.Sha512 } h512 ? h512.Value : null),
                                                               new("required", "unsupported"),
                                                               [package.Download],
                                                               package.Size)));

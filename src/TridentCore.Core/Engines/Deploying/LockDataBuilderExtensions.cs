@@ -1,4 +1,6 @@
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Utilities;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying;
 
@@ -12,8 +14,8 @@ public static class LockDataBuilderExtensions
         string vid,
         string target,
         Uri url,
-        string? sha1
-    ) => self.AddParcel(new(label, @namespace, pid, vid, target, url, sha1));
+        FileHash? hash
+    ) => self.AddParcel(new(label, @namespace, pid, vid, target, url, hash));
 
     // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
     public static LockDataBuilder AddLibraryPrismFlavor(
@@ -37,14 +39,14 @@ public static class LockDataBuilderExtensions
         this LockDataBuilder self,
         string fullname,
         Uri url,
-        string sha1,
+        FileHash? hash,
         bool native = false,
         bool present = true
     )
     {
         var id = ParseLibraryIdentity(fullname);
 
-        return self.AddLibrary(new(id, url, sha1, native, present));
+        return self.AddLibrary(new(id, url, hash, native, present));
     }
 
     private static LockData.Library.Identity ParseLibraryIdentity(string fullname)
@@ -70,6 +72,6 @@ public static class LockDataBuilderExtensions
         this LockDataBuilder self,
         string id,
         Uri url,
-        string sha1
-    ) => self.SetAssetIndex(new(id, url, sha1));
+        FileHash? hash
+    ) => self.SetAssetIndex(new(id, url, hash));
 }

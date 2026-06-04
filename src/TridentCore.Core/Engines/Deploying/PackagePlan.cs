@@ -1,3 +1,5 @@
+using TridentCore.Abstractions.Utilities;
+
 namespace TridentCore.Core.Engines.Deploying;
 
 public record PackagePlan(
@@ -7,7 +9,7 @@ public record PackagePlan(
     string VersionId,
     string RelativeTargetPath,
     Uri Url,
-    string? Sha1)
+    FileHash? Hash)
 {
     public bool IsSkipping { get; init; }
 }

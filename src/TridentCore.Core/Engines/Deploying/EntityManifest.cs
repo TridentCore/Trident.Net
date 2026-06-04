@@ -1,3 +1,5 @@
+using TridentCore.Abstractions.Utilities;
+
 namespace TridentCore.Core.Engines.Deploying;
 
 public class EntityManifest
@@ -20,7 +22,7 @@ public class EntityManifest
 
     #region Nested type: FragileFile
 
-    public record FragileFile(string SourcePath, string TargetPath, Uri Url, string? Hash);
+    public record FragileFile(string SourcePath, string TargetPath, Uri Url, FileHash? Hash);
 
     #endregion
 
@@ -37,7 +39,7 @@ public class EntityManifest
 
     #region Nested type: PresentFile
 
-    public record PresentFile(string Path, Uri Url, string? Hash, bool IsExecutable = false);
+    public record PresentFile(string Path, Uri Url, FileHash? Hash, bool IsExecutable = false);
 
     #endregion
 }

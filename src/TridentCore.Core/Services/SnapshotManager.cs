@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Threading.Channels;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.Snapshots;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Utilities;
+using HashAlgorithm = TridentCore.Abstractions.Utilities.HashAlgorithm;
 
 namespace TridentCore.Core.Services;
 
@@ -89,15 +90,15 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                                          FileMode.Open,
                                                          FileAccess.Read,
                                                          FileShare.Read);
-                                                     var hash = await SHA1
-                                                                     .HashDataAsync(reader, token)
+                                                     var hash = await FileHelper
+                                                                     .ComputeHashAsync(reader, HashAlgorithm.Sha1)
                                                                      .ConfigureAwait(false);
                                                      var relative = Path.GetRelativePath(home.FullName, file.FullName);
                                                      var lastModified = file.LastWriteTime;
                                                      var attributes = file.Attributes;
 
                                                      var info = new ReferenceInfo(Guid.NewGuid(),
-                                                         HashHelper.FlattenHashBytes(hash),
+                                                         hash,
                                                          relative,
                                                          size,
                                                          lastModified,
@@ -221,8 +222,8 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                         if (!changed)
                         {
                             using var stream = File.OpenRead(file.FullName);
-                            var hash = SHA1.HashData(stream);
-                            changed = HashHelper.FlattenHashBytes(hash) != reference.Hash;
+                            var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                            changed = hash != reference.Hash;
                         }
 
                         if (changed)

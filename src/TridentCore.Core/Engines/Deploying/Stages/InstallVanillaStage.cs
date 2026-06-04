@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
@@ -28,7 +30,7 @@ public class InstallVanillaStage(
         // Main Jar as a Library as well
         if (version.MainJar is { Name: { } name, Downloads.Artifact: { } artifact })
         {
-            builder.AddLibrary(name, artifact.Url, artifact.Sha1);
+            builder.AddLibrary(name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
             logger.LogInformation("Client jar appended: {name}", name);
         }
         else
@@ -95,7 +97,7 @@ public class InstallVanillaStage(
         // AssetIndex
         if (version.AssetIndex is { } index)
         {
-            builder.SetAssetIndex(index.Id, index.Url, index.Sha1);
+            builder.SetAssetIndex(index.Id, index.Url, FileHash.FromSha1(index.Sha1));
             logger.LogInformation("Set asset index to {index}", index.Id);
         }
         else

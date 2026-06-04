@@ -97,7 +97,7 @@ internal static class PackageDtos
             package.Download,
             package.Size,
             package.FileName,
-            package.Sha1,
+            package.Hash?.Value,
             package.Dependencies.Select(FromDependency).ToArray()
         );
 

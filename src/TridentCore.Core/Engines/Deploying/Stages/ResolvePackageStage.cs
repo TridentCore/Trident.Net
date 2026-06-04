@@ -47,7 +47,7 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
                               plan.VersionId,
                               Path.Combine(PathDef.Default.DirectoryOfBuild(Context.Key), plan.RelativeTargetPath),
                               plan.Url,
-                              plan.Sha1);
+                              plan.Hash);
         }
 
         ProgressStream.OnNext((packages.Count, packages.Count));

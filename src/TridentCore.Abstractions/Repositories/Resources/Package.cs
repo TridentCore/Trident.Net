@@ -1,4 +1,5 @@
 using TridentCore.Abstractions.Utilities;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Abstractions.Repositories.Resources;
 
@@ -19,7 +20,7 @@ public record Package(
     Uri Download,
     ulong Size,
     string FileName,
-    string? Sha1,
+    FileHash? Hash,
     Requirement Requirements,
     IReadOnlyList<Dependency> Dependencies
 )
