@@ -80,8 +80,8 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
         }
     }
 
-    public async Task<AuthlibInjectorAccount> RefreshAsync(
-        AuthlibInjectorAccount account,
+    public async Task<AuthlibAccount> RefreshAsync(
+        AuthlibAccount account,
         YggdrasilGameProfile? selectedProfile,
         CancellationToken token = default
     )

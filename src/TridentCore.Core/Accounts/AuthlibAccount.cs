@@ -2,7 +2,7 @@ using TridentCore.Abstractions.Accounts;
 
 namespace TridentCore.Core.Accounts;
 
-public class AuthlibInjectorAccount : IAccount
+public class AuthlibAccount : IAccount
 {
     public required string ServerUrl { get; init; }
 

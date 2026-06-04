@@ -414,7 +414,7 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
-                if (options.Account is Accounts.AuthlibInjectorAccount ai)
+                if (options.Account is Accounts.AuthlibAccount ai)
                 {
                     var aiLib = artifact.Libraries.FirstOrDefault(x =>
                         x.Id is { Namespace: AuthlibInjectorService.LIBRARY_NAMESPACE, Name: AuthlibInjectorService.LIBRARY_NAME }
@@ -575,7 +575,7 @@ public class InstanceManager(
 
                 break;
             }
-            case AuthlibInjectorAccount ai:
+            case AuthlibAccount ai:
             {
                 var yggdrasilService = provider.GetRequiredService<YggdrasilService>();
                 var isValid = await yggdrasilService.ValidateAsync(
