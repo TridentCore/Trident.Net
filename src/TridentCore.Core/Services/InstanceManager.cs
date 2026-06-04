@@ -409,8 +409,7 @@ public class InstanceManager(
                 if (options.Account is Accounts.AuthlibInjectorAccount ai)
                 {
                     var aiLib = artifact.Libraries.FirstOrDefault(x =>
-                        x.Id.Namespace == AuthlibInjectorService.LIBRARY_NAMESPACE
-                        && x.Id.Name == AuthlibInjectorService.LIBRARY_NAME
+                        x.Id is { Namespace: AuthlibInjectorService.LIBRARY_NAMESPACE, Name: AuthlibInjectorService.LIBRARY_NAME }
                     );
                     if (aiLib != null)
                     {
@@ -422,6 +421,11 @@ public class InstanceManager(
                             aiLib.Id.Extension
                         );
                         igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
+                    }
+                    else
+                    {
+                        // TODO: throw exception
+                        //  这里应该换成打火机 Cargo(入参) 传递的模式，而不是依赖拦截
                     }
                 }
 

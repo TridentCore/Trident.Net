@@ -224,6 +224,12 @@ public static class ServiceCollectionExtensions
             return services;
         }
 
+        public IServiceCollection AddYggdrasil()
+        {
+            services.AddSingleton<YggdrasilService>();
+            return services;
+        }
+
         public IServiceCollection AddSnapshots<TFactory>() where TFactory : class, ISnapshotStoreFactory
         {
             services.AddSingleton<ISnapshotStoreFactory, TFactory>();
