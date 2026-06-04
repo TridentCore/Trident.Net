@@ -406,6 +406,25 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
+                if (options.Account is Accounts.AuthlibInjectorAccount ai)
+                {
+                    var aiLib = artifact.Libraries.FirstOrDefault(x =>
+                        x.Id.Namespace == AuthlibInjectorService.LIBRARY_NAMESPACE
+                        && x.Id.Name == AuthlibInjectorService.LIBRARY_NAME
+                    );
+                    if (aiLib != null)
+                    {
+                        var aiPath = PathDef.Default.FileOfLibrary(
+                            aiLib.Id.Namespace,
+                            aiLib.Id.Name,
+                            aiLib.Id.Version,
+                            aiLib.Id.Platform,
+                            aiLib.Id.Extension
+                        );
+                        igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
+                    }
+                }
+
                 if (options.Mode == LaunchMode.Debug)
                 {
                     igniter.Debug();

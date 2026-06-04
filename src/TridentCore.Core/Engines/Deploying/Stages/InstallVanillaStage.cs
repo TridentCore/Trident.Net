@@ -7,7 +7,8 @@ namespace TridentCore.Core.Engines.Deploying.Stages;
 
 public class InstallVanillaStage(
     ILogger<InstallVanillaStage> logger,
-    PrismLauncherService prismLauncherService
+    PrismLauncherService prismLauncherService,
+    AuthlibInjectorService authlibInjectorService
 ) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
@@ -109,6 +110,17 @@ public class InstallVanillaStage(
         builder.SetMainClass(real);
 
         logger.LogInformation("Set main class path to {mainClass}", real);
+
+        // authlib-injector (always present on disk, only activated via -javaagent at launch)
+        var aiArtifact = await authlibInjectorService
+            .GetLatestAsync(token)
+            .ConfigureAwait(false);
+        var aiLibraryId = AuthlibInjectorService.LibraryIdentity(aiArtifact.Version);
+        builder.AddLibrary(new(aiLibraryId, aiArtifact.DownloadUrl, aiArtifact.Hash, false, false));
+        logger.LogInformation(
+            "authlib-injector {version} registered as library",
+            aiArtifact.Version
+        );
 
         Context.IsVanillaInstalled = true;
     }

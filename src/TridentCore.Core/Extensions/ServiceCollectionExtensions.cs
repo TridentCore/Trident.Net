@@ -184,6 +184,26 @@ public static class ServiceCollectionExtensions
             return services;
         }
 
+        public IServiceCollection AddAuthlibInjector()
+        {
+            services
+               .AddRefitClient<IAuthlibInjectorClient>(_ =>
+                                                            new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
+                                                       )
+               .ConfigureHttpClient(client =>
+                {
+                    client.BaseAddress = new(AuthlibInjectorService.ENDPOINT);
+                    client.DefaultRequestHeaders.UserAgent.Add(
+                                                               new(
+                                                                   "Trident.Net",
+                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                                                                  )
+                                                              );
+                });
+            services.AddSingleton<AuthlibInjectorService>();
+            return services;
+        }
+
         public IServiceCollection AddMclogs()
         {
             services
