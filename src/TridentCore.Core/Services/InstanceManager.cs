@@ -1,10 +1,14 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using System.Reactive.Subjects;
 using System.Reflection;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Refit;
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Accounts;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
@@ -12,6 +16,7 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Accounts;
 using TridentCore.Core.Engines;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Engines.Deploying.Stages;
@@ -39,6 +44,7 @@ public class InstanceManager(
     public event EventHandler<UpdateTracker>? InstanceUpdating;
     public event EventHandler<DeployTracker>? InstanceDeploying;
     public event EventHandler<LaunchTracker>? InstanceLaunching;
+    public event EventHandler<IAccount>? AccountUpdated;
 
     private void TrackerOnCompleted(TrackerBase tracker)
     {
@@ -346,6 +352,8 @@ public class InstanceManager(
             throw new InvalidOperationException("Account is not provided");
         }
 
+        await ValidateAndRefreshAccountAsync(options, tracker.Token).ConfigureAwait(false);
+
         var profile = profileManager.GetImmutable(tracker.Key);
 
         var artifactPath = PathDef.Default.FileOfLockData(tracker.Key);
@@ -421,6 +429,11 @@ public class InstanceManager(
                             aiLib.Id.Extension
                         );
                         igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
+
+                        var yggdrasilService = provider.GetRequiredService<YggdrasilService>();
+                        var prefetched = await yggdrasilService.GetMetadataBase64Async(
+                            ai.ServerUrl, tracker.Token).ConfigureAwait(false);
+                        igniter.AddJvmArgument($"-Dauthlibinjector.yggdrasil.prefetched={prefetched}");
                     }
                     else
                     {
@@ -507,6 +520,92 @@ public class InstanceManager(
         }
     }
 
+    private async Task ValidateAndRefreshAccountAsync(
+        LaunchOptions options,
+        CancellationToken token
+    )
+    {
+        switch (options.Account)
+        {
+            case MicrosoftAccount msa:
+            {
+                var shouldValidate =
+                    msa.AccessTokenExpiresAt is null
+                 || DateTimeOffset.UtcNow >= msa.AccessTokenExpiresAt.Value.AddMinutes(-5);
+
+                if (!shouldValidate)
+                    return;
+
+                var minecraftService = provider.GetRequiredService<MinecraftService>();
+                try
+                {
+                    _ = await minecraftService.AcquireAccountProfileByMinecraftTokenAsync(
+                             msa.AccessToken
+                            ).ConfigureAwait(false);
+                }
+                catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    var microsoftService = provider.GetRequiredService<MicrosoftService>();
+                    var xboxLiveService = provider.GetRequiredService<XboxLiveService>();
+
+                    var microsoft = await microsoftService.RefreshUserAsync(msa.RefreshToken).ConfigureAwait(false);
+                    var xbox =
+                        await xboxLiveService.AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(
+                             microsoft.AccessToken
+                            ).ConfigureAwait(false);
+                    var xsts =
+                        await xboxLiveService.AuthorizeForServiceTokenByXboxLiveTokenAsync(
+                             xbox.Token
+                            ).ConfigureAwait(false);
+                    var minecraft =
+                        await minecraftService.AuthenticateByXboxLiveServiceTokenAsync(
+                             xsts.Token,
+                             xsts.DisplayClaims.Xui.First().Uhs
+                            ).ConfigureAwait(false);
+
+                    msa.AccessToken = minecraft.AccessToken;
+                    msa.AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(
+                         minecraft.ExpiresIn
+                        );
+                    msa.RefreshToken = !string.IsNullOrEmpty(microsoft.RefreshToken)
+                                           ? microsoft.RefreshToken
+                                           : msa.RefreshToken;
+                    AccountUpdated?.Invoke(this, msa);
+                }
+
+                break;
+            }
+            case AuthlibInjectorAccount ai:
+            {
+                var yggdrasilService = provider.GetRequiredService<YggdrasilService>();
+                var isValid = await yggdrasilService.ValidateAsync(
+                                                                   ai.ServerUrl,
+                                                                   ai.AccessToken,
+                                                                   ai.ClientToken,
+                                                                   token).ConfigureAwait(false);
+
+                if (isValid)
+                    return;
+
+                try
+                {
+                    var refreshed = await yggdrasilService.RefreshAsync(ai, null, token).ConfigureAwait(false);
+                    ai.AccessToken = refreshed.AccessToken;
+                    ai.ClientToken = refreshed.ClientToken;
+                    AccountUpdated?.Invoke(this, ai);
+                }
+                catch
+                {
+                    throw new InvalidOperationException(
+                        "Unable to refresh the expired authlib-injector session. Please re-authenticate."
+                    );
+                }
+
+                break;
+            }
+        }
+    }
+
     #endregion
 
     #region Install
@@ -539,7 +638,7 @@ public class InstanceManager(
     )
     {
         logger.LogInformation(
-            "Begin install package {} as {}",
+            "Begin install package {purl} as {key}",
             PackageHelper.ToPurl(label, ns, pid, vid),
             key.Key
         );
@@ -677,7 +776,7 @@ public class InstanceManager(
         logger.LogDebug("Downloaded {length} bytes", memory.Length);
 
         progressStream.OnNext(100d);
-        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
 
         progressStream.OnNext(null);
         CompressedProfilePack pack = new(memory) { Reference = package };

@@ -1,4 +1,5 @@
 using Refit;
+using System.Text;
 using System.Text.Json;
 using TridentCore.Core.Accounts;
 using TridentCore.Core.Clients;
@@ -19,7 +20,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     )
     {
         var client = clientFactory.CreateClient();
-        client.BaseAddress = NormalizeServerUrl(serverUrl);
+        client.BaseAddress = new(serverUrl);
         var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var clientToken = Guid.NewGuid().ToString("N");
@@ -35,7 +36,10 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
 
         if (response.SelectedProfile is null)
             throw new InvalidOperationException(
-                "No game profile available. The account may not own Minecraft.");
+                "No game profile available. The account may not add profile.");
+
+        var skinUrl = await GetSkinUrlAsync(serverUrl, response.SelectedProfile.Id, token)
+            .ConfigureAwait(false);
 
         return new(
             new()
@@ -45,6 +49,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
                 ClientToken = response.ClientToken,
                 Uuid = response.SelectedProfile.Id,
                 Username = response.SelectedProfile.Name,
+                SkinUrl = skinUrl?.ToString(),
             },
             response.AvailableProfiles,
             serverUrl,
@@ -61,7 +66,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     )
     {
         var client = clientFactory.CreateClient();
-        client.BaseAddress = NormalizeServerUrl(serverUrl);
+        client.BaseAddress = new(serverUrl);
         var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         try
@@ -82,7 +87,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     )
     {
         var client = clientFactory.CreateClient();
-        client.BaseAddress = NormalizeServerUrl(account.ServerUrl);
+        client.BaseAddress = new (account.ServerUrl);
         var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var request = new YggdrasilRefreshRequest(
@@ -103,15 +108,45 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
             account.Username = response.SelectedProfile.Name;
         }
 
+        var skinUrl = await GetSkinUrlAsync(account.ServerUrl, account.Uuid, token)
+            .ConfigureAwait(false);
+        account.SkinUrl = skinUrl?.ToString();
+
         return account;
     }
 
-    private static Uri NormalizeServerUrl(string serverUrl)
+    public async Task<string> GetMetadataBase64Async(
+        string serverUrl,
+        CancellationToken token = default
+    )
     {
-        if (!serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-            && !serverUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            serverUrl = "https://" + serverUrl;
+        var client = clientFactory.CreateClient();
+        client.BaseAddress = new(serverUrl);
+        var json = await client.GetStringAsync("", token).ConfigureAwait(false);
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+    }
 
-        return new(serverUrl.TrimEnd('/'));
+    public async Task<Uri?> GetSkinUrlAsync(
+        string serverUrl,
+        string uuid,
+        CancellationToken token = default
+    )
+    {
+        var client = clientFactory.CreateClient();
+        client.BaseAddress =new(serverUrl);
+        var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
+
+        var response = await yggdrasil.GetProfileAsync(uuid, token).ConfigureAwait(false);
+
+        var texturesProp = response.Properties?.FirstOrDefault(p => p.Name == "textures");
+        if (texturesProp is null)
+            return null;
+
+        var texturesJson = Encoding.UTF8.GetString(Convert.FromBase64String(texturesProp.Value));
+        var textures = JsonSerializer.Deserialize<YggdrasilTexturesData>(texturesJson);
+
+        return textures?.Textures.TryGetValue("SKIN", out var skin) == true
+            ? new Uri(skin.Url, UriKind.RelativeOrAbsolute)
+            : null;
     }
 }

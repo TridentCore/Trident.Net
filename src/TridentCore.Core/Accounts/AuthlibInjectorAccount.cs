@@ -10,6 +10,8 @@ public class AuthlibInjectorAccount : IAccount
 
     public string? ClientToken { get; set; }
 
+    public string? SkinUrl { get; set; }
+
     #region IAccount Members
 
     public required string Username { get; set; }

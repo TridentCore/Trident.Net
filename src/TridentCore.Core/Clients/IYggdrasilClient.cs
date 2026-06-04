@@ -22,4 +22,10 @@ public interface IYggdrasilClient
         [Body] YggdrasilValidateRequest request,
         CancellationToken token = default
     );
+
+    [Get("/sessionserver/session/minecraft/profile/{uuid}")]
+    Task<YggdrasilProfileResponse> GetProfileAsync(
+        string uuid,
+        CancellationToken token = default
+    );
 }
