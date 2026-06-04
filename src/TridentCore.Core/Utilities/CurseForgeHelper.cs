@@ -2,6 +2,7 @@ using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.CurseForgeApi;
 using FileInfo = TridentCore.Core.Models.CurseForgeApi.FileInfo;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Core.Utilities;
@@ -110,10 +111,14 @@ public static class CurseForgeHelper
             $"https://edge.forgecdn.net/files/{file.Id / 1000}/{file.Id % 1000}/{Uri.EscapeDataString(file.FileName)}"
         );
 
-    public static string? ToSha1(FileInfo file) =>
-        file.Hashes.Any(x => x.Algo == FileInfo.FileHash.HashAlgo.SHA1)
-            ? file.Hashes.First(x => x.Algo == FileInfo.FileHash.HashAlgo.SHA1).Value
-            : null;
+    public static FileHash? ToFileHash(FileInfo file)
+    {
+        if (file.Hashes.FirstOrDefault(x => x.Algo == FileInfo.FileHash.HashAlgo.SHA1) is { } sha1)
+            return FileHash.Sha1(sha1.Value);
+        if (file.Hashes.FirstOrDefault(x => x.Algo == FileInfo.FileHash.HashAlgo.MD5) is { } md5)
+            return FileHash.Md5(md5.Value);
+        return null;
+    }
 
     public static Requirement ToRequirement(FileInfo file)
     {
@@ -198,7 +203,7 @@ public static class CurseForgeHelper
             ToDownloadUrl(file),
             file.FileLength,
             file.FileName,
-            ToSha1(file),
+            ToFileHash(file),
             ToRequirement(file),
             ToDependencies(label, file)
         );

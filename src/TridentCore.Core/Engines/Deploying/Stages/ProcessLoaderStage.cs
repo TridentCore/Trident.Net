@@ -3,6 +3,7 @@ using TridentCore.Abstractions;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Services;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
@@ -91,7 +92,7 @@ public class ProcessLoaderStage(
         {
             if (file.Downloads is { Artifact: { } artifact })
             {
-                builder.AddLibrary(file.Name, artifact.Url, artifact.Sha1, false, false);
+                builder.AddLibrary(file.Name, artifact.Url, FileHash.FromSha1(artifact.Sha1), false, false);
             }
         }
 

@@ -1,7 +1,9 @@
 using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text.Json;
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Utilities;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
@@ -15,10 +17,10 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
         var indexPath = PathDef.Default.FileOfAssetIndex(artifact.AssetIndex.Id);
         manifest.PresentFiles.Add(
-            new(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Sha1)
+            new(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Hash)
         );
         var index =
-            await GetAssetIndexAsync(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Sha1)
+            await GetAssetIndexAsync(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Hash)
                 .ConfigureAwait(false)
             ?? throw new InvalidOperationException(
                 "Asset index file is broken or not matched with builtin models"
@@ -33,7 +35,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                         $"https://resources.download.minecraft.net/{obj.Value.Hash[..2]}/{obj.Value.Hash}",
                         UriKind.Absolute
                     ),
-                    obj.Value.Hash
+                    FileHash.Sha1(obj.Value.Hash)
                 )
             );
         }
@@ -51,7 +53,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                     ),
                     Path.Combine(PathDef.Default.DirectoryOfHome(Context.Key), parcel.Path),
                     parcel.Download,
-                    parcel.Sha1
+                    parcel.Hash
                 )
             );
         }
@@ -66,7 +68,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                 lib.Id.Platform,
                 lib.Id.Extension
             );
-            manifest.PresentFiles.Add(new(path, lib.Url, lib.Sha1));
+            manifest.PresentFiles.Add(new(path, lib.Url, lib.Hash));
             if (lib.IsNative)
             {
                 manifest.ExplosiveFiles.Add(new(path, nativesDir));
@@ -82,7 +84,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                     new(
                         Path.Combine(dir, entry.Path),
                         entry.Download,
-                        entry.Sha1,
+                        entry.Hash,
                         entry.IsExecutable
                     )
                 );
@@ -171,18 +173,14 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
     private async ValueTask<MinecraftAssetIndex?> GetAssetIndexAsync(
         string indexFile,
         Uri url,
-        string hash
+        FileHash? hash
     )
     {
-        if (File.Exists(indexFile))
+        if (File.Exists(indexFile) && hash is not null)
         {
-            await using var reader = File.OpenRead(indexFile);
-            var computed = Convert.ToHexStringLower(
-                await SHA1.HashDataAsync(reader).ConfigureAwait(false)
-            );
-            reader.Position = 0;
-            if (computed == hash)
+            if (FileHelper.VerifyModified(indexFile, null, hash))
             {
+                await using var reader = File.OpenRead(indexFile);
                 return await JsonSerializer
                     .DeserializeAsync<MinecraftAssetIndex>(reader, JsonSerializerOptions.Web)
                     .ConfigureAwait(false);

@@ -1,3 +1,5 @@
+using TridentCore.Abstractions.Utilities;
+
 namespace TridentCore.Core.Engines.Deploying;
 
 // PrismLauncher 里的下下来压缩包内部包了一层，因此叫 Nested
@@ -9,7 +11,7 @@ public record BundledRuntime(
 {
     #region Nested type: File
 
-    public record File(string Path, Uri Download, string Sha1, bool IsExecutable);
+    public record File(string Path, Uri Download, FileHash Hash, bool IsExecutable);
 
     #endregion
 

@@ -36,7 +36,7 @@ public class PackageMaterializer(ILogger<PackageMaterializer> logger, IHttpClien
                                                                                     plan.VersionId,
                                                                                     Path.GetExtension(plan
                                                                                        .RelativeTargetPath));
-                            if (!FileHelper.VerifyModified(cachePath, null, plan.Sha1))
+                            if (!FileHelper.VerifyModified(cachePath, null, plan.Hash))
                             {
                                 logger.LogDebug("Starting download fragile file {src} from {url}", cachePath, plan.Url);
                                 var dir = Path.GetDirectoryName(cachePath);

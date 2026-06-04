@@ -1,3 +1,5 @@
+using TridentCore.Abstractions.Utilities;
+
 namespace TridentCore.Abstractions.FileModels;
 
 // 相对于 TridentV1 的 Artifact，LockData 可以迁移
@@ -16,7 +18,7 @@ public record LockData(
 
     #region Nested type: AssetData
 
-    public record AssetData(string Id, Uri Url, string Sha1);
+    public record AssetData(string Id, Uri Url, FileHash? Hash);
 
     #endregion
 
@@ -26,7 +28,7 @@ public record LockData(
     public record Library(
         Library.Identity Id,
         Uri Url,
-        string? Sha1,
+        FileHash? Hash,
         bool IsNative = false,
         bool IsPresent = true
     )
@@ -58,7 +60,7 @@ public record LockData(
         string Vid,
         string Path,
         Uri Download,
-        string? Sha1
+        FileHash? Hash
     );
 
     #endregion

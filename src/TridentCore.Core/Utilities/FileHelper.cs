@@ -4,6 +4,9 @@ using System.Text.Json.Serialization;
 using MimeDetective;
 using MimeDetective.Definitions;
 using TridentCore.Abstractions.Repositories.Resources;
+using TridentCore.Abstractions.Utilities;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
+using HashAlgorithm = TridentCore.Abstractions.Utilities.HashAlgorithm;
 using FileStream = System.IO.FileStream;
 
 namespace TridentCore.Core.Utilities;
@@ -167,7 +170,7 @@ public static class FileHelper
                          });
     }
 
-    public static bool VerifyModified(string path, DateTimeOffset? modifiedTime, string? hash)
+    public static bool VerifyModified(string path, DateTimeOffset? modifiedTime, FileHash? hash)
     {
         if (File.Exists(path))
         {
@@ -184,8 +187,8 @@ public static class FileHelper
             if (hash != null)
             {
                 using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-                var computed = Convert.ToHexString(SHA1.HashData(reader));
-                if (hash.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
+                var computed = ComputeHash(reader, hash.Algorithm);
+                if (hash.Value.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
                 {
                     // 文件没变，写回修改时间避免下次重复检查
                     if (modifiedTime.HasValue)
@@ -209,6 +212,36 @@ public static class FileHelper
 
         return false;
     }
+
+    public static string ComputeHash(string path, HashAlgorithm algorithm)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return ComputeHash(stream, algorithm);
+    }
+
+    public static async ValueTask<string> ComputeHashAsync(string path, HashAlgorithm algorithm)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return await ComputeHashAsync(stream, algorithm).ConfigureAwait(false);
+    }
+
+    public static string ComputeHash(Stream stream, HashAlgorithm algorithm) =>
+        Convert.ToHexString(SelectHashAlgorithm(algorithm).ComputeHash(stream));
+
+    public static async ValueTask<string> ComputeHashAsync(Stream stream, HashAlgorithm algorithm) =>
+        Convert.ToHexString(await SelectHashAlgorithm(algorithm)
+            .ComputeHashAsync(stream)
+            .ConfigureAwait(false));
+
+    private static System.Security.Cryptography.HashAlgorithm SelectHashAlgorithm(HashAlgorithm algorithm) =>
+        algorithm switch
+        {
+            HashAlgorithm.Sha1 => SHA1.Create(),
+            HashAlgorithm.Sha256 => SHA256.Create(),
+            HashAlgorithm.Sha512 => SHA512.Create(),
+            HashAlgorithm.Md5 => MD5.Create(),
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, null)
+        };
 
     #region Nested type: SystemObjectNewtonsoftCompatibleConverter
 

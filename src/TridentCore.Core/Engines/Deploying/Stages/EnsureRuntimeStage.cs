@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
@@ -92,7 +94,7 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                                                 )
                                                     ? new Uri(urlString)
                                                     : throw new FormatException("Invalid url string");
-                                                entries.Add(new(path, url, sha1, executable));
+                                                entries.Add(new(path, url, FileHash.Sha1(sha1), executable));
                                             }
                                             else
                                             {

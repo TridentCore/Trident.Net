@@ -3,6 +3,7 @@ using TridentCore.Core.Clients;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Utilities;
+using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Services;
 
@@ -135,7 +136,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
             }
             else if (lib.Downloads is { Artifact: { } artifact })
             {
-                builder.AddLibrary(lib.Name, artifact.Url, artifact.Sha1);
+                builder.AddLibrary(lib.Name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
             }
 
             (string, Component.Library.DownloadsEntry)? native = null;
@@ -173,7 +174,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
                     builder.AddLibrary(
                         $"{lib.Name}:{classifier}",
                         download.Url,
-                        download.Sha1,
+                        FileHash.FromSha1(download.Sha1),
                         true,
                         false
                     );
