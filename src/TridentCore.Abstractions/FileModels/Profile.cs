@@ -61,7 +61,7 @@ public class Profile
 
                 public enum SelectorType
                 {
-                    Abd,
+                    And,
                     Or,
                     Not,
                     Purl,

@@ -26,7 +26,7 @@ public static class RuleHelper
     public static bool Evaluate(Input input, Profile.Rice.Rule.RuleSelector selector) =>
         selector.Type switch
         {
-            Profile.Rice.Rule.RuleSelector.SelectorType.Abd => selector.Children?.All(x =>
+            Profile.Rice.Rule.RuleSelector.SelectorType.And => selector.Children?.All(x =>
                 Evaluate(input, x)
             )
                 ?? false,
