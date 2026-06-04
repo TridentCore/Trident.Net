@@ -14,7 +14,7 @@ public class DeployTracker(
     public Subject<(int, int)> ProgressStream { get; } = new();
     public Subject<DeployStage> StageStream { get; } = new();
 
-    public DeployStage CurrentStage { get; internal set; } = DeployStage.CHECK_ARTIFACT;
+    public DeployStage CurrentStage { get; internal set; } = DeployStage.CheckArtifact;
 
     public override void Dispose()
     {

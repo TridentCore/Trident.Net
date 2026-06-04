@@ -33,9 +33,9 @@ public record FileInfo(
 
     public enum FileReleaseType
     {
-        RELEASE = 1,
-        BETA,
-        ALPHA,
+        Release = 1,
+        Beta,
+        Alpha,
     }
 
     #endregion
@@ -44,21 +44,21 @@ public record FileInfo(
 
     public enum FileStatusStatus
     {
-        PROCESSING = 1,
-        CHANGES_REQUIRED,
-        UNDER_REVIEW,
-        APPROVED,
-        REJECTED,
-        MALWARE_DETECTED,
-        DELETED,
-        ARCHIVED,
-        TESTING,
-        RELEASED,
-        READY_FOR_REVIEW,
-        DEPRECATED,
-        BAKING,
-        AWAITING_PUBLISHING,
-        FAILED_PUBLISHING,
+        Processing = 1,
+        ChangesRequired,
+        UnderReview,
+        Approved,
+        Rejected,
+        MalwareDetected,
+        Deleted,
+        Archived,
+        Testing,
+        Released,
+        ReadyForReview,
+        Deprecated,
+        Baking,
+        AwaitingPublishing,
+        FailedPublishing,
     }
 
     #endregion
@@ -71,12 +71,12 @@ public record FileInfo(
 
         public enum FileRelationType
         {
-            EMBEDDED_LIBRARY = 1,
-            OPTIONAL_DEPENDENCY,
-            REQUIRED_DEPENDENCY,
-            TOOL,
-            INCOMPATIBLE,
-            INCLUDE,
+            EmbeddedLibrary = 1,
+            OptionalDependency,
+            RequiredDependency,
+            Tool,
+            Incompatible,
+            Include,
         }
 
         #endregion
@@ -92,8 +92,8 @@ public record FileInfo(
 
         public enum HashAlgo
         {
-            SHA1 = 1,
-            MD5,
+            Sha1 = 1,
+            Md5,
         }
 
         #endregion

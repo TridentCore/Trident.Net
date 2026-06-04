@@ -31,18 +31,18 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                    ],
                    versions,
                    [
-                       ResourceKind.MODPACK,
-                       ResourceKind.MOD,
-                       ResourceKind.RESOURCE_PACK,
-                       ResourceKind.SHADER_PACK,
-                       ResourceKind.WORLD,
-                       ResourceKind.DATA_PACK,
+                       ResourceKind.Modpack,
+                       ResourceKind.Mod,
+                       ResourceKind.ResourcePack,
+                       ResourceKind.ShaderPack,
+                       ResourceKind.World,
+                       ResourceKind.DataPack,
                    ]);
     }
 
     public async Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter)
     {
-        var loader = filter.Kind is ResourceKind.MOD or ResourceKind.MODPACK
+        var loader = filter.Kind is ResourceKind.Mod or ResourceKind.Modpack
                          ? CurseForgeHelper.LoaderIdToType(filter.Loader)
                          : null;
 

@@ -43,7 +43,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     public async Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter)
     {
-        var loader = filter.Kind is ResourceKind.MOD or ResourceKind.MODPACK
+        var loader = filter.Kind is ResourceKind.Mod or ResourceKind.Modpack
             ? ModrinthHelper.LoaderIdToName(filter.Loader)
             : null;
         var first = await client

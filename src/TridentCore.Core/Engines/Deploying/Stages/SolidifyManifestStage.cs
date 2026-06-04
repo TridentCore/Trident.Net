@@ -36,7 +36,7 @@ public class SolidifyManifestStage(
                 UpsertProjection(
                     projections,
                     fragile.TargetPath,
-                    ProjectionPriority.PACKAGE,
+                    ProjectionPriority.Package,
                     fragile,
                     $"package {fragile.TargetPath}"
                 );
@@ -544,12 +544,12 @@ public class SolidifyManifestStage(
 
         if (FileHelper.IsInDirectory(persistent.SourcePath, persistDir))
         {
-            return ProjectionPriority.PERSIST;
+            return ProjectionPriority.Persist;
         }
 
         if (FileHelper.IsInDirectory(persistent.SourcePath, liveDir))
         {
-            return ProjectionPriority.LIVE;
+            return ProjectionPriority.Live;
         }
 
         return null;
@@ -593,9 +593,9 @@ public class SolidifyManifestStage(
 
     private enum ProjectionPriority
     {
-        PACKAGE = 0,
-        LIVE = 1,
-        PERSIST = 2,
+        Package = 0,
+        Live = 1,
+        Persist = 2,
     }
 
     private record ProjectionCandidate(

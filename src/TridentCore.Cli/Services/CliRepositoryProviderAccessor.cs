@@ -39,11 +39,11 @@ public class CliRepositoryProviderAccessor(
 
         return driver switch
         {
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.CURSE_FORGE => (
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge => (
                 "x-api-key",
                 apiKey
             ),
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.MODRINTH => (
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth => (
                 "Authorization",
                 apiKey
             ),

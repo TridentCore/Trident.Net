@@ -9,9 +9,9 @@ public class XboxLiveAuthenticationException(
 
     public enum ErrorKind
     {
-        UNKNOWN,
-        PARENT_CONTROL,
-        UNSUPPORTED_REGION,
+        Unkown,
+        ParentControl,
+        UnsupportedRegion,
     }
 
     #endregion

@@ -70,8 +70,8 @@ public class UserRepositoryStore
     ) =>
         driver.ToLowerInvariant() switch
         {
-            "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CURSE_FORGE,
-            "modrinth" => IRepositoryProviderAccessor.ProviderProfile.DriverType.MODRINTH,
+            "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge,
+            "modrinth" => IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth,
             _ => throw new CliException(
                 $"Repository driver '{driver}' is not supported.",
                 ExitCodes.USAGE

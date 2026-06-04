@@ -61,18 +61,18 @@ public class Profile
 
                 public enum SelectorType
                 {
-                    AND,
-                    OR,
-                    NOT,
-                    PURL,
-                    REPOSITORY,
-                    TAG,
-                    KIND,
+                    Abd,
+                    Or,
+                    Not,
+                    Purl,
+                    Repository,
+                    Tag,
+                    Kind,
                 }
 
                 #endregion
 
-                public SelectorType Type { get; set; } = SelectorType.PURL;
+                public SelectorType Type { get; set; } = SelectorType.Purl;
 
                 public IList<RuleSelector>? Children { get; set; }
                 public string? Purl { get; set; }

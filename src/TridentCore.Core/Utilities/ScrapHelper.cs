@@ -39,10 +39,10 @@ public static partial class ScrapHelper
                 message.Value,
                 level.Value.ToUpper() switch
                 {
-                    "INFO" => ScrapLevel.INFORMATION,
-                    "WARN" => ScrapLevel.WARNING,
-                    "ERROR" => ScrapLevel.ERROR,
-                    _ => ScrapLevel.INFORMATION,
+                    "INFO" => ScrapLevel.Information,
+                    "WARN" => ScrapLevel.Warning,
+                    "ERROR" => ScrapLevel.Error,
+                    _ => ScrapLevel.Information,
                 },
                 parsedDate,
                 parsedTime,

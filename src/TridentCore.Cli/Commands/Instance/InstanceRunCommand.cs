@@ -55,7 +55,7 @@ public class InstanceRunCommand(
             );
 
         var launchOptions = new LaunchOptions(
-            launchMode: settings.Mode ?? LaunchMode.MANAGED,
+            launchMode: settings.Mode ?? LaunchMode.Managed,
             account: account,
             windowSize: (width, height),
             quickConnectAddress: settings.QuickConnect
@@ -121,7 +121,7 @@ public class InstanceRunCommand(
 
         var tracker = instanceManager.Launch(instance.Key, launchOptions, locator);
 
-        if (launchOptions.Mode == LaunchMode.MANAGED)
+        if (launchOptions.Mode == LaunchMode.Managed)
         {
             await AwaitLaunchAsync(tracker, cancellationToken).ConfigureAwait(false);
         }
@@ -149,7 +149,7 @@ public class InstanceRunCommand(
         {
             await AwaitLaunchStartAsync(tracker, cancellationToken).ConfigureAwait(false);
 
-            if (tracker.State != TrackerState.FAULTED)
+            if (tracker.State != TrackerState.Faulted)
             {
                 output.WriteSuccess($"Game process started for {tracker.Key}.");
             }
@@ -159,7 +159,7 @@ public class InstanceRunCommand(
         {
             await TrackerAwaiter.AwaitCompletionAsync(tracker, cts.Token).ConfigureAwait(false);
 
-            if (tracker.State == TrackerState.FAULTED)
+            if (tracker.State == TrackerState.Faulted)
             {
                 var ex = tracker.FailureReason;
                 if (ex is ProcessFaultedException pfe)
@@ -189,7 +189,7 @@ public class InstanceRunCommand(
         }
         finally
         {
-            if (cts.IsCancellationRequested && tracker.State == TrackerState.RUNNING)
+            if (cts.IsCancellationRequested && tracker.State == TrackerState.Running)
             {
                 tracker.Abort();
             }
@@ -208,7 +208,7 @@ public class InstanceRunCommand(
             )
             .ConfigureAwait(false);
 
-        if (tracker.State == TrackerState.FAULTED)
+        if (tracker.State == TrackerState.Faulted)
         {
             var ex = tracker.FailureReason;
             var message = ex?.Message ?? "Launch failed.";
@@ -275,7 +275,7 @@ public class InstanceRunCommand(
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (tracker.State is TrackerState.FINISHED or TrackerState.FAULTED)
+            if (tracker.State is TrackerState.Finished or TrackerState.Faulted)
             {
                 return;
             }
@@ -323,9 +323,9 @@ public class InstanceRunCommand(
 
         var (level, color) = scrap.Level switch
         {
-            ScrapLevel.ERROR => ("ERROR", "red"),
-            ScrapLevel.WARNING => ("WARN", "yellow"),
-            ScrapLevel.INFORMATION => ("INFO", "green"),
+            ScrapLevel.Error => ("ERROR", "red"),
+            ScrapLevel.Warning => ("WARN", "yellow"),
+            ScrapLevel.Information => ("INFO", "green"),
             _ => ("GAME", "cyan"),
         };
         var time = string.IsNullOrWhiteSpace(scrap.Time)

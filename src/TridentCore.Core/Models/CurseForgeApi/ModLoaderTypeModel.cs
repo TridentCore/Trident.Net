@@ -2,11 +2,11 @@ namespace TridentCore.Core.Models.CurseForgeApi;
 
 public enum ModLoaderTypeModel
 {
-    ANY = 0,
-    FORGE,
-    CAULDRON,
-    LITE_LOADER,
-    FABRIC,
-    QUILT,
-    NEO_FORGE,
+    Any = 0,
+    Forge,
+    Cauldron,
+    LiteLoader,
+    Fabric,
+    Quilt,
+    NeoForge,
 }

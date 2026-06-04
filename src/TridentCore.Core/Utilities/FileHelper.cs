@@ -140,11 +140,11 @@ public static class FileHelper
     public static string GetAssetFolderName(ResourceKind kind) =>
         kind switch
         {
-            ResourceKind.MOD => "mods",
-            ResourceKind.WORLD => "saves",
-            ResourceKind.SHADER_PACK => "shaderpacks",
-            ResourceKind.RESOURCE_PACK => "resourcepacks",
-            ResourceKind.DATA_PACK => "datapacks",
+            ResourceKind.Mod => "mods",
+            ResourceKind.World => "saves",
+            ResourceKind.ShaderPack => "shaderpacks",
+            ResourceKind.ResourcePack => "resourcepacks",
+            ResourceKind.DataPack => "datapacks",
             _ => throw new NotImplementedException(),
         };
 

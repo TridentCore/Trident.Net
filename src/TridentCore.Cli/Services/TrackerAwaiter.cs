@@ -61,7 +61,7 @@ public class TrackerAwaiter(CliOutput output)
         });
 
         await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
-        if (tracker.State == TrackerState.FAULTED)
+        if (tracker.State == TrackerState.Faulted)
         {
             throw tracker.FailureReason ?? new InvalidOperationException("Deploy failed.");
         }
@@ -78,7 +78,7 @@ public class TrackerAwaiter(CliOutput output)
 
         void OnStateUpdated(TrackerBase sender, TrackerState state)
         {
-            if (state is TrackerState.FINISHED or TrackerState.FAULTED)
+            if (state is TrackerState.Finished or TrackerState.Faulted)
             {
                 completion.TrySetResult();
             }
@@ -93,7 +93,7 @@ public class TrackerAwaiter(CliOutput output)
 
         try
         {
-            if (tracker.State is TrackerState.FINISHED or TrackerState.FAULTED)
+            if (tracker.State is TrackerState.Finished or TrackerState.Faulted)
             {
                 completion.TrySetResult();
             }
