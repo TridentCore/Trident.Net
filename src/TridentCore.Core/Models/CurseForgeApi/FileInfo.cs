@@ -92,8 +92,8 @@ public record FileInfo(
 
         public enum HashAlgo
         {
-            Sha1 = 1,
-            Md5,
+            SHA1 = 1,
+            MD5,
         }
 
         #endregion
