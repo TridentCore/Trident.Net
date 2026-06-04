@@ -119,7 +119,7 @@ public class AccountStore
 
         return Guid.TryParse(uuid, out var parsed)
             ? parsed.ToString("N")
-            : throw new CliException("--uuid must be a valid UUID.", ExitCodes.Usage);
+            : throw new CliException("--uuid must be a valid UUID.", ExitCodes.USAGE);
     }
 
     private static string GenerateAccessToken()

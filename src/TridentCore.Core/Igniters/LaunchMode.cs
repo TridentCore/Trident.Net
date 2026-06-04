@@ -2,7 +2,7 @@ namespace TridentCore.Core.Igniters;
 
 public enum LaunchMode
 {
-    Managed,
-    FireAndForget,
-    Debug,
+    MANAGED,
+    FIRE_AND_FORGET,
+    DEBUG,
 }

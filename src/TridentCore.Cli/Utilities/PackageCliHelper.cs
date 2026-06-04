@@ -14,7 +14,7 @@ public static class PackageCliHelper
     ) =>
         PackageHelper.TryParse(purl, out var parsed)
             ? parsed
-            : throw new CliException($"'{purl}' is not a valid package purl.", ExitCodes.Usage);
+            : throw new CliException($"'{purl}' is not a valid package purl.", ExitCodes.USAGE);
 
     public static Filter BuildFilter(
         string? gameVersion,
@@ -41,7 +41,7 @@ public static class PackageCliHelper
 
         return Enum.TryParse<ResourceKind>(kind, true, out var parsed)
             ? parsed
-            : throw new CliException($"Package kind '{kind}' is not supported.", ExitCodes.Usage);
+            : throw new CliException($"Package kind '{kind}' is not supported.", ExitCodes.USAGE);
     }
 
     public static Profile.Rice.Entry FindEntry(Profile profile, string purl)
@@ -49,7 +49,7 @@ public static class PackageCliHelper
         var parsed = ParsePurl(purl);
         return profile.Setup.Packages.FirstOrDefault(x =>
                 PackageHelper.IsMatched(x.Purl, parsed.Label, parsed.Namespace, parsed.Pid)
-            ) ?? throw new CliException($"Package '{purl}' is not installed.", ExitCodes.NotFound);
+            ) ?? throw new CliException($"Package '{purl}' is not installed.", ExitCodes.NOT_FOUND);
     }
 
     public static bool ContainsProject(Profile profile, string purl)

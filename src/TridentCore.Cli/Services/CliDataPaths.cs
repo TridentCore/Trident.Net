@@ -4,13 +4,13 @@ namespace TridentCore.Cli.Services;
 
 public static class CliDataPaths
 {
-    public const string Brand = "trident.cli";
+    public const string BRAND = "trident.cli";
 
     public static string PrivateDirectory
     {
         get
         {
-            var directory = PathDef.Default.PrivateDirectory(Brand);
+            var directory = PathDef.Default.PrivateDirectory(BRAND);
             Directory.CreateDirectory(directory);
             return directory;
         }

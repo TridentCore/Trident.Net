@@ -9,7 +9,7 @@ public class BuiltinRepositoryProviderAccessor : IRepositoryProviderAccessor
     {
         var curseforge = new IRepositoryProviderAccessor.ProviderProfile(
             CurseForgeHelper.LABEL,
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge,
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.CURSE_FORGE,
             CurseForgeHelper.ENDPOINT,
             ("x-api-key", CurseForgeHelper.API_KEY),
             null
@@ -17,7 +17,7 @@ public class BuiltinRepositoryProviderAccessor : IRepositoryProviderAccessor
 
         var modrinth = new IRepositoryProviderAccessor.ProviderProfile(
             ModrinthHelper.LABEL,
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth,
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.MODRINTH,
             ModrinthHelper.OFFICIAL_ENDPOINT,
             null,
             null

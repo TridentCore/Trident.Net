@@ -35,7 +35,7 @@ public class InstanceUnlockCommand(
             output.WriteSuccess($"Instance {result.Key} unlocked.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase { }

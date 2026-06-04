@@ -5,7 +5,7 @@ namespace TridentCore.Core.Services.Instances;
 
 public class LaunchOptions(
     string? brand = null,
-    LaunchMode launchMode = LaunchMode.Managed,
+    LaunchMode launchMode = LaunchMode.MANAGED,
     IAccount? account = null,
     (uint, uint)? windowSize = null,
     string? quickConnectAddress = null,

@@ -37,7 +37,7 @@ public class LoaderSetCommand(
             output.WriteSuccess($"Instance {result.Key} loader set to {result.Loader}.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

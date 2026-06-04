@@ -123,7 +123,7 @@ internal static class InstanceOperation
         var ctx = resolver.Resolve(instance, profile);
         if (instanceManager.IsInUse(ctx.Key))
         {
-            throw new CliException($"Instance '{ctx.Key}' is currently in use.", ExitCodes.Usage);
+            throw new CliException($"Instance '{ctx.Key}' is currently in use.", ExitCodes.USAGE);
         }
 
         var deleted = new List<string>();
@@ -200,7 +200,7 @@ internal static class InstanceOperation
         var sourcePath = Path.GetFullPath(path);
         if (!File.Exists(sourcePath))
         {
-            throw new CliException($"Pack file '{sourcePath}' was not found.", ExitCodes.NotFound);
+            throw new CliException($"Pack file '{sourcePath}' was not found.", ExitCodes.NOT_FOUND);
         }
 
         await using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);

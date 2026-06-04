@@ -13,7 +13,7 @@ namespace TridentCore.Core.Exporters;
 
 public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExporter
 {
-    private static readonly Dictionary<string, string> LoaderMappings = new()
+    private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
     {
         [LoaderHelper.LOADERID_FORGE] = "forge",
         [LoaderHelper.LOADERID_NEOFORGE] = "neoforge",
@@ -21,7 +21,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
         [LoaderHelper.LOADERID_QUILT] = "quilt",
     };
 
-    private static readonly JsonSerializerOptions SerializerOptions =
+    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS =
         new(JsonSerializerDefaults.Web) { WriteIndented = true, };
 
     #region IProfileExporter Members
@@ -84,7 +84,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
                                     attachments,
                                     "overrides");
         var manifestStream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(manifestStream, manifest, SerializerOptions).ConfigureAwait(false);
+        await JsonSerializer.SerializeAsync(manifestStream, manifest, SERIALIZER_OPTIONS).ConfigureAwait(false);
         manifestStream.Position = 0;
         container.Attachments.Add(CurseForgeHelper.PACK_INDEX_FILE_NAME, manifestStream);
         return container;
@@ -96,7 +96,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
     {
         if (!string.IsNullOrEmpty(lurl)
          && LoaderHelper.TryParse(lurl, out var tuple)
-         && LoaderMappings.TryGetValue(tuple.Identity, out var mapping))
+         && LOADER_MAPPINGS.TryGetValue(tuple.Identity, out var mapping))
         {
             return [new($"{mapping}-{tuple.Version}", true)];
         }

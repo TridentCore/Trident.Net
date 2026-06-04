@@ -17,7 +17,7 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
     )
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)

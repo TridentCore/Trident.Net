@@ -15,7 +15,7 @@ public record RuntimeManifest(
         string Name,
         string PackageType,
         DateTimeOffset ReleaseTime,
-        string RuntimeOS,
+        string RuntimeOs,
         Uri Url,
         string Vendor,
         Runtime.VersionData Version

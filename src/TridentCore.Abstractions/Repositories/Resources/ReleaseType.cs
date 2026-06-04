@@ -2,11 +2,11 @@ namespace TridentCore.Abstractions.Repositories.Resources;
 
 public enum ReleaseType
 {
-    Release,
-    Beta,
-    Alpha,
-    Experimental,
+    RELEASE,
+    BETA,
+    ALPHA,
+    EXPERIMENTAL,
 
     // Or snapshot
-    Nightly,
+    NIGHTLY,
 }

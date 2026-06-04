@@ -19,7 +19,7 @@ public static class FileHelper
 
     public static readonly string[] SupportedBitmapExtensions = ["jpeg", "jpg", "png", "bmp", "gif", "tiff",];
 
-    private static readonly IContentInspector Inspector = new ContentInspectorBuilder
+    private static readonly IContentInspector INSPECTOR = new ContentInspectorBuilder
     {
         Definitions = DefaultDefinitions.All(),
     }.Build();
@@ -66,7 +66,7 @@ public static class FileHelper
     {
         if (File.Exists(path))
         {
-            var results = Inspector.Inspect(path).ByMimeType();
+            var results = INSPECTOR.Inspect(path).ByMimeType();
             if (results.Any(x => SupportedBitmapMimes.Contains(x.MimeType)))
             {
                 return true;
@@ -77,7 +77,7 @@ public static class FileHelper
     }
 
     public static string GuessBitmapExtension(Stream stream, string fallback = "png") =>
-        Inspector.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
+        INSPECTOR.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
      ?? fallback;
 
     public static bool IsInDirectory(string file, string directory) =>
@@ -137,11 +137,11 @@ public static class FileHelper
     public static string GetAssetFolderName(ResourceKind kind) =>
         kind switch
         {
-            ResourceKind.Mod => "mods",
-            ResourceKind.World => "saves",
-            ResourceKind.ShaderPack => "shaderpacks",
-            ResourceKind.ResourcePack => "resourcepacks",
-            ResourceKind.DataPack => "datapacks",
+            ResourceKind.MOD => "mods",
+            ResourceKind.WORLD => "saves",
+            ResourceKind.SHADER_PACK => "shaderpacks",
+            ResourceKind.RESOURCE_PACK => "resourcepacks",
+            ResourceKind.DATA_PACK => "datapacks",
             _ => throw new NotImplementedException(),
         };
 

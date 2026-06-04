@@ -32,7 +32,7 @@ public class InstanceRunCommand(
     )
     {
         RunAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task RunAsync(Arguments settings, CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public class InstanceRunCommand(
             );
 
         var launchOptions = new LaunchOptions(
-            launchMode: settings.Mode ?? LaunchMode.Managed,
+            launchMode: settings.Mode ?? LaunchMode.MANAGED,
             account: account,
             windowSize: (width, height),
             quickConnectAddress: settings.QuickConnect
@@ -121,7 +121,7 @@ public class InstanceRunCommand(
 
         var tracker = instanceManager.Launch(instance.Key, launchOptions, locator);
 
-        if (launchOptions.Mode == LaunchMode.Managed)
+        if (launchOptions.Mode == LaunchMode.MANAGED)
         {
             await AwaitLaunchAsync(tracker, cancellationToken).ConfigureAwait(false);
         }
@@ -149,7 +149,7 @@ public class InstanceRunCommand(
         {
             await AwaitLaunchStartAsync(tracker, cancellationToken).ConfigureAwait(false);
 
-            if (tracker.State != TrackerState.Faulted)
+            if (tracker.State != TrackerState.FAULTED)
             {
                 output.WriteSuccess($"Game process started for {tracker.Key}.");
             }
@@ -159,7 +159,7 @@ public class InstanceRunCommand(
         {
             await TrackerAwaiter.AwaitCompletionAsync(tracker, cts.Token).ConfigureAwait(false);
 
-            if (tracker.State == TrackerState.Faulted)
+            if (tracker.State == TrackerState.FAULTED)
             {
                 var ex = tracker.FailureReason;
                 if (ex is ProcessFaultedException pfe)
@@ -168,7 +168,7 @@ public class InstanceRunCommand(
                     throw new CliException(
                         $"Game exited with code {pfe.ExitCode}.",
                         pfe,
-                        ExitCodes.Unknown
+                        ExitCodes.UNKNOWN
                     );
                 }
 
@@ -176,10 +176,10 @@ public class InstanceRunCommand(
                 output.WriteError(message);
                 if (ex != null)
                 {
-                    throw new CliException(message, ex, ExitCodes.Unknown);
+                    throw new CliException(message, ex, ExitCodes.UNKNOWN);
                 }
 
-                throw new CliException(message, ExitCodes.Unknown);
+                throw new CliException(message, ExitCodes.UNKNOWN);
             }
 
             if (output.CanUseRichOutput)
@@ -189,7 +189,7 @@ public class InstanceRunCommand(
         }
         finally
         {
-            if (cts.IsCancellationRequested && tracker.State == TrackerState.Running)
+            if (cts.IsCancellationRequested && tracker.State == TrackerState.RUNNING)
             {
                 tracker.Abort();
             }
@@ -208,17 +208,17 @@ public class InstanceRunCommand(
             )
             .ConfigureAwait(false);
 
-        if (tracker.State == TrackerState.Faulted)
+        if (tracker.State == TrackerState.FAULTED)
         {
             var ex = tracker.FailureReason;
             var message = ex?.Message ?? "Launch failed.";
             output.WriteError(message);
             if (ex != null)
             {
-                throw new CliException(message, ex, ExitCodes.Unknown);
+                throw new CliException(message, ex, ExitCodes.UNKNOWN);
             }
 
-            throw new CliException(message, ExitCodes.Unknown);
+            throw new CliException(message, ExitCodes.UNKNOWN);
         }
 
         if (output.UseStructuredOutput)
@@ -275,7 +275,7 @@ public class InstanceRunCommand(
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (tracker.State is TrackerState.Finished or TrackerState.Faulted)
+            if (tracker.State is TrackerState.FINISHED or TrackerState.FAULTED)
             {
                 return;
             }
@@ -323,9 +323,9 @@ public class InstanceRunCommand(
 
         var (level, color) = scrap.Level switch
         {
-            ScrapLevel.Error => ("ERROR", "red"),
-            ScrapLevel.Warning => ("WARN", "yellow"),
-            ScrapLevel.Information => ("INFO", "green"),
+            ScrapLevel.ERROR => ("ERROR", "red"),
+            ScrapLevel.WARNING => ("WARN", "yellow"),
+            ScrapLevel.INFORMATION => ("INFO", "green"),
             _ => ("GAME", "cyan"),
         };
         var time = string.IsNullOrWhiteSpace(scrap.Time)
@@ -362,7 +362,7 @@ public class InstanceRunCommand(
 
             throw new CliException(
                 $"Account '{settings.Account}' not found. Use 'trident account list' to see available accounts.",
-                ExitCodes.NotFound
+                ExitCodes.NOT_FOUND
             );
         }
 

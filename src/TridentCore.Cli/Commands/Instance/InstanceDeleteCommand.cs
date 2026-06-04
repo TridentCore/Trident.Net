@@ -41,7 +41,7 @@ public class InstanceDeleteCommand(
             output.WriteSuccess($"Instance {result.Key} marked for deletion.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

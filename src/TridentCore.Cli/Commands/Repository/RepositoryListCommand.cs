@@ -22,7 +22,7 @@ public class RepositoryListCommand(
         if (output.UseStructuredOutput)
         {
             output.WriteData(repositories);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (repositories.Count == 0)
@@ -31,7 +31,7 @@ public class RepositoryListCommand(
                 "No repositories",
                 "Add one with: trident repository add --label <label> --endpoint <uri>"
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -53,7 +53,7 @@ public class RepositoryListCommand(
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

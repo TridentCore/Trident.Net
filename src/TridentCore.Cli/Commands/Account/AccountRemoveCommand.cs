@@ -26,7 +26,7 @@ public class AccountRemoveCommand(AccountStore accounts, CliOutput output)
             output.WriteSuccess($"Account {result.Uuid} removed.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings

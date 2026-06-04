@@ -25,7 +25,7 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
         if (output.UseStructuredOutput)
         {
             output.WriteData(new { supportedTypes = types });
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         AnsiConsole.Write(
@@ -49,7 +49,7 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

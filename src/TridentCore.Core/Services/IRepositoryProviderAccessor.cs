@@ -22,9 +22,9 @@ public interface IRepositoryProviderAccessor
 
         public enum DriverType
         {
-            CurseForge,
-            Modrinth,
-            GitHub,
+            CURSE_FORGE,
+            MODRINTH,
+            GIT_HUB,
         }
 
         #endregion

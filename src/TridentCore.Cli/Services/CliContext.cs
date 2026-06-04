@@ -67,7 +67,7 @@ public sealed class CliContext
                 case "--home":
                     if (i + 1 >= args.Length)
                     {
-                        throw new CliException("--home requires a path.", ExitCodes.Usage);
+                        throw new CliException("--home requires a path.", ExitCodes.USAGE);
                     }
 
                     home = args[++i];

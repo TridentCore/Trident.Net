@@ -40,7 +40,7 @@ public class StdinValueReader(CliContext context)
         }
         catch (JsonException ex)
         {
-            throw new CliException($"stdin is not valid JSON: {ex.Message}", ExitCodes.Usage);
+            throw new CliException($"stdin is not valid JSON: {ex.Message}", ExitCodes.USAGE);
         }
     }
 

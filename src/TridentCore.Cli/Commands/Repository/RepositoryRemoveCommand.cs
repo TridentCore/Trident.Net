@@ -26,7 +26,7 @@ public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOu
             output.WriteSuccess($"Repository {result.Label} removed.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings

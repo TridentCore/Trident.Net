@@ -8,7 +8,7 @@ using TridentCore.Cli;
 using TridentCore.Cli.Services;
 
 #if DEBUG
-const bool IsDebug = true;
+const bool isDebug = true;
 var env = "Development";
 #else
 const bool IsDebug = false;
@@ -33,7 +33,7 @@ var services = new ServiceCollection();
 var configurationBuilder = new ConfigurationBuilder();
 Startup.ConfigureConfiguration(configurationBuilder, environment);
 var configuration = configurationBuilder.Build();
-Startup.ConfigureServices(services, configuration, environment, invocation.Context, IsDebug);
+Startup.ConfigureServices(services, configuration, environment, invocation.Context, isDebug);
 
 services.AddSingleton<IConfiguration>(configuration);
 services.AddSingleton<IEnvironment>(environment);
@@ -59,18 +59,18 @@ catch (CliException ex)
 }
 catch (OperationCanceledException ex)
 {
-    WriteStartupError(invocation.Context, ex, ExitCodes.Canceled);
-    return ExitCodes.Canceled;
+    WriteStartupError(invocation.Context, ex, ExitCodes.CANCELED);
+    return ExitCodes.CANCELED;
 }
 catch (CommandAppException ex)
 {
-    WriteStartupError(invocation.Context, ex, ExitCodes.Usage);
-    return ExitCodes.Usage;
+    WriteStartupError(invocation.Context, ex, ExitCodes.USAGE);
+    return ExitCodes.USAGE;
 }
 catch (Exception ex)
 {
-    WriteStartupError(invocation.Context, ex, ExitCodes.Unknown);
-    return ExitCodes.Unknown;
+    WriteStartupError(invocation.Context, ex, ExitCodes.UNKNOWN);
+    return ExitCodes.UNKNOWN;
 }
 
 LookupContext LookupHome(string? homeOverride) =>
@@ -125,7 +125,7 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
     var message = string.IsNullOrWhiteSpace(exception.Message)
         ? exception.GetType().Name
         : exception.Message;
-    var detail = IsDebug || context?.Debug is true ? exception.ToString() : null;
+    var detail = isDebug || context?.Debug is true ? exception.ToString() : null;
 
     if (context?.UseStructuredOutput is true)
     {

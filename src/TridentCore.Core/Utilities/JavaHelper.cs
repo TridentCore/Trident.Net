@@ -10,7 +10,7 @@ namespace TridentCore.Core.Utilities;
 
 public static class JavaHelper
 {
-    private static readonly string[] WindowsRegistryJavaRoots =
+    private static readonly string[] WINDOWS_REGISTRY_JAVA_ROOTS =
     [
         @"SOFTWARE\JavaSoft\Java Runtime Environment",
         @"SOFTWARE\JavaSoft\JRE",
@@ -22,7 +22,7 @@ public static class JavaHelper
         @"SOFTWARE\Microsoft\JDK",
     ];
 
-    private static readonly string[] WindowsJavaHomeValueNames =
+    private static readonly string[] WINDOWS_JAVA_HOME_VALUE_NAMES =
     [
         "JavaHome",
         "InstallationPath",
@@ -118,7 +118,7 @@ public static class JavaHelper
                     continue;
                 }
 
-                foreach (var rootPath in WindowsRegistryJavaRoots)
+                foreach (var rootPath in WINDOWS_REGISTRY_JAVA_ROOTS)
                 {
                     using var root = baseKey.OpenSubKey(rootPath);
                     if (root == null)
@@ -158,7 +158,7 @@ public static class JavaHelper
         string? version = null
     )
     {
-        foreach (var valueName in WindowsJavaHomeValueNames)
+        foreach (var valueName in WINDOWS_JAVA_HOME_VALUE_NAMES)
         {
             if (key.GetValue(valueName) is not string rawHome)
             {

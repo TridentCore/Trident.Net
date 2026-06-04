@@ -21,7 +21,7 @@ public class PackageSearchCommand(
     )
     {
         SearchAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task SearchAsync(Arguments settings, CancellationToken cancellationToken)
@@ -62,7 +62,7 @@ public class PackageSearchCommand(
         {
             throw new CliException(
                 "--repository is required for remote search. Use -R <label> to specify a repository.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             );
         }
 

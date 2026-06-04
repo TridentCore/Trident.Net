@@ -18,7 +18,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (result.Count == 0)
@@ -27,7 +27,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
                 "No accounts",
                 "Add one with: trident account add --type offline --username <name>"
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -60,7 +60,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

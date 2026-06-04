@@ -34,7 +34,7 @@ public class PackageDisableCommand(
             output.WriteSuccess($"Package {result.Purl} disabled.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

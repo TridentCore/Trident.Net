@@ -293,7 +293,7 @@ internal static class PackageOperation
         var parsed = PackageCliHelper.ParsePurl(purl);
         if (string.IsNullOrWhiteSpace(parsed.Vid))
         {
-            throw new CliException("A version purl with @version is required.", ExitCodes.Usage);
+            throw new CliException("A version purl with @version is required.", ExitCodes.USAGE);
         }
 
         var ctx = resolver.Resolve(instance, profile);

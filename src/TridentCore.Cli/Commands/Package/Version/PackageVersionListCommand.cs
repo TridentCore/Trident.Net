@@ -29,7 +29,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (result.Versions.Count == 0)
@@ -38,7 +38,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
                 "No versions found",
                 $"No versions matched filters for {settings.Purl}."
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -66,7 +66,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
 
         output.WriteTable(table);
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : PagingSettings

@@ -26,29 +26,29 @@ public static class RuleHelper
     public static bool Evaluate(Input input, Profile.Rice.Rule.RuleSelector selector) =>
         selector.Type switch
         {
-            Profile.Rice.Rule.RuleSelector.SelectorType.And => selector.Children?.All(x =>
+            Profile.Rice.Rule.RuleSelector.SelectorType.AND => selector.Children?.All(x =>
                 Evaluate(input, x)
             )
                 ?? false,
-            Profile.Rice.Rule.RuleSelector.SelectorType.Or => selector.Children?.Any(x =>
+            Profile.Rice.Rule.RuleSelector.SelectorType.OR => selector.Children?.Any(x =>
                 Evaluate(input, x)
             )
                 ?? false,
-            Profile.Rice.Rule.RuleSelector.SelectorType.Not => selector.Children?.All(x =>
+            Profile.Rice.Rule.RuleSelector.SelectorType.NOT => selector.Children?.All(x =>
                 !Evaluate(input, x)
             )
                 ?? false,
-            Profile.Rice.Rule.RuleSelector.SelectorType.Purl => selector.Purl != null
+            Profile.Rice.Rule.RuleSelector.SelectorType.PURL => selector.Purl != null
                 && PackageHelper.IsMatched(selector.Purl, input.Package),
-            Profile.Rice.Rule.RuleSelector.SelectorType.Repository => selector.Repository != null
+            Profile.Rice.Rule.RuleSelector.SelectorType.REPOSITORY => selector.Repository != null
                 && string.Equals(
                     selector.Repository,
                     input.Package.Label,
                     StringComparison.OrdinalIgnoreCase
                 ),
-            Profile.Rice.Rule.RuleSelector.SelectorType.Tag => selector.Tag != null
+            Profile.Rice.Rule.RuleSelector.SelectorType.TAG => selector.Tag != null
                 && input.Entry.Tags.Contains(selector.Tag),
-            Profile.Rice.Rule.RuleSelector.SelectorType.Kind => selector.Kind != null
+            Profile.Rice.Rule.RuleSelector.SelectorType.KIND => selector.Kind != null
                 && selector.Kind == input.Package.Kind,
             _ => false,
         };

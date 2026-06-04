@@ -18,7 +18,7 @@ public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arg
         if (output.UseStructuredOutput)
         {
             output.WriteData(loaders);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -36,7 +36,7 @@ public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arg
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

@@ -13,7 +13,7 @@ namespace TridentCore.Core.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    private static readonly RefitSettings Dummy = new();
+    private static readonly RefitSettings DUMMY = new();
 
     extension(IServiceCollection services)
     {
@@ -94,7 +94,7 @@ public static class ServiceCollectionExtensions
                                                                                 message.RequestMessage,
                                                                                 message.RequestMessage.Method,
                                                                                 message,
-                                                                                Dummy
+                                                                                DUMMY
                                                                                )
                                                                         .ConfigureAwait(false),
                                                                  _ => new NotImplementedException(),

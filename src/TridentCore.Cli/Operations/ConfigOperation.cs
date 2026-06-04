@@ -21,7 +21,7 @@ internal static class ConfigOperation
 
         if (!values.TryGetValue(name, out var value))
         {
-            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NotFound);
+            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NOT_FOUND);
         }
 
         return ConfigResult.From(scope, name, value);
@@ -76,7 +76,7 @@ internal static class ConfigOperation
 
         if (!removed)
         {
-            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NotFound);
+            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NOT_FOUND);
         }
     }
 

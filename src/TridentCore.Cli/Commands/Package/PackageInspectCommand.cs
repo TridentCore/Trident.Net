@@ -20,7 +20,7 @@ public class PackageInspectCommand(
     )
     {
         InspectAsync(settings).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task InspectAsync(Arguments settings)

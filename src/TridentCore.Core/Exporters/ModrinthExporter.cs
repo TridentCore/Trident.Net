@@ -16,7 +16,7 @@ namespace TridentCore.Core.Exporters;
 
 public class ModrinthExporter(RepositoryAgent agent, IServiceProvider serviceProvider) : IProfileExporter
 {
-    private static readonly Dictionary<string, string> LoaderMappings = new()
+    private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
     {
         [LoaderHelper.LOADERID_FORGE] = "forge",
         [LoaderHelper.LOADERID_NEOFORGE] = "neoforge",
@@ -24,7 +24,7 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
         [LoaderHelper.LOADERID_QUILT] = "quilt-loader",
     };
 
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -92,14 +92,14 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
         }
 
         var dependencies = new Dictionary<string, string> { { "minecraft", setup.Version } };
-        if (loader is not null && LoaderMappings.TryGetValue(loader.Value.Identity, out var mapping))
+        if (loader is not null && LOADER_MAPPINGS.TryGetValue(loader.Value.Identity, out var mapping))
         {
             dependencies.Add(mapping, loader.Value.Version);
         }
 
         var index = new PackIndex(1, "minecraft", pack.Version, pack.Name, null, files, dependencies);
         var indexStream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(indexStream, index, SerializerOptions).ConfigureAwait(false);
+        await JsonSerializer.SerializeAsync(indexStream, index, SERIALIZER_OPTIONS).ConfigureAwait(false);
         indexStream.Position = 0;
         container.Attachments.Add(ModrinthHelper.PACK_INDEX_FILE_NAME, indexStream);
         return container;

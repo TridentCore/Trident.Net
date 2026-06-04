@@ -12,7 +12,7 @@ internal static class AccountOperation
     {
         if (string.IsNullOrWhiteSpace(username))
         {
-            throw new CliException("--username is required for offline accounts.", ExitCodes.Usage);
+            throw new CliException("--username is required for offline accounts.", ExitCodes.USAGE);
         }
 
         var stored = AccountStore.CreateOffline(username, uuid);
@@ -25,7 +25,7 @@ internal static class AccountOperation
     {
         if (!accounts.Remove(uuid))
         {
-            throw new CliException($"Account '{uuid}' was not found.", ExitCodes.NotFound);
+            throw new CliException($"Account '{uuid}' was not found.", ExitCodes.NOT_FOUND);
         }
 
         return new(uuid);

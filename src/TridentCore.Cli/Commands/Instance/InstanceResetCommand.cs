@@ -53,7 +53,7 @@ public class InstanceResetCommand(
             output.WriteSuccess($"Instance {result.Key} reset.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

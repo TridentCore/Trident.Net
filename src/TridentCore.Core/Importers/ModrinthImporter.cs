@@ -10,7 +10,7 @@ namespace TridentCore.Core.Importers;
 
 public class ModrinthImporter : IProfileImporter
 {
-    private static readonly Dictionary<string, string> LoaderMappings = new()
+    private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
     {
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
@@ -92,7 +92,7 @@ public class ModrinthImporter : IProfileImporter
     {
         foreach (var (k, v) in dependencies)
         {
-            if (LoaderMappings.TryGetValue(k, out var mapping))
+            if (LOADER_MAPPINGS.TryGetValue(k, out var mapping))
             {
                 loader = (mapping, v);
                 return true;

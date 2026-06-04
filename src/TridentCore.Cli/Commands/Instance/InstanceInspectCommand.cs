@@ -20,7 +20,7 @@ public class InstanceInspectCommand(
     )
     {
         InspectAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task InspectAsync(Arguments settings, CancellationToken cancellationToken)

@@ -32,16 +32,16 @@ public record ModInfo(
 
     public enum ModStatus
     {
-        New = 1,
-        ChangesRequired,
-        UnderSoftReview,
-        Approved,
-        Rejected,
-        ChangesMade,
-        Inactive,
-        Abandoned,
-        Deleted,
-        UnderReview,
+        NEW = 1,
+        CHANGES_REQUIRED,
+        UNDER_SOFT_REVIEW,
+        APPROVED,
+        REJECTED,
+        CHANGES_MADE,
+        INACTIVE,
+        ABANDONED,
+        DELETED,
+        UNDER_REVIEW,
     }
 
     #endregion

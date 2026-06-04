@@ -43,7 +43,7 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
 
         throw new CliException(
             "No instance context found. Use --instance <key> or run from an instance directory.",
-            ExitCodes.Usage
+            ExitCodes.USAGE
         );
     }
 
@@ -51,7 +51,7 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
     {
         if (!profileManager.TryGetImmutable(key, out var profile))
         {
-            throw new CliException($"Instance '{key}' was not found.", ExitCodes.NotFound);
+            throw new CliException($"Instance '{key}' was not found.", ExitCodes.NOT_FOUND);
         }
 
         return new(
@@ -76,7 +76,7 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
         {
             throw new CliException(
                 $"Profile path '{fullProfilePath}' is outside Trident home.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             );
         }
 
@@ -86,7 +86,7 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
         {
             throw new CliException(
                 $"Profile path '{fullProfilePath}' is not a managed instance profile.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             );
         }
 

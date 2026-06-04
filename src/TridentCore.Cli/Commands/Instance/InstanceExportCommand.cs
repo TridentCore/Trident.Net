@@ -41,7 +41,7 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
             output.WriteSuccess($"Instance {result.Key} exported.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

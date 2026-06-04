@@ -31,7 +31,7 @@ public class PackageDependencyListCommand(
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (result.Dependencies.Count == 0)
@@ -40,14 +40,14 @@ public class PackageDependencyListCommand(
                 "No dependencies",
                 "This package version does not declare dependencies."
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         output.WriteTable(
             Utilities.PackageCliHelper.CreateDependencyTable($"Dependencies for {result.Purl}", result.Dependencies)
         );
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : PackageFilterSettings

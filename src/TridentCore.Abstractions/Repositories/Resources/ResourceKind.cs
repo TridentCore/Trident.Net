@@ -2,11 +2,11 @@ namespace TridentCore.Abstractions.Repositories.Resources;
 
 public enum ResourceKind
 {
-    Unknown,
-    Modpack,
-    Mod,
-    World,
-    DataPack,
-    ResourcePack,
-    ShaderPack,
+    UNKNOWN,
+    MODPACK,
+    MOD,
+    WORLD,
+    DATA_PACK,
+    RESOURCE_PACK,
+    SHADER_PACK,
 }

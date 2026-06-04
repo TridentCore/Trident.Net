@@ -21,7 +21,7 @@ public class AccountAddCommand(
     )
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
@@ -37,7 +37,7 @@ public class AccountAddCommand(
         {
             throw new CliException(
                 $"Account type '{settings.Type}' is not supported.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             );
         }
 

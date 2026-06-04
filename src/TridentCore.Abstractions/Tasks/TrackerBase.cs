@@ -14,7 +14,7 @@ public abstract class TrackerBase(
         CancellationTokenSource.CreateLinkedTokenSource(token);
     public string Key => key;
     public CancellationToken Token => _tokenSource.Token;
-    public TrackerState State { get; private set; } = TrackerState.Idle;
+    public TrackerState State { get; private set; } = TrackerState.IDLE;
     public Exception? FailureReason { get; private set; }
 
     public DateTimeOffset StartedAt { get; private set; } = DateTimeOffset.Now;
@@ -39,7 +39,7 @@ public abstract class TrackerBase(
 
     protected virtual void OnStart()
     {
-        State = TrackerState.Running;
+        State = TrackerState.RUNNING;
         StateUpdated?.Invoke(this, State);
         _ = RunCoreAsync();
     }
@@ -66,7 +66,7 @@ public abstract class TrackerBase(
 
     protected virtual void OnFinish()
     {
-        State = TrackerState.Finished;
+        State = TrackerState.FINISHED;
         StateUpdated?.Invoke(this, State);
         onCompleted?.Invoke(this);
     }
@@ -74,7 +74,7 @@ public abstract class TrackerBase(
     protected virtual void OnFault(Exception e)
     {
         FailureReason = e;
-        State = TrackerState.Faulted;
+        State = TrackerState.FAULTED;
         StateUpdated?.Invoke(this, State);
         onCompleted?.Invoke(this);
     }

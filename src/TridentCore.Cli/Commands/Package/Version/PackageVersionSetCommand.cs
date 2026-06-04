@@ -35,7 +35,7 @@ public class PackageVersionSetCommand(
             output.WriteSuccess($"Package version updated to {result.NewPurl}.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

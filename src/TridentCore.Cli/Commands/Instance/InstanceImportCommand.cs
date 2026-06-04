@@ -42,7 +42,7 @@ public class InstanceImportCommand(
             output.WriteSuccess($"Instance {result.Key} imported.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings

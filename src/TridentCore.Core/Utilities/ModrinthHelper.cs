@@ -45,43 +45,43 @@ public static class ModrinthHelper
     public static string ResourceKindToUrlKind(ResourceKind kind) =>
         kind switch
         {
-            ResourceKind.Modpack => RESOURCENAME_MODPACK,
-            ResourceKind.Mod => RESOURCENAME_MOD,
-            ResourceKind.ResourcePack => RESOURCENAME_RESOURCEPACK,
-            ResourceKind.ShaderPack => RESOURCENAME_SHADERPACK,
-            ResourceKind.DataPack => RESOURCENAME_DATAPACK,
+            ResourceKind.MODPACK => RESOURCENAME_MODPACK,
+            ResourceKind.MOD => RESOURCENAME_MOD,
+            ResourceKind.RESOURCE_PACK => RESOURCENAME_RESOURCEPACK,
+            ResourceKind.SHADER_PACK => RESOURCENAME_SHADERPACK,
+            ResourceKind.DATA_PACK => RESOURCENAME_DATAPACK,
             _ => "unknown",
         };
 
     public static string? ResourceKindToType(ResourceKind? kind) =>
         kind switch
         {
-            ResourceKind.Modpack => RESOURCENAME_MODPACK,
-            ResourceKind.Mod => RESOURCENAME_MOD,
-            ResourceKind.ResourcePack => RESOURCENAME_RESOURCEPACK,
-            ResourceKind.ShaderPack => RESOURCENAME_SHADERPACK,
-            ResourceKind.DataPack => RESOURCENAME_DATAPACK,
+            ResourceKind.MODPACK => RESOURCENAME_MODPACK,
+            ResourceKind.MOD => RESOURCENAME_MOD,
+            ResourceKind.RESOURCE_PACK => RESOURCENAME_RESOURCEPACK,
+            ResourceKind.SHADER_PACK => RESOURCENAME_SHADERPACK,
+            ResourceKind.DATA_PACK => RESOURCENAME_DATAPACK,
             _ => null,
         };
 
     public static ResourceKind? ProjectTypeToKind(string? kind) =>
         kind switch
         {
-            RESOURCENAME_MODPACK => ResourceKind.Modpack,
-            RESOURCENAME_MOD => ResourceKind.Mod,
-            RESOURCENAME_RESOURCEPACK => ResourceKind.ResourcePack,
-            RESOURCENAME_SHADERPACK => ResourceKind.ShaderPack,
-            RESOURCENAME_DATAPACK => ResourceKind.DataPack,
+            RESOURCENAME_MODPACK => ResourceKind.MODPACK,
+            RESOURCENAME_MOD => ResourceKind.MOD,
+            RESOURCENAME_RESOURCEPACK => ResourceKind.RESOURCE_PACK,
+            RESOURCENAME_SHADERPACK => ResourceKind.SHADER_PACK,
+            RESOURCENAME_DATAPACK => ResourceKind.DATA_PACK,
             _ => null,
         };
 
     public static ReleaseType VersionTypeToReleaseType(string type) =>
         type switch
         {
-            "release" => ReleaseType.Release,
-            "beta" => ReleaseType.Beta,
-            "alpha" => ReleaseType.Alpha,
-            _ => ReleaseType.Release,
+            "release" => ReleaseType.RELEASE,
+            "beta" => ReleaseType.BETA,
+            "alpha" => ReleaseType.ALPHA,
+            _ => ReleaseType.RELEASE,
         };
 
     public static Requirement ToRequirement(VersionInfo version) =>
@@ -115,7 +115,7 @@ public static class ModrinthHelper
             hit.IconUrl,
             hit.Author,
             hit.Description,
-            ProjectTypeToKind(hit.ProjectType) ?? ResourceKind.Unknown,
+            ProjectTypeToKind(hit.ProjectType) ?? ResourceKind.UNKNOWN,
             hit.Downloads,
             hit.Categories,
             new(OFFICIAL_PROJECT_URL.Replace("{0}", hit.ProjectType).Replace("{1}", hit.Slug)),
@@ -140,7 +140,7 @@ public static class ModrinthHelper
     public static Project ToProject(string label, ProjectInfo project, MemberInfo? member)
     {
         var extracted = project.ProjectTypes.FirstOrDefault();
-        var kind = ProjectTypeToKind(extracted) ?? ResourceKind.Unknown;
+        var kind = ProjectTypeToKind(extracted) ?? ResourceKind.UNKNOWN;
         return new(
             label,
             null,
@@ -171,7 +171,7 @@ public static class ModrinthHelper
     )
     {
         var extracted = project.ProjectTypes.FirstOrDefault();
-        var kind = ProjectTypeToKind(extracted) ?? ResourceKind.Unknown;
+        var kind = ProjectTypeToKind(extracted) ?? ResourceKind.UNKNOWN;
         var file =
             version.Files.FirstOrDefault(x => x.Primary)
             ?? version.Files.FirstOrDefault()

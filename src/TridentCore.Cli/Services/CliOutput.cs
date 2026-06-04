@@ -6,7 +6,7 @@ namespace TridentCore.Cli.Services;
 
 public class CliOutput(CliContext context)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions JSON_OPTIONS = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
@@ -18,7 +18,7 @@ public class CliOutput(CliContext context)
 
     public void WriteData<T>(T value)
     {
-        Console.Out.WriteLine(JsonSerializer.Serialize(value, JsonOptions));
+        Console.Out.WriteLine(JsonSerializer.Serialize(value, JSON_OPTIONS));
     }
 
     public void WriteMessage(string message)
@@ -137,13 +137,13 @@ public class CliOutput(CliContext context)
         {
             throw new CliException(
                 "Confirmation is required. Re-run with --yes in non-interactive mode.",
-                ExitCodes.Canceled
+                ExitCodes.CANCELED
             );
         }
 
         if (!AnsiConsole.Confirm($"[yellow]{Markup.Escape(prompt)}[/]", false))
         {
-            throw new CliException("Operation canceled.", ExitCodes.Canceled);
+            throw new CliException("Operation canceled.", ExitCodes.CANCELED);
         }
     }
 

@@ -133,7 +133,7 @@ public class InstanceManager(
             t =>
             {
                 TrackerOnCompleted(t);
-                if (t is { State: TrackerState.Finished })
+                if (t is { State: TrackerState.FINISHED })
                 {
                     Launch(key, launch, javaHomeLocator);
                 }
@@ -260,35 +260,35 @@ public class InstanceManager(
             switch (stage)
             {
                 case CheckArtifactStage:
-                    tracker.StageStream.OnNext(DeployStage.CheckArtifact);
-                    tracker.CurrentStage = DeployStage.CheckArtifact;
+                    tracker.StageStream.OnNext(DeployStage.CHECK_ARTIFACT);
+                    tracker.CurrentStage = DeployStage.CHECK_ARTIFACT;
                     break;
                 case InstallVanillaStage:
-                    tracker.StageStream.OnNext(DeployStage.InstallVanilla);
-                    tracker.CurrentStage = DeployStage.InstallVanilla;
+                    tracker.StageStream.OnNext(DeployStage.INSTALL_VANILLA);
+                    tracker.CurrentStage = DeployStage.INSTALL_VANILLA;
                     break;
                 case ProcessLoaderStage:
-                    tracker.StageStream.OnNext(DeployStage.ProcessLoader);
-                    tracker.CurrentStage = DeployStage.ProcessLoader;
+                    tracker.StageStream.OnNext(DeployStage.PROCESS_LOADER);
+                    tracker.CurrentStage = DeployStage.PROCESS_LOADER;
                     break;
                 case ResolvePackageStage resolvePackageStage:
-                    tracker.StageStream.OnNext(DeployStage.ResolvePackage);
-                    tracker.CurrentStage = DeployStage.ResolvePackage;
+                    tracker.StageStream.OnNext(DeployStage.RESOLVE_PACKAGE);
+                    tracker.CurrentStage = DeployStage.RESOLVE_PACKAGE;
                     resolvePackageStage
                         .ProgressStream.Subscribe(tracker.ProgressStream)
                         .DisposeWith(resolvePackageStage);
                     break;
                 case BuildArtifactStage:
-                    tracker.StageStream.OnNext(DeployStage.BuildArtifact);
-                    tracker.CurrentStage = DeployStage.BuildArtifact;
+                    tracker.StageStream.OnNext(DeployStage.BUILD_ARTIFACT);
+                    tracker.CurrentStage = DeployStage.BUILD_ARTIFACT;
                     break;
                 case GenerateManifestStage:
-                    tracker.StageStream.OnNext(DeployStage.GenerateManifest);
-                    tracker.CurrentStage = DeployStage.GenerateManifest;
+                    tracker.StageStream.OnNext(DeployStage.GENERATE_MANIFEST);
+                    tracker.CurrentStage = DeployStage.GENERATE_MANIFEST;
                     break;
                 case SolidifyManifestStage solidifyManifestStage:
-                    tracker.StageStream.OnNext(DeployStage.SolidifyManifest);
-                    tracker.CurrentStage = DeployStage.SolidifyManifest;
+                    tracker.StageStream.OnNext(DeployStage.SOLIDIFY_MANIFEST);
+                    tracker.CurrentStage = DeployStage.SOLIDIFY_MANIFEST;
                     solidifyManifestStage
                         .ProgressStream.Subscribe(tracker.ProgressStream)
                         .DisposeWith(solidifyManifestStage);
@@ -406,7 +406,7 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
-                if (options.Mode == LaunchMode.Debug)
+                if (options.Mode == LaunchMode.DEBUG)
                 {
                     igniter.Debug();
                 }
@@ -420,7 +420,7 @@ public class InstanceManager(
 
                 tracker.CommandLine = FormatCommandLine(process.StartInfo);
 
-                if (options.Mode == LaunchMode.Debug)
+                if (options.Mode == LaunchMode.DEBUG)
                 {
                     await File.WriteAllLinesAsync(
                             Path.Combine(build, "trident.launch.dump.txt"),
@@ -429,7 +429,7 @@ public class InstanceManager(
                         .ConfigureAwait(false);
                 }
 
-                if (options.Mode == LaunchMode.Managed)
+                if (options.Mode == LaunchMode.MANAGED)
                 {
                     tracker.Process = process;
                     var launcher = new LaunchEngine(process);
@@ -521,7 +521,7 @@ public class InstanceManager(
             key.Key
         );
         var package = await repositories
-            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
+            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.MODPACK })
             .ConfigureAwait(false);
         var (pack, container) = await DownloadAndImportPackageAsync(
                 key.Key,
@@ -581,7 +581,7 @@ public class InstanceManager(
             PackageHelper.ToPurl(label, ns, pid, vid)
         );
         var package = await repositories
-            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
+            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.MODPACK })
             .ConfigureAwait(false);
         var (pack, container) = await DownloadAndImportPackageAsync(
                 key,

@@ -19,7 +19,7 @@ internal static class LoaderOperation
     {
         if (!LoaderSupport.IsSupported(loaderId))
         {
-            throw new CliException($"Loader '{loaderId}' is not supported.", ExitCodes.Usage);
+            throw new CliException($"Loader '{loaderId}' is not supported.", ExitCodes.USAGE);
         }
 
         var uid = LoaderSupport.GetUid(loaderId);
@@ -63,12 +63,12 @@ internal static class LoaderOperation
     {
         if (!LoaderHelper.TryParse(loader, out var parsed))
         {
-            throw new CliException($"Loader '{loader}' is not a valid lurl. Use <loader-id>:<version>.", ExitCodes.Usage);
+            throw new CliException($"Loader '{loader}' is not a valid lurl. Use <loader-id>:<version>.", ExitCodes.USAGE);
         }
 
         if (!LoaderSupport.IsSupported(parsed.Identity))
         {
-            throw new CliException($"Loader '{parsed.Identity}' is not supported.", ExitCodes.Usage);
+            throw new CliException($"Loader '{parsed.Identity}' is not supported.", ExitCodes.USAGE);
         }
 
         var ctx = resolver.Resolve(instance, profile);

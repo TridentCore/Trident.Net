@@ -48,12 +48,11 @@ public class InstallVanillaStage(
         // Jvm Arguments
         var jvmArguments = new List<string>();
         if (OperatingSystem.IsMacOS())
-        { // macOS 要求 JVM 在 GLFW 初始化之前在第一个进程线程上启动
+        {
             jvmArguments.Add("-XstartOnFirstThread");
         }
         if (OperatingSystem.IsWindows())
         {
-            // TODO: Windows 专供，不知道放 Linux 和 MaxOS 会不会出错
             jvmArguments.Add(
                 "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
             );

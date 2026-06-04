@@ -21,7 +21,7 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
         if (output.UseStructuredOutput)
         {
             output.WriteData(new { supportedDrivers = drivers });
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         AnsiConsole.Write(
@@ -45,7 +45,7 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

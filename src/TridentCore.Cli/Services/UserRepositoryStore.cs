@@ -6,7 +6,7 @@ namespace TridentCore.Cli.Services;
 
 public class UserRepositoryStore
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(
+    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new(
         JsonSerializerDefaults.Web
     )
     {
@@ -25,7 +25,7 @@ public class UserRepositoryStore
 
         var repositories = JsonSerializer.Deserialize<List<UserRepositoryProfile>>(
             File.ReadAllText(_path),
-            SerializerOptions
+            SERIALIZER_OPTIONS
         );
         return repositories ?? [];
     }
@@ -34,7 +34,7 @@ public class UserRepositoryStore
     {
         AtomicFileWriter.WriteAllText(
             _path,
-            JsonSerializer.Serialize(repositories, SerializerOptions)
+            JsonSerializer.Serialize(repositories, SERIALIZER_OPTIONS)
         );
     }
 
@@ -70,11 +70,11 @@ public class UserRepositoryStore
     ) =>
         driver.ToLowerInvariant() switch
         {
-            "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge,
-            "modrinth" => IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth,
+            "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CURSE_FORGE,
+            "modrinth" => IRepositoryProviderAccessor.ProviderProfile.DriverType.MODRINTH,
             _ => throw new CliException(
                 $"Repository driver '{driver}' is not supported.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             ),
         };
 }

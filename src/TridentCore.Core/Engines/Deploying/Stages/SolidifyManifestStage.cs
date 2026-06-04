@@ -13,7 +13,7 @@ public class SolidifyManifestStage(
     IHttpClientFactory factory
 ) : StageBase
 {
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
+    private static readonly StringComparer PATH_COMPARER = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
@@ -27,7 +27,7 @@ public class SolidifyManifestStage(
         var persistDirectory = PathDef.Default.DirectoryOfPersist(Context.Key);
 
         var files = new List<object>();
-        var projections = new Dictionary<string, ProjectionCandidate>(PathComparer);
+        var projections = new Dictionary<string, ProjectionCandidate>(PATH_COMPARER);
 
         foreach (var fragile in manifest.FragileFiles)
         {
@@ -36,7 +36,7 @@ public class SolidifyManifestStage(
                 UpsertProjection(
                     projections,
                     fragile.TargetPath,
-                    ProjectionPriority.Package,
+                    ProjectionPriority.PACKAGE,
                     fragile,
                     $"package {fragile.TargetPath}"
                 );
@@ -544,12 +544,12 @@ public class SolidifyManifestStage(
 
         if (FileHelper.IsInDirectory(persistent.SourcePath, persistDir))
         {
-            return ProjectionPriority.Persist;
+            return ProjectionPriority.PERSIST;
         }
 
         if (FileHelper.IsInDirectory(persistent.SourcePath, liveDir))
         {
-            return ProjectionPriority.Live;
+            return ProjectionPriority.LIVE;
         }
 
         return null;
@@ -593,9 +593,9 @@ public class SolidifyManifestStage(
 
     private enum ProjectionPriority
     {
-        Package = 0,
-        Live = 1,
-        Persist = 2,
+        PACKAGE = 0,
+        LIVE = 1,
+        PERSIST = 2,
     }
 
     private record ProjectionCandidate(

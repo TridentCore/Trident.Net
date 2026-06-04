@@ -18,7 +18,7 @@ public class MultiMcExporter(
     IServiceProvider serviceProvider
 ) : IProfileExporter
 {
-    private static readonly JsonSerializerOptions SerializerOptions =
+    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     #region IProfileExporter Members
@@ -63,7 +63,7 @@ public class MultiMcExporter(
         var mmcPack = new MmcPack(1, components);
         var mmcPackStream = new MemoryStream();
         await JsonSerializer
-            .SerializeAsync(mmcPackStream, mmcPack, SerializerOptions)
+            .SerializeAsync(mmcPackStream, mmcPack, SERIALIZER_OPTIONS)
             .ConfigureAwait(false);
         mmcPackStream.Position = 0;
         container.Attachments.Add(MultiMcHelper.PACK_INDEX_FILE_NAME, mmcPackStream);

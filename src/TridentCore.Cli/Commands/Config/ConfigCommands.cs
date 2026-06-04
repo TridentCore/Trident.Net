@@ -55,7 +55,7 @@ public class ConfigGetCommand(
             );
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : ConfigScopeArguments
@@ -97,7 +97,7 @@ public class ConfigSetCommand(
             output.WriteSuccess($"Configuration {settings.Name} saved.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : ConfigScopeArguments
@@ -141,7 +141,7 @@ public class ConfigUnsetCommand(
             output.WriteSuccess($"Configuration {settings.Name} removed.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : ConfigScopeArguments
@@ -168,7 +168,7 @@ public class ConfigListCommand(
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (result.Values.Count == 0)
@@ -177,7 +177,7 @@ public class ConfigListCommand(
                 "No configuration values",
                 "Set values with: trident config set --name <key> --value <value>"
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -195,7 +195,7 @@ public class ConfigListCommand(
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : ConfigScopeArguments { }
@@ -263,7 +263,7 @@ public static class ConfigValueParser
             "number" or "float" or "double" => ParseNumber(value),
             _ => throw new CliException(
                 $"Configuration value type '{type}' is not supported. Use auto, string, bool, integer, or number.",
-                ExitCodes.Usage
+                ExitCodes.USAGE
             ),
         };
     }
@@ -299,15 +299,15 @@ public static class ConfigValueParser
     private static bool ParseBoolean(string value) =>
         bool.TryParse(value, out var result)
             ? result
-            : throw new CliException($"'{value}' is not a valid bool value. Use true or false.", ExitCodes.Usage);
+            : throw new CliException($"'{value}' is not a valid bool value. Use true or false.", ExitCodes.USAGE);
 
     private static long ParseInteger(string value) =>
         long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
             ? result
-            : throw new CliException($"'{value}' is not a valid integer value.", ExitCodes.Usage);
+            : throw new CliException($"'{value}' is not a valid integer value.", ExitCodes.USAGE);
 
     private static double ParseNumber(string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result)
             ? result
-            : throw new CliException($"'{value}' is not a valid number value.", ExitCodes.Usage);
+            : throw new CliException($"'{value}' is not a valid number value.", ExitCodes.USAGE);
 }

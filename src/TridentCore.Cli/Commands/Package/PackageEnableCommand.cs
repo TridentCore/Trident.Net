@@ -35,7 +35,7 @@ public class PackageEnableCommand(
             output.WriteSuccess($"Package {result.Purl} enabled.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

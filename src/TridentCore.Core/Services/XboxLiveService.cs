@@ -37,9 +37,9 @@ public class XboxLiveService(IXboxLiveClient liveClient, IXboxServiceClient serv
         {
             var kind = response.XErr.Value switch
             {
-                2148916233 => XboxLiveAuthenticationException.ErrorKind.ParentControl,
-                2148916238 => XboxLiveAuthenticationException.ErrorKind.UnsupportedRegion,
-                _ => XboxLiveAuthenticationException.ErrorKind.Unknown,
+                2148916233 => XboxLiveAuthenticationException.ErrorKind.PARENT_CONTROL,
+                2148916238 => XboxLiveAuthenticationException.ErrorKind.UNSUPPORTED_REGION,
+                _ => XboxLiveAuthenticationException.ErrorKind.UNKNOWN,
             };
             throw new XboxLiveAuthenticationException(
                 kind,

@@ -22,7 +22,7 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         AnsiConsole.Write(
@@ -46,7 +46,7 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

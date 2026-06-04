@@ -25,7 +25,7 @@ public static class CurseForgeHelper
 
     public const string PACK_INDEX_FILE_NAME = "manifest.json";
 
-    public static readonly IReadOnlyDictionary<string, string> LOADER_MAPPINGS = new Dictionary<
+    public static readonly IReadOnlyDictionary<string, string> LoaderMappings = new Dictionary<
         string,
         string
     >
@@ -42,10 +42,10 @@ public static class CurseForgeHelper
     public static ModLoaderTypeModel? LoaderIdToType(string? loader) =>
         loader switch
         {
-            LoaderHelper.LOADERID_NEOFORGE => ModLoaderTypeModel.NeoForge,
-            LoaderHelper.LOADERID_FORGE => ModLoaderTypeModel.Forge,
-            LoaderHelper.LOADERID_FABRIC => ModLoaderTypeModel.Fabric,
-            LoaderHelper.LOADERID_QUILT => ModLoaderTypeModel.Quilt,
+            LoaderHelper.LOADERID_NEOFORGE => ModLoaderTypeModel.NEO_FORGE,
+            LoaderHelper.LOADERID_FORGE => ModLoaderTypeModel.FORGE,
+            LoaderHelper.LOADERID_FABRIC => ModLoaderTypeModel.FABRIC,
+            LoaderHelper.LOADERID_QUILT => ModLoaderTypeModel.QUILT,
             _ => null,
         };
 
@@ -62,46 +62,46 @@ public static class CurseForgeHelper
     public static uint? ResourceKindToClassId(ResourceKind? kind) =>
         kind switch
         {
-            ResourceKind.Modpack => CLASSID_MODPACK,
-            ResourceKind.Mod => CLASSID_MOD,
-            ResourceKind.ResourcePack => CLASSID_RESOURCEPACK,
-            ResourceKind.ShaderPack => CLASSID_SHADERPACK,
-            ResourceKind.World => CLASSID_WORLD,
-            ResourceKind.DataPack => CLASSID_DATAPACK,
+            ResourceKind.MODPACK => CLASSID_MODPACK,
+            ResourceKind.MOD => CLASSID_MOD,
+            ResourceKind.RESOURCE_PACK => CLASSID_RESOURCEPACK,
+            ResourceKind.SHADER_PACK => CLASSID_SHADERPACK,
+            ResourceKind.WORLD => CLASSID_WORLD,
+            ResourceKind.DATA_PACK => CLASSID_DATAPACK,
             _ => null,
         };
 
     public static ResourceKind? ClassIdToResourceKind(uint? classId) =>
         classId switch
         {
-            CLASSID_MODPACK => ResourceKind.Modpack,
-            CLASSID_MOD => ResourceKind.Mod,
-            CLASSID_RESOURCEPACK => ResourceKind.ResourcePack,
-            CLASSID_SHADERPACK => ResourceKind.ShaderPack,
-            CLASSID_WORLD => ResourceKind.World,
-            CLASSID_DATAPACK => ResourceKind.DataPack,
+            CLASSID_MODPACK => ResourceKind.MODPACK,
+            CLASSID_MOD => ResourceKind.MOD,
+            CLASSID_RESOURCEPACK => ResourceKind.RESOURCE_PACK,
+            CLASSID_SHADERPACK => ResourceKind.SHADER_PACK,
+            CLASSID_WORLD => ResourceKind.WORLD,
+            CLASSID_DATAPACK => ResourceKind.DATA_PACK,
             _ => null,
         };
 
     public static string ResourceKindToUrlKind(ResourceKind? kind) =>
         kind switch
         {
-            ResourceKind.Modpack => "modpacks",
-            ResourceKind.Mod => "mc-mods",
-            ResourceKind.World => "worlds",
-            ResourceKind.ResourcePack => "texture-packs",
-            ResourceKind.ShaderPack => "shaders",
-            ResourceKind.DataPack => "data-packs",
+            ResourceKind.MODPACK => "modpacks",
+            ResourceKind.MOD => "mc-mods",
+            ResourceKind.WORLD => "worlds",
+            ResourceKind.RESOURCE_PACK => "texture-packs",
+            ResourceKind.SHADER_PACK => "shaders",
+            ResourceKind.DATA_PACK => "data-packs",
             _ => "unknown",
         };
 
     public static ReleaseType ToReleaseType(FileInfo.FileReleaseType type) =>
         type switch
         {
-            FileInfo.FileReleaseType.Alpha => ReleaseType.Alpha,
-            FileInfo.FileReleaseType.Beta => ReleaseType.Beta,
-            FileInfo.FileReleaseType.Release => ReleaseType.Release,
-            _ => ReleaseType.Release,
+            FileInfo.FileReleaseType.ALPHA => ReleaseType.ALPHA,
+            FileInfo.FileReleaseType.BETA => ReleaseType.BETA,
+            FileInfo.FileReleaseType.RELEASE => ReleaseType.RELEASE,
+            _ => ReleaseType.RELEASE,
         };
 
     public static Uri ToDownloadUrl(FileInfo file) =>
@@ -111,8 +111,8 @@ public static class CurseForgeHelper
         );
 
     public static string? ToSha1(FileInfo file) =>
-        file.Hashes.Any(x => x.Algo == FileInfo.FileHash.HashAlgo.Sha1)
-            ? file.Hashes.First(x => x.Algo == FileInfo.FileHash.HashAlgo.Sha1).Value
+        file.Hashes.Any(x => x.Algo == FileInfo.FileHash.HashAlgo.SHA1)
+            ? file.Hashes.First(x => x.Algo == FileInfo.FileHash.HashAlgo.SHA1).Value
             : null;
 
     public static Requirement ToRequirement(FileInfo file)
@@ -121,7 +121,7 @@ public static class CurseForgeHelper
         List<string> loaderReq = [];
         foreach (var version in file.GameVersions.Where(x => x != "Client" && x != "Server"))
         {
-            if (LOADER_MAPPINGS.TryGetValue(version, out var loader))
+            if (LoaderMappings.TryGetValue(version, out var loader))
             {
                 loaderReq.Add(loader);
             }
@@ -139,15 +139,15 @@ public static class CurseForgeHelper
             .. file
                 .Dependencies.Where(x =>
                     x.RelationType
-                        is FileInfo.FileDependency.FileRelationType.RequiredDependency
-                            or FileInfo.FileDependency.FileRelationType.OptionalDependency
+                        is FileInfo.FileDependency.FileRelationType.REQUIRED_DEPENDENCY
+                            or FileInfo.FileDependency.FileRelationType.OPTIONAL_DEPENDENCY
                 )
                 .Select(x => new Dependency(
                     label,
                     null,
                     x.ModId.ToString(),
                     null,
-                    x.RelationType == FileInfo.FileDependency.FileRelationType.RequiredDependency
+                    x.RelationType == FileInfo.FileDependency.FileRelationType.REQUIRED_DEPENDENCY
                 )),
         ];
 
@@ -160,7 +160,7 @@ public static class CurseForgeHelper
             mod.Logo?.ThumbnailUrl?.IsAbsoluteUri is false ? mod.Logo?.Url : mod.Logo?.ThumbnailUrl,
             mod.Authors.Select(x => x.Name).FirstOrDefault() ?? "Anonymous",
             mod.Summary,
-            ClassIdToResourceKind(mod.ClassId) ?? ResourceKind.Unknown,
+            ClassIdToResourceKind(mod.ClassId) ?? ResourceKind.UNKNOWN,
             mod.DownloadCount,
             [.. mod.Categories.Select(x => x.Name)],
             mod.Links.WebsiteUrl
@@ -192,7 +192,7 @@ public static class CurseForgeHelper
                         ResourceKindToUrlKind(ClassIdToResourceKind(mod.ClassId))
                     )
                 ),
-            ClassIdToResourceKind(mod.ClassId) ?? ResourceKind.Unknown,
+            ClassIdToResourceKind(mod.ClassId) ?? ResourceKind.UNKNOWN,
             ToReleaseType(file.ReleaseType),
             file.FileDate,
             ToDownloadUrl(file),
@@ -234,7 +234,7 @@ public static class CurseForgeHelper
                         .Replace("{0}", ResourceKindToUrlKind(ClassIdToResourceKind(info.ClassId)))
                         .Replace("{1}", info.Slug)
                 ),
-            ClassIdToResourceKind(info.ClassId) ?? ResourceKind.Unknown,
+            ClassIdToResourceKind(info.ClassId) ?? ResourceKind.UNKNOWN,
             [.. info.Categories.Select(x => x.Name)],
             info.DateCreated,
             info.DateModified,

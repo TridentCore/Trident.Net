@@ -17,8 +17,8 @@ public class PrismLauncherService(IPrismLauncherClient client)
     public const string UID_FABRIC = "net.fabricmc.fabric-loader";
     public const string UID_QUILT = "org.quiltmc.quilt-loader";
 
-    private static readonly string OsNameString = PlatformHelper.GetOsName();
-    private static readonly string OsFullString = $"{OsNameString}-{PlatformHelper.GetOsArch()}";
+    private static readonly string OS_NAME_STRING = PlatformHelper.GetOsName();
+    private static readonly string OS_FULL_STRING = $"{OS_NAME_STRING}-{PlatformHelper.GetOsArch()}";
 
     public static readonly IReadOnlyDictionary<string, string> UidMappings = new Dictionary<
         string,
@@ -108,7 +108,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 // name
                 if (y.Os != null && y.Os.TryGetValue("name", out var os))
                 {
-                    pass = OsFullString == os || OsNameString == os;
+                    pass = OS_FULL_STRING == os || OS_NAME_STRING == os;
                 }
 
                 // arch

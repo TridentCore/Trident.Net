@@ -45,7 +45,7 @@ public class InstanceBuildCommand(
             output.WriteSuccess($"Instance {result.Key} built.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

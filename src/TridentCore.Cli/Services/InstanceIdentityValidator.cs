@@ -35,6 +35,6 @@ public static class InstanceIdentityValidator
             return identity;
         }
 
-        throw new CliException(error, ExitCodes.Usage);
+        throw new CliException(error, ExitCodes.USAGE);
     }
 }

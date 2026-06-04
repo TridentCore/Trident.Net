@@ -33,7 +33,7 @@ public class PackageDependentListCommand(
         if (output.UseStructuredOutput)
         {
             output.WriteData(result);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (result.Failed.Count > 0)
@@ -47,7 +47,7 @@ public class PackageDependentListCommand(
                 "No dependents found",
                 $"No enabled package in {instance.Key} depends on {settings.Purl}."
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -66,7 +66,7 @@ public class PackageDependentListCommand(
 
         output.WriteTable(table);
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : PackageFilterSettings

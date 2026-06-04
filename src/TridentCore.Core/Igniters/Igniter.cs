@@ -5,7 +5,7 @@ namespace TridentCore.Core.Igniters;
 
 public class Igniter : IBuilder<Process>
 {
-    public const string CommandWrapperPlaceholder = "{command}";
+    public const string COMMAND_WRAPPER_PLACEHOLDER = "{command}";
 
     public IList<string> GameArguments { get; } = new List<string>();
     public IList<string> JvmArguments { get; } = new List<string>();
@@ -288,26 +288,26 @@ public class Igniter : IBuilder<Process>
             return start;
         }
 
-        if (!tokens.Contains(CommandWrapperPlaceholder))
+        if (!tokens.Contains(COMMAND_WRAPPER_PLACEHOLDER))
         {
-            tokens.Add(CommandWrapperPlaceholder);
+            tokens.Add(COMMAND_WRAPPER_PLACEHOLDER);
         }
 
         var wrapped = new ProcessStartInfo
         {
-            FileName = tokens[0] == CommandWrapperPlaceholder ? start.FileName : tokens[0],
+            FileName = tokens[0] == COMMAND_WRAPPER_PLACEHOLDER ? start.FileName : tokens[0],
             WorkingDirectory = start.WorkingDirectory,
             UseShellExecute = start.UseShellExecute,
         };
 
-        if (tokens[0] == CommandWrapperPlaceholder)
+        if (tokens[0] == COMMAND_WRAPPER_PLACEHOLDER)
         {
             AddOriginalCommandArguments(wrapped, start, false);
         }
 
         foreach (var token in tokens.Skip(1))
         {
-            if (token == CommandWrapperPlaceholder)
+            if (token == COMMAND_WRAPPER_PLACEHOLDER)
             {
                 AddOriginalCommandArguments(wrapped, start, true);
             }

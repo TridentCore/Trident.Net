@@ -51,7 +51,7 @@ public class RepositoryAgent
         {
             switch (profile.Driver)
             {
-                case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
+                case IRepositoryProviderAccessor.ProviderProfile.DriverType.CURSE_FORGE:
                     {
                         var curseforge = new CurseForgeRepository(
                             profile.Label,
@@ -65,7 +65,7 @@ public class RepositoryAgent
                         built.Add(profile.Label, curseforge);
                         break;
                     }
-                case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
+                case IRepositoryProviderAccessor.ProviderProfile.DriverType.MODRINTH:
                     {
                         var modrinth = new ModrinthRepository(
                             profile.Label,

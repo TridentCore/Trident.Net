@@ -47,7 +47,7 @@ public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutpu
             output.WriteSuccess($"Repository {result.Label} saved.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings

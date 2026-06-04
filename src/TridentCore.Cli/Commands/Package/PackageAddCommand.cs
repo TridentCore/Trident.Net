@@ -29,7 +29,7 @@ public class PackageAddCommand(
         purls.AddRange(stdin.ReadValuesIfRedirected());
         if (purls.Count == 0)
         {
-            throw new CliException("A package purl or stdin input is required.", ExitCodes.Usage);
+            throw new CliException("A package purl or stdin input is required.", ExitCodes.USAGE);
         }
 
         var uniquePurls = purls.Distinct(StringComparer.Ordinal).ToArray();
@@ -96,7 +96,7 @@ public class PackageAddCommand(
             output.WriteSuccess($"Processed {results.Count} package(s).");
         }
 
-        return results.Any(x => !x.Added) ? ExitCodes.Partial : ExitCodes.Success;
+        return results.Any(x => !x.Added) ? ExitCodes.PARTIAL : ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase

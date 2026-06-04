@@ -20,7 +20,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
         if (output.UseStructuredOutput)
         {
             output.WriteData(instances);
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         if (instances.Count == 0)
@@ -29,7 +29,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
                 "No instances",
                 "Create one with: trident instance create --identity <key> --name <name> --version <version>"
             );
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
@@ -54,7 +54,7 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
         }
 
         output.WriteTable(table);
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : CommandSettings { }

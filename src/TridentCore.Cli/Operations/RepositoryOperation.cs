@@ -48,7 +48,7 @@ internal static class RepositoryOperation
         UserRepositoryStore.ParseDriver(resolvedDriver);
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out _))
         {
-            throw new CliException("--endpoint must be an absolute URI.", ExitCodes.Usage);
+            throw new CliException("--endpoint must be an absolute URI.", ExitCodes.USAGE);
         }
 
         var repository = new UserRepositoryProfile(label, resolvedDriver, endpoint, apiKey, userAgent);
@@ -68,7 +68,7 @@ internal static class RepositoryOperation
     {
         if (!userRepositories.Remove(label))
         {
-            throw new CliException($"User repository '{label}' was not found.", ExitCodes.NotFound);
+            throw new CliException($"User repository '{label}' was not found.", ExitCodes.NOT_FOUND);
         }
 
         return new(label);

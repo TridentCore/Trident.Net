@@ -15,7 +15,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 {
     private const uint PAGE_SIZE = 20;
 
-    private static readonly Converter Converter = new(new() { GithubFlavored = false, SmartHrefHandling = true });
+    private static readonly Converter CONVERTER = new(new() { GithubFlavored = false, SmartHrefHandling = true });
 
     #region IRepository Members
 
@@ -31,18 +31,18 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                    ],
                    versions,
                    [
-                       ResourceKind.Modpack,
-                       ResourceKind.Mod,
-                       ResourceKind.ResourcePack,
-                       ResourceKind.ShaderPack,
-                       ResourceKind.World,
-                       ResourceKind.DataPack,
+                       ResourceKind.MODPACK,
+                       ResourceKind.MOD,
+                       ResourceKind.RESOURCE_PACK,
+                       ResourceKind.SHADER_PACK,
+                       ResourceKind.WORLD,
+                       ResourceKind.DATA_PACK,
                    ]);
     }
 
     public async Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter)
     {
-        var loader = filter.Kind is ResourceKind.Mod or ResourceKind.Modpack
+        var loader = filter.Kind is ResourceKind.MOD or ResourceKind.MODPACK
                          ? CurseForgeHelper.LoaderIdToType(filter.Loader)
                          : null;
 
@@ -279,7 +279,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             try
             {
                 var html = (await client.GetModDescriptionAsync(modId).ConfigureAwait(false)).Data;
-                return Converter.Convert(html);
+                return CONVERTER.Convert(html);
             }
             catch (ApiException ex)
             {
@@ -302,7 +302,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             try
             {
                 var html = (await client.GetModFileChangelogAsync(modId, fileId).ConfigureAwait(false)).Data;
-                return Converter.Convert(html);
+                return CONVERTER.Convert(html);
             }
             catch (ApiException ex)
             {

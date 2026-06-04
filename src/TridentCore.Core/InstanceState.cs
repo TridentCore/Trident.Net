@@ -2,9 +2,9 @@ namespace TridentCore.Core;
 
 public enum InstanceState
 {
-    Idle,
-    Installing,
-    Updating,
-    Deploying,
-    Running,
+    IDLE,
+    INSTALLING,
+    UPDATING,
+    DEPLOYING,
+    RUNNING,
 }

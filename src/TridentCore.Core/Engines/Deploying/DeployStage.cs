@@ -2,12 +2,12 @@ namespace TridentCore.Core.Engines.Deploying;
 
 public enum DeployStage
 {
-    CheckArtifact,
-    InstallVanilla,
-    ProcessLoader,
-    ResolvePackage,
-    BuildArtifact,
-    EnsureRuntime,
-    GenerateManifest,
-    SolidifyManifest,
+    CHECK_ARTIFACT,
+    INSTALL_VANILLA,
+    PROCESS_LOADER,
+    RESOLVE_PACKAGE,
+    BUILD_ARTIFACT,
+    ENSURE_RUNTIME,
+    GENERATE_MANIFEST,
+    SOLIDIFY_MANIFEST,
 }

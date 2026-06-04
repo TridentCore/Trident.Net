@@ -20,7 +20,7 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
         if (output.UseStructuredOutput)
         {
             output.WriteData(new { key = result.Key, loader });
-            return ExitCodes.Success;
+            return ExitCodes.SUCCESS;
         }
 
         output.WriteKeyValueTable(
@@ -37,7 +37,7 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
             output.WriteWarning("This instance does not have a loader configured.");
         }
 
-        return ExitCodes.Success;
+        return ExitCodes.SUCCESS;
     }
 
     public class Arguments : InstanceArgumentsBase { }
