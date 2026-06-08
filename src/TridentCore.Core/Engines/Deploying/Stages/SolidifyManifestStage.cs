@@ -87,7 +87,7 @@ public class SolidifyManifestStage(
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
         var watch = Stopwatch.StartNew();
         var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
-        var entities = new ConcurrentBag<Snapshot.Entity>();
+        var entities = new ConcurrentBag<SymlinkPhotos.Entity>();
 
         ProgressStream.OnNext((downloaded, files.Count));
         var tasks = files
@@ -456,7 +456,7 @@ public class SolidifyManifestStage(
             ProgressStream.OnNext((++downloaded, files.Count + manifest.ExplosiveFiles.Count));
         }
 
-        Snapshot.Apply(buildDirectory, entities.ToArray());
+        SymlinkPhotos.Apply(buildDirectory, entities.ToArray());
 
         var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
         var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);

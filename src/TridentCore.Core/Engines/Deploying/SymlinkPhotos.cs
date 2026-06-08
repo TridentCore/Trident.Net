@@ -2,16 +2,16 @@ using System.Collections.ObjectModel;
 
 namespace TridentCore.Core.Engines.Deploying;
 
-public class Snapshot : Collection<Snapshot.Entity>
+public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
 {
-    public static Snapshot Take(string directory)
+    public static SymlinkPhotos Take(string directory)
     {
         if (!Directory.Exists(directory))
         {
             throw new DirectoryNotFoundException($"Directory {directory} not found");
         }
 
-        var snapshot = new Snapshot();
+        var snapshot = new SymlinkPhotos();
         var subs = new Queue<DirectoryInfo>();
         subs.Enqueue(new(directory));
         while (subs.TryDequeue(out var parent))
