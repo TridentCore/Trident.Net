@@ -93,6 +93,7 @@ public static class Startup
             .AddMinecraft()
             .AddMclogs()
            .AddAuthlibInjector()
+            .AddRepositoryInfrastructure()
             .AddTransient<IProfileImporter, TridentImporter>()
             .AddTransient<IProfileImporter, CurseForgeImporter>()
             .AddTransient<IProfileImporter, ModrinthImporter>()

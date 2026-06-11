@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying;
@@ -45,7 +46,7 @@ public class PackageMaterializer(ILogger<PackageMaterializer> logger, IHttpClien
                                     Directory.CreateDirectory(dir);
                                 }
 
-                                using var client = factory.CreateClient();
+                                using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
                                 await using var reader = await client
                                                               .GetStreamAsync(plan.Url, token)
                                                               .ConfigureAwait(false);

@@ -17,6 +17,8 @@ namespace TridentCore.Core.Services;
 
 public class RepositoryAgent
 {
+    public const string CLIENT_NAME = "repository";
+
     private static readonly TimeSpan EXPIRED_IN = TimeSpan.FromDays(7);
     private static readonly string USER_AGENT =
         $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
@@ -98,7 +100,7 @@ public class RepositoryAgent
 
     private HttpClient BuildClient(IRepositoryProviderAccessor.ProviderProfile profile)
     {
-        var client = _clientFactory.CreateClient();
+        var client = _clientFactory.CreateClient(CLIENT_NAME);
         client.BaseAddress = new(profile.Endpoint);
         if (
             !(
@@ -108,11 +110,6 @@ public class RepositoryAgent
         )
         {
             client.DefaultRequestHeaders.UserAgent.TryParseAdd(new(USER_AGENT));
-        }
-
-        if (profile.AuthorizationHeader is { Key: { } key, Value: { } value })
-        {
-            client.DefaultRequestHeaders.Add(key, value);
         }
 
         return client;

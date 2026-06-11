@@ -18,7 +18,8 @@ public class CliRepositoryProviderAccessor(
                 driver,
                 user.Endpoint,
                 BuildAuthorizationHeader(driver, user.ApiKey),
-                user.UserAgent
+                user.UserAgent,
+                CdnHostsFor(driver)
             );
         }
 
@@ -50,4 +51,13 @@ public class CliRepositoryProviderAccessor(
             _ => null,
         };
     }
+
+    private static IReadOnlyList<string>? CdnHostsFor(
+        IRepositoryProviderAccessor.ProviderProfile.DriverType driver
+    ) => driver switch
+    {
+        IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge =>
+            ["edge.forgecdn.net", "media.forgecdn.net"],
+        _ => null,
+    };
 }

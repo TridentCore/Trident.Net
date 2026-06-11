@@ -41,7 +41,7 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                 {
                     var entries = new List<BundledRuntime.File>();
                     var links = new List<BundledRuntime.Link>();
-                    using var client = httpClientFactory.CreateClient();
+                    using var client = httpClientFactory.CreateClient(RepositoryAgent.CLIENT_NAME);
                     var content = await client
                         .GetStringAsync(first.Manifest.Url, token)
                         .ConfigureAwait(false);

@@ -230,6 +230,15 @@ public static class ServiceCollectionExtensions
             return services;
         }
 
+        public IServiceCollection AddRepositoryInfrastructure()
+        {
+            services.AddSingleton<RepositoryAuthHandler>();
+            services
+                .AddHttpClient(RepositoryAgent.CLIENT_NAME)
+                .AddHttpMessageHandler<RepositoryAuthHandler>();
+            return services;
+        }
+
         public IServiceCollection AddSnapshots<TFactory>() where TFactory : class, ISnapshotStoreFactory
         {
             services.AddSingleton<ISnapshotStoreFactory, TFactory>();

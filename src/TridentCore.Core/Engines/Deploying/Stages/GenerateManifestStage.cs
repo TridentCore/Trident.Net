@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
@@ -187,7 +188,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
             }
         }
 
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
         return await client
             .GetFromJsonAsync<MinecraftAssetIndex>(url, JsonSerializerOptions.Web)
             .ConfigureAwait(false);

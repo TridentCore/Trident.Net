@@ -15,7 +15,8 @@ public interface IRepositoryProviderAccessor
         ProviderProfile.DriverType Driver,
         string Endpoint,
         (string Key, string Value)? AuthorizationHeader,
-        string? UserAgent
+        string? UserAgent,
+        IReadOnlyList<string>? CdnHosts = null
     )
     {
         #region DriverType enum

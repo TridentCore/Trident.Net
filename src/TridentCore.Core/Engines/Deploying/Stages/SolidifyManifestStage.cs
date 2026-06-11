@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
@@ -120,7 +121,7 @@ public class SolidifyManifestStage(
                                         Directory.CreateDirectory(dir);
                                     }
 
-                                    using var client = factory.CreateClient();
+                                    using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
                                     await using var reader = await client
                                         .GetStreamAsync(fragile.Url, cancel.Token)
                                         .ConfigureAwait(false);
@@ -150,7 +151,7 @@ public class SolidifyManifestStage(
                                         Directory.CreateDirectory(dir);
                                     }
 
-                                    using var client = factory.CreateClient();
+                                    using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
                                     await using var reader = await client
                                         .GetStreamAsync(present.Url, cancel.Token)
                                         .ConfigureAwait(false);
