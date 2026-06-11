@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Refit;
 using TridentCore.Abstractions.Lifetimes;
 using TridentCore.Abstractions.Snapshots;
+using TridentCore.Core.Accounts;
 using TridentCore.Core.Clients;
 using TridentCore.Core.Lifetimes;
 using TridentCore.Core.Services;
@@ -227,6 +228,26 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddYggdrasil()
         {
             services.AddSingleton<YggdrasilService>();
+            return services;
+        }
+
+        /// <summary>
+        ///     Registers all <see cref="IAccountConfigurer" /> implementations and the <see cref="AccountConfigurerAgent" />.
+        ///     <para>
+        ///         This method depends on the following services being registered first:
+        ///         <see cref="MicrosoftService" />, <see cref="XboxLiveService" />,
+        ///         <see cref="MinecraftService" />, <see cref="YggdrasilService" />,
+        ///         <see cref="AuthlibInjectorService" />.
+        ///     </para>
+        ///     <para>Call <see cref="AddMicrosoft" />, <see cref="AddXboxLive" />, <see cref="AddMinecraft" />, <see cref="AddYggdrasil" />, and <see cref="AddAuthlibInjector" /> before this method.</para>
+        /// </summary>
+        public IServiceCollection AddAccountConfigurers()
+        {
+            services.AddSingleton<IAccountConfigurer, MicrosoftAccountConfigurer>();
+            services.AddSingleton<IAccountConfigurer, AuthlibAccountConfigurer>();
+            services.AddSingleton<IAccountConfigurer, OfflineAccountConfigurer>();
+            services.AddSingleton<IAccountConfigurer, TrialAccountConfigurer>();
+            services.AddSingleton<AccountConfigurerAgent>();
             return services;
         }
 

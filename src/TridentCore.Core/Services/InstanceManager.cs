@@ -1,12 +1,9 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using System.Reactive.Subjects;
 using System.Reflection;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Refit;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Accounts;
 using TridentCore.Abstractions.Extensions;
@@ -16,7 +13,6 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Abstractions.Utilities;
-using TridentCore.Core.Accounts;
 using TridentCore.Core.Engines;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Engines.Deploying.Stages;
@@ -34,6 +30,7 @@ public class InstanceManager(
     ProfileManager profileManager,
     RepositoryAgent repositories,
     ImporterAgent importers,
+    AccountConfigurerAgent accountConfigurer,
     IServiceProvider provider,
     IHttpClientFactory clientFactory
 )
@@ -414,33 +411,8 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
-                if (options.Account is Accounts.AuthlibAccount ai)
-                {
-                    var aiLib = artifact.Libraries.FirstOrDefault(x =>
-                        x.Id is { Namespace: AuthlibInjectorService.LIBRARY_NAMESPACE, Name: AuthlibInjectorService.LIBRARY_NAME }
-                    );
-                    if (aiLib != null)
-                    {
-                        var aiPath = PathDef.Default.FileOfLibrary(
-                            aiLib.Id.Namespace,
-                            aiLib.Id.Name,
-                            aiLib.Id.Version,
-                            aiLib.Id.Platform,
-                            aiLib.Id.Extension
-                        );
-                        igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
-
-                        var yggdrasilService = provider.GetRequiredService<YggdrasilService>();
-                        var prefetched = await yggdrasilService.GetMetadataBase64Async(
-                            ai.ServerUrl, tracker.Token).ConfigureAwait(false);
-                        igniter.AddJvmArgument($"-Dauthlibinjector.yggdrasil.prefetched={prefetched}");
-                    }
-                    else
-                    {
-                        // TODO: throw exception
-                        //  这里应该换成打火机 Cargo(入参) 传递的模式，而不是依赖拦截
-                    }
-                }
+                var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, artifact);
+                await accountConfigurer.ConfigureLaunchAsync(options.Account, launchContext, tracker.Token).ConfigureAwait(false);
 
                 if (options.Mode == LaunchMode.Debug)
                 {
@@ -525,90 +497,12 @@ public class InstanceManager(
         CancellationToken token
     )
     {
-        switch (options.Account)
-        {
-            case MicrosoftAccount msa:
-            {
-                var shouldValidate =
-                    msa.AccessTokenExpiresAt is null
-                 || DateTimeOffset.UtcNow >= msa.AccessTokenExpiresAt.Value.AddMinutes(-5);
+        if (options.Account is null)
+            return;
 
-                if (!shouldValidate)
-                    return;
-
-                var minecraftService = provider.GetRequiredService<MinecraftService>();
-                try
-                {
-                    await minecraftService.AcquireAccountProfileByMinecraftTokenAsync(
-                             msa.AccessToken
-                            ).ConfigureAwait(false);
-                }
-                catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    var microsoftService = provider.GetRequiredService<MicrosoftService>();
-                    var xboxLiveService = provider.GetRequiredService<XboxLiveService>();
-
-                    var microsoft = await microsoftService.RefreshUserAsync(msa.RefreshToken).ConfigureAwait(false);
-                    var xbox =
-                        await xboxLiveService.AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(
-                             microsoft.AccessToken
-                            ).ConfigureAwait(false);
-                    var xsts =
-                        await xboxLiveService.AuthorizeForServiceTokenByXboxLiveTokenAsync(
-                             xbox.Token
-                            ).ConfigureAwait(false);
-                    var minecraft =
-                        await minecraftService.AuthenticateByXboxLiveServiceTokenAsync(
-                             xsts.Token,
-                             xsts.DisplayClaims.Xui.First().Uhs
-                            ).ConfigureAwait(false);
-
-                    msa.AccessToken = minecraft.AccessToken;
-                    msa.AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(
-                         minecraft.ExpiresIn
-                        );
-                    msa.RefreshToken = !string.IsNullOrEmpty(microsoft.RefreshToken)
-                                           ? microsoft.RefreshToken
-                                           : msa.RefreshToken;
-                    AccountUpdated?.Invoke(this, msa);
-                }
-
-                break;
-            }
-            case AuthlibAccount ai:
-            {
-                var yggdrasilService = provider.GetRequiredService<YggdrasilService>();
-                var isValid = await yggdrasilService.ValidateAsync(
-                                                                   ai.ServerUrl,
-                                                                   ai.AccessToken,
-                                                                   ai.ClientToken,
-                                                                   token).ConfigureAwait(false);
-
-                if (isValid)
-                    return;
-
-                try
-                {
-                    var response = await yggdrasilService.RefreshAsync(
-                        ai.ServerUrl,
-                        ai.AccessToken,
-                        ai.ClientToken!,
-                        selectedProfile: new(ai.Uuid, ai.Username),
-                        token: token).ConfigureAwait(false);
-                    ai.AccessToken = response.AccessToken;
-                    ai.ClientToken = response.ClientToken;
-                    AccountUpdated?.Invoke(this, ai);
-                }
-                catch
-                {
-                    throw new InvalidOperationException(
-                        "Unable to refresh the expired authlib-injector session. Please re-authenticate."
-                    );
-                }
-
-                break;
-            }
-        }
+        var refreshed = await accountConfigurer.ValidateAndRefreshAsync(options.Account, token).ConfigureAwait(false);
+        if (refreshed)
+            AccountUpdated?.Invoke(this, options.Account);
     }
 
     #endregion
