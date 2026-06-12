@@ -115,7 +115,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     )
     {
         var client = clientFactory.CreateClient();
-        client.BaseAddress =new(serverUrl);
+        client.BaseAddress = new(serverUrl);
         var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var response = await yggdrasil.GetProfileAsync(uuid, token).ConfigureAwait(false);
