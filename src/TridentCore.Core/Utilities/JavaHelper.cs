@@ -329,7 +329,25 @@ public static class JavaHelper
         if (withFallback)
         {
             var dir = PathDef.Default.DirectoryOfRuntime(major);
-            var path = Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java");
+
+            // macOS: Mojang ships the runtime inside a .bundle, so the real java
+            // home is <dir>/jre.bundle/Contents/Home rather than <dir> itself.
+            if (OperatingSystem.IsMacOS())
+            {
+                var bundleHome = Path.Combine(dir, "jre.bundle", "Contents", "Home");
+                var bundleJava = Path.Combine(bundleHome, "bin", "java");
+                if (File.Exists(bundleJava))
+                {
+                    return bundleHome;
+                }
+            }
+
+            // Windows / Linux: flat layout, <dir>/bin/java(.exe)
+            var path = Path.Combine(
+                dir,
+                "bin",
+                OperatingSystem.IsWindows() ? "java.exe" : "java"
+            );
             if (File.Exists(path))
             {
                 return dir;
