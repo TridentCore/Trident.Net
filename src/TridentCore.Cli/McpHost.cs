@@ -32,7 +32,14 @@ public static class McpHost
         });
 
         using var host = hostBuilder.Build();
-        await host.RunAsync().ConfigureAwait(false);
-        return 0;
+        try
+        {
+            await host.RunAsync().ConfigureAwait(false);
+            return 0;
+        }
+        catch (Exception)
+        {
+            return 1;
+        }
     }
 }

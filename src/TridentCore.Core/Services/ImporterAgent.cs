@@ -43,12 +43,10 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
                 Directory.CreateDirectory(dir);
             }
 
-            var fromStream = pack.Open(source);
-            var file = new FileStream(to, FileMode.Create);
+            await using var fromStream = pack.Open(source);
+            await using var file = new FileStream(to, FileMode.Create);
             await fromStream.CopyToAsync(file).ConfigureAwait(false);
             await file.FlushAsync().ConfigureAwait(false);
-            file.Close();
-            fromStream.Close();
         }
     }
 }

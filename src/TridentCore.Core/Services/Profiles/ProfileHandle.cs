@@ -12,7 +12,7 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
 
     internal bool IsActive { get; set; } = true;
 
-    internal async Task SaveAsync()
+    internal void Save()
     {
         if (!IsActive)
         {
@@ -27,7 +27,7 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
         }
 
         var json = JsonSerializer.Serialize(Value, options);
-        await File.WriteAllTextAsync(profilePath, json).ConfigureAwait(false);
+        File.WriteAllText(profilePath, json);
     }
 
     public static ProfileHandle Create(string key, Profile value, JsonSerializerOptions options) =>
@@ -49,16 +49,17 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
 
     private bool _isDisposing;
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (_isDisposing)
         {
-            return;
+            return ValueTask.CompletedTask;
         }
 
         _isDisposing = true;
 
-        await SaveAsync().ConfigureAwait(false);
+        Save();
+        return ValueTask.CompletedTask;
     }
 
     #endregion

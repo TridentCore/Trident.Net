@@ -23,5 +23,7 @@ public class CompressedProfilePack : IDisposable
 
     #endregion
 
-    public Stream Open(string fileName) => _archive.GetEntry(fileName)!.Open();
+    public Stream Open(string fileName) =>
+        _archive.GetEntry(fileName)?.Open()
+        ?? throw new FileNotFoundException($"Entry '{fileName}' not found in the profile pack.");
 }

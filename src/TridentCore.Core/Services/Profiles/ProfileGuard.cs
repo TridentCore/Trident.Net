@@ -18,10 +18,11 @@ public class ProfileGuard : IAsyncDisposable
 
     #region IAsyncDisposable Members
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        await _handle.SaveAsync().ConfigureAwait(false);
+        _handle.Save();
         NotifyChanged();
+        return ValueTask.CompletedTask;
     }
 
     #endregion

@@ -112,10 +112,9 @@ public class ProfileManager : IDisposable
     public void Add(ReservedKey key, Profile profile)
     {
         var handle = new ProfileHandle(key.Key, profile, FileHelper.SerializerOptions);
-        handle.SaveAsync().Wait();
+        handle.Save();
         _profiles.Add(handle);
         key.Dispose();
-        handle.SaveAsync().Wait();
 
         _logger.LogInformation("{} added", handle.Key);
         OnProfileAdded(key.Key, profile);
@@ -199,7 +198,7 @@ public class ProfileManager : IDisposable
         handle.Value.Setup.Version = version;
         handle.Value.Setup.Loader = loader;
 
-        handle.SaveAsync().Wait();
+        handle.Save();
         _logger.LogInformation("{} updated", key);
         OnProfileUpdated(key, handle.Value);
     }
@@ -242,12 +241,12 @@ public class ProfileManager : IDisposable
 
         _isDisposing = true;
 
-        var tasks = _profiles.Select(x => x.DisposeAsync().AsTask()).ToArray();
-        Task.WaitAll(tasks);
+        foreach (var x in _profiles)
+        {
+            x.DisposeAsync().AsTask().Wait();
+        }
 
         _profiles.Clear();
-
-        _isDisposing = false;
     }
 
     #endregion
