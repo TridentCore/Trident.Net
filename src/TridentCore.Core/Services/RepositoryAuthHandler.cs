@@ -5,11 +5,16 @@ namespace TridentCore.Core.Services;
 
 public class RepositoryAuthHandler : DelegatingHandler
 {
-    private readonly Dictionary<string, (string Key, string Value)> _authMap;
+    private static Dictionary<string, (string Key, string Value)>? _authMap;
+    private static readonly Lock AUTH_MAP_LOCK = new();
 
     public RepositoryAuthHandler(IEnumerable<IRepositoryProviderAccessor> accessors)
     {
-        _authMap = accessors
+        if (_authMap is null)
+        {
+            lock (AUTH_MAP_LOCK)
+            {
+                _authMap ??= accessors
             .SelectMany(a => a.Build())
             .Where(p => p.AuthorizationHeader is { Key: not null, Value: not null } auth)
             .SelectMany(p =>
@@ -34,6 +39,8 @@ public class RepositoryAuthHandler : DelegatingHandler
             })
             .DistinctBy(x => x.Host)
             .ToDictionary(x => x.Host, x => x.Auth, StringComparer.OrdinalIgnoreCase);
+            }
+        }
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -41,7 +48,7 @@ public class RepositoryAuthHandler : DelegatingHandler
         CancellationToken cancellationToken
     )
     {
-        if (request.RequestUri is { } uri && _authMap.TryGetValue(uri.Host, out var auth))
+        if (request.RequestUri is { } uri && _authMap!.TryGetValue(uri.Host, out var auth))
         {
             request.Headers.TryAddWithoutValidation(auth.Key, auth.Value);
         }

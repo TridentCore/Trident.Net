@@ -253,7 +253,7 @@ public static class ServiceCollectionExtensions
 
         public IServiceCollection AddRepositoryInfrastructure()
         {
-            services.AddSingleton<RepositoryAuthHandler>();
+            services.AddTransient<RepositoryAuthHandler>();
             services
                 .AddHttpClient(RepositoryAgent.CLIENT_NAME)
                 .AddHttpMessageHandler<RepositoryAuthHandler>();
