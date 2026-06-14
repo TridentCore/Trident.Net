@@ -137,7 +137,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                         .GetProjectVersionsAsync(
                             pid,
                             null,
-                            filter.Loader is not null
+                            project.ProjectTypes.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
                                 ? ArrayParameterConstructor([
                                     ModrinthHelper.LoaderIdToName(filter.Loader),
                                 ])
@@ -200,7 +200,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     .GetProjectVersionsAsync(
                         x.Identity,
                         null,
-                        filter.Loader is not null
+                        projects.GetValueOrDefault(x.Identity)?.ProjectTypes?.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
                             ? ArrayParameterConstructor([
                                 ModrinthHelper.LoaderIdToName(filter.Loader),
                             ])
