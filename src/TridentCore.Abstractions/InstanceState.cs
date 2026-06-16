@@ -1,4 +1,4 @@
-namespace TridentCore.Core;
+namespace TridentCore.Abstractions;
 
 public enum InstanceState
 {
