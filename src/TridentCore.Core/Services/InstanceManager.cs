@@ -167,7 +167,7 @@ public class InstanceManager(
             read = await stream.ReadAsync(buffer, token).ConfigureAwait(false);
             await memory.WriteAsync(buffer.AsMemory(0, read), token).ConfigureAwait(false);
             totalRead += read;
-            var progress = (double)(totalRead * 100) / size;
+            var progress = (double)totalRead / size;
             reporter?.OnNext(progress);
         } while (!token.IsCancellationRequested && read > 0);
 
@@ -284,6 +284,10 @@ public class InstanceManager(
                 case BuildArtifactStage:
                     tracker.StageStream.OnNext(DeployStage.BuildArtifact);
                     tracker.CurrentStage = DeployStage.BuildArtifact;
+                    break;
+                case EnsureRuntimeStage:
+                    tracker.StageStream.OnNext(DeployStage.EnsureRuntime);
+                    tracker.CurrentStage = DeployStage.EnsureRuntime;
                     break;
                 case GenerateManifestStage:
                     tracker.StageStream.OnNext(DeployStage.GenerateManifest);
@@ -674,7 +678,7 @@ public class InstanceManager(
 
         logger.LogDebug("Downloaded {length} bytes", memory.Length);
 
-        progressStream.OnNext(100d);
+        progressStream.OnNext(1d);
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
 
         progressStream.OnNext(null);

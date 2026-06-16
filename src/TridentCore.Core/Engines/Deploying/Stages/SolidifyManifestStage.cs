@@ -18,7 +18,7 @@ public class SolidifyManifestStage(
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    public Subject<(int, int)> ProgressStream { get; } = new();
+    public Subject<double?> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -90,7 +90,7 @@ public class SolidifyManifestStage(
         var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
         var entities = new ConcurrentBag<SymlinkPhotos.Entity>();
 
-        ProgressStream.OnNext((downloaded, files.Count));
+        ProgressStream.OnNext(0d);
         var tasks = files
             .Select(async x =>
             {
@@ -366,7 +366,7 @@ public class SolidifyManifestStage(
 
                     Interlocked.Increment(ref downloaded);
                     ProgressStream.OnNext(
-                        (downloaded, files.Count + manifest.ExplosiveFiles.Count)
+                        (double)downloaded / (files.Count + manifest.ExplosiveFiles.Count)
                     );
                 }
                 catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
@@ -454,7 +454,7 @@ public class SolidifyManifestStage(
                 }
             }
 
-            ProgressStream.OnNext((++downloaded, files.Count + manifest.ExplosiveFiles.Count));
+            ProgressStream.OnNext((double)++downloaded / (files.Count + manifest.ExplosiveFiles.Count));
         }
 
         SymlinkPhotos.Apply(buildDirectory, entities.ToArray());

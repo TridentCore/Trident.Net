@@ -1,4 +1,5 @@
 using System.Reactive.Disposables;
+using System.Reactive.Subjects;
 using TridentCore.Abstractions.Reactive;
 
 namespace TridentCore.Abstractions.Tasks;
@@ -12,12 +13,30 @@ public abstract class TrackerBase(
 {
     private readonly CancellationTokenSource _tokenSource =
         CancellationTokenSource.CreateLinkedTokenSource(token);
+    private readonly Subject<TrackerProgress> _progressSubject = new();
+
     public string Key => key;
     public CancellationToken Token => _tokenSource.Token;
     public TrackerState State { get; private set; } = TrackerState.Idle;
     public Exception? FailureReason { get; private set; }
 
+    /// <summary>该 Tracker 对应的实例活动类型。</summary>
+    public abstract InstanceState Kind { get; }
+
+    /// <summary>当前归一化进度（快照）。</summary>
+    public TrackerProgress Progress { get; private set; } = new TrackerProgress.Indeterminate(null);
+
+    /// <summary>归一化进度变化流，由子类通过 <see cref="ReportProgress" /> 驱动。</summary>
+    public IObservable<TrackerProgress> ProgressChanged => _progressSubject;
+
     public DateTimeOffset StartedAt { get; private set; } = DateTimeOffset.Now;
+
+    /// <summary>子类调用以报告归一化进度。</summary>
+    protected void ReportProgress(TrackerProgress progress)
+    {
+        Progress = progress;
+        _progressSubject.OnNext(progress);
+    }
 
     #region IDisposableLifetime Members
 
@@ -25,6 +44,7 @@ public abstract class TrackerBase(
 
     public virtual void Dispose()
     {
+        _progressSubject.Dispose();
         _tokenSource.Dispose();
         DisposableLifetime.Dispose();
     }

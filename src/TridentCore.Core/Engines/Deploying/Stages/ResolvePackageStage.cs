@@ -7,7 +7,7 @@ namespace TridentCore.Core.Engines.Deploying.Stages;
 
 public class ResolvePackageStage(PackagePlanner planner) : StageBase
 {
-    public Subject<(int, int)> ProgressStream { get; } = new();
+    public Subject<double?> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -32,7 +32,7 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
 
         var context = new PackagePlannerContext(rules, filter);
 
-        ProgressStream.OnNext((0, packages.Count));
+        ProgressStream.OnNext(0d);
 
         await foreach (var plan in planner.PlanAsync(packages, context).WithCancellation(token).ConfigureAwait(false))
         {
@@ -50,7 +50,7 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
                               plan.Hash);
         }
 
-        ProgressStream.OnNext((packages.Count, packages.Count));
+        ProgressStream.OnNext(1d);
 
         if (token.IsCancellationRequested)
         {

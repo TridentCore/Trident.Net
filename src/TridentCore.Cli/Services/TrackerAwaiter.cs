@@ -30,10 +30,9 @@ public class TrackerAwaiter(CliOutput output)
                 await AwaitCoreAsync(
                         tracker,
                         stage => task.Description = $"[blue]{Markup.Escape(stage)}[/]",
-                        (current, total) =>
+                        progress =>
                         {
-                            task.MaxValue = Math.Max(1, total);
-                            task.Value = Math.Min(current, task.MaxValue);
+                            task.Value = Math.Clamp(progress, 0d, 1d);
                         },
                         cancellationToken
                     )
@@ -47,7 +46,7 @@ public class TrackerAwaiter(CliOutput output)
     private static async Task AwaitCoreAsync(
         DeployTracker tracker,
         Action<string>? onStage,
-        Action<int, int>? onProgress,
+        Action<double>? onProgress,
         CancellationToken cancellationToken
     )
     {
@@ -57,7 +56,7 @@ public class TrackerAwaiter(CliOutput output)
         });
         using var progressSubscription = tracker.ProgressStream.Subscribe(progress =>
         {
-            onProgress?.Invoke(progress.Item1, progress.Item2);
+            onProgress?.Invoke(progress ?? 0d);
         });
 
         await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);

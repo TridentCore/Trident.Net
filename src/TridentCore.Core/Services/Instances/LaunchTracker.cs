@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reactive.Subjects;
+using TridentCore.Abstractions;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Core.Engines.Launching;
 
@@ -13,6 +14,7 @@ public class LaunchTracker(
     CancellationToken token = default
 ) : TrackerBase(key, handler, onCompleted, token)
 {
+    public override InstanceState Kind => InstanceState.Running;
     public Process? Process
     {
         get;
@@ -33,4 +35,11 @@ public class LaunchTracker(
     public uint? JavaVersion { get; set; }
     public string? CommandLine { get; set; }
     public bool IsDetaching { get; set; }
+
+    protected override void OnStart()
+    {
+        ProcessAssigned += (_, _) => ReportProgress(new TrackerProgress.None());
+        base.OnStart();
+        ReportProgress(new TrackerProgress.Indeterminate("Launching"));
+    }
 }
