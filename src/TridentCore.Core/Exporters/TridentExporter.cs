@@ -82,7 +82,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
         if (File.Exists(licenseFile))
         {
             var license = new MemoryStream(await File.ReadAllBytesAsync(licenseFile).ConfigureAwait(false));
-            container.Attachments.Add("LICENSE.txt", license);
+            container.Attachments.Add("LICENSE", license);
         }
 
         var readmeFile = Path.Combine(homeDir, "README.md");
