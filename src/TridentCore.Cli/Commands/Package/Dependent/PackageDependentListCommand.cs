@@ -20,7 +20,7 @@ public class PackageDependentListCommand(
     {
         var instance = ResolveInstance(settings);
         var result = PackageOperation.DependentList(
-            resolver,
+            Resolver,
             repositories,
             settings.Purl,
             settings.GameVersion,

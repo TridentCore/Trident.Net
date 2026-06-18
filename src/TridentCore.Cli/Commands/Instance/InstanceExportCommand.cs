@@ -12,7 +12,7 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation.ExportAsync(
-            resolver,
+            Resolver,
             exporterAgent,
             instance.Key,
             settings.Profile,

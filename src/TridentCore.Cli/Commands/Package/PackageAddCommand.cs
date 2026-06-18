@@ -37,7 +37,7 @@ public class PackageAddCommand(
 
         void ProcessPurl(string purl)
         {
-            var result = PackageOperation.Add(resolver, profileManager, purl, settings.Instance!, settings.Profile);
+            var result = PackageOperation.Add(Resolver, profileManager, purl, settings.Instance!, settings.Profile);
             results.Add(result);
         }
 

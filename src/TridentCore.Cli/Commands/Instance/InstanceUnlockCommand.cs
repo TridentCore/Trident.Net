@@ -18,7 +18,7 @@ public class InstanceUnlockCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        var result = InstanceOperation.Unlock(resolver, profileManager, instance.Key, settings.Profile);
+        var result = InstanceOperation.Unlock(Resolver, profileManager, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

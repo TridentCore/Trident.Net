@@ -17,7 +17,7 @@ public class PackageDisableCommand(
         CancellationToken cancellationToken
     )
     {
-        var result = PackageOperation.SetEnabled(resolver, profileManager, settings.Purl, settings.Instance!, false, settings.Profile);
+        var result = PackageOperation.SetEnabled(Resolver, profileManager, settings.Purl, settings.Instance!, false, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

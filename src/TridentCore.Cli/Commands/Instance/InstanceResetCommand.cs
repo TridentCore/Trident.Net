@@ -24,7 +24,7 @@ public class InstanceResetCommand(
             settings.Yes
         );
 
-        var result = InstanceOperation.Reset(resolver, instanceManager, instance.Key, settings.Profile);
+        var result = InstanceOperation.Reset(Resolver, instanceManager, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

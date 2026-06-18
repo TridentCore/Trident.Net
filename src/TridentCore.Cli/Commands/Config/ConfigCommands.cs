@@ -12,6 +12,8 @@ namespace TridentCore.Cli.Commands.Config;
 public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : Command<T>
     where T : ConfigScopeArguments
 {
+    protected InstanceContextResolver Resolver { get; } = resolver;
+
     protected ConfigScope ResolveScope(T settings)
     {
         if (
@@ -22,7 +24,7 @@ public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : C
             return ConfigScope.Global;
         }
 
-        return ConfigScope.ForInstance(resolver.Resolve(settings.Instance, settings.Profile));
+        return ConfigScope.ForInstance(Resolver.Resolve(settings.Instance, settings.Profile));
     }
 }
 
@@ -38,7 +40,7 @@ public class ConfigGetCommand(
         CancellationToken cancellationToken
     )
     {
-        var result = ConfigOperation.Get(resolver, configuration, settings.Name, settings.Instance, settings.Profile);
+        var result = ConfigOperation.Get(Resolver, configuration, settings.Name, settings.Instance, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -78,7 +80,7 @@ public class ConfigSetCommand(
         CancellationToken cancellationToken
     )
     {
-        var result = ConfigOperation.Set(resolver, configuration, profileManager,
+        var result = ConfigOperation.Set(Resolver, configuration, profileManager,
             settings.Name, settings.Value, settings.Type, settings.Instance, settings.Profile);
 
         if (output.UseStructuredOutput)
@@ -126,7 +128,7 @@ public class ConfigUnsetCommand(
         CancellationToken cancellationToken
     )
     {
-        ConfigOperation.Unset(resolver, configuration, profileManager, settings.Name, settings.Instance, settings.Profile);
+        ConfigOperation.Unset(Resolver, configuration, profileManager, settings.Name, settings.Instance, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -163,7 +165,7 @@ public class ConfigListCommand(
         CancellationToken cancellationToken
     )
     {
-        var result = ConfigOperation.List(resolver, configuration, settings.Instance, settings.Profile);
+        var result = ConfigOperation.List(Resolver, configuration, settings.Instance, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

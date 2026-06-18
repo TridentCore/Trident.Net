@@ -9,7 +9,6 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceBuildCommand(
     InstanceContextResolver resolver,
     InstanceManager instanceManager,
-    TrackerAwaiter trackerAwaiter,
     CliOutput output
 ) : InstanceCommandBase<InstanceBuildCommand.Arguments>(resolver)
 {
@@ -21,7 +20,7 @@ public class InstanceBuildCommand(
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation.BuildAsync(
-            resolver,
+            Resolver,
             instanceManager,
             instance.Key,
             settings.Profile,

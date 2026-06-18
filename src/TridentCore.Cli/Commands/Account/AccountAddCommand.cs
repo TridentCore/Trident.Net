@@ -28,6 +28,13 @@ public class AccountAddCommand(
     {
         if (settings.Type.ToLowerInvariant() == "offline")
         {
+            if (string.IsNullOrWhiteSpace(settings.Username))
+            {
+                throw new CliException(
+                    "Username is required for offline accounts.",
+                    ExitCodes.USAGE
+                );
+            }
             var result = AccountOperation.AddOffline(accounts, settings.Username, settings.Uuid);
             WriteResult(result);
             return;

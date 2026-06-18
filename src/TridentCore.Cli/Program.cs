@@ -12,7 +12,7 @@ const bool isDebug = true;
 const string env = "Development";
 #else
 const bool isDebug = false;
-const bool env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+string env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 #endif
 
 var environment = new SimpleEnvironment { EnvironmentName = env };

@@ -18,7 +18,7 @@ public class LoaderSetCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        var result = LoaderOperation.Set(resolver, profileManager, settings.Loader, instance.Key, settings.Profile);
+        var result = LoaderOperation.Set(Resolver, profileManager, settings.Loader, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

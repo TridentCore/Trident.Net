@@ -25,7 +25,7 @@ public class PackageListCommand(
     private async Task ListAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var result = await PackageOperation
-            .List(resolver, repositories, settings.Instance!, settings.Profile, settings.Index, settings.Limit)
+            .List(Resolver, repositories, settings.Instance!, settings.Profile, settings.Index, settings.Limit)
             .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)

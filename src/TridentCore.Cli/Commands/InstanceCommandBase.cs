@@ -6,6 +6,8 @@ namespace TridentCore.Cli.Commands;
 public abstract class InstanceCommandBase<T>(InstanceContextResolver resolver) : Command<T>
     where T : InstanceArgumentsBase
 {
+    protected InstanceContextResolver Resolver { get; } = resolver;
+
     protected ResolvedInstanceContext ResolveInstance(T settings) =>
-        resolver.Resolve(settings.Instance, settings.Profile);
+        Resolver.Resolve(settings.Instance, settings.Profile);
 }

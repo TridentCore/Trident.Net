@@ -14,7 +14,7 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
     )
     {
         var instance = ResolveInstance(settings);
-        var result = LoaderOperation.Get(resolver, instance.Key, settings.Profile);
+        var result = LoaderOperation.Get(Resolver, instance.Key, settings.Profile);
         var loader = result.Loader;
 
         if (output.UseStructuredOutput)

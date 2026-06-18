@@ -23,7 +23,7 @@ public class InstanceDeleteCommand(
             settings.Yes
         );
 
-        var result = InstanceOperation.Delete(resolver, profileManager, instance.Key, settings.Profile);
+        var result = InstanceOperation.Delete(Resolver, profileManager, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {

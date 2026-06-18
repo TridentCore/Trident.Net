@@ -226,7 +226,7 @@ internal static class InstanceOperation
 
         return new(
             key.Key,
-            container.Profile.Name,
+            container.Profile.Name ?? id,
             container.Profile.Setup.Version,
             container.Profile.Setup.Loader,
             sourcePath

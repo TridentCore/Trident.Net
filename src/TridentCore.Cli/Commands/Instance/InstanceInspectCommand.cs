@@ -26,7 +26,7 @@ public class InstanceInspectCommand(
     private async Task InspectAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var dto = await InstanceOperation
-            .Inspect(resolver, repositories, settings.Instance!, settings.Profile)
+            .Inspect(Resolver, repositories, settings.Instance!, settings.Profile)
             .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)

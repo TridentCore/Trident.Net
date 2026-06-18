@@ -18,7 +18,7 @@ public class PackageVersionSetCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        var result = PackageOperation.VersionSet(resolver, profileManager, settings.Purl, instance.Key, settings.Profile);
+        var result = PackageOperation.VersionSet(Resolver, profileManager, settings.Purl, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
