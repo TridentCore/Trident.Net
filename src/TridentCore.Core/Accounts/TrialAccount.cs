@@ -16,6 +16,12 @@ public class TrialAccount : IAccount
 
     #endregion
 
+    /// <summary>
+    ///     本地渲染使用的内置皮肤 key（对应 <c>asset:{key}</c>），默认 <c>Steve</c>；
+    ///     需要专属皮肤的角色（如愚人节限定的 Herobrine）在此指定。
+    /// </summary>
+    public string Skin { get; init; } = "Steve";
+
     public static TrialAccount CreateStewie() =>
         new() { Username = "Stewie", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty) };
 
@@ -30,4 +36,7 @@ public class TrialAccount : IAccount
 
     public static TrialAccount CreateLois() =>
         new() { Username = "Lois", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty) };
+
+    public static TrialAccount CreateHerobrine() =>
+        new() { Username = "Herobrine", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty), Skin = "Herobrine" };
 }
