@@ -8,11 +8,11 @@ using TridentCore.Cli;
 using TridentCore.Cli.Services;
 
 #if DEBUG
-var isDebug = true;
-var env = "Development";
+const bool isDebug = true;
+const string env = "Development";
 #else
-var isDebug = false;
-var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+const bool isDebug = false;
+const bool env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 #endif
 
 var environment = new SimpleEnvironment { EnvironmentName = env };
