@@ -363,11 +363,28 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+.vs/
 .idea/
 .vscode/
-.codegraph/
+.roo/
+.kilocode/
+.kiro/
+.claude/
+.crush/
 
 appsettings.*.json
 build/
 Releases/
 publish/
+
+# AI tooling
+.kiro/
+.kilo/
+.alma-snapshots
+.worktrees/
+.DS_Store
+.codegraph/
+.agents/
+website/node_modules
+website/.next
+website/out
