@@ -8,10 +8,10 @@ using TridentCore.Cli;
 using TridentCore.Cli.Services;
 
 #if DEBUG
-const bool IsDebug = true;
+var isDebug = true;
 var env = "Development";
 #else
-const bool IsDebug = false;
+var isDebug = false;
 var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 #endif
 
@@ -33,7 +33,7 @@ var services = new ServiceCollection();
 var configurationBuilder = new ConfigurationBuilder();
 Startup.ConfigureConfiguration(configurationBuilder, environment);
 var configuration = configurationBuilder.Build();
-Startup.ConfigureServices(services, configuration, environment, invocation.Context, IsDebug);
+Startup.ConfigureServices(services, configuration, environment, invocation.Context, isDebug);
 
 services.AddSingleton<IConfiguration>(configuration);
 services.AddSingleton<IEnvironment>(environment);
@@ -125,7 +125,7 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
     var message = string.IsNullOrWhiteSpace(exception.Message)
         ? exception.GetType().Name
         : exception.Message;
-    var detail = IsDebug || context?.Debug is true ? exception.ToString() : null;
+    var detail = isDebug || context?.Debug is true ? exception.ToString() : null;
 
     if (context?.UseStructuredOutput is true)
     {
