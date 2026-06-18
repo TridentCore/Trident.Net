@@ -2,8 +2,12 @@ name: Publish CLI NuGet Package
 
 on:
     push:
-        tags:
-            - 'v*'
+        branches:
+            - main
+
+concurrency:
+    group: publish-${{ github.ref }}
+    cancel-in-progress: false
 
 permissions:
     contents: write
@@ -37,22 +41,46 @@ jobs:
                 with:
                     useConfigFile: true
 
-            -   name: Install git-cliff
+            -   name: Check if version changed
+                id: version-check
                 run: |
-                    cargo install git-cliff
+                    semver="${{ steps.gitversion.outputs.SemVer }}"
+                    if git tag -l "v${semver}" | grep -q .; then
+                        echo "Version v${semver} already exists, skipping release."
+                        echo "should_publish=false" >> $GITHUB_OUTPUT
+                    else
+                        echo "New version v${semver}, proceeding with release."
+                        echo "should_publish=true" >> $GITHUB_OUTPUT
+                    fi
+
+            -   name: Create local tag
+                if: steps.version-check.outputs.should_publish == 'true'
+                run: git tag "v${{ steps.gitversion.outputs.SemVer }}"
+
+            -   name: Install git-cliff
+                if: steps.version-check.outputs.should_publish == 'true'
+                run: cargo install git-cliff
 
             -   name: Generate changelog
-                run: git-cliff --latest --include-path "src/TridentCore.Cli/**" -o ./RELEASE_NOTES.md
+                if: steps.version-check.outputs.should_publish == 'true'
+                run: git-cliff --latest --strip header --include-path "src/TridentCore.Cli/**" -o ./RELEASE_NOTES.md
 
             -   name: Pack NuGet package
+                if: steps.version-check.outputs.should_publish == 'true'
                 run: |
-                    export PackageReleaseNotes="$(cat ./RELEASE_NOTES.md)"
+                    release_notes="$(cat ./RELEASE_NOTES.md)"
                     dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj \
                       --configuration Release \
-                      --output ./publish
+                      --output ./publish \
+                      -p:PackageReleaseNotes="$release_notes"
 
             -   name: Publish to NuGet
+                if: steps.version-check.outputs.should_publish == 'true'
                 run: |
                     dotnet nuget push ./publish/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
                 env:
                     NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+            -   name: Push tag to remote
+                if: steps.version-check.outputs.should_publish == 'true'
+                run: git push origin "v${{ steps.gitversion.outputs.SemVer }}"
