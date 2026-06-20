@@ -13,4 +13,6 @@ public interface ISnapshotStore : IDisposable
     void DeleteSnapshot(object id);
 
     ISet<string> GetAllReferencedHashes();
+
+    void DeleteOrphanReferences();
 }
