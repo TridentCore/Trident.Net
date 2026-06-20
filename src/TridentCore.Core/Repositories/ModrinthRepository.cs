@@ -132,16 +132,16 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             }
             else
             {
+                var loader = ModrinthHelper.GetVersionLoaderFilter(
+                    project.ProjectTypes.FirstOrDefault(),
+                    filter.Loader
+                );
                 var (versionsTask, membersTask) = (
                     client
                         .GetProjectVersionsAsync(
                             pid,
                             null,
-                            project.ProjectTypes.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
-                                ? ArrayParameterConstructor([
-                                    ModrinthHelper.LoaderIdToName(filter.Loader),
-                                ])
-                                : null,
+                            loader is not null ? ArrayParameterConstructor([loader]) : null,
                             filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                         )
                         .ConfigureAwait(false),
@@ -197,15 +197,15 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var unknownProjectVersionsTasks = unknownVids
             .Select(async x =>
             {
+                var loader = ModrinthHelper.GetVersionLoaderFilter(
+                    projects.GetValueOrDefault(x.Identity)?.ProjectTypes?.FirstOrDefault(),
+                    filter.Loader
+                );
                 var versions = await client
                     .GetProjectVersionsAsync(
                         x.Identity,
                         null,
-                        projects.GetValueOrDefault(x.Identity)?.ProjectTypes?.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
-                            ? ArrayParameterConstructor([
-                                ModrinthHelper.LoaderIdToName(filter.Loader),
-                            ])
-                            : null,
+                        loader is not null ? ArrayParameterConstructor([loader]) : null,
                         filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                     )
                     .ConfigureAwait(false);
@@ -282,16 +282,15 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     )
     {
         var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
-        var type = project.ProjectTypes.FirstOrDefault();
-        var loader =
-            type == ModrinthHelper.RESOURCENAME_MOD
-                ? ModrinthHelper.LoaderIdToName(filter.Loader)
-                : null;
+        var loader = ModrinthHelper.GetVersionLoaderFilter(
+            project.ProjectTypes.FirstOrDefault(),
+            filter.Loader
+        );
         var first = await client
             .GetProjectVersionsAsync(
                 pid,
                 null,
-                loader is not null ? $"[\"{loader}\"]" : null,
+                loader is not null ? ArrayParameterConstructor([loader]) : null,
                 filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
             )
             .ConfigureAwait(false);
