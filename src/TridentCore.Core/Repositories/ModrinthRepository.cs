@@ -155,7 +155,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 if (found == null)
                 {
                     throw new ResourceNotFoundException(
-                        $"{pid}/{vid ?? "*"} has no matched version"
+                        $"{project.Name} ({label}:{pid}/{vid ?? "*"}) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -184,6 +184,14 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var knownVids = batchArray.Where(x => x.Version is not null).ToArray();
         var unknownVids = batchArray.Where(x => x.Version is null).ToArray();
 
+        var projects = (
+            await client
+                .GetMultipleProjectsAsync(
+                    ArrayParameterConstructor(batchArray.Select(bm => bm.Identity))
+                )
+                .ConfigureAwait(false)
+        ).ToDictionary(x => x.Id);
+
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
         var unknownProjectVersionsTasks = unknownVids
             .Select(async x =>
@@ -206,8 +214,9 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     );
                 if (chosen == null)
                 {
+                    var name = projects.GetValueOrDefault(x.Identity)?.Name ?? x.Identity;
                     throw new ResourceNotFoundException(
-                        $"{x.Identity}/{x.Version ?? "*"} has no matched version"
+                        $"{name} ({label}:{x.Identity}/{x.Version ?? "*"}) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -221,13 +230,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm.Version)))
             .ConfigureAwait(false);
 
-        var projects = (
-            await client
-                .GetMultipleProjectsAsync(
-                    ArrayParameterConstructor(batchArray.Select(bm => bm.Identity))
-                )
-                .ConfigureAwait(false)
-        ).ToDictionary(x => x.Id);
         var membersTasks = projects
             .Keys.Select(async x =>
                 (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false))
@@ -298,4 +300,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
+
+    private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";
 }
