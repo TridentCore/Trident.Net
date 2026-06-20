@@ -137,11 +137,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                         .GetProjectVersionsAsync(
                             pid,
                             null,
-                            filter.Loader is not null
+                            project.ProjectTypes.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
                                 ? ArrayParameterConstructor([
                                     ModrinthHelper.LoaderIdToName(filter.Loader),
                                 ])
-                                : null
+                                : null,
+                            filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                         )
                         .ConfigureAwait(false),
                     client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)
@@ -200,11 +201,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     .GetProjectVersionsAsync(
                         x.Identity,
                         null,
-                        filter.Loader is not null
+                        projects.GetValueOrDefault(x.Identity)?.ProjectTypes?.FirstOrDefault() == ModrinthHelper.RESOURCENAME_MOD && filter.Loader is not null
                             ? ArrayParameterConstructor([
                                 ModrinthHelper.LoaderIdToName(filter.Loader),
                             ])
-                            : null
+                            : null,
+                        filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                     )
                     .ConfigureAwait(false);
                 var chosen = versions
@@ -286,7 +288,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 ? ModrinthHelper.LoaderIdToName(filter.Loader)
                 : null;
         var first = await client
-            .GetProjectVersionsAsync(pid, null, loader is not null ? $"[\"{loader}\"]" : null)
+            .GetProjectVersionsAsync(
+                pid,
+                null,
+                loader is not null ? $"[\"{loader}\"]" : null,
+                filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
+            )
             .ConfigureAwait(false);
         var all = first
             .Where(x => filter.Version is null || x.GameVersions.Contains(filter.Version))
