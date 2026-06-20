@@ -114,8 +114,7 @@ LookupContext LookupHomeCore(string startDir, string? homeOverride)
     );
     Directory.CreateDirectory(home);
 
-    PathDef.HomeLocatorDefault = () => home;
-    PathDef.Default = new(home);
+    Environment.SetEnvironmentVariable("TRIDENT_HOME", home);
 
     return new(home) { FoundProfile = profile };
 }

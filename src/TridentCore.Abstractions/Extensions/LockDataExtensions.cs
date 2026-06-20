@@ -17,9 +17,7 @@ public static class LockDataExtensions
             return false;
         }
 
-        if (
-            self.Viability.Home != PathDef.Default.Home
-            || self.Viability.Key != key
+        if (self.Viability.Key != key
             || self.Viability.Version != setup.Version
             || self.Viability.Loader != setup.Loader
         )

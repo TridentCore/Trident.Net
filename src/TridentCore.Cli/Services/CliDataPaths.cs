@@ -10,7 +10,7 @@ public static class CliDataPaths
     {
         get
         {
-            var directory = PathDef.Default.PrivateDirectory(BRAND);
+            var directory = PathDef.Default.PrivateConfigDirectory(BRAND);
             Directory.CreateDirectory(directory);
             return directory;
         }
