@@ -13,16 +13,38 @@ public class PathDef
 
     public static readonly PathDef Default = new();
 
+    #region Platform names
+
+    public static readonly PlatformNames TridentNames =
+        new("trident", "Trident", "dev.dearain.trident");
+
+    private static PlatformNames? _brandNames;
+
+    public static PlatformNames BrandNames
+    {
+        get =>
+            _brandNames
+            ?? throw new InvalidOperationException(
+                "PathDef.BrandNames has not been configured. Set it at application startup."
+            );
+        set => _brandNames = value;
+    }
+
+    private static string BrandFolder => BrandNames.Current;
+    private static string HomeBrandSuffix => "." + BrandNames.Linux;
+
+    #endregion
+
     #region Roots
 
-    public string PrivateConfigDirectory(string brand) =>
-        ResolveWithSuffix($".{brand.ToLowerInvariant()}", () => SystemBrandConfigPath(brand));
+    public string PrivateConfigDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandConfigPath);
 
-    public string PrivateDataDirectory(string brand) =>
-        ResolveWithSuffix($".{brand.ToLowerInvariant()}", () => SystemBrandDataPath(brand));
+    public string PrivateDataDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandDataPath);
 
-    public string PrivateCacheDirectory(string brand) =>
-        ResolveWithSuffix($".{brand.ToLowerInvariant()}", () => SystemBrandCachePath(brand));
+    public string PrivateCacheDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandCachePath);
 
     private string ResolveDataHome() => ResolveWithSuffix("", SystemDataPath);
 
@@ -115,13 +137,9 @@ public class PathDef
 
     #region System paths
 
-    private static string TridentFolderName() =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "dev.dearain.trident" :
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Trident" : "trident";
-
     private static string SystemDataPath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                     TridentFolderName());
+                     TridentNames.Current);
 
     private static string SystemCachePath() =>
         Path.Combine(
@@ -130,27 +148,19 @@ public class PathDef
                 : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                     ? Path.GetTempPath()
                     : Path.Combine(USER_PROFILE, ".cache"),
-            TridentFolderName());
+            TridentNames.Current);
 
     private static string SystemConfigPath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     TridentFolderName());
+                     TridentNames.Current);
 
-    private static string SystemBrandConfigPath(string brand) =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                           TridentFolderName(), FormatBrandFolderName(brand))
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                           FormatBrandFolderName(brand));
+    private static string SystemBrandConfigPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), BrandFolder);
 
-    private static string SystemBrandDataPath(string brand) =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                           TridentFolderName(), FormatBrandFolderName(brand))
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                           FormatBrandFolderName(brand));
+    private static string SystemBrandDataPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), BrandFolder);
 
-    private static string SystemBrandCachePath(string brand)
+    private static string SystemBrandCachePath()
     {
         var basePath = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
             ? Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
@@ -158,21 +168,8 @@ public class PathDef
                 ? Path.GetTempPath()
                 : Path.Combine(USER_PROFILE, ".cache");
 
-        return RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Path.Combine(basePath, TridentFolderName(), FormatBrandFolderName(brand))
-            : Path.Combine(basePath, FormatBrandFolderName(brand));
+        return Path.Combine(basePath, BrandFolder);
     }
-
-    #endregion
-
-    #region Brand formatting
-
-    private static string FormatBrandFolderName(string brand) =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-            ? brand.ToLowerInvariant()
-            : brand.Length > 0
-                ? char.ToUpperInvariant(brand[0]) + brand[1..]
-                : brand;
 
     #endregion
 
@@ -183,7 +180,7 @@ public class PathDef
     private static string LocateEffectiveHome()
     {
         var envHome = Environment.GetEnvironmentVariable("TRIDENT_HOME");
-        if (!string.IsNullOrEmpty(envHome) && Directory.Exists(envHome))
+        if (!string.IsNullOrEmpty(envHome) && !File.Exists(envHome))
         {
             return envHome;
         }
@@ -209,7 +206,7 @@ public class PathDef
         if (File.Exists(overrideFile))
         {
             var firstLine = File.ReadLines(overrideFile).FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(firstLine) && Path.IsPathRooted(firstLine) && Directory.Exists(firstLine))
+            if (!string.IsNullOrWhiteSpace(firstLine) && Path.IsPathRooted(firstLine) && !File.Exists(firstLine))
                 return firstLine;
         }
 

@@ -27,7 +27,8 @@ catch (CliException ex)
     return ex.ExitCode;
 }
 
-var lookup = LookupHome(invocation.HomeOverride);
+var lookup = new LookupContext { FoundProfile = LocateProfile(Environment.CurrentDirectory) };
+PathDef.BrandNames = new("trident.cli", "Trident.Cli", "dev.dearain.trident.cli");
 var services = new ServiceCollection();
 
 var configurationBuilder = new ConfigurationBuilder();
@@ -73,50 +74,21 @@ catch (Exception ex)
     return ExitCodes.UNKNOWN;
 }
 
-LookupContext LookupHome(string? homeOverride) =>
-    LookupHomeCore(Environment.CurrentDirectory, homeOverride);
-
-LookupContext LookupHomeCore(string startDir, string? homeOverride)
+string? LocateProfile(string startDir)
 {
-    string? home = null;
-    string? profile = null;
     var dir = Path.GetFullPath(startDir);
     while (dir is not null && Directory.Exists(dir))
     {
-        if (profile is null)
+        var candidate = Path.Combine(dir, "profile.json");
+        if (File.Exists(candidate))
         {
-            var found = Path.Combine(dir, "profile.json");
-            if (File.Exists(found))
-            {
-                profile = Path.GetFullPath(found);
-            }
-        }
-
-        if (home is null)
-        {
-            var candidate = Path.Combine(dir, ".trident");
-            if (Directory.Exists(candidate))
-            {
-                home = Path.GetFullPath(candidate);
-            }
+            return Path.GetFullPath(candidate);
         }
 
         dir = Path.GetDirectoryName(dir);
     }
 
-    home = Path.GetFullPath(
-        homeOverride
-            ?? home
-            ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".trident"
-            )
-    );
-    Directory.CreateDirectory(home);
-
-    Environment.SetEnvironmentVariable("TRIDENT_HOME", home);
-
-    return new(home) { FoundProfile = profile };
+    return null;
 }
 
 void WriteStartupError(CliContext? context, Exception exception, int exitCode)
