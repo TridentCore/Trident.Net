@@ -27,6 +27,11 @@ public static class FileHelper
         Definitions = DefaultDefinitions.All(),
     }.Build();
 
+    // Linux defaults to case-sensitive filesystems; Windows and macOS default to
+    // case-insensitive-but-case-preserving, so path and name comparisons follow suit.
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
     static FileHelper()
     {
         SerializerOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -58,6 +63,20 @@ public static class FileHelper
             var path = Path.Combine(home, candidate);
             if (File.Exists(path))
             {
+                // On case-insensitive but case-preserving volumes the candidate string may not
+                // match the on-disk casing, so resolve the real path to keep downstream string
+                // comparisons consistent.
+                var dir = Path.GetDirectoryName(path);
+                var name = Path.GetFileName(path);
+                if (dir is not null && name is not null)
+                {
+                    var real = Directory.GetFiles(dir, name).FirstOrDefault();
+                    if (real is not null)
+                    {
+                        return real;
+                    }
+                }
+
                 return path;
             }
         }
@@ -83,11 +102,17 @@ public static class FileHelper
         INSPECTOR.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
      ?? fallback;
 
-    public static bool IsInDirectory(string file, string directory) =>
-        Path
-           .GetFullPath(file)
-           .StartsWith(Path.GetFullPath(directory),
-                       OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    // NOTE: Normalization below is lexical only. Path.GetFullPath neither resolves
+    //  symbolic links nor knows about per-volume case sensitivity, and relative inputs
+    //  resolve against the process working directory, so callers must supply absolute,
+    //  already-resolved paths whenever those distinctions matter. Applies to the
+    //  IsInDirectory / IsPathEquivalent pair below.
+    public static bool IsInDirectory(string file, string directory)
+    {
+        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory))
+                   + Path.DirectorySeparatorChar;
+        return Path.GetFullPath(file).StartsWith(prefix, PathComparison);
+    }
 
     public static bool IsPathEquivalent(string? path1, string? path2)
     {
@@ -98,17 +123,13 @@ public static class FileHelper
 
         var normalizedLeft = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path1));
         var normalizedRight = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path2));
-        return normalizedLeft.Equals(normalizedRight,
-                                     OperatingSystem.IsWindows()
-                                         ? StringComparison.OrdinalIgnoreCase
-                                         : StringComparison.Ordinal);
+        return normalizedLeft.Equals(normalizedRight, PathComparison);
     }
 
     public static bool IsFileNameEquivalent(string? name1, string? name2) =>
         !string.IsNullOrEmpty(name1)
      && !string.IsNullOrEmpty(name2)
-     && name1.Equals(name2,
-                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+     && name1.Equals(name2, PathComparison);
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {
