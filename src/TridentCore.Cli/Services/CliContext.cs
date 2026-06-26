@@ -34,7 +34,6 @@ public sealed class CliContext
     public static CliInvocation Parse(string[] args)
     {
         var remaining = new List<string>();
-        string? home = null;
         var json = false;
         var noInteractive = false;
         var verbose = false;
@@ -64,24 +63,8 @@ public sealed class CliContext
                     json = true;
                     noInteractive = true;
                     break;
-                case "--home":
-                    if (i + 1 >= args.Length)
-                    {
-                        throw new CliException("--home requires a path.", ExitCodes.USAGE);
-                    }
-
-                    home = args[++i];
-                    break;
                 default:
-                    if (arg.StartsWith("--home=", StringComparison.Ordinal))
-                    {
-                        home = arg["--home=".Length..];
-                    }
-                    else
-                    {
-                        remaining.Add(arg);
-                    }
-
+                    remaining.Add(arg);
                     break;
             }
         }
@@ -95,8 +78,8 @@ public sealed class CliContext
             Console.IsInputRedirected,
             Console.IsOutputRedirected
         );
-        return new(remaining.ToArray(), context, home);
+        return new(remaining.ToArray(), context);
     }
 }
 
-public sealed record CliInvocation(string[] Arguments, CliContext Context, string? HomeOverride);
+public sealed record CliInvocation(string[] Arguments, CliContext Context);

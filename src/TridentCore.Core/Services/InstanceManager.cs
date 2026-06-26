@@ -274,12 +274,9 @@ public class InstanceManager(
                     tracker.StageStream.OnNext(DeployStage.ProcessLoader);
                     tracker.CurrentStage = DeployStage.ProcessLoader;
                     break;
-                case ResolvePackageStage resolvePackageStage:
+                case ResolvePackageStage:
                     tracker.StageStream.OnNext(DeployStage.ResolvePackage);
                     tracker.CurrentStage = DeployStage.ResolvePackage;
-                    resolvePackageStage
-                        .ProgressStream.Subscribe(tracker.ProgressStream)
-                        .DisposeWith(resolvePackageStage);
                     break;
                 case BuildArtifactStage:
                     tracker.StageStream.OnNext(DeployStage.BuildArtifact);

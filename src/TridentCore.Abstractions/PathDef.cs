@@ -1,50 +1,107 @@
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+
 namespace TridentCore.Abstractions;
 
-public class PathDef(string home)
+public class PathDef
 {
-    public static PathDef Default { get; set; } = new(LocateHomeDefault());
+    private static readonly string USER_PROFILE =
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-    /// <summary>
-    ///     Default static locator for home directory.
-    ///     Set before first use of <see cref="Default" /> to override default behavior.
-    /// </summary>
-    public static Func<string>? HomeLocatorDefault { get; set; }
+    private static readonly string EFFECTIVE_HOME = LocateEffectiveHome();
 
-    public string Home => home;
+    public static readonly PathDef Default = new();
 
-    public static string LocateHomeDefault()
+    #region Platform names
+
+    public static readonly PlatformNames TridentNames =
+        new("trident", "Trident", "dev.dearain.trident");
+
+    private static PlatformNames? _brandNames;
+
+    public static PlatformNames BrandNames
     {
-        var dir = Directory.GetCurrentDirectory();
-        string? home = null;
-        while (dir is not null && Directory.Exists(dir))
-        {
-            var target = Path.Combine(dir, ".trident");
-            if (Directory.Exists(target))
-            {
-                home = target;
-                break;
-            }
-
-            dir = Path.GetDirectoryName(dir);
-        }
-
-        return home ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".trident");
+        get =>
+            _brandNames
+            ?? throw new InvalidOperationException(
+                "PathDef.BrandNames has not been configured. Set it at application startup."
+            );
+        set => _brandNames = value;
     }
 
-    #region Private Folder
-
-    public string PrivateDirectory(string brand) => Path.Combine(Home, $".{brand.ToLower()}");
-
-    // public string FileOfPrivateSettings(string brand) => Path.Combine(PrivateDirectory(brand), "settings.json");
-    // public string FileOfPrivateCache(string brand) => Path.Combine(PrivateDirectory(brand), "cache.sqlite.db");
-    // public string FileOfPrivatePersistence(string brand) => Path.Combine(PrivateDirectory(brand), "persistence.sqlite.db");
+    private static string BrandFolder => BrandNames.Current;
+    private static string HomeBrandSuffix => "." + BrandNames.Linux;
 
     #endregion
 
-    #region Cache Folder
+    #region Roots
 
-    public string CacheDirectory => Path.Combine(Home, "cache");
+    public string PrivateConfigDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandConfigPath);
 
+    public string PrivateDataDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandDataPath);
+
+    public string PrivateCacheDirectory() =>
+        ResolveWithSuffix(HomeBrandSuffix, SystemBrandCachePath);
+
+    private string ResolveDataHome() => ResolveWithSuffix("", SystemDataPath);
+
+    private string ResolveCacheDirectory() => ResolveWithSuffix("cache", SystemCachePath);
+
+    private string ResolveConfigDirectory() => ResolveWithSuffix("config", SystemConfigPath);
+
+    private string ResolveWithSuffix(string suffix, Func<string> systemPath)
+    {
+        if (EFFECTIVE_HOME != FallbackHome)
+            return Path.Combine(EFFECTIVE_HOME, suffix);
+
+        if (Directory.Exists(FallbackHome))
+            return Path.Combine(FallbackHome, suffix);
+
+        return systemPath();
+    }
+
+    #endregion
+
+    #region Instance Folder — rooted at Data
+
+    public string InstanceDirectory => Path.Combine(ResolveDataHome(), "instances");
+
+    public string DirectoryOfHome(string key) => Path.Combine(InstanceDirectory, key);
+    public string FileOfProfile(string key) => Path.Combine(InstanceDirectory, key, "profile.json");
+
+    public string FileOfIcon(string key, string extensionGuess) =>
+        Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
+
+    public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
+    public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
+    public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
+    public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
+    public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
+    public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
+    public string DirectoryOfLive(string key) => Path.Combine(InstanceDirectory, key, "live");
+    public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
+    public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
+
+    public string DirectoryOfSnapshotObjects(string key) =>
+        Path.Combine(DirectoryOfSnapshots(key), "objects");
+
+    public string FileOfSnapshotObject(string key, string hash) =>
+        Path.Combine(DirectoryOfSnapshotObjects(key), hash[..2], hash);
+
+    #endregion
+
+    #region Cache Folder — rooted at CacheDirectory
+    public string CacheDirectory
+    {
+        get
+        {
+            field ??= ResolveCacheDirectory();
+            return field;
+        }
+    }
     public string CacheAssetDirectory => Path.Combine(CacheDirectory, "assets");
     public string CacheIconDirectory => Path.Combine(CacheDirectory, "icons");
     public string CacheLibraryDirectory => Path.Combine(CacheDirectory, "libraries");
@@ -78,39 +135,83 @@ public class PathDef(string home)
 
     #endregion
 
-    #region Instance Folder
+    #region System paths
 
-    public string InstanceDirectory => Path.Combine(Home, "instances");
+    private static string SystemDataPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                     TridentNames.Current);
 
-    public string FileOfProfile(string key) => Path.Combine(InstanceDirectory, key, "profile.json");
+    private static string SystemCachePath() =>
+        Path.Combine(
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
+                : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? Path.GetTempPath()
+                    : Path.Combine(USER_PROFILE, ".cache"),
+            TridentNames.Current);
 
-    public string FileOfIcon(string key, string extensionGuess) =>
-        Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
+    private static string SystemConfigPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                     TridentNames.Current);
 
-    public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
+    private static string SystemBrandConfigPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), BrandFolder);
 
-    public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
+    private static string SystemBrandDataPath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), BrandFolder);
 
-    public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
+    private static string SystemBrandCachePath()
+    {
+        var basePath = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? Path.GetTempPath()
+                : Path.Combine(USER_PROFILE, ".cache");
 
-    public string DirectoryOfHome(string key) => Path.Combine(InstanceDirectory, key);
+        return Path.Combine(basePath, BrandFolder);
+    }
 
-    public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
+    #endregion
 
-    public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
+    #region Home locator
 
-    public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
+    private static string FallbackHome => Path.Combine(USER_PROFILE, ".trident");
 
-    public string DirectoryOfLive(string key) => Path.Combine(InstanceDirectory, key, "live");
+    private static string LocateEffectiveHome()
+    {
+        var envHome = Environment.GetEnvironmentVariable("TRIDENT_HOME");
+        if (!string.IsNullOrEmpty(envHome) && !File.Exists(envHome))
+        {
+            return envHome;
+        }
 
-    public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
+        var dir = Directory.GetCurrentDirectory();
+        string? home = null;
+        while (dir is not null && Directory.Exists(dir))
+        {
+            var target = Path.Combine(dir, ".trident");
+            if (Directory.Exists(target))
+            {
+                home = target;
+                break;
+            }
 
-    public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
+            dir = Path.GetDirectoryName(dir);
+        }
 
-    public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");
+        if (home != null)
+            return home;
 
-    public string FileOfSnapshotObject(string key, string hash) =>
-        Path.Combine(DirectoryOfSnapshotObjects(key), hash[..2], hash);
+        var overrideFile = Path.Combine(USER_PROFILE, ".trident.home");
+        if (File.Exists(overrideFile))
+        {
+            var firstLine = File.ReadLines(overrideFile).FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(firstLine) && Path.IsPathRooted(firstLine) && !File.Exists(firstLine))
+                return firstLine;
+        }
+
+        return FallbackHome;
+    }
 
     #endregion
 }

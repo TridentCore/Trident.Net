@@ -18,7 +18,7 @@ public class SolidifyManifestStage(
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    public Subject<double?> ProgressStream { get; } = new();
+    public Subject<(int Current, int Total)> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -79,10 +79,8 @@ public class SolidifyManifestStage(
 
         files.AddRange(projections.Values.Select(x => x.File));
 
-        logger.LogInformation(
-            "Created solidifying tasks of {}",
-            files.Count + manifest.ExplosiveFiles.Count
-        );
+        var total = files.Count + manifest.ExplosiveFiles.Count;
+        logger.LogInformation("Created solidifying tasks of {}", total);
 
         var downloaded = 0;
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
@@ -90,7 +88,7 @@ public class SolidifyManifestStage(
         var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
         var entities = new ConcurrentBag<SymlinkPhotos.Entity>();
 
-        ProgressStream.OnNext(0d);
+        ProgressStream.OnNext((0, total));
         var tasks = files
             .Select(async x =>
             {
@@ -365,9 +363,7 @@ public class SolidifyManifestStage(
                     }
 
                     Interlocked.Increment(ref downloaded);
-                    ProgressStream.OnNext(
-                        (double)downloaded / (files.Count + manifest.ExplosiveFiles.Count)
-                    );
+                    ProgressStream.OnNext((downloaded, total));
                 }
                 catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
                 {
@@ -454,7 +450,7 @@ public class SolidifyManifestStage(
                 }
             }
 
-            ProgressStream.OnNext((double)++downloaded / (files.Count + manifest.ExplosiveFiles.Count));
+            ProgressStream.OnNext((++downloaded, total));
         }
 
         SymlinkPhotos.Apply(buildDirectory, entities.ToArray());

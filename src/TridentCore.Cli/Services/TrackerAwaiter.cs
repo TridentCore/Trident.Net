@@ -54,9 +54,9 @@ public class TrackerAwaiter(CliOutput output)
         {
             onStage?.Invoke(stage.ToString());
         });
-        using var progressSubscription = tracker.ProgressStream.Subscribe(progress =>
+        using var progressSubscription = tracker.ProgressStream.Subscribe(x =>
         {
-            onProgress?.Invoke(progress ?? 0d);
+            onProgress?.Invoke((double)x.Current / x.Total);
         });
 
         await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);

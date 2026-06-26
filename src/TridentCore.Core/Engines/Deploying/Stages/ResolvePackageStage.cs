@@ -1,4 +1,3 @@
-using System.Reactive.Subjects;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Utilities;
@@ -7,8 +6,6 @@ namespace TridentCore.Core.Engines.Deploying.Stages;
 
 public class ResolvePackageStage(PackagePlanner planner) : StageBase
 {
-    public Subject<double?> ProgressStream { get; } = new();
-
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         var builder = Context.ArtifactBuilder!;
@@ -32,8 +29,6 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
 
         var context = new PackagePlannerContext(rules, filter);
 
-        ProgressStream.OnNext(0d);
-
         await foreach (var plan in planner.PlanAsync(packages, context).WithCancellation(token).ConfigureAwait(false))
         {
             if (plan.IsSkipping)
@@ -50,19 +45,11 @@ public class ResolvePackageStage(PackagePlanner planner) : StageBase
                               plan.Hash);
         }
 
-        ProgressStream.OnNext(1d);
-
         if (token.IsCancellationRequested)
         {
             return;
         }
 
         Context.IsPackageResolved = true;
-    }
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        ProgressStream.Dispose();
     }
 }

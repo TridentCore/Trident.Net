@@ -73,7 +73,6 @@ public record LockData(
         int Format,
         string Watermark,
         string RulesHash,
-        string Home,
         string Key,
         string Version,
         string? Loader,

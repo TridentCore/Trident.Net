@@ -122,7 +122,6 @@ public static class Startup
             config.SetApplicationName("trident");
             config.PropagateExceptions();
             config.AddExample("--json", "package", "list", "--instance", "cherry_picks");
-            config.AddExample("--home", "C:/path/to/.trident", "list");
             config.AddExample(
                 "--no-interactive",
                 "instance",

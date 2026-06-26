@@ -16,7 +16,6 @@ public class BuildArtifactStage : StageBase
                 LockData.FORMAT,
                 Context.VerificationWatermark,
                 HashHelper.ComputeObjectHash(Context.Setup.Rules),
-                PathDef.Default.Home,
                 Context.Key,
                 Context.Setup.Version,
                 Context.Setup.Loader,
