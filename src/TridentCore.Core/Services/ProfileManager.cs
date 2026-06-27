@@ -123,9 +123,11 @@ public class ProfileManager : IDisposable
     public void Remove(string key)
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
+        // NOTE: 幂等语义。重复触发（连点删除）、并发移除、导航过期状态下 key 可能已不在，
+        // 抛异常会冒泡到全局 Dispatcher handler 导致崩溃（POLYMERIUM-23）。删除一个不存在的东西视为已删除。
         if (handle is null)
         {
-            throw new InvalidOperationException($"{key} is not in profiles");
+            return;
         }
 
         _profiles.Remove(handle);
