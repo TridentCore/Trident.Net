@@ -594,6 +594,6 @@ public static class JavaHelper
         int? Major,
         string Source
     );
-}
 
-public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
+    public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
+}
