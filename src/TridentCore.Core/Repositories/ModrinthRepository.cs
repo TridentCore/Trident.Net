@@ -132,16 +132,17 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             }
             else
             {
+                var loader = ModrinthHelper.GetVersionLoaderFilter(
+                    project.ProjectTypes.FirstOrDefault(),
+                    filter.Loader
+                );
                 var (versionsTask, membersTask) = (
                     client
                         .GetProjectVersionsAsync(
                             pid,
                             null,
-                            filter.Loader is not null
-                                ? ArrayParameterConstructor([
-                                    ModrinthHelper.LoaderIdToName(filter.Loader),
-                                ])
-                                : null
+                            loader is not null ? ArrayParameterConstructor([loader]) : null,
+                            filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                         )
                         .ConfigureAwait(false),
                     client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)
@@ -155,7 +156,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 if (found == null)
                 {
                     throw new ResourceNotFoundException(
-                        $"{pid}/{vid ?? "*"} has no matched version"
+                        $"{project.Name} ({label}:{pid}/{vid ?? "*"}) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -184,19 +185,28 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var knownVids = batchArray.Where(x => x.Version is not null).ToArray();
         var unknownVids = batchArray.Where(x => x.Version is null).ToArray();
 
+        var projects = (
+            await client
+                .GetMultipleProjectsAsync(
+                    ArrayParameterConstructor(batchArray.Select(bm => bm.Identity))
+                )
+                .ConfigureAwait(false)
+        ).ToDictionary(x => x.Id);
+
         // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计
         var unknownProjectVersionsTasks = unknownVids
             .Select(async x =>
             {
+                var loader = ModrinthHelper.GetVersionLoaderFilter(
+                    projects.GetValueOrDefault(x.Identity)?.ProjectTypes?.FirstOrDefault(),
+                    filter.Loader
+                );
                 var versions = await client
                     .GetProjectVersionsAsync(
                         x.Identity,
                         null,
-                        filter.Loader is not null
-                            ? ArrayParameterConstructor([
-                                ModrinthHelper.LoaderIdToName(filter.Loader),
-                            ])
-                            : null
+                        loader is not null ? ArrayParameterConstructor([loader]) : null,
+                        filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
                     )
                     .ConfigureAwait(false);
                 var chosen = versions
@@ -206,8 +216,9 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     );
                 if (chosen == null)
                 {
+                    var name = projects.GetValueOrDefault(x.Identity)?.Name ?? x.Identity;
                     throw new ResourceNotFoundException(
-                        $"{x.Identity}/{x.Version ?? "*"} has no matched version"
+                        $"{name} ({label}:{x.Identity}/{x.Version ?? "*"}) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -221,13 +232,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             .GetMultipleVersionsAsync(ArrayParameterConstructor(knownVids.Select(bm => bm.Version)))
             .ConfigureAwait(false);
 
-        var projects = (
-            await client
-                .GetMultipleProjectsAsync(
-                    ArrayParameterConstructor(batchArray.Select(bm => bm.Identity))
-                )
-                .ConfigureAwait(false)
-        ).ToDictionary(x => x.Id);
         var membersTasks = projects
             .Keys.Select(async x =>
                 (Id: x, Members: await client.GetTeamMembersAsync(x).ConfigureAwait(false))
@@ -278,13 +282,17 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     )
     {
         var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
-        var type = project.ProjectTypes.FirstOrDefault();
-        var loader =
-            type == ModrinthHelper.RESOURCENAME_MOD
-                ? ModrinthHelper.LoaderIdToName(filter.Loader)
-                : null;
+        var loader = ModrinthHelper.GetVersionLoaderFilter(
+            project.ProjectTypes.FirstOrDefault(),
+            filter.Loader
+        );
         var first = await client
-            .GetProjectVersionsAsync(pid, null, loader is not null ? $"[\"{loader}\"]" : null)
+            .GetProjectVersionsAsync(
+                pid,
+                null,
+                loader is not null ? ArrayParameterConstructor([loader]) : null,
+                filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
+            )
             .ConfigureAwait(false);
         var all = first
             .Where(x => filter.Version is null || x.GameVersions.Contains(filter.Version))
@@ -298,4 +306,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
+
+    private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";
 }
