@@ -256,16 +256,32 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                      ]))
                                     .ConfigureAwait(false)
                              : new([], new(0, 10, 0, 0));
-        var knownPairs = knownMods.Data.OrderBy(x => x.Id).Zip(knownFiles.Data.OrderBy(x => x.ModId)).ToList();
-        if (knownPairs.Any(x => x.First.Id != x.Second.ModId))
-        {
-            throw new InvalidOperationException("Pairs of Mod-File are not matched");
-        }
+        var modById = knownMods.Data.ToDictionary(x => x.Id);
+        var fileById = knownFiles.Data.ToDictionary(x => x.Id);
 
-        var knownIndex = knownVids.ToDictionary(x => x.Version!);
+        var knownPackages = knownVids
+                          .Select(x =>
+                           {
+                               var modId = uint.Parse(x.Identity);
+                               var fileId = uint.Parse(x.Version!);
+                               if (!modById.TryGetValue(modId, out var mod))
+                               {
+                                   throw new ResourceNotFoundException(
+                                       $"{x.Identity}/{x.Version} not found in the repository"
+                                   );
+                               }
 
-        var packages = knownPairs
-                      .Select(x => (id: knownIndex[x.Second.Id.ToString()], mod: x.First, file: x.Second))
+                               if (!fileById.TryGetValue(fileId, out var file))
+                               {
+                                   throw new ResourceNotFoundException(
+                                       $"{x.Identity}/{x.Version} not found in the repository"
+                                   );
+                               }
+
+                               return (id: x, mod, file);
+                           });
+
+        var packages = knownPackages
                       .Concat(unknownFiles)
                       .Select(x => (x.id, CurseForgeHelper.ToPackage(label, x.mod, x.file)))
                       .ToList();
