@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Refit;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
@@ -300,16 +301,16 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     #endregion
 
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
-        "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
+        JsonSerializer.Serialize(members.Where(x => x is not null).ToArray());
 
     // v3 把 game_versions 等过滤并进了 loader_fields（JSON 对象 {"game_versions":[...]}），
     // 没有独立的 game_versions 参数（v2 才有，容易踩坑）
     private static string? BuildLoaderFields(params (string Key, string? Value)[] fields)
     {
-        var present = fields.Where(f => f.Value is not null).ToArray();
-        return present.Length == 0
-            ? null
-            : "{" + string.Join(",", present.Select(f => $"\"{f.Key}\":{ArrayParameterConstructor([f.Value])}")) + "}";
+        var dict = fields
+            .Where(f => f.Value is not null)
+            .ToDictionary(f => f.Key, f => new[] { f.Value });
+        return dict.Count == 0 ? null : JsonSerializer.Serialize(dict);
     }
 
     private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";

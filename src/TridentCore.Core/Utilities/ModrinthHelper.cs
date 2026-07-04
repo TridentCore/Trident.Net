@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
@@ -235,6 +236,6 @@ public static class ModrinthHelper
             facets.Add(new("project_type", projectType));
         }
 
-        return "[" + string.Join(",", facets.Select(x => $"[\"{x.Key}:{x.Value}\"]")) + "]";
+        return JsonSerializer.Serialize(facets.Select(x => new[] { $"{x.Key}:{x.Value}" }).ToArray());
     }
 }
