@@ -142,7 +142,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                             pid,
                             null,
                             loader is not null ? ArrayParameterConstructor([loader]) : null,
-                            filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
+                            BuildLoaderFields(("game_versions", filter.Version))
                         )
                         .ConfigureAwait(false),
                     client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)
@@ -204,7 +204,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                         x.Identity,
                         null,
                         loader is not null ? ArrayParameterConstructor([loader]) : null,
-                        filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
+                        BuildLoaderFields(("game_versions", filter.Version))
                     )
                     .ConfigureAwait(false);
                 var chosen = versions
@@ -287,7 +287,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 pid,
                 null,
                 loader is not null ? ArrayParameterConstructor([loader]) : null,
-                filter.Version is not null ? ArrayParameterConstructor([filter.Version]) : null
+                BuildLoaderFields(("game_versions", filter.Version))
             )
             .ConfigureAwait(false);
         var all = first
@@ -301,6 +301,16 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         "[\"" + string.Join("\",\"", members.Where(x => x is not null)) + "\"]";
+
+    // v3 把 game_versions 等过滤并进了 loader_fields（JSON 对象 {"game_versions":[...]}），
+    // 没有独立的 game_versions 参数（v2 才有，容易踩坑）
+    private static string? BuildLoaderFields(params (string Key, string? Value)[] fields)
+    {
+        var present = fields.Where(f => f.Value is not null).ToArray();
+        return present.Length == 0
+            ? null
+            : "{" + string.Join(",", present.Select(f => $"\"{f.Key}\":{ArrayParameterConstructor([f.Value])}")) + "}";
+    }
 
     private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";
 }

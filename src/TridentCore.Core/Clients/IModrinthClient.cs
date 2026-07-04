@@ -43,7 +43,7 @@ public interface IModrinthClient
         string projectId,
         [AliasAs("version_type")] string? versionType = null,
         string? loaders = null,
-        [AliasAs("game_versions")] string? gameVersions = null,
+        [AliasAs("loader_fields")] string? loaderFields = null,
         [AliasAs("include_changelog")] bool includeChangelog = false
     );
 
