@@ -1,0 +1,10 @@
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+* text=auto eol=crlf
+
+###############################################################################
+# Ignore macOS extended attributes for cross-platform compatibility
+###############################################################################
+* -attr.com.apple.provenance
+* -attr.com.apple.quarantine

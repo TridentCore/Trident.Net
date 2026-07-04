@@ -169,9 +169,10 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     var file = (await client
                                      .GetModFilesAsync(modId,
                                                        filter.Version,
-                                                       mod.ClassId == CurseForgeHelper.CLASSID_MOD
-                                                           ? CurseForgeHelper.LoaderIdToType(filter.Loader)
-                                                           : null,
+                                                       CurseForgeHelper.GetVersionLoaderFilter(
+                                                           mod.ClassId,
+                                                           filter.Loader
+                                                       ),
                                                        0,
                                                        1)
                                      .ConfigureAwait(false)).Data.FirstOrDefault();
@@ -181,7 +182,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     }
 
                     throw new ResourceNotFoundException(
-                        $"{mod.Name} ({label}:{pid}/{vid ?? "*"}) has no matched version for {FormatTarget(filter)}");
+                        $"{mod.Name} ({label}:{pid}@*) has no matched version for {FormatTarget(filter)}");
                 }
             }
             catch (ApiException ex)
@@ -216,10 +217,10 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                         var file = (await client
                                                          .GetModFilesAsync(modId,
                                                                            filter.Version,
-                                                                           mod.ClassId == CurseForgeHelper.CLASSID_MOD
-                                                                               ? CurseForgeHelper.LoaderIdToType(filter
-                                                                                  .Loader)
-                                                                               : null,
+                                                                           CurseForgeHelper.GetVersionLoaderFilter(
+                                                                               mod.ClassId,
+                                                                               filter.Loader
+                                                                           ),
                                                                            0,
                                                                            1)
                                                          .ConfigureAwait(false)).Data.FirstOrDefault();
@@ -227,7 +228,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                    ? (id: x, mod, file)
                                                    : throw new
                                                          ResourceNotFoundException(
-                                                             $"{mod.Name} ({label}:{modId}/*) has no matched version for {FormatTarget(filter)}");
+                                                             $"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
                                     }
 
                                     throw new FormatException($"{x.Identity} is not well formatted into modId");
@@ -341,9 +342,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         if (uint.TryParse(pid, out var modId))
         {
             var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
-            var loader = mod.ClassId == CurseForgeHelper.CLASSID_MOD
-                             ? CurseForgeHelper.LoaderIdToType(filter.Loader)
-                             : null;
+            var loader = CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId, filter.Loader);
             var first = await client
                              .GetModFilesAsync(modId, filter.Version, loader, 0, PAGE_SIZE)
                              .ConfigureAwait(false);

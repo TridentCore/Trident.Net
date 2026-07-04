@@ -44,7 +44,9 @@ public static class ModrinthHelper
         };
 
     public static string? GetVersionLoaderFilter(string? projectType, string? loaderId) =>
-        projectType == RESOURCENAME_MOD ? LoaderIdToName(loaderId) : null;
+        projectType is RESOURCENAME_MOD or RESOURCENAME_MODPACK
+            ? LoaderIdToName(loaderId)
+            : null;
 
     public static string ResourceKindToUrlKind(ResourceKind kind) =>
         kind switch

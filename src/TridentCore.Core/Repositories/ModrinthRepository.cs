@@ -150,13 +150,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 var (versions, members) = (await versionsTask, await membersTask);
                 var found = versions
                     .OrderByDescending(x => x.DatePublished)
-                    .FirstOrDefault(x =>
-                        filter.Version is null || x.GameVersions.Contains(filter.Version)
-                    );
+                    .FirstOrDefault();
                 if (found == null)
                 {
                     throw new ResourceNotFoundException(
-                        $"{project.Name} ({label}:{pid}/{vid ?? "*"}) has no matched version for {FormatTarget(filter)}"
+                        $"{project.Name} ({label}:{pid}@*) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -211,14 +209,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     .ConfigureAwait(false);
                 var chosen = versions
                     .OrderByDescending(y => y.DatePublished)
-                    .FirstOrDefault(y =>
-                        filter.Version is null || y.GameVersions.Contains(filter.Version)
-                    );
+                    .FirstOrDefault();
                 if (chosen == null)
                 {
                     var name = projects.GetValueOrDefault(x.Identity)?.Name ?? x.Identity;
                     throw new ResourceNotFoundException(
-                        $"{name} ({label}:{x.Identity}/{x.Version ?? "*"}) has no matched version for {FormatTarget(filter)}"
+                        $"{name} ({label}:{x.Identity}@*) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -295,7 +291,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             )
             .ConfigureAwait(false);
         var all = first
-            .Where(x => filter.Version is null || x.GameVersions.Contains(filter.Version))
             .Select(x => ModrinthHelper.ToVersion(label, x))
             .ToList();
         // Modrinth 的版本无法分页，只能过滤拉取全部之后本地分页
