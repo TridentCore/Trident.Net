@@ -50,6 +50,9 @@ public static class CurseForgeHelper
             _ => null,
         };
 
+    public static ModLoaderTypeModel? GetVersionLoaderFilter(uint? classId, string? loaderId) =>
+        classId is CLASSID_MOD or CLASSID_MODPACK ? LoaderIdToType(loaderId) : null;
+
     public static string? LoaderIdToName(string? loader) =>
         loader switch
         {

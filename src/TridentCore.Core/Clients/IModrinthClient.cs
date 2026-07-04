@@ -41,8 +41,10 @@ public interface IModrinthClient
     [Get("/v3/project/{projectId}/version")]
     Task<IReadOnlyList<VersionInfo>> GetProjectVersionsAsync(
         string projectId,
-        string? versionType = null,
-        string? loaders = null
+        [AliasAs("version_type")] string? versionType = null,
+        string? loaders = null,
+        [AliasAs("game_versions")] string? gameVersions = null,
+        [AliasAs("include_changelog")] bool includeChangelog = false
     );
 
     [Get("/v3/version_file/{hash}")]
