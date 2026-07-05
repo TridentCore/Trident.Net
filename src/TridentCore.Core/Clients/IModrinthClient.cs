@@ -42,11 +42,19 @@ public interface IModrinthClient
     Task<IReadOnlyList<VersionInfo>> GetProjectVersionsAsync(
         string projectId,
         [AliasAs("version_type")] string? versionType = null,
+        // WARNING: must be a JSON array string `["fabric"]`. Bare or comma-separated values
+        //  are silently ignored (return zero results), unlike the `ids` parameter on the
+        //  bulk endpoints which accepts comma-separated input.
         string? loaders = null,
         [AliasAs("loader_fields")] string? loaderFields = null,
-        [AliasAs("include_changelog")] bool includeChangelog = false
+        [AliasAs("include_changelog")] bool includeChangelog = false,
+        uint? limit = null,
+        uint? offset = null
     );
 
+    // NOTE: pinned to sha1 — the only call site (IdentifyAsync) hashes with SHA1. The API
+    //  auto-detects by hash length when omitted, but Refit always sends this default, so a
+    //  sha512 hash would 404. Change the hashing call site before passing anything else.
     [Get("/v3/version_file/{hash}")]
     Task<VersionInfo> GetVersionFromHashAsync(string hash, [Query] string algorithm = "sha1");
 }

@@ -223,7 +223,7 @@ public static class ModrinthHelper
         var facets = new List<KeyValuePair<string, string>>();
         if (gameVersion != null)
         {
-            facets.Add(new("versions", gameVersion));
+            facets.Add(new("game_versions", gameVersion));
         }
 
         if (modLoader != null)
@@ -233,7 +233,7 @@ public static class ModrinthHelper
 
         if (projectType != null)
         {
-            facets.Add(new("project_type", projectType));
+            facets.Add(new("project_types", projectType));
         }
 
         return JsonSerializer.Serialize(facets.Select(x => new[] { $"{x.Key}:{x.Value}" }).ToArray());

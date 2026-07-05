@@ -143,7 +143,8 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                             pid,
                             null,
                             loader is not null ? ArrayParameterConstructor([loader]) : null,
-                            BuildLoaderFields(("game_versions", filter.Version))
+                            BuildLoaderFields(("game_versions", filter.Version)),
+                            limit: 1
                         )
                         .ConfigureAwait(false),
                     client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)
@@ -205,7 +206,8 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                         x.Identity,
                         null,
                         loader is not null ? ArrayParameterConstructor([loader]) : null,
-                        BuildLoaderFields(("game_versions", filter.Version))
+                        BuildLoaderFields(("game_versions", filter.Version)),
+                        limit: 1
                     )
                     .ConfigureAwait(false);
                 var chosen = versions
