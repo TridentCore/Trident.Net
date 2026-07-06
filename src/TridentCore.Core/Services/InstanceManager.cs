@@ -109,15 +109,14 @@ public class InstanceManager(
         var path = PathDef.Default.FileOfLockData(key);
         if (deploy.FastMode && File.Exists(path))
         {
-            var artifact = JsonSerializer.Deserialize<LockData>(
+            var existing = JsonSerializer.Deserialize<LockData>(
                 File.ReadAllText(path),
                 JsonSerializerOptions.Web
             );
 
             if (
-                artifact != null
-                && artifact.Verify(
-                    key,
+                existing is { Artifact: not null }
+                && existing.Verify(
                     profileManager.GetImmutable(key).Setup,
                     HashHelper.ComputeObjectHash(deploy)
                 )
@@ -262,9 +261,9 @@ public class InstanceManager(
 
             switch (stage)
             {
-                case CheckArtifactStage:
-                    tracker.StageStream.OnNext(DeployStage.CheckArtifact);
-                    tracker.CurrentStage = DeployStage.CheckArtifact;
+                case LoadLockStage:
+                    tracker.StageStream.OnNext(DeployStage.LoadLock);
+                    tracker.CurrentStage = DeployStage.LoadLock;
                     break;
                 case InstallVanillaStage:
                     tracker.StageStream.OnNext(DeployStage.InstallVanilla);
@@ -274,13 +273,13 @@ public class InstanceManager(
                     tracker.StageStream.OnNext(DeployStage.ProcessLoader);
                     tracker.CurrentStage = DeployStage.ProcessLoader;
                     break;
-                case ResolvePackageStage:
+                case SyncPackagesStage:
                     tracker.StageStream.OnNext(DeployStage.ResolvePackage);
                     tracker.CurrentStage = DeployStage.ResolvePackage;
                     break;
-                case BuildArtifactStage:
-                    tracker.StageStream.OnNext(DeployStage.BuildArtifact);
-                    tracker.CurrentStage = DeployStage.BuildArtifact;
+                case PersistLockStage:
+                    tracker.StageStream.OnNext(DeployStage.PersistLock);
+                    tracker.CurrentStage = DeployStage.PersistLock;
                     break;
                 case EnsureRuntimeStage:
                     tracker.StageStream.OnNext(DeployStage.EnsureRuntime);
@@ -358,27 +357,27 @@ public class InstanceManager(
         var found = File.Exists(artifactPath);
         if (found)
         {
-            var artifact = JsonSerializer.Deserialize<LockData>(
+            var lockData = JsonSerializer.Deserialize<LockData>(
                 await File.ReadAllTextAsync(artifactPath, tracker.Token).ConfigureAwait(false),
                 JsonSerializerOptions.Web
             );
 
-            if (artifact == null)
+            if (lockData?.Artifact is not { } artifactData)
             {
-                throw new InvalidOperationException("Artifact is not valid");
+                throw new InvalidOperationException("Lock is not valid or has no artifact");
             }
 
             try
             {
-                var javaHome = javaHomeLocator(artifact.JavaMajorVersion);
+                var javaHome = javaHomeLocator(artifactData.JavaMajorVersion);
                 var workingDir = PathDef.Default.DirectoryOfBuild(tracker.Key);
                 var libraryDir = PathDef.Default.CacheLibraryDirectory;
                 var assetDir = PathDef.Default.CacheAssetDirectory;
                 var nativeDir = PathDef.Default.DirectoryOfNatives(tracker.Key);
-                var igniter = artifact.MakeIgniter();
+                var igniter = artifactData.MakeIgniter();
 
                 tracker.JavaHome = javaHome;
-                tracker.JavaVersion = artifact.JavaMajorVersion;
+                tracker.JavaVersion = artifactData.JavaMajorVersion;
 
                 igniter
                     .SetJavaHome(javaHome)
@@ -412,7 +411,7 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
-                var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, artifact);
+                var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, lockData);
                 await accountConfigurer.ConfigureLaunchAsync(options.Account, launchContext, tracker.Token).ConfigureAwait(false);
 
                 if (options.Mode == LaunchMode.Debug)
@@ -489,7 +488,7 @@ public class InstanceManager(
         }
         else
         {
-            throw new ArtifactUnavailableException(tracker.Key, artifactPath, found);
+            throw new LockUnavailableException(tracker.Key, artifactPath, found);
         }
     }
 

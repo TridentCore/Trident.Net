@@ -22,7 +22,7 @@ public class DeployTracker(
 
     public Subject<DeployStage> StageStream { get; } = new();
 
-    public DeployStage CurrentStage { get; internal set; } = DeployStage.CheckArtifact;
+    public DeployStage CurrentStage { get; internal set; } = DeployStage.LoadLock;
 
     protected override void OnStart()
     {

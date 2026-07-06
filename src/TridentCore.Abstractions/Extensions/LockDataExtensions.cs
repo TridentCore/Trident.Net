@@ -5,34 +5,23 @@ namespace TridentCore.Abstractions.Extensions;
 
 public static class LockDataExtensions
 {
-    public static bool Verify(this LockData self, string key, Profile.Rice setup, string watermark)
+    // FastMode gate: the on-disk lock is reusable only when the platform, the deploy-options
+    // fingerprint, and the declared (enabled) package set all still match — by full purl (vid
+    // included), so a repinned fixed version re-enters the pipeline for SyncPackages to honor.
+    public static bool Verify(this LockData self, Profile.Rice setup, string optionsHash)
     {
-        if (self.Viability.Format != LockData.FORMAT || self.Viability.Watermark != watermark)
+        if (self.Platform.Minecraft != setup.Version || self.Platform.Loader != setup.Loader)
         {
             return false;
         }
 
-        if (self.Viability.RulesHash != HashHelper.ComputeObjectHash(setup.Rules))
+        if (self.Viability.OptionsHash != optionsHash)
         {
             return false;
         }
 
-        if (self.Viability.Key != key
-            || self.Viability.Version != setup.Version
-            || self.Viability.Loader != setup.Loader
-        )
-        {
-            return false;
-        }
-
-        if (self.Viability.Packages.Count != setup.Packages.Count(x => x.Enabled))
-        {
-            return false;
-        }
-
-        var map = self.Viability.Packages.Distinct().ToHashSet();
-
-        var rv = map.SetEquals(setup.Packages.Where(x => x.Enabled).Select(x => x.Purl).Distinct());
-        return rv;
+        var setupPurls = setup.Packages.Where(x => x.Enabled).Select(x => x.Purl).ToHashSet();
+        var lockPurls = self.Packages.Select(x => x.Purl).ToHashSet();
+        return setupPurls.SetEquals(lockPurls);
     }
 }

@@ -8,26 +8,23 @@ public class DeployContext(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    string verificationWatermark,
+    string optionsHash,
     JavaHomeLocatorDelegate javaHomeLocator
 )
 {
-    // 通过把 Context 填满，当内容被填满时代表部署完成
-
-    internal LockData? Artifact;
-    internal LockDataBuilder? ArtifactBuilder;
-    internal bool IsLoaderProcessed = false;
-    internal bool IsPackageResolved = false;
-    internal bool IsRuntimeEnsured = false;
-    internal bool IsSolidified = false;
-    internal bool IsVanillaInstalled = false;
+    // BaseLock: read-only snapshot of the on-disk lock (null when absent or legacy FORMAT=1).
+    // Lock: the product being built this cycle. Stages judge validity against BaseLock and
+    // migrate/rebuild into Lock.
+    internal LockData? BaseLock;
+    internal LockData Lock = null!;
     internal EntityManifest? Manifest;
     internal BundledRuntime? Runtime;
+
     public string Key => key;
 
     public Profile.Rice Setup => setup;
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
-    public string VerificationWatermark => verificationWatermark;
+    public string OptionsHash => optionsHash;
     public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;
 }

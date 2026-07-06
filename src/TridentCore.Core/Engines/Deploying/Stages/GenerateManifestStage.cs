@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
@@ -14,7 +15,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
     {
         var manifest = new EntityManifest();
 
-        var artifact = Context.Artifact!;
+        var artifact = Context.Lock.Artifact!;
 
         var indexPath = PathDef.Default.FileOfAssetIndex(artifact.AssetIndex.Id);
         manifest.PresentFiles.Add(
@@ -41,21 +42,27 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
             );
         }
 
-        foreach (var parcel in artifact.Parcels)
+        foreach (var locked in Context.Lock.Packages)
         {
+            if (locked.Rule.Skipping)
+            {
+                continue;
+            }
+
+            PackageHelper.TryParse(locked.Purl, out var parsed);
+            var sourcePath = PathDef.Default.FileOfPackageObject(
+                parsed.Label,
+                parsed.Namespace,
+                parsed.Pid,
+                locked.Resolved.Vid,
+                Path.GetExtension(locked.Resolved.FileName)
+            );
+            var targetPath = Path.Combine(
+                PathDef.Default.DirectoryOfBuild(Context.Key),
+                ComputeRelativeTarget(locked.Rule, locked.Resolved)
+            );
             manifest.FragileFiles.Add(
-                new(
-                    PathDef.Default.FileOfPackageObject(
-                        parcel.Label,
-                        parcel.Namespace,
-                        parcel.Pid,
-                        parcel.Vid,
-                        Path.GetExtension(parcel.Path)
-                    ),
-                    Path.Combine(PathDef.Default.DirectoryOfHome(Context.Key), parcel.Path),
-                    parcel.Download,
-                    parcel.Hash
-                )
+                new(sourcePath, targetPath, locked.Resolved.Url, locked.Resolved.Hashes.Primary)
             );
         }
 
@@ -117,6 +124,22 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         Context.Manifest = manifest;
+    }
+
+    // Derives the package's in-build target from its frozen rule + resolution: same computation
+    // the old PackagePlanner did, replayed at manifest time since the lock stores rule + resolved
+    // rather than a materialized path.
+    private static string ComputeRelativeTarget(
+        LockData.PackageRule rule,
+        LockData.ResolvedPackage resolved
+    )
+    {
+        var fileName = rule.Normalizing
+            ? string.Concat(FileHelper.Sanitize(resolved.ProjectName), Path.GetExtension(resolved.FileName))
+            : resolved.FileName;
+        return rule.Destination is not null
+            ? Path.Combine(rule.Destination, fileName)
+            : Path.Combine(FileHelper.GetAssetFolderName(resolved.Kind), fileName);
     }
 
     private static void PopulatePersistent(

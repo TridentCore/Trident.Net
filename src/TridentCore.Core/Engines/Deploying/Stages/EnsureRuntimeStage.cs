@@ -13,7 +13,7 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var major = Context.Artifact!.JavaMajorVersion;
+        var major = Context.Lock.Artifact!.JavaMajorVersion;
 
         var bad = false;
 
@@ -126,8 +126,6 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                 }
             }
         }
-
-        Context.IsRuntimeEnsured = true;
     }
 
     private static string GenerateRuntimeString(uint major) =>

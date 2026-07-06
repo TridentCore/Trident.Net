@@ -48,12 +48,12 @@ public class AccountConfigurerAgent
     public class LaunchContext
     {
         public Igniter Igniter { get; }
-        public LockData Artifact { get; }
+        public LockData Lock { get; }
 
-        public LaunchContext(Igniter igniter, LockData artifact)
+        public LaunchContext(Igniter igniter, LockData @lock)
         {
             Igniter = igniter;
-            Artifact = artifact;
+            Lock = @lock;
         }
 
         public string GetLibraryPath(LockData.Library library) =>

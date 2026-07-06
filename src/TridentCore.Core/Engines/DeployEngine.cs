@@ -8,22 +8,15 @@ using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Engines;
 
-// 构建过程
-// 1.加载现有版本锁信息，验证是否可用（与 Setup 是否能完全对的上）
-// 2.生成启用的包列表，解析出依赖图，扁平化
-// 3.解析加载器，添加资源到版本锁
-// 4.构建版本锁，并写入文件
-// 5.构建固化清单
-// 6.固化
-// ...
-// 版本锁中需要保存验证信息，例如当时的所有包列表
-
+// Fixed linear pipeline: every stage runs in order and decides internally (against BaseLock)
+// whether to migrate, rebuild, or no-op. There is no state-machine branching — DecideNext is
+// gone, replaced by a static yield sequence.
 public class DeployEngine(
     string key,
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    string verificationWatermark,
+    string optionsHash,
     JavaHomeLocatorDelegate javaHomeLocator
 ) : IEnumerable<StageBase>
 {
@@ -31,7 +24,7 @@ public class DeployEngine(
 
     public IEnumerator<StageBase> GetEnumerator() =>
         new DeployEngineEnumerator(
-            new(key, setup, provider, options, verificationWatermark, javaHomeLocator)
+            new(key, setup, provider, options, optionsHash, javaHomeLocator)
         );
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -42,6 +35,20 @@ public class DeployEngine(
 
     private class DeployEngineEnumerator(DeployContext context) : IEnumerator<StageBase>
     {
+        private static readonly Type[] Sequence =
+        [
+            typeof(LoadLockStage),
+            typeof(InstallVanillaStage),
+            typeof(ProcessLoaderStage),
+            typeof(SyncPackagesStage),
+            typeof(PersistLockStage),
+            typeof(EnsureRuntimeStage),
+            typeof(GenerateManifestStage),
+            typeof(SolidifyManifestStage)
+        ];
+
+        private int _index = -1;
+
         #region IEnumerator<StageBase> Members
 
         public void Reset() => throw new NotImplementedException();
@@ -53,10 +60,10 @@ public class DeployEngine(
                 disposable.Dispose();
             }
 
-            var next = DecideNext();
-            if (next != null)
+            _index++;
+            if (_index < Sequence.Length)
             {
-                Current = next;
+                Current = CreateStage(Sequence[_index]);
                 return true;
             }
 
@@ -79,62 +86,12 @@ public class DeployEngine(
 
         #endregion
 
-        private StageBase? DecideNext()
+        private StageBase CreateStage(Type type)
         {
-            if (context.Manifest != null)
-            {
-                if (!context.IsSolidified)
-                {
-                    return CreateStage<SolidifyManifestStage>();
-                }
-
-                // Done
-                return null;
-            }
-
-            if (context.Artifact != null)
-            {
-                if (context.Options.FastMode)
-                // Fast-Forward
-                {
-                    return null;
-                }
-
-                if (!context.IsRuntimeEnsured)
-                {
-                    return CreateStage<EnsureRuntimeStage>();
-                }
-
-                return CreateStage<GenerateManifestStage>();
-            }
-
-            if (context.ArtifactBuilder != null)
-            {
-                if (!context.IsVanillaInstalled)
-                {
-                    return CreateStage<InstallVanillaStage>();
-                }
-
-                if (!context.IsLoaderProcessed)
-                {
-                    return CreateStage<ProcessLoaderStage>();
-                }
-
-                if (!context.IsPackageResolved)
-                {
-                    return CreateStage<ResolvePackageStage>();
-                }
-
-                return CreateStage<BuildArtifactStage>();
-            }
-
-            return CreateStage<CheckArtifactStage>();
-        }
-
-        private T CreateStage<T>()
-            where T : StageBase
-        {
-            var stage = ActivatorUtilities.CreateInstance<T>(context.Provider);
+            var stage = (StageBase)ActivatorUtilities.CreateInstance(
+                context.Provider,
+                type
+            );
             stage.Context = context;
             return stage;
         }

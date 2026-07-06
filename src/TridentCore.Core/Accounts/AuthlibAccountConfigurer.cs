@@ -17,7 +17,7 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
     {
         var ai = (AuthlibAccount)account;
 
-        var aiLib = context.Artifact.Libraries.FirstOrDefault(x =>
+        var aiLib = context.Lock.Artifact!.Libraries.FirstOrDefault(x =>
             x.Id is { Namespace: AuthlibInjectorService.LIBRARY_NAMESPACE, Name: AuthlibInjectorService.LIBRARY_NAME });
 
         if (aiLib is null)

@@ -1,6 +1,7 @@
+using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
-using TridentCore.Core.Engines.Deploying;
+using TridentCore.Core.Extensions;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
@@ -123,20 +124,20 @@ public class PrismLauncherService(IPrismLauncherClient client)
     }
 
     public static void AddValidatedLibrariesToArtifact(
-        LockDataBuilder builder,
-        IEnumerable<Component.Library> libraries
+        IList<LockData.Library> libraries,
+        IEnumerable<Component.Library> sources
     )
     {
-        foreach (var lib in libraries.Where(ValidateLibraryRule))
+        foreach (var lib in sources.Where(ValidateLibraryRule))
         {
             if (lib.Url != null)
             {
                 // old fashion
-                builder.AddLibraryPrismFlavor(lib.Name, lib.Url);
+                libraries.AddLibraryPrismFlavor(lib.Name, lib.Url);
             }
             else if (lib.Downloads is { Artifact: { } artifact })
             {
-                builder.AddLibrary(lib.Name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
+                libraries.AddLibrary(lib.Name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
             }
 
             (string, Component.Library.DownloadsEntry)? native = null;
@@ -171,7 +172,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                 // NOTE: 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
-                    builder.AddLibrary(
+                    libraries.AddLibrary(
                         $"{lib.Name}:{classifier}",
                         download.Url,
                         FileHash.FromSha1(download.Sha1),
