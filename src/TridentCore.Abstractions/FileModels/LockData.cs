@@ -25,7 +25,7 @@ public record LockData
     #region Nested type: ViabilityData
 
     // Hash fingerprints governing cache validity. New xxxHash fields go here, not at top level.
-    public record ViabilityData(string OptionsHash);
+    public record ViabilityData(string OptionsHash, string? PriorityHash = null);
 
     #endregion
 
@@ -47,31 +47,20 @@ public record LockData
 
     #region Nested type: LockedPackage
 
-    // A declared purl paired with its resolved-and-locked version and the rule outcome at lock
-    // time. The purl is the diff key (declared intent), Resolved is the locked fact.
+    // A declared purl paired with its resolved-and-locked Package and the rule outcome at lock
+    // time. The purl is the diff key (declared intent, possibly floating); Resolved is the full
+    // resolved Package stored verbatim so rule recompute, manifest generation, and the host UI
+    // all read real data without re-hitting repositories.
+    //
+    // SuppressedBy names the purl that won the target-path arbitration in FlattenPackages; a
+    // suppressed package stays locked so its version survives a later priority reshuffle
+    // without re-resolving (null = effective, will be materialized into the build).
     public record LockedPackage(
         string Purl,
         string? Source,
-        ResolvedPackage Resolved,
+        Package Resolved,
         PackageRule Rule,
-        Compatibility? Compat
-    );
-
-    #endregion
-
-    #region Nested type: ResolvedPackage
-
-    // The locked resolution of a purl. Caches Label/Kind/ProjectName/FileName so rule changes
-    // can be recomputed offline (via PackagePlanner.RecomputeRule) without re-hitting repositories.
-    public record ResolvedPackage(
-        string Vid,
-        string Label,
-        ResourceKind Kind,
-        string ProjectName,
-        string FileName,
-        Uri Url,
-        long Size,
-        FileHashes Hashes
+        string? SuppressedBy = null
     );
 
     #endregion
@@ -81,28 +70,6 @@ public record LockData
     // The rule evaluation outcome frozen into the lock. Per-package so a rule tweak only
     // recomputes the affected packages and never re-resolves (which would drift floating purls).
     public record PackageRule(bool Skipping, string? Destination, bool Normalizing);
-
-    #endregion
-
-    #region Nested type: Compatibility
-
-    public record Compatibility(IReadOnlyList<string> GameVersions, IReadOnlyList<string> Loaders);
-
-    #endregion
-
-    #region Nested type: FileHashes
-
-    public record FileHashes(FileHash? Sha1, FileHash? Sha512)
-    {
-        // The hash actually used for download verification: prefer sha1, fall back to sha512.
-        public FileHash? Primary => Sha1 ?? Sha512;
-
-        public static FileHashes From(FileHash? hash) => hash switch
-        {
-            { Algorithm: HashAlgorithm.Sha512 } => new(null, hash),
-            _ => new(hash, null)
-        };
-    }
 
     #endregion
 

@@ -29,6 +29,12 @@ public class Profile
     public class Rice
     {
         public string? Source { get; set; }
+
+        // Source URIs ordered by overlay strength: earlier laid first, later overrides earlier.
+        // The last entry is the topmost layer. Empty = rely on the tier defaults (manual top,
+        // unlisted non-modpack middle, current modpack bottom).
+        public IList<string> SourceOrders { get; init; } = [];
+
         public required string Version { get; set; }
         public string? Loader { get; set; }
         public IList<Entry> Packages { get; init; } = [];

@@ -17,6 +17,7 @@ public class DeployEngine(
     IServiceProvider provider,
     DeployEngineOptions options,
     string optionsHash,
+    string priorityHash,
     JavaHomeLocatorDelegate javaHomeLocator
 ) : IEnumerable<StageBase>
 {
@@ -24,7 +25,7 @@ public class DeployEngine(
 
     public IEnumerator<StageBase> GetEnumerator() =>
         new DeployEngineEnumerator(
-            new(key, setup, provider, options, optionsHash, javaHomeLocator)
+            new(key, setup, provider, options, optionsHash, priorityHash, javaHomeLocator)
         );
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -35,12 +36,13 @@ public class DeployEngine(
 
     private class DeployEngineEnumerator(DeployContext context) : IEnumerator<StageBase>
     {
-        private static readonly Type[] Sequence =
+        private static readonly Type[] SEQUENCE =
         [
             typeof(LoadLockStage),
             typeof(InstallVanillaStage),
             typeof(ProcessLoaderStage),
             typeof(SyncPackagesStage),
+            typeof(FlattenPackagesStage),
             typeof(PersistLockStage),
             typeof(EnsureRuntimeStage),
             typeof(GenerateManifestStage),
@@ -61,9 +63,9 @@ public class DeployEngine(
             }
 
             _index++;
-            if (_index < Sequence.Length)
+            if (_index < SEQUENCE.Length)
             {
-                Current = CreateStage(Sequence[_index]);
+                Current = CreateStage(SEQUENCE[_index]);
                 return true;
             }
 

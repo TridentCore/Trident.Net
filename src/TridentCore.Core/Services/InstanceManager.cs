@@ -107,6 +107,7 @@ public class InstanceManager(
         }
 
         var path = PathDef.Default.FileOfLockData(key);
+        var profile = profileManager.GetImmutable(key);
         if (deploy.FastMode && File.Exists(path))
         {
             var existing = JsonSerializer.Deserialize<LockData>(
@@ -117,8 +118,9 @@ public class InstanceManager(
             if (
                 existing is { Artifact: not null }
                 && existing.Verify(
-                    profileManager.GetImmutable(key).Setup,
-                    HashHelper.ComputeObjectHash(deploy)
+                    profile.Setup,
+                    ViabilityHashHelper.OptionsOf(deploy),
+                    ViabilityHashHelper.PriorityOf(profile.Setup)
                 )
             )
             {
@@ -248,6 +250,7 @@ public class InstanceManager(
                 FullCheckMode = options.FullCheckMode,
             },
             HashHelper.ComputeObjectHash(options),
+            ViabilityHashHelper.PriorityOf(profile.Setup),
             javaHomeLocator
         );
 
@@ -274,8 +277,12 @@ public class InstanceManager(
                     tracker.CurrentStage = DeployStage.ProcessLoader;
                     break;
                 case SyncPackagesStage:
-                    tracker.StageStream.OnNext(DeployStage.ResolvePackage);
-                    tracker.CurrentStage = DeployStage.ResolvePackage;
+                    tracker.StageStream.OnNext(DeployStage.SyncPackages);
+                    tracker.CurrentStage = DeployStage.SyncPackages;
+                    break;
+                case FlattenPackagesStage:
+                    tracker.StageStream.OnNext(DeployStage.FlattenPackages);
+                    tracker.CurrentStage = DeployStage.FlattenPackages;
                     break;
                 case PersistLockStage:
                     tracker.StageStream.OnNext(DeployStage.PersistLock);

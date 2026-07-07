@@ -3,6 +3,7 @@ using System.Text.Json;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Extensions;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
@@ -44,7 +45,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
         foreach (var locked in Context.Lock.Packages)
         {
-            if (locked.Rule.Skipping)
+            if (locked.Rule.Skipping || locked.SuppressedBy is not null)
             {
                 continue;
             }
@@ -54,15 +55,15 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                 parsed.Label,
                 parsed.Namespace,
                 parsed.Pid,
-                locked.Resolved.Vid,
+                locked.Resolved.VersionId,
                 Path.GetExtension(locked.Resolved.FileName)
             );
             var targetPath = Path.Combine(
                 PathDef.Default.DirectoryOfBuild(Context.Key),
-                ComputeRelativeTarget(locked.Rule, locked.Resolved)
+                locked.RelativeTarget()
             );
             manifest.FragileFiles.Add(
-                new(sourcePath, targetPath, locked.Resolved.Url, locked.Resolved.Hashes.Primary)
+                new(sourcePath, targetPath, locked.Resolved.Download, locked.Resolved.Hash)
             );
         }
 
@@ -124,22 +125,6 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         Context.Manifest = manifest;
-    }
-
-    // Derives the package's in-build target from its frozen rule + resolution: same computation
-    // the old PackagePlanner did, replayed at manifest time since the lock stores rule + resolved
-    // rather than a materialized path.
-    private static string ComputeRelativeTarget(
-        LockData.PackageRule rule,
-        LockData.ResolvedPackage resolved
-    )
-    {
-        var fileName = rule.Normalizing
-            ? string.Concat(FileHelper.Sanitize(resolved.ProjectName), Path.GetExtension(resolved.FileName))
-            : resolved.FileName;
-        return rule.Destination is not null
-            ? Path.Combine(rule.Destination, fileName)
-            : Path.Combine(FileHelper.GetAssetFolderName(resolved.Kind), fileName);
     }
 
     private static void PopulatePersistent(

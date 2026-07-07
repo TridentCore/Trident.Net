@@ -1,4 +1,5 @@
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
@@ -19,14 +20,16 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         var rules = setup.Rules.Where(x => x.Enabled).ToList();
         var baseLock = Context.BaseLock;
 
-        var filter = BuildFilter(setup);
+        var filter = Filter.FromSetup(setup);
 
-        // Step 1: diff view keyed by project identity (vid intentionally ignored so a fixed→floating
-        // flip still matches and inherits the locked resolution).
+        // Step 1: diff view keyed by (project, source) identity. vid is intentionally ignored
+        // so a fixed→floating flip still matches and inherits the locked resolution; source is
+        // included so the same project from distinct layers (modpack + manual + recipe) each
+        // survives to FlattenPackages, which resolves same-target collisions by overlay priority.
         var setupByKey = new Dictionary<Key, Profile.Rice.Entry>();
         foreach (var entry in enabled)
         {
-            setupByKey[MatchKey(entry.Purl)] = entry;
+            setupByKey[MatchKey(entry.Purl, entry.Source)] = entry;
         }
 
         var baseByKey = new Dictionary<Key, LockData.LockedPackage>();
@@ -34,7 +37,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         {
             foreach (var locked in baseLock.Packages)
             {
-                baseByKey[MatchKey(locked.Purl)] = locked;
+                baseByKey[MatchKey(locked.Purl, locked.Source)] = locked;
             }
         }
 
@@ -62,7 +65,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             // explicitly repinned it (vid differs from the locked one) — honoring intent.
             var resolvedInvalid = floating
                 ? platformChanged
-                : !string.Equals(parsed.Vid, locked.Resolved.Vid, StringComparison.OrdinalIgnoreCase);
+                : !string.Equals(parsed.Vid, locked.Resolved.VersionId, StringComparison.InvariantCulture);
             if (resolvedInvalid)
             {
                 // filter/策略变了，或用户重定了固定版本 → 重新解析
@@ -70,8 +73,10 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             }
             else
             {
-                var rule = planner.RecomputeRule(entry, locked.Resolved, rules);
-                result.Add(locked with { Purl = entry.Purl, Source = entry.Source, Rule = rule });
+                var rule = planner.EvaluateRule(entry, locked.Resolved, rules);
+                // Only FlattenPackages arbitrates SuppressedBy; reset on match so a loser that
+                // later becomes the sole occupant is reactivated without a stale winner pointer.
+                result.Add(locked with { Purl = entry.Purl, Source = entry.Source, Rule = rule, SuppressedBy = null });
             }
         }
 
@@ -99,24 +104,6 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         Context.Lock = Context.Lock with { Packages = result };
     }
 
-    private static Filter BuildFilter(Profile.Rice setup)
-    {
-        string? loader = null;
-        if (setup.Loader != null)
-        {
-            if (LoaderHelper.TryParse(setup.Loader, out var result))
-            {
-                loader = result.Identity;
-            }
-            else
-            {
-                throw new FormatException($"{setup.Loader} is not well formatted loader string");
-            }
-        }
-
-        return new(setup.Version, loader, null);
-    }
-
     private LockData.LockedPackage BuildLocked(
         Profile.Rice.Entry entry,
         Package package,
@@ -124,36 +111,11 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
     )
     {
         var rule = planner.EvaluateRule(entry, package, rules);
-        return new(
-                   entry.Purl,
-                   entry.Source,
-                   new(
-                       package.VersionId,
-                       package.Label,
-                       package.Kind,
-                       package.ProjectName,
-                       package.FileName,
-                       package.Download,
-                       (long)package.Size,
-                       LockData.FileHashes.From(package.Hash)
-                      ),
-                   rule,
-                   new(
-                       package.Requirements.AnyOfVersions.ToList(),
-                       package.Requirements.AnyOfLoaders.ToList()
-                      )
-                  );
+        return new(entry.Purl, entry.Source, package, rule);
     }
 
-    private static Key MatchKey(string purl)
-    {
-        PackageHelper.TryParse(purl, out var parsed);
-        return new(
-            (parsed.Label ?? string.Empty).ToLowerInvariant(),
-            parsed.Namespace ?? string.Empty,
-            parsed.Pid ?? string.Empty
-        );
-    }
+    private static Key MatchKey(string purl, string? source) =>
+        PackageHelper.TryParse(purl, out var parsed) ? new((parsed.Label).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Pid, source) : throw new FormatException($"Invalid package url: {purl}");
 
-    private record Key(string Label, string Namespace, string Pid);
+    private record Key(string Label, string Namespace, string Pid, string? Source);
 }

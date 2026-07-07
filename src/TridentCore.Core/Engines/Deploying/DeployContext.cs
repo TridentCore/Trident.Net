@@ -9,6 +9,7 @@ public class DeployContext(
     IServiceProvider provider,
     DeployEngineOptions options,
     string optionsHash,
+    string priorityHash,
     JavaHomeLocatorDelegate javaHomeLocator
 )
 {
@@ -26,5 +27,6 @@ public class DeployContext(
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
     public string OptionsHash => optionsHash;
+    public string PriorityHash => priorityHash;
     public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;
 }

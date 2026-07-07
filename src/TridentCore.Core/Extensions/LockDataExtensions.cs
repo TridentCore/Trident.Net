@@ -1,6 +1,7 @@
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Core.Igniters;
+using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Extensions;
@@ -38,6 +39,17 @@ public static class LockDataExtensions
 
         return igniter;
     }
+
+    // The in-build relative target derived from a locked package's frozen rule + resolution.
+    // Centralized so FlattenPackages (conflict grouping) and GenerateManifest (materialization)
+    // never compute it differently.
+    public static string RelativeTarget(this LockData.LockedPackage self) =>
+        PackagePathHelper.RelativeTarget(
+            self.Rule.Normalizing,
+            self.Rule.Destination,
+            self.Resolved.ProjectName,
+            self.Resolved.FileName,
+            self.Resolved.Kind);
 
     // Mutable-list library accumulation with the same dedup rules the platform-computed
     // artifact needs while being rebuilt (vanilla + loader both add libraries incrementally).

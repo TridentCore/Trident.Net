@@ -13,7 +13,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
 {
     // Standalone planning API consumed by exporters and the host's materialization flows. Resolves
     // + evaluates rules + materializes a target path into a PackagePlan. The deploy pipeline does
-    // not use this — it uses ResolveAsync / EvaluateRule / RecomputeRule directly against the lock.
+    // not use this — it uses ResolveAsync / EvaluateRule directly against the lock.
     public async IAsyncEnumerable<PackagePlan> PlanAsync(
         IReadOnlyList<Profile.Rice.Entry> packages,
         PackagePlannerContext context
@@ -50,13 +50,14 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         }
 
         var resolved = await agent
-            .ResolveBatchAsync(index.Select(x => x.Key), filter)
+            .ResolveBatchAsync(index.Select(x => x.Key).Distinct(), filter)
             .ConfigureAwait(false);
 
-        var byKey = index.ToDictionary(x => x.Key, x => x.Origin);
+        // Same project+version from distinct sources now coexist (SyncPackages keys on
+        // (project, source)); fan a single resolution out to every entry sharing that key.
+        var byKey = index.ToLookup(x => x.Key, x => x.Origin);
         return resolved
-            .Where(x => byKey.ContainsKey(x.Item1))
-            .Select(x => (byKey[x.Item1], x.Item2))
+            .SelectMany(x => byKey[x.Item1].Select(origin => (origin, x.Item2)))
             .ToList();
     }
 
@@ -69,18 +70,6 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
     {
         var result = RuleHelper.Evaluate(new RuleHelper.Input(entry, package), rules);
         return ToPackageRule(result, entry);
-    }
-
-    // Pure rule recompute from a cached resolution — zero network, zero re-resolve. Used by
-    // SyncPackages' fine-grained rule invalidation so a rule tweak never drifts floating purls.
-    public LockData.PackageRule RecomputeRule(
-        Profile.Rice.Entry entry,
-        LockData.ResolvedPackage resolved,
-        IReadOnlyList<Profile.Rice.Rule> rules
-    )
-    {
-        var package = ReconstructPackage(entry.Purl, resolved);
-        return EvaluateRule(entry, package, rules);
     }
 
     private LockData.PackageRule ToPackageRule(RuleHelper.Result result, Profile.Rice.Entry entry)
@@ -104,12 +93,12 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         LockData.PackageRule rule
     )
     {
-        var fileName = rule.Normalizing
-            ? string.Concat(FileHelper.Sanitize(package.ProjectName), Path.GetExtension(package.FileName))
-            : package.FileName;
-        var relativeTarget = rule.Destination is not null
-            ? Path.Combine(rule.Destination, fileName)
-            : Path.Combine(FileHelper.GetAssetFolderName(package.Kind), fileName);
+        var relativeTarget = PackagePathHelper.RelativeTarget(
+            rule.Normalizing,
+            rule.Destination,
+            package.ProjectName,
+            package.FileName,
+            package.Kind);
 
         return new(
             package.Label,
@@ -121,34 +110,5 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
             package.Hash
         )
         { IsSkipping = rule.Skipping };
-    }
-
-    // Rebuilds a Package just sufficient for RuleHelper evaluation from the cached resolution +
-    // the declared purl (which carries Namespace/ProjectId the resolution does not). Only the
-    // fields rule selectors read are populated meaningfully; the rest are inert placeholders.
-    private static Package ReconstructPackage(string purl, LockData.ResolvedPackage resolved)
-    {
-        PackageHelper.TryParse(purl, out var parsed);
-        return new(
-            Label: resolved.Label,
-            Namespace: parsed.Namespace,
-            ProjectId: parsed.Pid,
-            VersionId: resolved.Vid,
-            ProjectName: resolved.ProjectName,
-            VersionName: resolved.Vid,
-            Thumbnail: null,
-            Author: string.Empty,
-            Summary: string.Empty,
-            Reference: new("sourced://recompute", UriKind.Absolute),
-            Kind: resolved.Kind,
-            ReleaseType: ReleaseType.Release,
-            PublishedAt: DateTimeOffset.UnixEpoch,
-            Download: resolved.Url,
-            Size: (ulong)resolved.Size,
-            FileName: resolved.FileName,
-            Hash: resolved.Hashes.Primary,
-            Requirements: new([], []),
-            Dependencies: []
-        );
     }
 }
