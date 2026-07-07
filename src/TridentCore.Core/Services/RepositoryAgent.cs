@@ -62,6 +62,9 @@ public class RepositoryAgent
                                 new RefitSettings(
                                     new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))
                                 )
+                                {
+                                    UrlParameterFormatter = new LowercaseBoolUrlParameterFormatter(),
+                                }
                             )
                         );
                         built.Add(profile.Label, curseforge);
@@ -81,6 +84,9 @@ public class RepositoryAgent
                                         }
                                     )
                                 )
+                                {
+                                    UrlParameterFormatter = new LowercaseBoolUrlParameterFormatter(),
+                                }
                             )
                         );
 
