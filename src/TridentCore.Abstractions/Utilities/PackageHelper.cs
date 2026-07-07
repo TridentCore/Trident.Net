@@ -27,6 +27,11 @@ public static class PackageHelper
         return false;
     }
 
+    public static (string Label, string? Namespace, string Pid, string? Vid) Parse(string purl) =>
+        TryParse(purl, out var result)
+            ? result
+            : throw new System.FormatException($"Invalid package url: {purl}");
+
     public static bool IsMatched(string left, string label, string? ns, string pid) =>
         TryParse(left, out var l)
         && string.Equals(l.Label, label, StringComparison.OrdinalIgnoreCase)

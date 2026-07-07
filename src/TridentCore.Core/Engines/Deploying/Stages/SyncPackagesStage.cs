@@ -58,7 +58,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             var entry = setupByKey[key];
             var locked = baseByKey[key];
 
-            PackageHelper.TryParse(entry.Purl, out var parsed);
+            var parsed = PackageHelper.Parse(entry.Purl);
             var floating = parsed.Vid == null;
             // Floating purls invalidate when the platform/options fingerprint changed (the
             // resolution was filter-dependent). Fixed purls keep their vid unless the user
@@ -114,8 +114,11 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         return new(entry.Purl, entry.Source, package, rule);
     }
 
-    private static Key MatchKey(string purl, string? source) =>
-        PackageHelper.TryParse(purl, out var parsed) ? new((parsed.Label).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Pid, source) : throw new FormatException($"Invalid package url: {purl}");
+    private static Key MatchKey(string purl, string? source)
+    {
+        var parsed = PackageHelper.Parse(purl);
+        return new((parsed.Label).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Pid, source);
+    }
 
     private record Key(string Label, string Namespace, string Pid, string? Source);
 }

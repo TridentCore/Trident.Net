@@ -50,7 +50,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
                 continue;
             }
 
-            PackageHelper.TryParse(locked.Purl, out var parsed);
+            var parsed = PackageHelper.Parse(locked.Purl);
             var sourcePath = PathDef.Default.FileOfPackageObject(
                 parsed.Label,
                 parsed.Namespace,
