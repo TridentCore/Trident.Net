@@ -7,9 +7,9 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// Synchronizes packages between BaseLock (truth) and Lock (product) by purl, never re-resolving
+// Synchronizes packages between BaseLock (truth) and Lock (product) by pref, never re-resolving
 // a package whose vid is already locked. Rule changes are recomputed offline against the cached
-// resolution; only floating purls whose platform/options fingerprint changed (or brand-new purls)
+// resolution; only floating prefs whose platform/options fingerprint changed (or brand-new prefs)
 // hit the repositories — so a rule tweak can never drift the locked versions.
 public class SyncPackagesStage(PackagePlanner planner) : StageBase
 {
@@ -29,7 +29,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         var setupByKey = new Dictionary<Key, Profile.Rice.Entry>();
         foreach (var entry in enabled)
         {
-            setupByKey[MatchKey(entry.Purl, entry.Source)] = entry;
+            setupByKey[MatchKey(entry.Pref, entry.Source)] = entry;
         }
 
         var baseByKey = new Dictionary<Key, LockData.LockedPackage>();
@@ -37,7 +37,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         {
             foreach (var locked in baseLock.Packages)
             {
-                baseByKey[MatchKey(locked.Purl, locked.Source)] = locked;
+                baseByKey[MatchKey(locked.Pref, locked.Source)] = locked;
             }
         }
 
@@ -58,10 +58,10 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             var entry = setupByKey[key];
             var locked = baseByKey[key];
 
-            var parsed = PackageHelper.Parse(entry.Purl);
+            var parsed = PackageHelper.Parse(entry.Pref);
             var floating = parsed.Vid == null;
-            // Floating purls invalidate when the platform/options fingerprint changed (the
-            // resolution was filter-dependent). Fixed purls keep their vid unless the user
+            // Floating prefs invalidate when the platform/options fingerprint changed (the
+            // resolution was filter-dependent). Fixed prefs keep their vid unless the user
             // explicitly repinned it (vid differs from the locked one) — honoring intent.
             var resolvedInvalid = floating
                 ? platformChanged
@@ -76,7 +76,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
                 var rule = planner.EvaluateRule(entry, locked.Resolved, rules);
                 // Only FlattenPackages arbitrates SuppressedBy; reset on match so a loser that
                 // later becomes the sole occupant is reactivated without a stale winner pointer.
-                result.Add(locked with { Purl = entry.Purl, Source = entry.Source, Rule = rule, SuppressedBy = null });
+                result.Add(locked with { Pref = entry.Pref, Source = entry.Source, Rule = rule, SuppressedBy = null });
             }
         }
 
@@ -111,12 +111,12 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
     )
     {
         var rule = planner.EvaluateRule(entry, package, rules);
-        return new(entry.Purl, entry.Source, package, rule);
+        return new(entry.Pref, entry.Source, package, rule);
     }
 
-    private static Key MatchKey(string purl, string? source)
+    private static Key MatchKey(string pref, string? source)
     {
-        var parsed = PackageHelper.Parse(purl);
+        var parsed = PackageHelper.Parse(pref);
         return new((parsed.Label).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Pid, source);
     }
 

@@ -85,7 +85,7 @@ public class FlattenPackagesStage : StageBase
             result.Add(winner with { SuppressedBy = null });
             foreach (var loser in ranked.Skip(1).Select(x => x.Pkg))
             {
-                result.Add(loser with { SuppressedBy = winner.Purl });
+                result.Add(loser with { SuppressedBy = winner.Pref });
             }
         }
 
@@ -112,7 +112,7 @@ public class FlattenPackagesStage : StageBase
 
     private static string ProjectKeyOf(LockData.LockedPackage p)
     {
-        if (PackageHelper.TryParse(p.Purl, out var parsed))
+        if (PackageHelper.TryParse(p.Pref, out var parsed))
         {
             return string.Concat(
                 (parsed.Label).ToLowerInvariant(),
@@ -122,6 +122,6 @@ public class FlattenPackagesStage : StageBase
                 parsed.Pid);
         }
 
-        throw new FormatException("Invalid purl: " + p.Purl);
+        throw new FormatException("Invalid pref: " + p.Pref);
     }
 }

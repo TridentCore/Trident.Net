@@ -52,7 +52,7 @@ internal static class InstanceOperation
             ctx.InstancePath,
             ctx.ProfilePath,
             entries.Count,
-            [.. resolved.Select(p => new PackagePreview(p.Purl, p.Enabled, p.Source, p.Tags, p.ProjectName, p.Author, p.Kind))],
+            [.. resolved.Select(p => new PackagePreview(p.Pref, p.Enabled, p.Source, p.Tags, p.ProjectName, p.Author, p.Kind))],
             Math.Max(0, entries.Count - previewLimit)
         );
     }
@@ -280,7 +280,7 @@ public sealed record InstanceDetail(
 );
 
 public sealed record PackagePreview(
-    string Purl,
+    string Pref,
     bool Enabled,
     string? Source,
     IReadOnlyList<string> Tags,

@@ -22,7 +22,7 @@ public class PackageDependentListCommand(
         var result = PackageOperation.DependentList(
             Resolver,
             repositories,
-            settings.Purl,
+            settings.Pref,
             settings.GameVersion,
             settings.Loader,
             settings.ParsedKind,
@@ -45,20 +45,20 @@ public class PackageDependentListCommand(
         {
             output.WriteEmptyState(
                 "No dependents found",
-                $"No enabled package in {instance.Key} depends on {settings.Purl}."
+                $"No enabled package in {instance.Key} depends on {settings.Pref}."
             );
             return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new($"[bold]Dependents for {Markup.Escape(settings.Purl)}[/]");
-        table.AddColumn("PURL");
+        table.Title = new($"[bold]Dependents for {Markup.Escape(settings.Pref)}[/]");
+        table.AddColumn("PREF");
         table.AddColumn("Project");
         table.AddColumn("Version");
         foreach (var dep in result.Dependents)
         {
             table.AddMarkupRow(
-                Markup.Escape(dep.Purl),
+                Markup.Escape(dep.Pref),
                 Markup.Escape(dep.ProjectName ?? "-"),
                 Markup.Escape(dep.VersionName ?? "-")
             );
@@ -71,7 +71,7 @@ public class PackageDependentListCommand(
 
     public class Arguments : PackageFilterSettings
     {
-        [CommandArgument(0, "<PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<PREF>")]
+        public required string Pref { get; set; }
     }
 }

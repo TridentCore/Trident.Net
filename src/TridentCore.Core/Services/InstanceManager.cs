@@ -544,8 +544,8 @@ public class InstanceManager(
     )
     {
         logger.LogInformation(
-            "Begin install package {purl} as {key}",
-            PackageHelper.ToPurl(label, ns, pid, vid),
+            "Begin install package {pref} as {key}",
+            PackageHelper.ToPref(label, ns, pid, vid),
             key.Key
         );
         var package = await repositories
@@ -604,9 +604,9 @@ public class InstanceManager(
     )
     {
         logger.LogInformation(
-            "Begin update {key} from package {purl}",
+            "Begin update {key} from package {pref}",
             key,
-            PackageHelper.ToPurl(label, ns, pid, vid)
+            PackageHelper.ToPref(label, ns, pid, vid)
         );
         var package = await repositories
             .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
@@ -645,7 +645,7 @@ public class InstanceManager(
             container.Profile.Name,
             container.Profile.Setup.Version,
             container.Profile.Setup.Loader,
-            [.. container.Profile.Setup.Packages.Select(x => x.Purl)],
+            [.. container.Profile.Setup.Packages.Select(x => x.Pref)],
             container.Profile.Overrides
         );
 

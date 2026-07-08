@@ -10,7 +10,7 @@ The repository provides both a **library** surface (for embedding in launchers o
 
 ```
 src/TridentCore.Abstractions/   Pure models, interfaces, enums, extension methods
-src/TridentCore.Purl/           Package URL (PURL) parsing and formatting library
+src/TridentCore.Pref/           Package URL (PURL) parsing and formatting library
 src/TridentCore.Core/           Business logic, engines, API clients, services
 src/TridentCore.Cli/            The `trident` CLI product (Commands + MCP Tools)
 ```
@@ -20,7 +20,7 @@ Layering: `Abstractions ← Purl ← Core ← Cli`. Dependencies flow downward o
 ## Core Concepts
 
 - **Profile** (`profile.json`) — Declarative description of a Minecraft instance: game version, loader, packages, rules, and runtime overrides. Managed by `ProfileManager`.
-- **PURL** (Package URL) — Identifier format `repository:projectId@versionId`, e.g. `modrinth:aC3cM3Vq@9I21YYxf`. Parsed by `TridentCore.Purl`.
+- **PURL** (Package URL) — Identifier format `repository:projectId@versionId`, e.g. `modrinth:aC3cM3Vq@9I21YYxf`. Parsed by `TridentCore.Pref`.
 - **Instance** — A concrete deployment of a profile on disk, built by the staged `DeployEngine` pipeline.
 - **Repository** — Package source abstraction (Modrinth, CurseForge, user-configured). Queried through `RepositoryAgent`.
 - **Loader** — Mod loader (Forge, NeoForge, Fabric, Quilt). Metadata via PrismLauncher API.

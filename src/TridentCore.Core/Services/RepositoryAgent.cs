@@ -10,7 +10,7 @@ using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
 using TridentCore.Core.Repositories;
-using TridentCore.Purl;
+using TridentCore.Pref;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Core.Services;
@@ -205,10 +205,10 @@ public class RepositoryAgent
                 x.Packages.Select(y => (y.Item1.ToUnscoped(x.Label), Package: y.Item2))
             )
             .ToList();
-        foreach (var (purl, package) in resolved)
+        foreach (var (pref, package) in resolved)
         {
             await CacheObjectAsync(
-                    $"package:{PackageHelper.Identify(purl.Repository, package.Namespace, package.ProjectId, package.VersionId, filter)}",
+                    $"package:{PackageHelper.Identify(pref.Repository, package.Namespace, package.ProjectId, package.VersionId, filter)}",
                     package
                 )
                 .ConfigureAwait(false);

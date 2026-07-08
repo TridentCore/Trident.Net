@@ -5,7 +5,7 @@ using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
-using TridentCore.Purl;
+using TridentCore.Pref;
 
 namespace TridentCore.Core.Engines.Deploying;
 
@@ -36,9 +36,9 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         var index = new List<(PackageIdentifier Key, Profile.Rice.Entry Origin)>();
         foreach (var entry in packages)
         {
-            if (!PackageHelper.TryParse(entry.Purl, out var parsed))
+            if (!PackageHelper.TryParse(entry.Pref, out var parsed))
             {
-                throw new FormatException($"Package {entry.Purl} is not a valid package");
+                throw new FormatException($"Package {entry.Pref} is not a valid package");
             }
 
             index.Add((new(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid), entry));
@@ -76,10 +76,10 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
     {
         if (result is { Matched: true, EffectiveRule: { } effectiveRule })
         {
-            logger.LogDebug("Rule {{ {skipping}, {destination} }} applied to {purl}",
+            logger.LogDebug("Rule {{ {skipping}, {destination} }} applied to {pref}",
                             effectiveRule.Skipping,
                             effectiveRule.Destination ?? "<default>",
-                            entry.Purl);
+                            entry.Pref);
 
             return new(effectiveRule.Skipping, effectiveRule.Destination, effectiveRule.Normalizing);
         }

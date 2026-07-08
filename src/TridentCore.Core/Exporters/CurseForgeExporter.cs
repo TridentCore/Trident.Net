@@ -61,7 +61,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
         {
             foreach (var entry in setup.Packages.Where(x => x.Enabled))
             {
-                if (PackageHelper.TryParse(entry.Purl, out var parsed))
+                if (PackageHelper.TryParse(entry.Pref, out var parsed))
                 {
                     if (uint.TryParse(parsed.Pid, out var pid) && uint.TryParse(parsed.Vid, out var vid))
                     {

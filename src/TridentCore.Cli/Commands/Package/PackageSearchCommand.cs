@@ -94,7 +94,7 @@ public class PackageSearchCommand(
         table.AddColumn("Author");
         table.AddColumn("Kind");
         table.AddColumn("Downloads");
-        table.AddColumn("PURL");
+        table.AddColumn("PREF");
         foreach (var item in result.Packages)
         {
             table.AddMarkupRow(
@@ -102,7 +102,7 @@ public class PackageSearchCommand(
                 CliOutput.FormatValue(item.Author),
                 CliOutput.FormatStatus(item.Kind.ToString(), "blue"),
                 item.DownloadCount.ToString("n0"),
-                Markup.Escape(item.Purl)
+                Markup.Escape(item.Pref)
             );
         }
 

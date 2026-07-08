@@ -160,10 +160,10 @@ public class ProfileManager : IDisposable
             )
         )
         {
-            var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Purl);
+            var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Pref);
             if (changeSet.TryGetValue(extracted, out var change))
             {
-                entry.Purl = change;
+                entry.Pref = change;
                 entry.Source = source;
                 changeSet.Remove(extracted);
             }
@@ -185,7 +185,7 @@ public class ProfileManager : IDisposable
                 {
                     Enabled = true,
                     Source = source,
-                    Purl = add,
+                    Pref = add,
                 }
             );
         }

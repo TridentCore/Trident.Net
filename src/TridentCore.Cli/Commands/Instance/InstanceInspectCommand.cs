@@ -51,7 +51,7 @@ public class InstanceInspectCommand(
         {
             output.WriteEmptyState(
                 "No packages",
-                "Add packages with: trident package add --instance <key> <purl>"
+                "Add packages with: trident package add --instance <key> <pref>"
             );
             return;
         }

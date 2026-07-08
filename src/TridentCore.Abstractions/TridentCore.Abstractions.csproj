@@ -12,6 +12,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\TridentCore.Purl\TridentCore.Purl.csproj" />
+        <ProjectReference Include="..\TridentCore.Pref\TridentCore.Pref.csproj" />
     </ItemGroup>
 </Project>

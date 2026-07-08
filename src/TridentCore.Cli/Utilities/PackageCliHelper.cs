@@ -9,12 +9,12 @@ namespace TridentCore.Cli.Utilities;
 
 public static class PackageCliHelper
 {
-    public static (string Label, string? Namespace, string Pid, string? Vid) ParsePurl(
-        string purl
+    public static (string Label, string? Namespace, string Pid, string? Vid) ParsePref(
+        string pref
     ) =>
-        PackageHelper.TryParse(purl, out var parsed)
+        PackageHelper.TryParse(pref, out var parsed)
             ? parsed
-            : throw new CliException($"'{purl}' is not a valid package purl.", ExitCodes.USAGE);
+            : throw new CliException($"'{pref}' is not a valid package pref.", ExitCodes.USAGE);
 
     public static Filter BuildFilter(
         string? gameVersion,
@@ -44,24 +44,24 @@ public static class PackageCliHelper
             : throw new CliException($"Package kind '{kind}' is not supported.", ExitCodes.USAGE);
     }
 
-    public static Profile.Rice.Entry FindEntry(Profile profile, string purl)
+    public static Profile.Rice.Entry FindEntry(Profile profile, string pref)
     {
-        var parsed = ParsePurl(purl);
+        var parsed = ParsePref(pref);
         return profile.Setup.Packages.FirstOrDefault(x =>
-                PackageHelper.IsMatched(x.Purl, parsed.Label, parsed.Namespace, parsed.Pid)
-            ) ?? throw new CliException($"Package '{purl}' is not installed.", ExitCodes.NOT_FOUND);
+                PackageHelper.IsMatched(x.Pref, parsed.Label, parsed.Namespace, parsed.Pid)
+            ) ?? throw new CliException($"Package '{pref}' is not installed.", ExitCodes.NOT_FOUND);
     }
 
-    public static bool ContainsProject(Profile profile, string purl)
+    public static bool ContainsProject(Profile profile, string pref)
     {
-        var parsed = ParsePurl(purl);
+        var parsed = ParsePref(pref);
         return profile.Setup.Packages.Any(x =>
-            PackageHelper.IsMatched(x.Purl, parsed.Label, parsed.Namespace, parsed.Pid)
+            PackageHelper.IsMatched(x.Pref, parsed.Label, parsed.Namespace, parsed.Pid)
         );
     }
 
-    public static string ToPurl(Dependency dependency) =>
-        PackageHelper.ToPurl(
+    public static string ToPref(Dependency dependency) =>
+        PackageHelper.ToPref(
             dependency.Label,
             dependency.Namespace,
             dependency.ProjectId,
@@ -76,7 +76,7 @@ public static class PackageCliHelper
         table.AddColumn("Author");
         table.AddColumn("Kind");
         table.AddColumn("Enabled");
-        table.AddColumn("PURL");
+        table.AddColumn("PREF");
         foreach (var package in packages)
         {
             table.AddMarkupRow(
@@ -86,7 +86,7 @@ public static class PackageCliHelper
                     ? CliOutput.FormatStatus(k, "blue")
                     : "[dim]-[/]",
                 CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                Markup.Escape(package.Purl)
+                Markup.Escape(package.Pref)
             );
         }
 
@@ -100,12 +100,12 @@ public static class PackageCliHelper
     {
         var table = new Table().RoundedBorder();
         table.Title = new($"[bold]{Markup.Escape(title)}[/]");
-        table.AddColumn("PURL");
+        table.AddColumn("PREF");
         table.AddColumn("Required");
         foreach (var dependency in dependencies)
         {
             table.AddMarkupRow(
-                Markup.Escape(dependency.Purl),
+                Markup.Escape(dependency.Pref),
                 CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
             );
         }
@@ -116,7 +116,7 @@ public static class PackageCliHelper
 
 public interface IPackageTableRow
 {
-    string Purl { get; }
+    string Pref { get; }
     bool Enabled { get; }
     string? ProjectName { get; }
     string? Author { get; }
@@ -125,6 +125,6 @@ public interface IPackageTableRow
 
 public interface IDependencyTableRow
 {
-    string Purl { get; }
+    string Pref { get; }
     bool IsRequired { get; }
 }

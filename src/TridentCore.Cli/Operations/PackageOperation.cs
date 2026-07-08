@@ -5,7 +5,7 @@ using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
-using TridentCore.Purl;
+using TridentCore.Pref;
 
 namespace TridentCore.Cli.Operations;
 
@@ -53,9 +53,9 @@ internal static class PackageOperation
                 (x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
                 || (x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
                 || (x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                || x.Purl.Contains(query, StringComparison.OrdinalIgnoreCase))
+                || x.Pref.Contains(query, StringComparison.OrdinalIgnoreCase))
             .Where(x => kind is null || x.Kind == kind)
-            .Where(x => repository is null || x.Purl.StartsWith($"{repository}:", StringComparison.OrdinalIgnoreCase))
+            .Where(x => repository is null || x.Pref.StartsWith($"{repository}:", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
         var paged = matched.Skip(index).Take(limit).ToArray();
@@ -87,7 +87,7 @@ internal static class PackageOperation
     public static PackageAddResult Add(
         InstanceContextResolver resolver,
         ProfileManager profileManager,
-        string purl,
+        string pref,
         string instance,
         string? profile)
     {
@@ -95,8 +95,8 @@ internal static class PackageOperation
         var guard = profileManager.GetMutable(ctx.Key);
         try
         {
-            var parsed = PackageCliHelper.ParsePurl(purl);
-            var normalized = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            var parsed = PackageCliHelper.ParsePref(pref);
+            var normalized = PackageHelper.ToPref(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
             if (PackageCliHelper.ContainsProject(guard.Value, normalized))
             {
                 return new(normalized, false, "already-installed", ctx.Key);
@@ -105,7 +105,7 @@ internal static class PackageOperation
             guard.Value.Setup.Packages.Add(new()
             {
                 Enabled = true,
-                Purl = normalized,
+                Pref = normalized,
                 Source = null,
             });
 
@@ -120,20 +120,20 @@ internal static class PackageOperation
     public static async Task<PackageInspectResult> Inspect(
         InstanceContextResolver resolver,
         RepositoryAgent repositories,
-        string purl,
+        string pref,
         string? gameVersion,
         string? loader,
         string? kind,
         string? instance,
         string? profile)
     {
-        var parsed = PackageCliHelper.ParsePurl(purl);
+        var parsed = PackageCliHelper.ParsePref(pref);
         ResolvedInstanceContext? ctx = null;
         LocalPackageDto? local = null;
         if (resolver.TryResolve(instance, profile, out var resolved))
         {
             ctx = resolved;
-            local = PackageDtos.FromEntry(PackageCliHelper.FindEntry(resolved.Profile, purl));
+            local = PackageDtos.FromEntry(PackageCliHelper.FindEntry(resolved.Profile, pref));
         }
 
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, PackageCliHelper.ParseKind(kind), ctx);
@@ -146,7 +146,7 @@ internal static class PackageOperation
     public static PackageSetEnabledResult SetEnabled(
         InstanceContextResolver resolver,
         ProfileManager profileManager,
-        string purl,
+        string pref,
         string instance,
         bool enabled,
         string? profile)
@@ -155,9 +155,9 @@ internal static class PackageOperation
         var guard = profileManager.GetMutable(ctx.Key);
         try
         {
-            var entry = PackageCliHelper.FindEntry(guard.Value, purl);
+            var entry = PackageCliHelper.FindEntry(guard.Value, pref);
             entry.Enabled = enabled;
-            return new(enabled ? "package.enable" : "package.disable", ctx.Key, entry.Purl, enabled);
+            return new(enabled ? "package.enable" : "package.disable", ctx.Key, entry.Pref, enabled);
         }
         finally
         {
@@ -168,14 +168,14 @@ internal static class PackageOperation
     public static async Task<PackageDependencyListResult> DependencyList(
         RepositoryAgent repositories,
         InstanceContextResolver resolver,
-        string purl,
+        string pref,
         string? gameVersion,
         string? loader,
         ResourceKind? kind,
         string? instance,
         string? profile)
     {
-        var parsed = PackageCliHelper.ParsePurl(purl);
+        var parsed = PackageCliHelper.ParsePref(pref);
         resolver.TryResolve(instance, profile, out var ctx);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
         var package = await repositories.ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter).ConfigureAwait(false);
@@ -186,7 +186,7 @@ internal static class PackageOperation
     public static async Task<PackageDependentListResult> DependentList(
         InstanceContextResolver resolver,
         RepositoryAgent repositories,
-        string purl,
+        string pref,
         string? gameVersion,
         string? loader,
         ResourceKind? kind,
@@ -194,13 +194,13 @@ internal static class PackageOperation
         string? profile)
     {
         var ctx = resolver.Resolve(instance, profile);
-        var target = PackageCliHelper.ParsePurl(purl);
+        var target = PackageCliHelper.ParsePref(pref);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
 
         var parsed = new List<(Profile.Rice.Entry Entry, (string Label, string? Namespace, string Pid, string? Vid) Parsed)>();
         foreach (var entry in ctx.Profile.Setup.Packages.Where(x => x.Enabled))
         {
-            if (PackageHelper.TryParse(entry.Purl, out var p))
+            if (PackageHelper.TryParse(entry.Pref, out var p))
             {
                 parsed.Add((entry, p));
             }
@@ -208,7 +208,7 @@ internal static class PackageOperation
 
         if (parsed.Count == 0)
         {
-            return new(ctx.Key, purl, [], []);
+            return new(ctx.Key, pref, [], []);
         }
 
         var identifiers = parsed
@@ -224,7 +224,7 @@ internal static class PackageOperation
         }
         catch
         {
-            return new(ctx.Key, purl, [], parsed.Select(x => x.Entry.Purl).ToArray());
+            return new(ctx.Key, pref, [], parsed.Select(x => x.Entry.Pref).ToArray());
         }
 
         var lookup = resolved.ToDictionary(
@@ -238,7 +238,7 @@ internal static class PackageOperation
         {
             if (!lookup.TryGetValue((p.Namespace, p.Pid), out var package))
             {
-                failed.Add(entry.Purl);
+                failed.Add(entry.Pref);
                 continue;
             }
 
@@ -247,16 +247,16 @@ internal static class PackageOperation
                     && x.Namespace == target.Namespace
                     && x.ProjectId == target.Pid))
             {
-                dependents.Add(new(entry.Purl, package.ProjectName, package.VersionName));
+                dependents.Add(new(entry.Pref, package.ProjectName, package.VersionName));
             }
         }
 
-        return new(ctx.Key, purl, dependents, failed);
+        return new(ctx.Key, pref, dependents, failed);
     }
 
     public static async Task<PackageVersionListResult> VersionList(
         RepositoryAgent repositories,
-        string purl,
+        string pref,
         string? gameVersion,
         string? loader,
         ResourceKind? kind,
@@ -264,7 +264,7 @@ internal static class PackageOperation
         int index,
         int limit)
     {
-        var parsed = PackageCliHelper.ParsePurl(purl);
+        var parsed = PackageCliHelper.ParsePref(pref);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind);
         var handle = await repositories
             .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
@@ -280,30 +280,30 @@ internal static class PackageOperation
             ? [.. versions.OrderBy(x => x.PublishedAt)]
             : [.. versions.OrderByDescending(x => x.PublishedAt)];
 
-        return new(purl, (int)handle.TotalCount, versions);
+        return new(pref, (int)handle.TotalCount, versions);
     }
 
     public static PackageVersionSetResult VersionSet(
         InstanceContextResolver resolver,
         ProfileManager profileManager,
-        string purl,
+        string pref,
         string instance,
         string? profile)
     {
-        var parsed = PackageCliHelper.ParsePurl(purl);
+        var parsed = PackageCliHelper.ParsePref(pref);
         if (string.IsNullOrWhiteSpace(parsed.Vid))
         {
-            throw new CliException("A version purl with @version is required.", ExitCodes.USAGE);
+            throw new CliException("A version pref with @version is required.", ExitCodes.USAGE);
         }
 
         var ctx = resolver.Resolve(instance, profile);
         var guard = profileManager.GetMutable(ctx.Key);
         try
         {
-            var entry = PackageCliHelper.FindEntry(guard.Value, purl);
-            var oldPurl = entry.Purl;
-            entry.Purl = PackageHelper.ToPurl(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
-            return new(ctx.Key, oldPurl, entry.Purl);
+            var entry = PackageCliHelper.FindEntry(guard.Value, pref);
+            var oldPref = entry.Pref;
+            entry.Pref = PackageHelper.ToPref(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            return new(ctx.Key, oldPref, entry.Pref);
         }
         finally
         {
@@ -314,12 +314,12 @@ internal static class PackageOperation
 
 internal sealed record PackageListResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
 internal sealed record PackageSearchLocalResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
-internal sealed record PackageAddResult(string Purl, bool Added, string? Reason, string Key);
+internal sealed record PackageAddResult(string Pref, bool Added, string? Reason, string Key);
 internal sealed record PackageInspectResult(string? Key, LocalPackageDto? Local, PackageDto Package);
-internal sealed record PackageSetEnabledResult(string Action, string Key, string Purl, bool Enabled);
-internal sealed record PackageDependencyListResult(string Purl, IReadOnlyList<DependencyDto> Dependencies);
-internal sealed record DependentDto(string Purl, string? ProjectName, string? VersionName);
+internal sealed record PackageSetEnabledResult(string Action, string Key, string Pref, bool Enabled);
+internal sealed record PackageDependencyListResult(string Pref, IReadOnlyList<DependencyDto> Dependencies);
+internal sealed record DependentDto(string Pref, string? ProjectName, string? VersionName);
 internal sealed record PackageDependentListResult(string Key, string Target, IReadOnlyList<DependentDto> Dependents, IReadOnlyList<string> Failed);
-internal sealed record PackageVersionListResult(string Purl, int Total, IReadOnlyList<VersionDto> Versions);
+internal sealed record PackageVersionListResult(string Pref, int Total, IReadOnlyList<VersionDto> Versions);
 internal sealed record PackageSearchRemoteResult(string Repository, int Total, IReadOnlyList<ExhibitDto> Packages);
-internal sealed record PackageVersionSetResult(string Key, string OldPurl, string NewPurl);
+internal sealed record PackageVersionSetResult(string Key, string OldPref, string NewPref);

@@ -36,7 +36,7 @@ The core object in Trident is `profile.json`. It describes the game version, loa
 ```text
 TridentCore.Abstractions  -> file models, repository interfaces, trackers, account interfaces
 TridentCore.Core          -> instance management, deploy/run engine, import/export, remote repositories, auth services
-TridentCore.Purl          -> Trident package URL parsing and formatting
+TridentCore.Pref          -> Trident package URL parsing and formatting
 TridentCore.Cli           -> end-user trident command
   ├── Operations/         -> shared business logic (used by both Commands and Tools)
   ├── Commands/           -> Spectre.Console.Cli command entry points + rich output formatting
@@ -336,7 +336,7 @@ jobs:
 | --- | --- |
 | `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities. |
 | `src/TridentCore.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
-| `src/TridentCore.Purl/` | Trident package URL parsing and formatting. |
+| `src/TridentCore.Pref/` | Trident package URL parsing and formatting. |
 | `src/TridentCore.Cli/` | The `trident` command-line product (CLI + MCP server). |
 | `docs/CLI.md` | Detailed CLI reference and validation notes. |
 
@@ -354,7 +354,7 @@ dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 | --- | --- |
 | `TridentCore.Abstractions` | Human-written |
 | `TridentCore.Core` | Human-written |
-| `TridentCore.Purl` | Human-written |
+| `TridentCore.Pref` | Human-written |
 | `TridentCore.Cli` | Vibe-coded (GPT-5.5) |
 
 ---

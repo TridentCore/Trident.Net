@@ -26,7 +26,7 @@ public class PackageInspectCommand(
     private async Task InspectAsync(Arguments settings)
     {
         var result = await PackageOperation
-            .Inspect(resolver, repositories, settings.Purl,
+            .Inspect(resolver, repositories, settings.Pref,
                 settings.GameVersion, settings.Loader, settings.Kind,
                 settings.Instance, settings.Profile)
             .ConfigureAwait(false);
@@ -39,7 +39,7 @@ public class PackageInspectCommand(
 
         output.WriteKeyValueTable(
             "Package details",
-            ("PURL", result.Package.Purl),
+            ("PREF", result.Package.Pref),
             ("Project", result.Package.ProjectName),
             ("Version", result.Package.VersionName),
             ("Kind", result.Package.Kind.ToString()),
@@ -74,7 +74,7 @@ public class PackageInspectCommand(
 
     public class Arguments : PackageFilterSettings
     {
-        [CommandArgument(0, "<PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<PREF>")]
+        public required string Pref { get; set; }
     }
 }

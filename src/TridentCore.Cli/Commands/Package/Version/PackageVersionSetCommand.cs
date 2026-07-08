@@ -18,21 +18,21 @@ public class PackageVersionSetCommand(
     )
     {
         var instance = ResolveInstance(settings);
-        var result = PackageOperation.VersionSet(Resolver, profileManager, settings.Purl, instance.Key, settings.Profile);
+        var result = PackageOperation.VersionSet(Resolver, profileManager, settings.Pref, instance.Key, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { action = "package.version.set", key = result.Key, oldPurl = result.OldPurl, purl = result.NewPurl });
+            output.WriteData(new { action = "package.version.set", key = result.Key, oldPref = result.OldPref, pref = result.NewPref });
         }
         else
         {
             output.WriteKeyValueTable(
                 "Package version updated",
                 ("Instance", result.Key),
-                ("Old PURL", result.OldPurl),
-                ("New PURL", result.NewPurl)
+                ("Old PREF", result.OldPref),
+                ("New PREF", result.NewPref)
             );
-            output.WriteSuccess($"Package version updated to {result.NewPurl}.");
+            output.WriteSuccess($"Package version updated to {result.NewPref}.");
         }
 
         return ExitCodes.SUCCESS;
@@ -40,7 +40,7 @@ public class PackageVersionSetCommand(
 
     public class Arguments : InstanceArgumentsBase
     {
-        [CommandArgument(0, "<VERSION_PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<VERSION_PREF>")]
+        public required string Pref { get; set; }
     }
 }

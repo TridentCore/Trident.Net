@@ -37,7 +37,7 @@ public class ModrinthImporter : IProfileImporter
             throw new FormatException($"{IndexFileName} is not a valid manifest");
         }
 
-        var source = pack.Reference is not null ? PackageHelper.ToPurl(pack.Reference) : null;
+        var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
         return new(
             new()
             {
@@ -135,7 +135,7 @@ public class ModrinthImporter : IProfileImporter
                 var versionId = path[24..32];
                 return new()
                 {
-                    Purl = PackageHelper.ToPurl(ModrinthHelper.LABEL, null, projectId, versionId),
+                    Pref = PackageHelper.ToPref(ModrinthHelper.LABEL, null, projectId, versionId),
                     Enabled = true,
                     Source = source,
                 };

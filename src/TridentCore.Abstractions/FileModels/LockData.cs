@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 
@@ -47,28 +48,33 @@ public record LockData
 
     #region Nested type: LockedPackage
 
-    // A declared purl paired with its resolved-and-locked Package and the rule outcome at lock
-    // time. The purl is the diff key (declared intent, possibly floating); Resolved is the full
+    // A declared pref paired with its resolved-and-locked Package and the rule outcome at lock
+    // time. The pref is the diff key (declared intent, possibly floating); Resolved is the full
     // resolved Package stored verbatim so rule recompute, manifest generation, and the host UI
     // all read real data without re-hitting repositories.
     //
-    // SuppressedBy names the purl that won the target-path arbitration in FlattenPackages; a
+    // SuppressedBy names the pref that won the target-path arbitration in FlattenPackages; a
     // suppressed package stays locked so its version survives a later priority reshuffle
     // without re-resolving (null = effective, will be materialized into the build).
     public record LockedPackage(
-        string Purl,
+        string Pref,
         string? Source,
         Package Resolved,
         PackageRule Rule,
         string? SuppressedBy = null
-    );
+    )
+    {
+        [Obsolete("compat: legacy purl key, remove once on-disk lock files have migrated")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Purl { get => null; init => Pref = PackageHelper.SafeMigrate(value); }
+    }
 
     #endregion
 
     #region Nested type: PackageRule
 
     // The rule evaluation outcome frozen into the lock. Per-package so a rule tweak only
-    // recomputes the affected packages and never re-resolves (which would drift floating purls).
+    // recomputes the affected packages and never re-resolves (which would drift floating prefs).
     public record PackageRule(bool Skipping, string? Destination, bool Normalizing);
 
     #endregion

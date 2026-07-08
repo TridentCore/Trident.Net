@@ -20,7 +20,7 @@ public class PackageDependencyListCommand(
         var result = PackageOperation.DependencyList(
             repositories,
             resolver,
-            settings.Purl,
+            settings.Pref,
             settings.GameVersion,
             settings.Loader,
             settings.ParsedKind,
@@ -44,7 +44,7 @@ public class PackageDependencyListCommand(
         }
 
         output.WriteTable(
-            Utilities.PackageCliHelper.CreateDependencyTable($"Dependencies for {result.Purl}", result.Dependencies)
+            Utilities.PackageCliHelper.CreateDependencyTable($"Dependencies for {result.Pref}", result.Dependencies)
         );
 
         return ExitCodes.SUCCESS;
@@ -52,7 +52,7 @@ public class PackageDependencyListCommand(
 
     public class Arguments : PackageFilterSettings
     {
-        [CommandArgument(0, "<PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<PREF>")]
+        public required string Pref { get; set; }
     }
 }

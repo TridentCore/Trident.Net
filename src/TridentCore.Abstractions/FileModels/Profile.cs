@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using TridentCore.Abstractions.Repositories.Resources;
+using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Abstractions.FileModels;
 
@@ -44,7 +46,12 @@ public class Profile
 
         public class Entry
         {
-            public required string Purl { get; set; }
+            public string Pref { get; set; } = null!;
+
+            [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public string? Purl { get => null; set => Pref = PackageHelper.SafeMigrate(value); }
+
             public required bool Enabled { get; set; }
             public string? Source { get; set; }
             public IList<string> Tags { get; init; } = [];
@@ -70,7 +77,7 @@ public class Profile
                     And,
                     Or,
                     Not,
-                    Purl,
+                    Pref,
                     Repository,
                     Tag,
                     Kind,
@@ -78,10 +85,15 @@ public class Profile
 
                 #endregion
 
-                public SelectorType Type { get; set; } = SelectorType.Purl;
+                public SelectorType Type { get; set; } = SelectorType.Pref;
 
                 public IList<RuleSelector>? Children { get; set; }
-                public string? Purl { get; set; }
+                public string? Pref { get; set; }
+
+                [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
+                [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+                public string? Purl { get => null; set => Pref = PackageHelper.SafeMigrate(value); }
+
                 public string? Repository { get; set; }
                 public string? Tag { get; set; }
                 public ResourceKind? Kind { get; set; }

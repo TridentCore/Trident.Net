@@ -17,7 +17,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
     {
         var result = PackageOperation.VersionList(
             repositories,
-            settings.Purl,
+            settings.Pref,
             settings.GameVersion,
             settings.Loader,
             settings.ParsedKind,
@@ -36,14 +36,14 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         {
             output.WriteEmptyState(
                 "No versions found",
-                $"No versions matched filters for {settings.Purl}."
+                $"No versions matched filters for {settings.Pref}."
             );
             return ExitCodes.SUCCESS;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new($"[bold]Versions for {Markup.Escape(settings.Purl)}[/]");
-        table.AddColumn("PURL");
+        table.Title = new($"[bold]Versions for {Markup.Escape(settings.Pref)}[/]");
+        table.AddColumn("PREF");
         table.AddColumn("Name");
         table.AddColumn("Release");
         table.AddColumn("Downloads");
@@ -57,7 +57,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
                 ? "green"
                 : "yellow";
             table.AddMarkupRow(
-                Markup.Escape(version.Purl),
+                Markup.Escape(version.Pref),
                 Markup.Escape(version.VersionName),
                 CliOutput.FormatStatus(version.ReleaseType.ToString(), releaseColor),
                 Markup.Escape(version.DownloadCount.ToString())
@@ -71,7 +71,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
 
     public class Arguments : PagingSettings
     {
-        [CommandArgument(0, "<PROJECT_PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<PROJECT_PREF>")]
+        public required string Pref { get; set; }
     }
 }

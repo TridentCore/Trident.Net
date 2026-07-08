@@ -1,19 +1,20 @@
 using IParser;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Purl.Building;
-using TridentCore.Purl.Parsing;
+using TridentCore.Pref;
+using TridentCore.Pref.Building;
+using TridentCore.Pref.Parsing;
 
 namespace TridentCore.Abstractions.Utilities;
 
 public static class PackageHelper
 {
     public static bool TryParse(
-        string purl,
+        string pref,
         out (string Label, string? Namespace, string Pid, string? Vid) result
     )
     {
-        if (Parser.Default.TryParse(purl, out var parsed))
+        if (Parser.Default.TryParse(pref, out var parsed))
         {
             result.Label = parsed.Repository;
             result.Namespace = parsed.Namespace;
@@ -27,10 +28,10 @@ public static class PackageHelper
         return false;
     }
 
-    public static (string Label, string? Namespace, string Pid, string? Vid) Parse(string purl) =>
-        TryParse(purl, out var result)
+    public static (string Label, string? Namespace, string Pid, string? Vid) Parse(string pref) =>
+        TryParse(pref, out var result)
             ? result
-            : throw new System.FormatException($"Invalid package url: {purl}");
+            : throw new System.FormatException($"Invalid package reference: {pref}");
 
     public static bool IsMatched(string left, string label, string? ns, string pid) =>
         TryParse(left, out var l)
@@ -45,18 +46,27 @@ public static class PackageHelper
     public static bool IsMatched(string left, Package right) =>
         IsMatched(left, right.Label, right.Namespace, right.ProjectId);
 
-    public static string ExtractProjectIdentityIfValid(string purl) =>
-        TryParse(purl, out var result)
-            ? ToPurl(result.Label, result.Namespace, result.Pid, null)
-            : purl;
+    public static string ExtractProjectIdentityIfValid(string pref) =>
+        TryParse(pref, out var result)
+            ? ToPref(result.Label, result.Namespace, result.Pid, null)
+            : pref;
 
-    public static string ToPurl(string label, string? ns, string pid, string? vid) =>
+    public static string ToPref(string label, string? ns, string pid, string? vid) =>
         Builder.Build(label, ns, pid, vid);
 
-    public static string ToPurl(Package package) =>
-        ToPurl(package.Label, package.Namespace, package.ProjectId, package.VersionId);
+    public static string ToPref(Package package) =>
+        ToPref(package.Label, package.Namespace, package.ProjectId, package.VersionId);
 
-    // PackageIdentifier 的元组写法的兼容函数，用于为原始的写法也提供 Purl 支持
+    // Normalize a legacy Purl-format string into the new pref:// format when it parses;
+    // otherwise return it unchanged so a load never throws on an unrecognized value. Always
+    // returns a non-null string (empty input yields an empty string).
+    public static string SafeMigrate(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        return Parser.Default.TryParse(value, out var parsed) ? parsed.Build() : value;
+    }
+
     // vid 存在则固定为特定版本，vid 不存在且 filter 存在则为浮动版本
     public static string Identify(
         string label,

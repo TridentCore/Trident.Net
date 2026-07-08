@@ -171,18 +171,18 @@ Flint is not exposed because the current Core Prism mapping does not support it.
 trident package list --instance cherry_picks
 trident package search --repository modrinth --kind mod "Mouse Tweaks"
 trident package search --instance cherry_picks "mouse"
-trident package add --instance cherry_picks modrinth:aC3cM3Vq@9I21YYxf
-trident package inspect modrinth:aC3cM3Vq
-trident package inspect --instance cherry_picks modrinth:aC3cM3Vq
-trident package dependency list --game-version 1.21.1 --loader net.neoforged modrinth:aC3cM3Vq
-trident package dependent list --instance cherry_picks modrinth:aC3cM3Vq
-trident package version list --game-version 1.21.1 --loader net.neoforged modrinth:aC3cM3Vq
-trident package version set --instance cherry_picks modrinth:aC3cM3Vq@9I21YYxf
-trident package enable --instance cherry_picks modrinth:aC3cM3Vq
-trident package disable --instance cherry_picks modrinth:aC3cM3Vq
+trident package add --instance cherry_picks pref://modrinth/aC3cM3Vq@9I21YYxf
+trident package inspect pref://modrinth/aC3cM3Vq
+trident package inspect --instance cherry_picks pref://modrinth/aC3cM3Vq
+trident package dependency list --game-version 1.21.1 --loader net.neoforged pref://modrinth/aC3cM3Vq
+trident package dependent list --instance cherry_picks pref://modrinth/aC3cM3Vq
+trident package version list --game-version 1.21.1 --loader net.neoforged pref://modrinth/aC3cM3Vq
+trident package version set --instance cherry_picks pref://modrinth/aC3cM3Vq@9I21YYxf
+trident package enable --instance cherry_picks pref://modrinth/aC3cM3Vq
+trident package disable --instance cherry_picks pref://modrinth/aC3cM3Vq
 ```
 
-PURL format:
+Pref format:
 
 ```text
 <label>:[<namespace>/]<project-id>[@<version-id>]
@@ -191,8 +191,8 @@ PURL format:
 Examples:
 
 ```text
-curseforge:238222@4633221
-modrinth:aC3cM3Vq@9I21YYxf
+pref://curseforge/238222@4633221
+pref://modrinth/aC3cM3Vq@9I21YYxf
 ```
 
 `package dependent list` is instance-local only. It scans installed packages in the selected instance and resolves their dependencies; there is no online reverse-dependency API in Core.
@@ -202,20 +202,20 @@ modrinth:aC3cM3Vq@9I21YYxf
 `package add` can read packages from stdin. Supported input shapes:
 
 ```json
-"modrinth:aC3cM3Vq@9I21YYxf"
+"pref://modrinth/aC3cM3Vq@9I21YYxf"
 ```
 
 ```json
 [
-  "modrinth:aC3cM3Vq@9I21YYxf",
-  "curseforge:238222@4633221"
+  "pref://modrinth/aC3cM3Vq@9I21YYxf",
+  "pref://curseforge/238222@4633221"
 ]
 ```
 
 ```json
 {
   "packages": [
-    { "purl": "modrinth:aC3cM3Vq@9I21YYxf" }
+    { "pref": "pref://modrinth/aC3cM3Vq@9I21YYxf" }
   ]
 }
 ```

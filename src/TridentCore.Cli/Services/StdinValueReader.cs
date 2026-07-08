@@ -60,11 +60,11 @@ public class StdinValueReader(CliContext context)
                 break;
             case JsonValueKind.Object:
                 if (
-                    element.TryGetProperty("purl", out var purl)
-                    && purl.ValueKind == JsonValueKind.String
+                    element.TryGetProperty("pref", out var pref)
+                    && pref.ValueKind == JsonValueKind.String
                 )
                 {
-                    yield return purl.GetString()!;
+                    yield return pref.GetString()!;
                 }
 
                 foreach (

@@ -36,7 +36,7 @@ Trident 的核心对象是 `profile.json`。它描述游戏版本、加载器、
 ```text
 TridentCore.Abstractions  -> 文件模型、仓库接口、任务追踪、账号接口
 TridentCore.Core          -> 实例管理、部署/启动引擎、导入导出、远程仓库、认证服务
-TridentCore.Purl          -> Trident 使用的包 URL 解析与生成
+TridentCore.Pref          -> Trident 使用的包 URL 解析与生成
 TridentCore.Cli           -> 面向终端用户的 trident 命令
   ├── Operations/         -> 共享业务逻辑（Commands 和 Tools 共用）
   ├── Commands/           -> Spectre.Console.Cli 命令入口 + 富文本输出
@@ -330,7 +330,7 @@ jobs:
 | --- | --- |
 | `src/TridentCore.Abstractions/` | 抽象模型、接口和共享工具。 |
 | `src/TridentCore.Core/` | 核心业务逻辑、部署/启动、导入导出、远程服务。 |
-| `src/TridentCore.Purl/` | Trident 包 URL 解析和生成。 |
+| `src/TridentCore.Pref/` | Trident 包 URL 解析和生成。 |
 | `src/TridentCore.Cli/` | `trident` 命令行产品（CLI + MCP 服务器）。 |
 | `docs/CLI.md` | CLI 详细参考和验证清单。 |
 
@@ -348,7 +348,7 @@ dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 | --- | --- |
 | `TridentCore.Abstractions` | 人工编写 |
 | `TridentCore.Core` | 人工编写 |
-| `TridentCore.Purl` | 人工编写 |
+| `TridentCore.Pref` | 人工编写 |
 | `TridentCore.Cli` | 氛围编写(GPT-5.5) |
 
 ---

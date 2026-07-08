@@ -10,7 +10,7 @@ using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Models.ModrinthPack;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
-using TridentCore.Purl;
+using TridentCore.Pref;
 
 namespace TridentCore.Core.Exporters;
 
@@ -72,9 +72,9 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
         {
             var packages = setup
                           .Packages.Where(x => x.Enabled)
-                          .Select(x => PackageHelper.TryParse(x.Purl, out var pkg)
+                          .Select(x => PackageHelper.TryParse(x.Pref, out var pkg)
                                            ? new PackageIdentifier(pkg.Label, pkg.Namespace, pkg.Pid, pkg.Vid)
-                                           : throw new FormatException($"Package {x.Purl} is not a valid package"))
+                                           : throw new FormatException($"Package {x.Pref} is not a valid package"))
                           .ToList();
             var resolved = await agent
                                 .ResolveBatchAsync(packages, new(pack.Profile.Setup.Version, loader?.Identity, null))

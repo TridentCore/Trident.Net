@@ -20,28 +20,28 @@ public class PackageAddCommand(
         CancellationToken cancellationToken
     )
     {
-        var purls = new List<string>();
-        if (!string.IsNullOrWhiteSpace(settings.Purl))
+        var prefs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(settings.Pref))
         {
-            purls.Add(settings.Purl);
+            prefs.Add(settings.Pref);
         }
 
-        purls.AddRange(stdin.ReadValuesIfRedirected());
-        if (purls.Count == 0)
+        prefs.AddRange(stdin.ReadValuesIfRedirected());
+        if (prefs.Count == 0)
         {
-            throw new CliException("A package purl or stdin input is required.", ExitCodes.USAGE);
+            throw new CliException("A package pref or stdin input is required.", ExitCodes.USAGE);
         }
 
-        var uniquePurls = purls.Distinct(StringComparer.Ordinal).ToArray();
+        var uniquePrefs = prefs.Distinct(StringComparer.Ordinal).ToArray();
         var results = new List<PackageAddResult>();
 
-        void ProcessPurl(string purl)
+        void ProcessPref(string pref)
         {
-            var result = PackageOperation.Add(Resolver, profileManager, purl, settings.Instance!, settings.Profile);
+            var result = PackageOperation.Add(Resolver, profileManager, pref, settings.Instance!, settings.Profile);
             results.Add(result);
         }
 
-        if (output.IsInteractive && !output.UseStructuredOutput && uniquePurls.Length > 1)
+        if (output.IsInteractive && !output.UseStructuredOutput && uniquePrefs.Length > 1)
         {
             AnsiConsole
                 .Progress()
@@ -55,20 +55,20 @@ public class PackageAddCommand(
                 {
                     var task = progressContext.AddTask(
                         "[blue]Processing packages[/]",
-                        maxValue: uniquePurls.Length
+                        maxValue: uniquePrefs.Length
                     );
-                    foreach (var purl in uniquePurls)
+                    foreach (var pref in uniquePrefs)
                     {
-                        ProcessPurl(purl);
+                        ProcessPref(pref);
                         task.Increment(1);
                     }
                 });
         }
         else
         {
-            foreach (var purl in uniquePurls)
+            foreach (var pref in uniquePrefs)
             {
-                ProcessPurl(purl);
+                ProcessPref(pref);
             }
         }
 
@@ -80,13 +80,13 @@ public class PackageAddCommand(
         {
             var table = new Table().RoundedBorder();
             table.Title = new($"[bold]Package add results[/]");
-            table.AddColumn("PURL");
+            table.AddColumn("PREF");
             table.AddColumn("Status");
             table.AddColumn("Reason");
             foreach (var item in results)
             {
                 table.AddMarkupRow(
-                    Markup.Escape(item.Purl),
+                    Markup.Escape(item.Pref),
                     item.Added ? "[green]added[/]" : "[yellow]skipped[/]",
                     CliOutput.FormatValue(item.Reason)
                 );
@@ -101,7 +101,7 @@ public class PackageAddCommand(
 
     public class Arguments : InstanceArgumentsBase
     {
-        [CommandArgument(0, "[PURL]")]
-        public string? Purl { get; set; }
+        [CommandArgument(0, "[PREF]")]
+        public string? Pref { get; set; }
     }
 }

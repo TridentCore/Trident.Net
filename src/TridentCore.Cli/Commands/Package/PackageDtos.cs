@@ -10,7 +10,7 @@ namespace TridentCore.Cli.Commands.Package;
 internal static class PackageDtos
 {
     public static LocalPackageDto FromEntry(Profile.Rice.Entry entry) =>
-        new(entry.Purl, entry.Enabled, entry.Source, entry.Tags.ToArray());
+        new(entry.Pref, entry.Enabled, entry.Source, entry.Tags.ToArray());
 
     public static async Task<IReadOnlyList<ResolvedLocalPackageDto>> ResolveEntriesAsync(
         IEnumerable<Profile.Rice.Entry> entries,
@@ -25,7 +25,7 @@ internal static class PackageDtos
         }
 
         var batch = entryList
-            .Select(e => PackageHelper.TryParse(e.Purl, out var p) ? p : default)
+            .Select(e => PackageHelper.TryParse(e.Pref, out var p) ? p : default)
             .Where(p => p.Label is not null)
             .Select(p => (p.Label, p.Namespace, p.Pid))
             .ToList();
@@ -34,17 +34,17 @@ internal static class PackageDtos
         var projects = await repositories.QueryBatchAsync(batch).ConfigureAwait(false);
 
         var projectLookup = projects.ToDictionary(
-            p => PackageHelper.ToPurl(p.Label, p.Namespace, p.ProjectId, null),
+            p => PackageHelper.ToPref(p.Label, p.Namespace, p.ProjectId, null),
             StringComparer.OrdinalIgnoreCase
         );
 
         return entryList
             .Select(e =>
             {
-                var key = PackageHelper.ExtractProjectIdentityIfValid(e.Purl);
+                var key = PackageHelper.ExtractProjectIdentityIfValid(e.Pref);
                 var project = projectLookup.GetValueOrDefault(key);
                 return new ResolvedLocalPackageDto(
-                    e.Purl,
+                    e.Pref,
                     e.Enabled,
                     e.Source,
                     e.Tags.ToArray(),
@@ -59,7 +59,7 @@ internal static class PackageDtos
 
     public static ExhibitDto FromExhibit(Exhibit exhibit) =>
         new(
-            PackageHelper.ToPurl(exhibit.Label, exhibit.Namespace, exhibit.Pid, null),
+            PackageHelper.ToPref(exhibit.Label, exhibit.Namespace, exhibit.Pid, null),
             exhibit.Label,
             exhibit.Namespace,
             exhibit.Pid,
@@ -77,7 +77,7 @@ internal static class PackageDtos
         TridentCore.Abstractions.Repositories.Resources.Package package
     ) =>
         new(
-            PackageHelper.ToPurl(
+            PackageHelper.ToPref(
                 package.Label,
                 package.Namespace,
                 package.ProjectId,
@@ -105,7 +105,7 @@ internal static class PackageDtos
         TridentCore.Abstractions.Repositories.Resources.Version version
     ) =>
         new(
-            PackageHelper.ToPurl(
+            PackageHelper.ToPref(
                 version.Label,
                 version.Namespace,
                 version.ProjectId,
@@ -126,7 +126,7 @@ internal static class PackageDtos
         TridentCore.Abstractions.Repositories.Resources.Dependency dependency
     ) =>
         new(
-            PackageHelper.ToPurl(
+            PackageHelper.ToPref(
                 dependency.Label,
                 dependency.Namespace,
                 dependency.ProjectId,
@@ -141,14 +141,14 @@ internal static class PackageDtos
 }
 
 internal sealed record LocalPackageDto(
-    string Purl,
+    string Pref,
     bool Enabled,
     string? Source,
     IReadOnlyList<string> Tags
 );
 
 internal sealed record ResolvedLocalPackageDto(
-    string Purl,
+    string Pref,
     bool Enabled,
     string? Source,
     IReadOnlyList<string> Tags,
@@ -159,7 +159,7 @@ internal sealed record ResolvedLocalPackageDto(
 ) : IPackageTableRow;
 
 internal sealed record ExhibitDto(
-    string Purl,
+    string Pref,
     string Label,
     string? Namespace,
     string ProjectId,
@@ -174,7 +174,7 @@ internal sealed record ExhibitDto(
 );
 
 internal sealed record PackageDto(
-    string Purl,
+    string Pref,
     string Label,
     string? Namespace,
     string ProjectId,
@@ -194,7 +194,7 @@ internal sealed record PackageDto(
 );
 
 internal sealed record VersionDto(
-    string Purl,
+    string Pref,
     string Label,
     string? Namespace,
     string ProjectId,
@@ -207,7 +207,7 @@ internal sealed record VersionDto(
 );
 
 internal sealed record DependencyDto(
-    string Purl,
+    string Pref,
     string Label,
     string? Namespace,
     string ProjectId,

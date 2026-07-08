@@ -32,7 +32,7 @@ public class CurseForgeImporter : IProfileImporter
             throw new FormatException($"{IndexFileName} is not a valid manifest");
         }
 
-        var source = pack.Reference is not null ? PackageHelper.ToPurl(pack.Reference) : null;
+        var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
         return new(
             new()
             {
@@ -47,7 +47,7 @@ public class CurseForgeImporter : IProfileImporter
                         .. manifest.Files.Select(x => new Profile.Rice.Entry
                         {
                             Enabled = x.Required,
-                            Purl = PackageHelper.ToPurl(
+                            Pref = PackageHelper.ToPref(
                                 CurseForgeHelper.LABEL,
                                 null,
                                 x.ProjectID.ToString(),

@@ -25,5 +25,5 @@ public record Package(
     IReadOnlyList<Dependency> Dependencies
 )
 {
-    public override string ToString() => PackageHelper.ToPurl(this);
+    public override string ToString() => PackageHelper.ToPref(this);
 }

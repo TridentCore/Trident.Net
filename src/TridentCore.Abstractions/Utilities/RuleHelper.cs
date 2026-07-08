@@ -38,8 +38,8 @@ public static class RuleHelper
                 !Evaluate(input, x)
             )
                 ?? false,
-            Profile.Rice.Rule.RuleSelector.SelectorType.Purl => selector.Purl != null
-                && PackageHelper.IsMatched(selector.Purl, input.Package),
+            Profile.Rice.Rule.RuleSelector.SelectorType.Pref => selector.Pref != null
+                && PackageHelper.IsMatched(selector.Pref, input.Package),
             Profile.Rice.Rule.RuleSelector.SelectorType.Repository => selector.Repository != null
                 && string.Equals(
                     selector.Repository,

@@ -18,7 +18,7 @@ public class PackageEnableCommand(
         CancellationToken cancellationToken
     )
     {
-        var result = PackageOperation.SetEnabled(Resolver, profileManager, settings.Purl, settings.Instance!, true, settings.Profile);
+        var result = PackageOperation.SetEnabled(Resolver, profileManager, settings.Pref, settings.Instance!, true, settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -29,10 +29,10 @@ public class PackageEnableCommand(
             output.WriteKeyValueTable(
                 "Package enabled",
                 ("Instance", result.Key),
-                ("PURL", result.Purl),
+                ("PREF", result.Pref),
                 ("State", "enabled")
             );
-            output.WriteSuccess($"Package {result.Purl} enabled.");
+            output.WriteSuccess($"Package {result.Pref} enabled.");
         }
 
         return ExitCodes.SUCCESS;
@@ -40,7 +40,7 @@ public class PackageEnableCommand(
 
     public class Arguments : InstanceArgumentsBase
     {
-        [CommandArgument(0, "<PURL>")]
-        public required string Purl { get; set; }
+        [CommandArgument(0, "<PREF>")]
+        public required string Pref { get; set; }
     }
 }

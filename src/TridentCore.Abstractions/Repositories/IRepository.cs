@@ -1,5 +1,5 @@
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Purl;
+using TridentCore.Pref;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Abstractions.Repositories;

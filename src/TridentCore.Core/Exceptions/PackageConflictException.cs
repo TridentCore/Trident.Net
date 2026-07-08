@@ -10,7 +10,7 @@ public class PackageConflictException(string subject, IReadOnlyList<LockData.Loc
     : Exception(
         $"Unresolvable package conflict on {subject}: "
         + $"{collisions.Count} packages share the top priority — "
-        + $"{string.Join(", ", collisions.Select(c => $"{c.Purl} [{c.Source ?? "manual"}]"))}. "
+        + $"{string.Join(", ", collisions.Select(c => $"{c.Pref} [{c.Source ?? "manual"}]"))}. "
         + $"Reorder them in SourceOrders or remove duplicates."
     )
 {

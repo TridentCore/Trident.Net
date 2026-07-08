@@ -8,5 +8,5 @@
     <Project Path="src\TridentCore.Abstractions\TridentCore.Abstractions.csproj" />
     <Project Path="src\TridentCore.Cli\TridentCore.Cli.csproj" />
     <Project Path="src\TridentCore.Core\TridentCore.Core.csproj" />
-    <Project Path="src\TridentCore.Purl\TridentCore.Purl.csproj" />
+    <Project Path="src\TridentCore.Pref\TridentCore.Pref.csproj" />
 </Solution>
