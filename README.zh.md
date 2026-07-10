@@ -74,11 +74,11 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 
 ### 核心概念
 
-- Profile：实例的声明式入口，包含名称、Minecraft 版本、Loader、包 PURL、规则和运行覆盖项。
+- Profile：实例的声明式入口，包含名称、Minecraft 版本、Loader、包 Pref、规则和运行覆盖项。
 - Deploy：把 profile、远程元数据、缓存文件和本地层合成为 `build/`，并生成 `data.lock.json`。
 - Layer：`import/` 放整合包或将来要导出的文件，`live/` 保存导入内容的运行时变更，`persist/` 保存用户数据。
 - Projection：部署阶段会把虚拟文件结构增量投影到 `build/`，通常通过软链接建立关系并移除多余关系。
-- Repository：通过统一接口访问 Modrinth、CurseForge 等包仓库，包标识使用 Trident PURL。
+- Repository：通过统一接口访问 Modrinth、CurseForge 等包仓库，包标识使用 Trident Pref。
 - Tracker：部署、安装、更新和启动过程以 tracker 暴露状态、阶段和进度，适合 UI 或 CLI 订阅。
 
 ### 主要能力
@@ -270,8 +270,8 @@ trident --mcp
 | `Inspect` (InstanceTools) | 查看实例详情和包预览。 |
 | `List` (PackageTools) | 列出实例中的已安装包。 |
 | `Search` (PackageTools) | 在远程仓库或实例内搜索包。 |
-| `Add` (PackageTools) | 通过 PURL 添加包到实例。 |
-| `Inspect` (PackageTools) | 通过 PURL 查看包详情。 |
+| `Add` (PackageTools) | 通过 Pref 添加包到实例。 |
+| `Inspect` (PackageTools) | 通过 Pref 查看包详情。 |
 | `SetEnabled` (PackageTools) | 启用或禁用已安装的包。 |
 | `Get` / `Set` / `Unset` / `List` (ConfigTools) | 管理配置值。 |
 | `List` / `Status` (RepositoryTools) | 列出仓库和检查状态。 |
@@ -330,7 +330,7 @@ jobs:
 | --- | --- |
 | `src/TridentCore.Abstractions/` | 抽象模型、接口和共享工具。 |
 | `src/TridentCore.Core/` | 核心业务逻辑、部署/启动、导入导出、远程服务。 |
-| `src/TridentCore.Pref/` | Trident 包 URL 解析和生成。 |
+| `src/TridentCore.Pref/` | Trident 包引用解析和生成。 |
 | `src/TridentCore.Cli/` | `trident` 命令行产品（CLI + MCP 服务器）。 |
 | `docs/CLI.md` | CLI 详细参考和验证清单。 |
 

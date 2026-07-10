@@ -75,11 +75,11 @@ Trident only manages data under the selected home directory. By default, home is
 
 ### Core Concepts
 
-- Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package PURLs, rules, and runtime overrides.
+- Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and runtime overrides.
 - Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes `data.lock.json`.
 - Layer: `import/` stores modpack or exportable files, `live/` stores runtime mutations to imported content, and `persist/` stores user data.
 - Projection: deployment incrementally projects the virtual file structure into `build/`, usually by creating symlink relationships and removing stale relationships.
-- Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident PURLs.
+- Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident Prefs.
 - Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI subscribers.
 
 ### Capabilities
@@ -276,8 +276,8 @@ Available tools:
 | `Inspect` (InstanceTools) | Inspect an instance with package preview. |
 | `List` (PackageTools) | List packages installed in an instance. |
 | `Search` (PackageTools) | Search packages in remote repositories or within an instance. |
-| `Add` (PackageTools) | Add a package to an instance by PURL. |
-| `Inspect` (PackageTools) | Inspect a package by PURL. |
+| `Add` (PackageTools) | Add a package to an instance by Pref. |
+| `Inspect` (PackageTools) | Inspect a package by Pref. |
 | `SetEnabled` (PackageTools) | Enable or disable an installed package. |
 | `Get` / `Set` / `Unset` / `List` (ConfigTools) | Manage configuration values. |
 | `List` / `Status` (RepositoryTools) | List repositories and check their status. |
@@ -336,7 +336,7 @@ jobs:
 | --- | --- |
 | `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities. |
 | `src/TridentCore.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
-| `src/TridentCore.Pref/` | Trident package URL parsing and formatting. |
+| `src/TridentCore.Pref/` | Trident package reference parsing and formatting. |
 | `src/TridentCore.Cli/` | The `trident` command-line product (CLI + MCP server). |
 | `docs/CLI.md` | Detailed CLI reference and validation notes. |
 
