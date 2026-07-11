@@ -40,7 +40,7 @@
         <PackageReference Include="Spectre.Console" Version="0.57.2" />
         <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
         <PackageReference Include="Nanoid" Version="3.1.0" />
-        <PackageReference Include="GitVersion.MsBuild" Version="6.8.1">
+        <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
