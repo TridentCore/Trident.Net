@@ -1,15 +1,18 @@
+using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory httpClientFactory)
-    : StageBase
+public class EnsureRuntimeStage(
+    MojangService mojangService,
+    IHttpClientFactory httpClientFactory,
+    ILogger<EnsureRuntimeStage> logger
+) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -120,10 +123,36 @@ public class EnsureRuntimeStage(MojangService mojangService, IHttpClientFactory 
                             }
                         }
                     }
-                    // 如果获取不到也什么都不做，悄咪咪把错误留给 Launch Flow 再爆出来
+                    if (entries.Count == 0)
+                    {
+                        logger.LogWarning(
+                            "Java runtime {runtime} manifest for platform {os} contained no downloadable files; Java {major} will not be auto-installed and launch will fail with JavaNotFoundException",
+                            runtimeString,
+                            osString,
+                            major
+                        );
+                    }
 
                     Context.Runtime = new(major, entries, links);
                 }
+                else
+                {
+                    logger.LogWarning(
+                        "Java runtime {runtime} list for platform {os} is empty; Java {major} will not be auto-installed and launch will fail with JavaNotFoundException",
+                        runtimeString,
+                        osString,
+                        major
+                    );
+                }
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Java runtime manifest has no {runtime} entry for platform {os}; Java {major} will not be auto-installed and launch will fail with JavaNotFoundException",
+                    runtimeString,
+                    osString,
+                    major
+                );
             }
         }
     }

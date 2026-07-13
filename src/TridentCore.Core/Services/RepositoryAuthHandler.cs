@@ -1,6 +1,3 @@
-using System.Linq;
-using System.Net.Http;
-
 namespace TridentCore.Core.Services;
 
 public class RepositoryAuthHandler : DelegatingHandler

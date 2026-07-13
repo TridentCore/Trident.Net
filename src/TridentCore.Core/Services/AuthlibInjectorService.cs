@@ -1,7 +1,5 @@
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
-using TridentCore.Core.Extensions;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Services;

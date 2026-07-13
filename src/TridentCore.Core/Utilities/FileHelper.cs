@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using MimeDetective;
 using MimeDetective.Definitions;
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Converters;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 using HashAlgorithm = TridentCore.Abstractions.Utilities.HashAlgorithm;

@@ -1,6 +1,5 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
-using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;

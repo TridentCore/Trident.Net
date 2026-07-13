@@ -1,7 +1,6 @@
 using Refit;
 using System.Text;
 using System.Text.Json;
-using TridentCore.Core.Accounts;
 using TridentCore.Core.Clients;
 using TridentCore.Core.Models.YggdrasilApi;
 
