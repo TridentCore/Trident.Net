@@ -135,22 +135,6 @@ public class SolidifyManifestStage(
                                     await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
                                 }
 
-                                // WARNING: 下载后校验闭环——只对刚下载的文件强制 hash 校验，防止 CDN 篡改。
-                                //  已被 VerifyModified 命中的缓存文件上面已做过 hash 校验，这里不再重复。
-                                if (
-                                    fragile.Hash is { } expected
-                                    && !FileHelper.VerifyModified(
-                                        fragile.SourcePath,
-                                        null,
-                                        expected
-                                    )
-                                )
-                                {
-                                    throw new InvalidOperationException(
-                                        $"Downloaded file hash mismatch for {fragile.SourcePath}: expected {expected.Value}"
-                                    );
-                                }
-
                                 entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
 
                                 break;
