@@ -1,8 +1,5 @@
 using System.Reflection;
 using System.Text.Json;
-using MessagePack;
-using MessagePack.Resolvers;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Refit;
 using TridentCore.Abstractions.Repositories;
@@ -12,6 +9,7 @@ using TridentCore.Core.Clients;
 using TridentCore.Core.Repositories;
 using TridentCore.Pref;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
+using ZiggyCreatures.Caching.Fusion;
 
 namespace TridentCore.Core.Services;
 
@@ -23,15 +21,12 @@ public class RepositoryAgent
     private static readonly string USER_AGENT =
         $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
 
-    private readonly MessagePackSerializerOptions _options =
-        MessagePackSerializerOptions.Standard.WithResolver(ContractlessStandardResolver.Instance);
-
     private readonly IReadOnlyDictionary<string, IRepository> _repositories;
 
     public RepositoryAgent(
         IEnumerable<IRepositoryProviderAccessor> accessors,
         ILogger<RepositoryAgent> logger,
-        IDistributedCache cache,
+        IFusionCache cache,
         IHttpClientFactory clientFactory
     )
     {
@@ -317,23 +312,16 @@ public class RepositoryAgent
         bool cacheEnabled = true
     )
     {
-        var cached = cacheEnabled
-            ? await RetrieveCachedAsync<T>(key).ConfigureAwait(false)
-            : default;
-        if (cached != null)
+        if (!cacheEnabled)
         {
-            return cached;
+            return await factory().ConfigureAwait(false);
         }
 
         try
         {
-            var result = await factory().ConfigureAwait(false);
-            if (cacheEnabled)
-            {
-                await CacheObjectAsync(key, result).ConfigureAwait(false);
-            }
-
-            return result;
+            return await _cache
+                .GetOrSetAsync(key, _ => factory(), EXPIRED_IN)
+                .ConfigureAwait(false);
         }
         catch (Exception e)
         {
@@ -344,25 +332,11 @@ public class RepositoryAgent
 
     private async ValueTask<T?> RetrieveCachedAsync<T>(string key)
     {
-        var cachedBytes = await _cache.GetAsync(key).ConfigureAwait(false);
-        if (cachedBytes != null)
+        var cached = await _cache.TryGetAsync<T>(key).ConfigureAwait(false);
+        if (cached.HasValue)
         {
-            try
-            {
-                var cached =
-                    typeof(T) == typeof(byte[])
-                        ? (T)(object)cachedBytes
-                        : MessagePackSerializer.Deserialize<T>(cachedBytes, _options);
-                _logger.LogDebug("Cache hit: {}", key);
-                // await _cache.RefreshAsync(key).ConfigureAwait(false);
-                // NOTE: 不刷新！过期就让他过期，因为是由时效性的
-                //  刷新！因为当前包的解析版本落后无伤大雅，而版本列表是无持久缓存的，不会导致时效性问题
-                return cached;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Broken cache hit: {}", key);
-            }
+            _logger.LogDebug("Cache hit: {}", key);
+            return cached.Value;
         }
 
         return default;
@@ -392,23 +366,13 @@ public class RepositoryAgent
 
     private async Task CacheObjectAsync<T>(string key, T value)
     {
-        await _cache
-            .SetAsync(
-                key,
-                value is not null
-                    ? typeof(T) == typeof(byte[])
-                        ? (byte[])(object)value
-                        : MessagePackSerializer.Serialize(value, _options)
-                    : [],
-                new() { SlidingExpiration = EXPIRED_IN }
-            )
-            .ConfigureAwait(false);
+        await _cache.SetAsync(key, value, EXPIRED_IN).ConfigureAwait(false);
         _logger.LogDebug("Cache recorded: {}", key);
     }
 
     #region Injected
 
-    private readonly IDistributedCache _cache;
+    private readonly IFusionCache _cache;
     private readonly ILogger<RepositoryAgent> _logger;
     private readonly IHttpClientFactory _clientFactory;
 

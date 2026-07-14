@@ -20,6 +20,7 @@ using TridentCore.Core.Exporters;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Importers;
 using TridentCore.Core.Services;
+using ZiggyCreatures.Caching.Fusion;
 
 namespace TridentCore.Cli;
 
@@ -83,6 +84,9 @@ public static class Startup
 
         services.AddMemoryCache();
         services.AddDistributedMemoryCache();
+        services
+            .AddFusionCache()
+            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromDays(7));
 
         // NOTE: AddAccountConfigurers depends on AddMicrosoft, AddXboxLive, AddMinecraft,
         //       AddYggdrasil, and AddAuthlibInjector being registered first.
