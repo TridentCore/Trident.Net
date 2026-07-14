@@ -10,10 +10,12 @@ public interface IRepository
     Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter);
     Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content);
     Task<Project> QueryAsync(string? ns, string pid);
-    Task<IReadOnlyList<Project>> QueryBatchAsync(IEnumerable<(string?, string pid)> batch);
+    Task<BatchResolveResult<(string?, string pid), Project>> QueryBatchAsync(
+        IEnumerable<(string?, string pid)> batch
+    );
     Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter);
 
-    Task<IReadOnlyList<(ScopedPackageIdentifier, Package)>> ResolveBatchAsync(
+    Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter
     );

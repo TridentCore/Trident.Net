@@ -53,11 +53,13 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
             .ResolveBatchAsync(index.Select(x => x.Key).Distinct(), filter)
             .ConfigureAwait(false);
 
+        resolved.ThrowIfFailures();
+
         // Same project+version from distinct sources now coexist (SyncPackages keys on
         // (project, source)); fan a single resolution out to every entry sharing that key.
         var byKey = index.ToLookup(x => x.Key, x => x.Origin);
-        return resolved
-            .SelectMany(x => byKey[x.Item1].Select(origin => (origin, x.Item2)))
+        return resolved.Successful
+            .SelectMany(x => byKey[x.Key].Select(origin => (origin, x.Value)))
             .ToList();
     }
 

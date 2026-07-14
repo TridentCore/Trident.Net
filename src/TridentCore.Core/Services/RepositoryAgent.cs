@@ -174,7 +174,7 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
-    public async Task<IReadOnlyList<(PackageIdentifier, Package)>> ResolveBatchAsync(
+    public async Task<BatchResolveResult<PackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<PackageIdentifier> batch,
         Filter filter
     )
@@ -187,35 +187,49 @@ public class RepositoryAgent
             )
             .ConfigureAwait(false);
 
+        var successful = cached.ToDictionary(x => x.Item, x => x.Cached);
+        var failed = new Dictionary<PackageIdentifier, Exception>();
+
         var toResolve = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.Repository);
-        var resolveTasks = toResolve
-            .Select(async x =>
-                (
-                    Label: x.Key,
-                    Packages: await Redirect(x.Key)
-                        .ResolveBatchAsync(x.Select(PackageIdentifierExtensions.ToScoped), filter)
-                        .ConfigureAwait(false)
-                )
-            )
-            .ToList();
-        await Task.WhenAll(resolveTasks).ConfigureAwait(false);
-        var resolved = resolveTasks
-            .Select(x => x.Result)
-            .SelectMany(x =>
-                x.Packages.Select(y => (y.Item1.ToUnscoped(x.Label), Package: y.Item2))
-            )
-            .ToList();
-        foreach (var (pref, package) in resolved)
+        var resolveTasks = toResolve.Select(async group =>
         {
-            await CacheObjectAsync(
-                    $"package:{PackageHelper.Identify(pref.Repository, package.Namespace, package.ProjectId, package.VersionId, filter)}",
-                    package
-                )
-                .ConfigureAwait(false);
+            var items = group.ToArray();
+            try
+            {
+                var result = await Redirect(group.Key)
+                    .ResolveBatchAsync(items.Select(PackageIdentifierExtensions.ToScoped), filter)
+                    .ConfigureAwait(false);
+                return result.MapKeys(x => x.ToUnscoped(group.Key));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return BatchResolveResult<PackageIdentifier, Package>.FromFailures(items, ex);
+            }
+        });
+
+        foreach (var result in await Task.WhenAll(resolveTasks).ConfigureAwait(false))
+        {
+            foreach (var (pref, package) in result.Successful)
+            {
+                successful[pref] = package;
+                await CacheObjectAsync(
+                        $"package:{PackageHelper.Identify(pref.Repository, pref.Namespace, pref.Identity, pref.Version, filter)}",
+                        package
+                    )
+                    .ConfigureAwait(false);
+            }
+
+            foreach (var (pref, error) in result.Failed)
+                failed[pref] = error;
         }
 
-        return cached.Select(x => (x.Item, x.Cached)).Concat(resolved).ToList();
+        return new(successful, failed);
     }
+
 
     public Task<Project> QueryAsync(string label, string? ns, string pid) =>
         RetrieveCachedAsync(
@@ -223,7 +237,7 @@ public class RepositoryAgent
             () => Redirect(label).QueryAsync(ns, pid)
         );
 
-    public async Task<IReadOnlyList<Project>> QueryBatchAsync(
+    public async Task<BatchResolveResult<(string label, string? ns, string pid), Project>> QueryBatchAsync(
         IEnumerable<(string label, string? ns, string pid)> batch
     )
     {
@@ -234,33 +248,49 @@ public class RepositoryAgent
         >(batchArray, x => $"project:{PackageHelper.Identify(x.label, x.ns, x.pid, null, null)}")
             .ConfigureAwait(false);
 
+        var successful = cached.ToDictionary(x => x.Item, x => x.Cached);
+        var failed = new Dictionary<(string label, string? ns, string pid), Exception>();
+
         var toQuery = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.label);
-        var queryTasks = toQuery
-            .Select(async x =>
-                (
-                    Label: x.Key,
-                    Projects: await Redirect(x.Key)
-                        .QueryBatchAsync(x.Select(y => (y.ns, y.pid)))
-                        .ConfigureAwait(false)
-                )
-            )
-            .ToList();
-        await Task.WhenAll(queryTasks).ConfigureAwait(false);
-        var queried = queryTasks
-            .Select(x => x.Result)
-            .SelectMany(x => x.Projects.Select(y => (x.Label, Project: y)))
-            .ToList();
-        foreach (var (label, project) in queried)
+        var queryTasks = toQuery.Select(async group =>
         {
-            await CacheObjectAsync(
-                    $"project:{PackageHelper.Identify(label, project.Namespace, project.ProjectId, null, null)}",
-                    project
-                )
-                .ConfigureAwait(false);
+            var items = group.ToArray();
+            try
+            {
+                var result = await Redirect(group.Key)
+                    .QueryBatchAsync(items.Select(x => (x.ns, x.pid)))
+                    .ConfigureAwait(false);
+                return result.MapKeys(((string? ns, string pid) x) => (label: group.Key, ns: x.ns, pid: x.pid));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return BatchResolveResult<(string label, string? ns, string pid), Project>.FromFailures(items, ex);
+            }
+        });
+
+        foreach (var result in await Task.WhenAll(queryTasks).ConfigureAwait(false))
+        {
+            foreach (var (key, project) in result.Successful)
+            {
+                successful[key] = project;
+                await CacheObjectAsync(
+                        $"project:{PackageHelper.Identify(key.label, key.ns, key.pid, null, null)}",
+                        project
+                    )
+                    .ConfigureAwait(false);
+            }
+
+            foreach (var (key, error) in result.Failed)
+                failed[key] = error;
         }
 
-        return cached.Select(x => x.Cached).Concat(queried.Select(x => x.Project)).ToList();
+        return new(successful, failed);
     }
+
 
     public Task<string> ReadDescriptionAsync(string label, string? ns, string pid) =>
         RetrieveCachedAsync(

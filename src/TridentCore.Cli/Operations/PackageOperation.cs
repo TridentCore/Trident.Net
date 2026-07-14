@@ -215,21 +215,13 @@ internal static class PackageOperation
             .Select(x => new PackageIdentifier(x.Parsed.Label, x.Parsed.Namespace, x.Parsed.Pid, x.Parsed.Vid))
             .ToArray();
 
-        IReadOnlyList<(PackageIdentifier, Package)> resolved;
-        try
-        {
-            resolved = await repositories
-                .ResolveBatchAsync(identifiers, filter)
-                .ConfigureAwait(false);
-        }
-        catch
-        {
-            return new(ctx.Key, pref, [], parsed.Select(x => x.Entry.Pref).ToArray());
-        }
+        var resolved = await repositories
+            .ResolveBatchAsync(identifiers, filter)
+            .ConfigureAwait(false);
 
-        var lookup = resolved.ToDictionary(
-            x => (x.Item1.Namespace, x.Item1.Identity),
-            x => x.Item2
+        var lookup = resolved.Successful.ToDictionary(
+            x => (x.Key.Namespace, x.Key.Identity),
+            x => x.Value
         );
         var dependents = new List<DependentDto>();
         var failed = new List<string>();

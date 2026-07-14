@@ -80,8 +80,10 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
                                 .ResolveBatchAsync(packages, new(pack.Profile.Setup.Version, loader?.Identity, null))
                                 .ConfigureAwait(false);
 
-            files.AddRange(resolved
-                          .Select(x => x.Item2)
+            resolved.ThrowIfFailures();
+
+            files.AddRange(resolved.Successful
+                          .Select(x => x.Value)
                           .Select(package =>
                                       new
                                           PackIndex.IndexFile($"{FileHelper.GetAssetFolderName(package.Kind)}/{package.FileName}",

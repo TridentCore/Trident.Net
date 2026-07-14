@@ -33,8 +33,9 @@ internal static class PackageDtos
         var filter = PackageCliHelper.BuildFilter(null, null, null, instance);
         var projects = await repositories.QueryBatchAsync(batch).ConfigureAwait(false);
 
-        var projectLookup = projects.ToDictionary(
-            p => PackageHelper.ToPref(p.Label, p.Namespace, p.ProjectId, null),
+        var projectLookup = projects.Successful.ToDictionary(
+            p => PackageHelper.ToPref(p.Value.Label, p.Value.Namespace, p.Value.ProjectId, null),
+            p => p.Value,
             StringComparer.OrdinalIgnoreCase
         );
 
