@@ -376,7 +376,7 @@ public class InstanceManager(
 
             try
             {
-                var javaHome = javaHomeLocator(artifactData.JavaMajorVersion);
+                var javaHome = javaHomeLocator(artifactData.JavaMajorVersion).Home;
                 var workingDir = PathDef.Default.DirectoryOfBuild(tracker.Key);
                 var libraryDir = PathDef.Default.CacheLibraryDirectory;
                 var assetDir = PathDef.Default.CacheAssetDirectory;

@@ -111,6 +111,8 @@ public class PathDef
 
     public string DirectoryOfRuntime(uint major) => Path.Combine(CacheRuntimeDirectory, major.ToString());
 
+    public string FileOfRuntimeManifest(uint major) => Path.Combine(CacheRuntimeDirectory, $"{major}.json");
+
     public string FileOfLibrary(string ns, string name, string version, string? platform, string extension)
     {
         var nsDir = string.Join(Path.DirectorySeparatorChar, ns.Split('.'));

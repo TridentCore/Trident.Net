@@ -319,11 +319,11 @@ public static class JavaHelper
             : new(vendor, version, major);
     }
 
-    private static string Locate(uint major, string? home, bool withFallback = true)
+    private static JavaResolution Locate(uint major, string? home, bool withFallback = true)
     {
         if (!string.IsNullOrEmpty(home) && Directory.Exists(home))
         {
-            return home;
+            return new(home, JavaResolution.Source.UserConfigured);
         }
 
         if (withFallback)
@@ -338,7 +338,7 @@ public static class JavaHelper
                 var bundleJava = Path.Combine(bundleHome, "bin", "java");
                 if (File.Exists(bundleJava))
                 {
-                    return bundleHome;
+                    return new(bundleHome, JavaResolution.Source.Bundled);
                 }
             }
 
@@ -350,7 +350,7 @@ public static class JavaHelper
             );
             if (File.Exists(path))
             {
-                return dir;
+                return new(dir, JavaResolution.Source.Bundled);
             }
         }
 
@@ -596,4 +596,20 @@ public static class JavaHelper
     );
 
     public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
+
+    // A located Java home paired with its origin, so the deploy pipeline can treat a
+    // user-configured JRE (left untouched) differently from a bundled one (self-healed).
+    // Returning a bare path would force every caller to guess the origin from the string.
+    public record JavaResolution(string Home, JavaResolution.Source Origin)
+    {
+        public enum Source
+        {
+            // Explicitly configured by the user and present on disk — never validated or repaired.
+            UserConfigured,
+
+            // No usable user configuration; resolved to the pipeline-bundled runtime under runtimes/.
+            Bundled
+        }
+    }
+
 }

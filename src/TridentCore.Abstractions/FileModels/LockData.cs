@@ -16,6 +16,8 @@ public record LockData
     public ArtifactData? Artifact { get; init; }
     public IReadOnlyList<LockedPackage> Packages { get; init; } = [];
 
+    public RuntimeData? Runtime { get; init; }
+
     #region Nested type: PlatformData
 
     // Inline value-compared record; LoadLock always supplies it, so stages compare with ==.
@@ -108,6 +110,16 @@ public record LockData
 
         #endregion
     }
+
+    #endregion
+
+    #region Nested type: RuntimeData
+
+    // Fingerprint of the bundled runtime manifest cached at runtimes/{major}.json. Lets
+    // EnsureRuntimeStage reuse the cached manifest offline (sha1 match) instead of re-fetching
+    // Mojang's runtime index every deploy. Travels with the artifact: migrated atomically when
+    // the platform is unchanged (same Java major), rebuilt when it changes.
+    public record RuntimeData(uint Major, string Sha1);
 
     #endregion
 }

@@ -1,3 +1,5 @@
+using TridentCore.Core.Utilities;
+
 namespace TridentCore.Core.Services.Instances;
 
-public delegate string JavaHomeLocatorDelegate(uint major);
+public delegate JavaHelper.JavaResolution JavaHomeLocatorDelegate(uint major);

@@ -43,8 +43,8 @@ public class DeployEngine(
             typeof(ProcessLoaderStage),
             typeof(SyncPackagesStage),
             typeof(FlattenPackagesStage),
-            typeof(PersistLockStage),
             typeof(EnsureRuntimeStage),
+            typeof(PersistLockStage),
             typeof(GenerateManifestStage),
             typeof(SolidifyManifestStage)
         ];
