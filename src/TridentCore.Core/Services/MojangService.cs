@@ -8,7 +8,10 @@ public class MojangService(IMojangLauncherClient launcherClient, IMojangPistonCl
     public const string LAUNCHER_ENDPOINT = "https://launchercontent.mojang.com";
     public const string PISTON_ENDPOINT = "https://piston-meta.mojang.com";
 
-    public async Task<MinecraftReleasePatchesResponse> GetMinecraftNewsAsync() =>
+    public async Task<MinecraftNewsResponse> GetMinecraftNewsAsync() =>
+        await launcherClient.GetNewsAsync().ConfigureAwait(false);
+
+    public async Task<MinecraftReleasePatchesResponse> GetMinecraftReleasePatchesAsync() =>
         await launcherClient.GetReleasePatchesAsync().ConfigureAwait(false);
 
     public Uri GetAbsoluteImageUrl(Uri imageUrl) =>
