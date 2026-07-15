@@ -1,9 +1,13 @@
+using TridentCore.Pref.Building;
+
 namespace TridentCore.Pref;
 
-// 只是用来描述 (Label, Ns?, Pid, Vid?) 的结构
 public readonly record struct PackageIdentifier(
     string Repository,
     string? Namespace,
     string Identity,
     string? Version
-);
+)
+{
+    public override string ToString() => Builder.Build(Repository, Namespace, Identity, Version);
+}
