@@ -63,9 +63,8 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 │       ├── profile.json     # 声明式实例元数据
 │       ├── data.lock.json   # 部署锁定数据
 │       ├── data.pack.json   # 打包数据
-│       ├── build/           # 最终投影出的 .minecraft
+│       ├── build/           # 最终投影出的 .minecraft；也承载导入内容的运行时变更
 │       ├── import/          # 导入层，通常来自整合包或需要导出的文件
-│       ├── live/            # 导入内容的可变运行层
 │       └── persist/         # 用户持久层，例如 saves、screenshots、options.txt
 └── .trident.cli/
     ├── accounts.json        # CLI 私有账号配置
@@ -76,8 +75,8 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 
 - Profile：实例的声明式入口，包含名称、Minecraft 版本、Loader、包 Pref、规则和运行覆盖项。
 - Deploy：把 profile、远程元数据、缓存文件和本地层合成为 `build/`，并生成 `data.lock.json`。
-- Layer：`import/` 放整合包或将来要导出的文件，`live/` 保存导入内容的运行时变更，`persist/` 保存用户数据。
-- Projection：部署阶段会把虚拟文件结构增量投影到 `build/`，通常通过软链接建立关系并移除多余关系。
+- Layer：`import/` 放整合包或将来要导出的文件（以实体文件投影进 `build/`，让游戏直接读取），`persist/` 保存用户数据（以软链接投影进 `build/`）。导入内容的运行时变更直接落在 `build/`。
+- Projection：部署阶段会把虚拟文件结构增量投影到 `build/`——import 为实体文件，包与持久层为软链接。
 - Repository：通过统一接口访问 Modrinth、CurseForge 等包仓库，包标识使用 Trident Pref。
 - Tracker：部署、安装、更新和启动过程以 tracker 暴露状态、阶段和进度，适合 UI 或 CLI 订阅。
 

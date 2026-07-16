@@ -32,7 +32,6 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         var home = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
         var dirs = new[]
         {
-            PathDef.Default.DirectoryOfLive(key),
             PathDef.Default.DirectoryOfImport(key),
             PathDef.Default.DirectoryOfPersist(key)
         };
@@ -57,6 +56,16 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                                 {
                                                     collected?.Report(totalCollected);
                                                 }
+                                            }
+                                        }
+
+                                        foreach (var file in EnumerateImportProjection(key))
+                                        {
+                                            await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
+                                            Interlocked.Increment(ref totalCollected);
+                                            if (totalCollected % 1000 == 0)
+                                            {
+                                                collected?.Report(totalCollected);
                                             }
                                         }
                                     }
@@ -196,7 +205,6 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
             var dirs = new[]
             {
-                PathDef.Default.DirectoryOfLive(key),
                 PathDef.Default.DirectoryOfImport(key),
                 PathDef.Default.DirectoryOfPersist(key)
             };
@@ -254,6 +262,47 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                 }
             }
 
+            // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets）。
+            // 上面已把 import 还原到快照状态，以此时的 import 清单枚举 build 受管路径：在引用里则还原、不在则删。
+            foreach (var file in EnumerateImportProjection(key))
+            {
+                token.ThrowIfCancellationRequested();
+
+                var relative = Path.GetRelativePath(home, file.FullName);
+
+                if (refByPath.TryGetValue(relative, out var reference))
+                {
+                    matched.Add(reference.RelativePath);
+
+                    var changed = file.Length != reference.Size;
+                    if (!changed)
+                    {
+                        using var stream = File.OpenRead(file.FullName);
+                        var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                        changed = hash != reference.Hash;
+                    }
+
+                    if (changed)
+                    {
+                        var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                        File.Copy(objectPath, file.FullName, overwrite: true);
+                    }
+
+                    if (file.Attributes != reference.Attributes)
+                        file.Attributes = reference.Attributes;
+
+                    if (file.LastWriteTime != reference.LastModifiedAt)
+                        File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                }
+                else
+                {
+                    file.Delete();
+                }
+
+                processed++;
+                restored?.Report(processed);
+            }
+
             foreach (var reference in references)
             {
                 token.ThrowIfCancellationRequested();
@@ -273,6 +322,26 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                 restored?.Report(processed);
             }
         }, token);
+    }
+
+    private static IEnumerable<FileInfo> EnumerateImportProjection(string key)
+    {
+        var importDir = PathDef.Default.DirectoryOfImport(key);
+        var buildDir = PathDef.Default.DirectoryOfBuild(key);
+        if (!Directory.Exists(importDir) || !Directory.Exists(buildDir))
+        {
+            yield break;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(importDir, file);
+            var target = Path.Combine(buildDir, rel);
+            if (File.Exists(target) && File.ResolveLinkTarget(target, false) is null)
+            {
+                yield return new FileInfo(target);
+            }
+        }
     }
 
     #region Nested type: InstanceSnapshots

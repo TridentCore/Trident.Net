@@ -108,15 +108,10 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
         var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);
         var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
-        var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
         var persistDir = PathDef.Default.DirectoryOfPersist(Context.Key);
-        // 将 import -> live 查漏补缺，会因为用户手动文件操作而产生 live 的文件比 import 多的情况
-        // 但这视为用户行为，在完全的程序托管下只有 RESET/UPDATE 两种情况会修改 import/live，PROJECT 一种情况会修改 live，不会有文件多出来的意外而导致脱离控制的情况
-        // 按优先级 live/import/persist ，后面的会把前面的顶掉
-        // FIX: 如果 live/screenshots/.keep 且 persist/screenshots/a.png 则会把 a.png 塞进 live/screenshots/a.png，但好像无伤大雅
+        // NOTE: import 投实体而非软链接：游戏不跟随目录型资源包路径上的软链接（音乐/贴图/模型/语言）。
         var set = new Dictionary<string, EntityManifest.PersistentFile>();
-        PopulatePersistent(set, importDir, importDir, liveDir, false);
-        PopulatePersistent(set, importDir, liveDir, buildDir, true);
+        PopulatePersistent(set, importDir, importDir, buildDir, false);
         PopulatePersistent(set, persistDir, persistDir, buildDir, true);
         foreach (var file in set.Values)
         {

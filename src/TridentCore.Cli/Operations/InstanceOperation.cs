@@ -128,7 +128,6 @@ internal static class InstanceOperation
 
         var deleted = new List<string>();
         DeleteDirectory(PathDef.Default.DirectoryOfBuild(ctx.Key), deleted);
-        DeleteDirectory(PathDef.Default.DirectoryOfLive(ctx.Key), deleted);
         DeleteFile(PathDef.Default.FileOfLockData(ctx.Key), deleted);
         return new(ctx.Key, deleted);
     }

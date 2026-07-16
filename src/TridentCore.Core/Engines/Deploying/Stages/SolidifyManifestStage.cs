@@ -24,7 +24,7 @@ public class SolidifyManifestStage(
     {
         var manifest = Context.Manifest!;
         var buildDirectory = PathDef.Default.DirectoryOfBuild(Context.Key);
-        var liveDirectory = PathDef.Default.DirectoryOfLive(Context.Key);
+        var importDirectory = PathDef.Default.DirectoryOfImport(Context.Key);
         var persistDirectory = PathDef.Default.DirectoryOfPersist(Context.Key);
 
         var files = new List<object>();
@@ -58,7 +58,7 @@ public class SolidifyManifestStage(
             var priority = GetProjectionPriority(
                 persistent,
                 buildDirectory,
-                liveDirectory,
+                importDirectory,
                 persistDirectory
             );
             if (priority is { } actual)
@@ -292,6 +292,15 @@ public class SolidifyManifestStage(
                                 }
                                 else
                                 {
+                                    if (IsSymbolicLink(persistent.TargetPath))
+                                    {
+                                        // NOTE: 遗留部署——旧版本把 import 经 live 软链接进 build。reset 是兜底，不做迁移。
+                                        throw new InvalidOperationException(
+                                            $"Legacy symlink-style import projection at {persistent.TargetPath}. "
+                                            + "Reset the instance to clear it."
+                                        );
+                                    }
+
                                     if (persistent.IsDirectory)
                                     {
                                         // 收集源目录的文件，按存在原则复制到目标目录
@@ -455,49 +464,6 @@ public class SolidifyManifestStage(
 
         SymlinkPhotos.Apply(buildDirectory, entities.ToArray());
 
-        var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
-        var liveDir = PathDef.Default.DirectoryOfLive(Context.Key);
-        if (Directory.Exists(liveDir) && Directory.Exists(importDir))
-        {
-            var queue = new Queue<string>();
-            var cleans = new List<string>();
-            queue.Enqueue(liveDir);
-            while (queue.TryDequeue(out var dir))
-            {
-                var liveFiles = Directory.GetFiles(dir);
-                var liveDirs = Directory.GetDirectories(dir);
-                foreach (var sub in liveDirs)
-                {
-                    queue.Enqueue(sub);
-                    cleans.Add(sub);
-                }
-
-                foreach (var file in liveFiles)
-                {
-                    var relative = Path.GetRelativePath(liveDir, file);
-                    var target = Path.Combine(importDir, relative);
-                    if (!File.Exists(target))
-                    {
-                        File.Delete(file);
-                    }
-                }
-            }
-
-            // 这里的排序是为了遍历顺序永远是级别深入的在前，以此代替 DFS 达到效果
-            // 证明有限遍历到 A 的子文件夹 A/B，由 A/B(3) 长度必定大于 A(1)
-            foreach (
-                var target in cleans
-                    .OrderByDescending(x => x.Length)
-                    .Where(Directory.Exists)
-                    .Where(x =>
-                        Directory.GetDirectories(x).Length == 0 && Directory.GetFiles(x).Length == 0
-                    )
-            )
-            {
-                Directory.Delete(target);
-            }
-        }
-
         // 生成 allowed_symlinks.txt
         if (!Path.Exists(buildDirectory))
         {
@@ -508,7 +474,6 @@ public class SolidifyManifestStage(
                 Path.Combine(buildDirectory, "allowed_symlinks.txt"),
                 $"""
                 [prefix]{PathDef.Default.CachePackageDirectory}
-                [prefix]{PathDef.Default.DirectoryOfLive(Context.Key)}
                 [prefix]{PathDef.Default.DirectoryOfPersist(Context.Key)}
                 """,
                 cancel.Token
@@ -525,14 +490,37 @@ public class SolidifyManifestStage(
         ProgressStream.Dispose();
     }
 
+    private static bool IsSymbolicLink(string path)
+    {
+        try
+        {
+            if (File.ResolveLinkTarget(path, false) is not null)
+            {
+                return true;
+            }
+        }
+        catch (IOException) { }
+
+        try
+        {
+            if (Directory.ResolveLinkTarget(path, false) is not null)
+            {
+                return true;
+            }
+        }
+        catch (IOException) { }
+
+        return false;
+    }
+
     private ProjectionPriority? GetProjectionPriority(
         EntityManifest.PersistentFile persistent,
         string buildDir,
-        string liveDir,
+        string importDir,
         string persistDir
     )
     {
-        if (!persistent.IsPhantom || !FileHelper.IsInDirectory(persistent.TargetPath, buildDir))
+        if (!FileHelper.IsInDirectory(persistent.TargetPath, buildDir))
         {
             return null;
         }
@@ -542,9 +530,9 @@ public class SolidifyManifestStage(
             return ProjectionPriority.Persist;
         }
 
-        if (FileHelper.IsInDirectory(persistent.SourcePath, liveDir))
+        if (FileHelper.IsInDirectory(persistent.SourcePath, importDir))
         {
-            return ProjectionPriority.Live;
+            return ProjectionPriority.Import;
         }
 
         return null;
@@ -589,7 +577,7 @@ public class SolidifyManifestStage(
     private enum ProjectionPriority
     {
         Package = 0,
-        Live = 1,
+        Import = 1,
         Persist = 2,
     }
 

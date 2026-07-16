@@ -140,7 +140,7 @@ trident instance run --instance cherry_picks --max-memory 8192 --command-wrapper
 
 Supported export formats are `trident`, `modrinth`, and `curseforge`.
 
-`reset` deletes build artifacts (`build/`, `live/`, `data.lock.json`) but keeps `profile.json`, `import/`, and `persist/`.
+`reset` deletes build artifacts (`build/`, `data.lock.json`) but keeps `profile.json`, `import/`, and `persist/`.
 
 `delete` plants the Trident bomb marker and removes the profile from the active manager, matching the app behavior.
 

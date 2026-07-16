@@ -63,9 +63,8 @@ Trident only manages data under the selected home directory. By default, home is
 │       ├── profile.json     # declarative instance metadata
 │       ├── data.lock.json   # deployment lock data
 │       ├── data.pack.json   # pack data
-│       ├── build/           # projected .minecraft output
+│       ├── build/           # projected .minecraft output; also holds runtime mutations to imported content
 │       ├── import/          # imported layer, usually from modpacks or exportable files
-│       ├── live/            # mutable runtime layer for imported content
 │       └── persist/         # user-persistent data such as saves, screenshots, options.txt
 └── .trident.cli/
     ├── accounts.json        # CLI-private account configuration
@@ -77,8 +76,8 @@ Trident only manages data under the selected home directory. By default, home is
 
 - Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and runtime overrides.
 - Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes `data.lock.json`.
-- Layer: `import/` stores modpack or exportable files, `live/` stores runtime mutations to imported content, and `persist/` stores user data.
-- Projection: deployment incrementally projects the virtual file structure into `build/`, usually by creating symlink relationships and removing stale relationships.
+- Layer: `import/` stores modpack or exportable files (projected as real files into `build/` so the game reads them directly), and `persist/` stores user data (symlinked into `build/`). Runtime mutations to imported content land in `build/`.
+- Projection: deployment incrementally projects the virtual file structure into `build/` — import as real files, packages and persistence as symlinks.
 - Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident Prefs.
 - Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI subscribers.
 
