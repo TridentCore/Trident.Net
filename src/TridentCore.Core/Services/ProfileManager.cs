@@ -130,6 +130,8 @@ public class ProfileManager : IDisposable
             return;
         }
 
+        // NOTE: 废掉 handle，避免外部仍握着的 ProfileGuard 在 Dispose/Notify 时写回 profile 或再发 ProfileUpdated。
+        handle.IsActive = false;
         _profiles.Remove(handle);
 
         _logger.LogInformation("{} removed", key);

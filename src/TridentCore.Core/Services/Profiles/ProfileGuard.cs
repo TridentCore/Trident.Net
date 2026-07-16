@@ -27,7 +27,15 @@ public class ProfileGuard : IAsyncDisposable
 
     #endregion
 
-    public void NotifyChanged() => _root.OnProfileUpdated(Key, _handle.Value);
+    public void NotifyChanged()
+    {
+        if (!_handle.IsActive)
+        {
+            return;
+        }
+
+        _root.OnProfileUpdated(Key, _handle.Value);
+    }
 
     public void Discard() => _handle.IsActive = false;
 }
