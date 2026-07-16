@@ -194,9 +194,6 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         {
             token.ThrowIfCancellationRequested();
 
-            var snapshot = store.GetSnapshot(snapshotId)
-                ?? throw new InvalidOperationException($"Snapshot {snapshotId} not found");
-
             var home = PathDef.Default.DirectoryOfHome(key);
             var references = store.GetReferences(snapshotId);
             var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
@@ -214,7 +211,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                 if (!Directory.Exists(dir)) continue;
                 var root = new DirectoryInfo(dir);
 
-                foreach (var file in root.EnumerateFiles("*.*", SearchOption.AllDirectories))
+                foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
                 {
                     token.ThrowIfCancellationRequested();
 

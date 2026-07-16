@@ -621,9 +621,25 @@ public class InstanceManager(
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
-        ClearImportProjection(key);
-
         var importDir = PathDef.Default.DirectoryOfImport(key);
+        var buildDir = PathDef.Default.DirectoryOfBuild(key);
+        if (!Directory.Exists(importDir) || !Directory.Exists(buildDir))
+        {
+            return;
+        }
+
+        // NOTE: import 是 build 里的实体（有则不管），更新时若不清除旧投影，重新部署不会覆盖/删除，更新就传不进去。
+        // 只删 import 拥有的实体，软链接（persist/package 赢下的路径）不动。
+        foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(importDir, file);
+            var target = Path.Combine(buildDir, rel);
+            if (File.Exists(target) && File.ResolveLinkTarget(target, false) is null)
+            {
+                File.Delete(target);
+            }
+        }
+
         if (Directory.Exists(importDir))
         {
             Directory.Delete(importDir, true);
@@ -645,28 +661,6 @@ public class InstanceManager(
         );
 
         logger.LogInformation("{key} updated", key);
-    }
-
-    private static void ClearImportProjection(string key)
-    {
-        var importDir = PathDef.Default.DirectoryOfImport(key);
-        var buildDir = PathDef.Default.DirectoryOfBuild(key);
-        if (!Directory.Exists(importDir) || !Directory.Exists(buildDir))
-        {
-            return;
-        }
-
-        // NOTE: import 是 build 里的实体（有则不管），更新时若不清除旧投影，重新部署不会覆盖/删除，更新就传不进去。
-        // 只删 import 拥有的实体，软链接（persist/package 赢下的路径）不动。
-        foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
-        {
-            var rel = Path.GetRelativePath(importDir, file);
-            var target = Path.Combine(buildDir, rel);
-            if (File.Exists(target) && File.ResolveLinkTarget(target, false) is null)
-            {
-                File.Delete(target);
-            }
-        }
     }
 
     private async Task<(

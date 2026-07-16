@@ -109,7 +109,6 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         var buildDir = PathDef.Default.DirectoryOfBuild(Context.Key);
         var importDir = PathDef.Default.DirectoryOfImport(Context.Key);
         var persistDir = PathDef.Default.DirectoryOfPersist(Context.Key);
-        // NOTE: import 投实体而非软链接：游戏不跟随目录型资源包路径上的软链接（音乐/贴图/模型/语言）。
         var set = new Dictionary<string, EntityManifest.PersistentFile>();
         PopulatePersistent(set, importDir, importDir, buildDir, false);
         PopulatePersistent(set, persistDir, persistDir, buildDir, true);
