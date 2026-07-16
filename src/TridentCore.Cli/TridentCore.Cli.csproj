@@ -26,6 +26,7 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageReleaseNotes Condition="Exists('$(MSBuildProjectDirectory)/RELEASE_NOTES.md')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/RELEASE_NOTES.md'))</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

@@ -53,26 +53,25 @@ jobs:
                         echo "should_publish=true" >> $GITHUB_OUTPUT
                     fi
 
-            -   name: Create local tag
-                if: steps.version-check.outputs.should_publish == 'true'
-                run: git tag "v${{ steps.gitversion.outputs.SemVer }}"
-
             -   name: Install git-cliff
                 if: steps.version-check.outputs.should_publish == 'true'
                 run: cargo install git-cliff
 
             -   name: Generate changelog
                 if: steps.version-check.outputs.should_publish == 'true'
-                run: git-cliff --latest --strip header --include-path "src/TridentCore.Cli/**" -o ./RELEASE_NOTES.md
+                run: |
+                    git-cliff \
+                      --unreleased \
+                      --tag "v${{ steps.gitversion.outputs.SemVer }}" \
+                      --strip header \
+                      -o src/TridentCore.Cli/RELEASE_NOTES.md
 
             -   name: Pack NuGet package
                 if: steps.version-check.outputs.should_publish == 'true'
                 run: |
-                    release_notes="$(cat ./RELEASE_NOTES.md)"
                     dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj \
                       --configuration Release \
-                      --output ./publish \
-                      -p:PackageReleaseNotes="$release_notes"
+                      --output ./publish
 
             -   name: Publish to NuGet
                 if: steps.version-check.outputs.should_publish == 'true'
@@ -83,4 +82,6 @@ jobs:
 
             -   name: Push tag to remote
                 if: steps.version-check.outputs.should_publish == 'true'
-                run: git push origin "v${{ steps.gitversion.outputs.SemVer }}"
+                run: |
+                    git tag "v${{ steps.gitversion.outputs.SemVer }}"
+                    git push origin "v${{ steps.gitversion.outputs.SemVer }}"

@@ -376,6 +376,7 @@ appsettings.*.json
 build/
 Releases/
 publish/
+RELEASE_NOTES.md
 
 # AI tooling
 .kiro/
