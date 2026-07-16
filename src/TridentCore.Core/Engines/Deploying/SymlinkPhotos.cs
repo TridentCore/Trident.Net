@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using TridentCore.Core.Exceptions;
 
 namespace TridentCore.Core.Engines.Deploying;
 
@@ -101,8 +102,9 @@ public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
                 )
             )
             {
-                throw new InvalidOperationException(
-                    $"Target {remain.Path} already exists and is not a symlink"
+                throw new BuildArtifactConflictException(
+                    remain.Path,
+                    BuildArtifactConflictException.ConflictKind.OccupiedByRegularFileSystemEntry
                 );
             }
 

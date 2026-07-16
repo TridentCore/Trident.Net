@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
+using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
@@ -196,10 +197,9 @@ public class SolidifyManifestStage(
                                                 is null
                                         )
                                         {
-                                            // 由于现在是目录模式，这时候只能丢弃文件，但是丢弃文件是不对的，所以直接报错！
-                                            // TODO: 提供独特的异常包含更详细清晰的诊断信息并在前端展示
-                                            throw new InvalidOperationException(
-                                                $"Target {persistent.TargetPath} already exists as a normal file while trying to create a symlink from {persistent.SourcePath} as a directory"
+                                            throw new BuildArtifactConflictException(
+                                                persistent.TargetPath,
+                                                BuildArtifactConflictException.ConflictKind.OccupiedByRegularFileSystemEntry
                                             );
                                         }
 
@@ -294,10 +294,9 @@ public class SolidifyManifestStage(
                                 {
                                     if (IsSymbolicLink(persistent.TargetPath))
                                     {
-                                        // NOTE: 遗留部署——旧版本把 import 经 live 软链接进 build。reset 是兜底，不做迁移。
-                                        throw new InvalidOperationException(
-                                            $"Legacy symlink-style import projection at {persistent.TargetPath}. "
-                                            + "Reset the instance to clear it."
+                                        throw new BuildArtifactConflictException(
+                                            persistent.TargetPath,
+                                            BuildArtifactConflictException.ConflictKind.LegacyImportProjection
                                         );
                                     }
 
