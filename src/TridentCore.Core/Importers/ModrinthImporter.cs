@@ -20,11 +20,12 @@ public class ModrinthImporter : IProfileImporter
 
     #region IProfileImporter Members
 
-    public string IndexFileName => ModrinthHelper.PACK_INDEX_FILE_NAME;
+    public bool CanHandle(CompressedProfilePack pack) =>
+        pack.RootPrefix is null && pack.FileNames.Contains(ModrinthHelper.PACK_INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        await using var manifestStream = pack.Open(IndexFileName);
+        await using var manifestStream = pack.Open(ModrinthHelper.PACK_INDEX_FILE_NAME);
         var index = await JsonSerializer
             .DeserializeAsync<PackIndex>(manifestStream, JsonSerializerOptions.Web)
             .ConfigureAwait(false);
@@ -34,7 +35,7 @@ public class ModrinthImporter : IProfileImporter
             || !TryExtractVersion(index.Dependencies, out var version)
         )
         {
-            throw new FormatException($"{IndexFileName} is not a valid manifest");
+            throw new FormatException($"{ModrinthHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;

@@ -7,7 +7,7 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 {
     public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
     {
-        var importer = importers.FirstOrDefault(x => pack.FileNames.Contains(x.IndexFileName));
+        var importer = importers.FirstOrDefault(x => x.CanHandle(pack));
         if (importer is not null)
         {
             return await importer.ExtractAsync(pack).ConfigureAwait(false);

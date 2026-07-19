@@ -23,4 +23,8 @@ public interface IRepository
     Task<string> ReadDescriptionAsync(string? ns, string pid);
     Task<string> ReadChangelogAsync(string? ns, string pid, string vid);
     Task<IPaginationHandle<Version>> InspectAsync(string? ns, string pid, Filter filter);
+
+    // Hidden repositories stay registered and resolvable by label, but are excluded from
+    // RepositoryAgent.Labels so they never appear in browse/search/marketplace lists.
+    bool IsHidden => false;
 }

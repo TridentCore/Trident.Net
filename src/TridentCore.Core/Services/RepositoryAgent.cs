@@ -37,7 +37,9 @@ public class RepositoryAgent
     }
 
     public int Count => _repositories.Count;
-    public IEnumerable<string> Labels => _repositories.Keys;
+    public IEnumerable<string> AllLabels => _repositories.Keys;
+    public IEnumerable<string> Labels =>
+        _repositories.Where(x => !x.Value.IsHidden).Select(x => x.Key);
 
     private IDictionary<string, IRepository> BuildRepositories(
         IReadOnlyList<IRepositoryProviderAccessor> accessors
@@ -86,6 +88,20 @@ public class RepositoryAgent
                         );
 
                         built.Add(profile.Label, modrinth);
+                        break;
+                    }
+                case IRepositoryProviderAccessor.ProviderProfile.DriverType.Packwiz:
+                    {
+                        var packwiz = new PackwizRepository(
+                            profile.Label,
+                            RestService.For<IGitHubClient>(
+                                BuildClient(profile),
+                                new RefitSettings(
+                                    new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))
+                                )
+                            )
+                        );
+                        built.Add(profile.Label, packwiz);
                         break;
                     }
             }

@@ -9,12 +9,14 @@ namespace TridentCore.Core.Importers;
 
 public class TridentImporter : IProfileImporter
 {
+    private static string IndexFileName => "trident.index.json";
     private static string OptionsFileName => "trident.options.json";
     private static string OverridesDirectoryName => "import";
 
     #region IProfileImporter Members
 
-    public string IndexFileName => "trident.index.json";
+    public bool CanHandle(CompressedProfilePack pack) =>
+        pack.RootPrefix is null && pack.FileNames.Contains(IndexFileName);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {

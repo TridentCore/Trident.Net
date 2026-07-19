@@ -23,5 +23,6 @@
         <PackageReference Include="Refit.HttpClientFactory" Version="13.1.0" />
         <PackageReference Include="ReverseMarkdown" Version="6.1.0" />
         <PackageReference Include="Semver" Version="3.0.0" />
+        <PackageReference Include="Tomlyn" Version="2.10.1" />
     </ItemGroup>
 </Project>

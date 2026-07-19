@@ -19,17 +19,18 @@ public class CurseForgeImporter : IProfileImporter
 
     #region IProfileImporter Members
 
-    public string IndexFileName => CurseForgeHelper.PACK_INDEX_FILE_NAME;
+    public bool CanHandle(CompressedProfilePack pack) =>
+        pack.RootPrefix is null && pack.FileNames.Contains(CurseForgeHelper.PACK_INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        await using var manifestStream = pack.Open(IndexFileName);
+        await using var manifestStream = pack.Open(CurseForgeHelper.PACK_INDEX_FILE_NAME);
         var manifest = await JsonSerializer
             .DeserializeAsync<Manifest>(manifestStream, JsonSerializerOptions.Web)
             .ConfigureAwait(false);
         if (manifest is null || !TryExtractLoader(manifest.Minecraft.ModLoaders, out var loader))
         {
-            throw new FormatException($"{IndexFileName} is not a valid manifest");
+            throw new FormatException($"{CurseForgeHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;

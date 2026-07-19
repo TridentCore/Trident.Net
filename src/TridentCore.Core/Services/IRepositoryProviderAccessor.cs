@@ -25,7 +25,7 @@ public interface IRepositoryProviderAccessor
         {
             CurseForge,
             Modrinth,
-            GitHub,
+            Packwiz,
         }
 
         #endregion

@@ -10,17 +10,18 @@ public class MultiMcImporter : IProfileImporter
 {
     #region IProfileImporter Members
 
-    public string IndexFileName => MultiMcHelper.PACK_INDEX_FILE_NAME;
+    public bool CanHandle(CompressedProfilePack pack) =>
+        pack.RootPrefix is null && pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        await using var indexStream = pack.Open(IndexFileName);
+        await using var indexStream = pack.Open(MultiMcHelper.PACK_INDEX_FILE_NAME);
         var mmcPack = await JsonSerializer
             .DeserializeAsync<MmcPack>(indexStream, JsonSerializerOptions.Web)
             .ConfigureAwait(false);
         if (mmcPack is null)
         {
-            throw new FormatException($"{IndexFileName} is not a valid mmc-pack.json");
+            throw new FormatException($"{MultiMcHelper.PACK_INDEX_FILE_NAME} is not a valid mmc-pack.json");
         }
 
         var mcVersion = mmcPack.Components

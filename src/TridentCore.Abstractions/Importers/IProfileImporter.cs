@@ -2,7 +2,7 @@ namespace TridentCore.Abstractions.Importers;
 
 public interface IProfileImporter
 {
-    string IndexFileName { get; }
+    bool CanHandle(CompressedProfilePack pack);
 
     Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack);
 }
