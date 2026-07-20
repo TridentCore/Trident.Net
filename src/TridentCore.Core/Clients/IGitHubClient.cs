@@ -23,4 +23,12 @@ public interface IGitHubClient
         string path,
         [AliasAs("ref")] string? gitRef = null
     );
+
+    [Get("/repos/{owner}/{repo}/tags")]
+    Task<IReadOnlyList<GithubTag>> GetTagsAsync(
+        string owner,
+        string repo,
+        [AliasAs("per_page")] int perPage = 100,
+        [AliasAs("page")] uint page = 1
+    );
 }

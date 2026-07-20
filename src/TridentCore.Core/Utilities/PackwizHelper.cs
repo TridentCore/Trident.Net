@@ -123,14 +123,14 @@ public static class PackwizHelper
         );
     }
 
-    public static Package ToPackage(string label, string owner, string repo, CommitObject commit)
+    public static Package ToPackage(string label, string owner, string repo, CommitObject commit, string? versionId)
     {
         var sha = commit.Sha ?? string.Empty;
         return new(
             label,
             owner,
             repo,
-            ShortSha(sha),
+            versionId ?? ShortSha(sha),
             repo,
             $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
             null,
@@ -149,14 +149,14 @@ public static class PackwizHelper
         );
     }
 
-    public static Version ToVersion(string label, string owner, string repo, CommitObject commit)
+    public static Version ToVersion(string label, string owner, string repo, CommitObject commit, string? versionId)
     {
         var sha = commit.Sha ?? string.Empty;
         return new(
             label,
             owner,
             repo,
-            ShortSha(sha),
+            versionId ?? ShortSha(sha),
             $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
             ReleaseType.Release,
             commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
