@@ -15,7 +15,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 {
     private const uint PAGE_SIZE = 20;
 
-    private static readonly Converter CONVERTER = new(new() { GithubFlavored = false, SmartHrefHandling = true });
+    private static readonly Converter CONVERTER = new(new() { Flavor = Config.MarkdownFlavor.GitHub, Links = { SmartHref = true } });
 
     #region IRepository Members
 
