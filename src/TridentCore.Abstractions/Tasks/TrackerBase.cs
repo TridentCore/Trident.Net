@@ -86,6 +86,7 @@ public abstract class TrackerBase(
 
     protected virtual void OnFinish()
     {
+        _progressSubject.OnCompleted();
         State = TrackerState.Finished;
         StateUpdated?.Invoke(this, State);
         onCompleted?.Invoke(this);
@@ -93,6 +94,7 @@ public abstract class TrackerBase(
 
     protected virtual void OnFault(Exception e)
     {
+        _progressSubject.OnCompleted();
         FailureReason = e;
         State = TrackerState.Faulted;
         StateUpdated?.Invoke(this, State);

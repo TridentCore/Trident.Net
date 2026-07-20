@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+using System.Text.Json;
 using Spectre.Console;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Core.Services.Instances;
@@ -63,6 +65,84 @@ public class TrackerAwaiter(CliOutput output)
         if (tracker.State == TrackerState.Faulted)
         {
             throw tracker.FailureReason ?? new InvalidOperationException("Deploy failed.");
+        }
+    }
+
+    public async Task AwaitInstallAsync(
+        InstallTracker tracker,
+        CancellationToken cancellationToken
+    )
+    {
+        if (output.UseStructuredOutput)
+        {
+            await AwaitInstallJsonAsync(tracker, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (!output.IsInteractive)
+        {
+            await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
+            ThrowIfFaulted(tracker, "Install failed.");
+            return;
+        }
+
+        await AnsiConsole
+            .Progress()
+            .AutoClear(false)
+            .HideCompleted(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new SpinnerColumn()
+            )
+            .StartAsync(async progressContext =>
+            {
+                var task = progressContext.AddTask("[blue]Installing modpack[/]", maxValue: 1);
+                using var subscription = tracker.ProgressChanged
+                    .Sample(TimeSpan.FromSeconds(1))
+                    .Subscribe(p =>
+                    {
+                        if (p is TrackerProgress.Determinate d)
+                        {
+                            task.Value = Math.Clamp(d.Percent, 0d, 1d);
+                        }
+                    });
+                await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
+                task.Value = task.MaxValue;
+                task.StopTask();
+            })
+            .ConfigureAwait(false);
+
+        ThrowIfFaulted(tracker, "Install failed.");
+    }
+
+    private async Task AwaitInstallJsonAsync(
+        InstallTracker tracker,
+        CancellationToken cancellationToken
+    )
+    {
+        using var subscription = tracker.ProgressChanged
+            .Sample(TimeSpan.FromSeconds(1))
+            .Subscribe(p =>
+            {
+                var payload = p switch
+                {
+                    TrackerProgress.Determinate d => (object)new { @event = "progress", percent = d.Percent },
+                    TrackerProgress.Indeterminate => new { @event = "progress", indeterminate = true },
+                    _ => new { @event = "progress" },
+                };
+                Console.Out.WriteLine(JsonSerializer.Serialize(payload));
+            });
+        await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
+        ThrowIfFaulted(tracker, "Install failed.");
+    }
+
+    public static void ThrowIfFaulted(TrackerBase tracker, string message)
+    {
+        if (tracker.State == TrackerState.Faulted)
+        {
+            throw tracker.FailureReason ?? new InvalidOperationException(message);
         }
     }
 

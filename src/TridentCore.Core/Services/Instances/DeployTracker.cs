@@ -35,6 +35,20 @@ public class DeployTracker(
         base.OnStart();
     }
 
+    protected override void OnFinish()
+    {
+        StageStream.OnCompleted();
+        ProgressStream.OnCompleted();
+        base.OnFinish();
+    }
+
+    protected override void OnFault(Exception e)
+    {
+        StageStream.OnCompleted();
+        ProgressStream.OnCompleted();
+        base.OnFault(e);
+    }
+
     public override void Dispose()
     {
         base.Dispose();

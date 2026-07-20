@@ -24,7 +24,14 @@ public class BuiltinRepositoryProviderAccessor : IRepositoryProviderAccessor
             null
         );
 
-        return [curseforge, modrinth];
+        var packwiz = new IRepositoryProviderAccessor.ProviderProfile(PackwizHelper.LABEL,
+                                                                      IRepositoryProviderAccessor.ProviderProfile
+                                                                         .DriverType.Packwiz,
+                                                                      "https://api.github.com/",
+                                                                      null,
+                                                                      null);
+
+        return [curseforge, modrinth, packwiz];
     }
 
     public IReadOnlyList<IRepositoryProviderAccessor.ProviderCustom> BuildCustom() => [];

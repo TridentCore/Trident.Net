@@ -1,6 +1,7 @@
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
+using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Cli.Commands.Package;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
@@ -229,6 +230,35 @@ internal static class InstanceOperation
             container.Profile.Setup.Version,
             container.Profile.Setup.Loader,
             sourcePath
+        );
+    }
+
+    public static async Task<InstallTracker> StartInstallAsync(
+        InstanceManager instanceManager,
+        RepositoryAgent repositories,
+        string pref,
+        string? identity
+    )
+    {
+        var parsed = PackageCliHelper.ParsePref(pref);
+
+        var project = await repositories
+            .QueryAsync(parsed.Label, parsed.Namespace, parsed.Pid)
+            .ConfigureAwait(false);
+        if (project.Kind != ResourceKind.Modpack)
+        {
+            throw new CliException(
+                $"'{pref}' is a {project.Kind.ToString().ToLowerInvariant()}, not a modpack. Use `package add` to add non-modpack packages.",
+                ExitCodes.USAGE
+            );
+        }
+
+        return instanceManager.Install(
+            identity ?? project.ProjectName,
+            parsed.Label,
+            parsed.Namespace,
+            parsed.Pid,
+            parsed.Vid
         );
     }
 

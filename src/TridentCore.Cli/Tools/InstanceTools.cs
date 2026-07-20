@@ -65,4 +65,18 @@ public class InstanceTools(ProfileManager profileManager, InstanceContextResolve
         [Description("Instance name (optional)")] string? name = null,
         [Description("Instance identity key (optional)")] string? identity = null)
         => JsonSerializer.Serialize(await InstanceOperation.ImportAsync(profileManager, importerAgent, path, name, identity), McpJson.Options);
+
+    [McpServerTool(Name = "instance_install"), Description("Install a modpack from a repository as a new Trident instance.")]
+    public async Task<string> Install(
+        [Description("Modpack PREF")] string pref,
+        [Description("Instance identity key (optional)")] string? identity = null)
+    {
+        var tracker = await InstanceOperation
+            .StartInstallAsync(instanceManager, repositories, pref, identity)
+            .ConfigureAwait(false);
+        await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None)
+            .ConfigureAwait(false);
+        TrackerAwaiter.ThrowIfFaulted(tracker, "Install failed.");
+        return JsonSerializer.Serialize(new { key = tracker.Key, source = tracker.Reference }, McpJson.Options);
+    }
 }

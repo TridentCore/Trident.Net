@@ -29,6 +29,18 @@ public class UpdateTracker(
         base.OnStart();
     }
 
+    protected override void OnFinish()
+    {
+        ProgressStream.OnCompleted();
+        base.OnFinish();
+    }
+
+    protected override void OnFault(Exception e)
+    {
+        ProgressStream.OnCompleted();
+        base.OnFault(e);
+    }
+
     public override void Dispose()
     {
         base.Dispose();
