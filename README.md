@@ -285,6 +285,15 @@ Available tools:
 
 All tools return JSON. The `--home` option is also respected in MCP mode.
 
+#### Surface Boundaries
+
+The MCP surface intentionally excludes operations that are irreversible, resource-heavy, involve external trust negotiation, or fire only zero-to-one times across the software lifecycle:
+
+- **Launching the game** — `trident run` spawns a heavyweight process that holds CPU/GPU/memory and mutates saves; "the game is already running" is not a state an agent can roll back.
+- **OAuth account login** — Microsoft device-code login is a one-shot trust negotiation with the identity provider, performed once in the GUI. An agent driving it gains nothing while touching credential lifecycle.
+
+What belongs on the surface is the rest: reversible, idempotent, data-level operations such as package Prefs, version selection, dependency analysis, and import/export. This is a design contract, not a backlog — do not add launch or credential-lifecycle tools without raising it first.
+
 ### CI/CD Modpack Publishing
 
 Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
