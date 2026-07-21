@@ -110,7 +110,7 @@ public static class PackwizHelper
             owner,
             repo,
             manifest.Name ?? repo,
-            null,
+            OgImage(owner, repo),
             manifest.Author ?? owner,
             string.Empty,
             new($"https://github.com/{owner}/{repo}"),
@@ -123,7 +123,14 @@ public static class PackwizHelper
         );
     }
 
-    public static Package ToPackage(string label, string owner, string repo, CommitObject commit, string? versionId)
+    public static Package ToPackage(
+        string label,
+        string owner,
+        string repo,
+        CommitObject commit,
+        string? versionId,
+        PackManifest manifest
+    )
     {
         var sha = commit.Sha ?? string.Empty;
         return new(
@@ -131,10 +138,10 @@ public static class PackwizHelper
             owner,
             repo,
             versionId ?? ShortSha(sha),
-            repo,
+            manifest.Name ?? repo,
             $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
-            null,
-            owner,
+            OgImage(owner, repo),
+            manifest.Author ?? owner,
             string.Empty,
             new($"https://github.com/{owner}/{repo}"),
             ResourceKind.Modpack,
@@ -182,6 +189,9 @@ public static class PackwizHelper
         value = null;
         return false;
     }
+
+    private static Uri OgImage(string owner, string repo) =>
+        new($"https://opengraph.githubassets.com/{owner}/{repo}");
 
     private static string ShortSha(string sha) => sha.Length > 7 ? sha[..7] : sha;
 

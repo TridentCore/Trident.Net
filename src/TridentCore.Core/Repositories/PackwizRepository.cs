@@ -54,7 +54,7 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
 
     public Task<BatchResolveResult<(string?, string pid), Project>> QueryBatchAsync(
         IEnumerable<(string?, string pid)> batch
-    ) => throw new NotSupportedException();
+    ) => ResolveAllAsync(batch, id => QueryAsync(id.Item1, id.pid));
 
     public async Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter)
     {
@@ -62,13 +62,17 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         var commit = vid is null
             ? await GetHeadCommitAsync(owner, pid).ConfigureAwait(false)
             : await GetCommitByRefAsync(owner, pid, vid).ConfigureAwait(false);
-        return PackwizHelper.ToPackage(label, owner, pid, commit, vid);
+        var file = await github
+            .GetFileContentAsync(owner, pid, PackwizHelper.INDEX_FILE_NAME, commit.Sha)
+            .ConfigureAwait(false);
+        var manifest = PackwizHelper.ParsePackManifest(PackwizHelper.DecodeContent(file));
+        return PackwizHelper.ToPackage(label, owner, pid, commit, vid, manifest);
     }
 
     public Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter
-    ) => throw new NotSupportedException();
+    ) => ResolveAllAsync(batch, id => ResolveAsync(id.Namespace, id.Identity, id.Version, filter));
 
     public Task<string> ReadDescriptionAsync(string? ns, string pid) =>
         Task.FromResult(string.Empty);
@@ -113,6 +117,47 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     }
 
     #endregion
+
+    private static async Task<BatchResolveResult<TId, TItem>> ResolveAllAsync<TId, TItem>(
+        IEnumerable<TId> ids,
+        Func<TId, Task<TItem>> resolve
+    )
+        where TId : notnull
+        where TItem : class
+    {
+        var items = ids.ToArray();
+        var successful = new Dictionary<TId, TItem>();
+        var failed = new Dictionary<TId, Exception>();
+
+        var results = await Task.WhenAll(
+                items.Select(async id =>
+                {
+                    try
+                    {
+                        return (id, (TItem?)await resolve(id).ConfigureAwait(false), (Exception?)null);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        return (id, null, ex);
+                    }
+                })
+            )
+            .ConfigureAwait(false);
+
+        foreach (var (id, item, error) in results)
+        {
+            if (error is not null)
+                failed[id] = error;
+            else if (item is not null)
+                successful[id] = item;
+        }
+
+        return new(successful, failed);
+    }
 
     private async Task<CommitObject> GetHeadCommitAsync(string owner, string repo)
     {
