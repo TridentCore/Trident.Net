@@ -59,9 +59,10 @@ public static class Startup
                                                                            new(configuration["ApiBaseUrl"]
                                                                             ?? "https://api.example.com"))
                                                   .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                                                   {
-                                                       UseProxy = false, UseDefaultCredentials = false
-                                                   }));
+                                                  {
+                                                      UseProxy = false,
+                                                      UseDefaultCredentials = false
+                                                  }));
 
         services.AddLogging(logging =>
         {

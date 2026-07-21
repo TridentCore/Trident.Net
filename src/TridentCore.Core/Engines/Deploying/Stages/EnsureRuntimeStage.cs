@@ -114,7 +114,7 @@ public class EnsureRuntimeStage(
         return await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
     }
 
-    private static ( List<BundledRuntime.File> Files, List<BundledRuntime.Link> Links ) ParseRuntimeFiles(
+    private static (List<BundledRuntime.File> Files, List<BundledRuntime.Link> Links) ParseRuntimeFiles(
         string content)
     {
         var files = new List<BundledRuntime.File>();
@@ -136,34 +136,34 @@ public class EnsureRuntimeStage(
                     case "directory":
                         continue;
                     case "file":
-                    {
-                        if (file.TryGetPropertyValue("downloads", out var d)
-                         && d is JsonObject downloads
-                         && downloads.TryGetPropertyValue("raw", out var r)
-                         && r is JsonObject raw)
                         {
-                            var executable = file["executable"]?.GetValue<bool>() ?? false;
-                            var sha1 = raw["sha1"]?.GetValue<string>()
-                                    ?? throw new FormatException("Invalid sha1 property");
-                            var urlString = raw["url"]?.GetValue<string>()
-                                         ?? throw new FormatException("Invalid url property");
-                            var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
-                                          ? new Uri(urlString)
-                                          : throw new FormatException("Invalid url string");
-                            files.Add(new(path, url, FileHash.Sha1(sha1), executable));
-                        }
-                        else
-                        {
-                            throw new FormatException("Invalid downloads property");
-                        }
+                            if (file.TryGetPropertyValue("downloads", out var d)
+                             && d is JsonObject downloads
+                             && downloads.TryGetPropertyValue("raw", out var r)
+                             && r is JsonObject raw)
+                            {
+                                var executable = file["executable"]?.GetValue<bool>() ?? false;
+                                var sha1 = raw["sha1"]?.GetValue<string>()
+                                        ?? throw new FormatException("Invalid sha1 property");
+                                var urlString = raw["url"]?.GetValue<string>()
+                                             ?? throw new FormatException("Invalid url property");
+                                var url = Uri.IsWellFormedUriString(urlString, UriKind.Absolute)
+                                              ? new Uri(urlString)
+                                              : throw new FormatException("Invalid url string");
+                                files.Add(new(path, url, FileHash.Sha1(sha1), executable));
+                            }
+                            else
+                            {
+                                throw new FormatException("Invalid downloads property");
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case "link":
-                    {
-                        // Targets resolve outside the runtime directory and conflict with each other, so links are ignored.
-                        break;
-                    }
+                        {
+                            // Targets resolve outside the runtime directory and conflict with each other, so links are ignored.
+                            break;
+                        }
                 }
             }
         }
