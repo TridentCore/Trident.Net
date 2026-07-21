@@ -21,26 +21,67 @@ public static class PackageHelper
         return false;
     }
 
+    public static bool TryParseDescriptor(string pref, out PackageDescriptor result)
+    {
+        if (Parser.Default.TryParse(pref, out var parsed))
+        {
+            result = parsed;
+            return true;
+        }
+
+        result = default;
+        return false;
+    }
+
+    // Symmetric to Identify's Filter→pref encoding: decode a descriptor's pref filters
+    // (type/version/loader) back into a runtime Filter so a floating pref keeps its intent.
+    public static PackageIdentifier ToIdentifier(this PackageDescriptor self) =>
+        new(self.Repository, self.Namespace, self.Identity, self.Version);
+
+    public static Filter ToFilter(this PackageDescriptor self)
+    {
+        string? version = null;
+        string? loader = null;
+        ResourceKind? kind = null;
+        foreach (var (key, value) in self.Filters)
+        {
+            switch (key)
+            {
+                case "type" when value is not null
+                    && Enum.TryParse<ResourceKind>(value, ignoreCase: true, out var k):
+                    kind = k;
+                    break;
+                case "version":
+                    version = value;
+                    break;
+                case "loader":
+                    loader = value;
+                    break;
+            }
+        }
+        return new(version, loader, kind);
+    }
+
     public static PackageIdentifier Parse(string pref) =>
-        TryParse(pref, out var result)
+        TryParse(pref, out PackageIdentifier result)
             ? result
             : throw new System.FormatException($"Invalid package reference: {pref}");
 
     public static bool IsMatched(string left, string label, string? ns, string pid) =>
-        TryParse(left, out var l)
+        TryParse(left, out PackageIdentifier l)
         && string.Equals(l.Repository, label, StringComparison.OrdinalIgnoreCase)
         && string.Equals(l.Namespace, ns, StringComparison.Ordinal)
         && string.Equals(l.Identity, pid, StringComparison.Ordinal);
 
     public static bool IsMatched(string left, string right) =>
         left == right
-        || (TryParse(right, out var r) && IsMatched(left, r.Repository, r.Namespace, r.Identity));
+        || (TryParse(right, out PackageIdentifier r) && IsMatched(left, r.Repository, r.Namespace, r.Identity));
 
     public static bool IsMatched(string left, Package right) =>
         IsMatched(left, right.Label, right.Namespace, right.ProjectId);
 
     public static string ExtractProjectIdentityIfValid(string pref) =>
-        TryParse(pref, out var result)
+        TryParse(pref, out PackageIdentifier result)
             ? ToPref(result.Repository, result.Namespace, result.Identity, null)
             : pref;
 
