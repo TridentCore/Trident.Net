@@ -58,13 +58,13 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             var locked = baseByKey[key];
 
             var parsed = PackageHelper.Parse(entry.Pref);
-            var floating = parsed.Vid == null;
+            var floating = parsed.Version == null;
             // Floating prefs invalidate when the platform/options fingerprint changed (the
             // resolution was filter-dependent). Fixed prefs keep their vid unless the user
             // explicitly repinned it (vid differs from the locked one) — honoring intent.
             var resolvedInvalid = floating
                 ? platformChanged
-                : !string.Equals(parsed.Vid, locked.Resolved.VersionId, StringComparison.InvariantCulture);
+                : !string.Equals(parsed.Version, locked.Resolved.VersionId, StringComparison.InvariantCulture);
             if (resolvedInvalid)
             {
                 // filter/策略变了，或用户重定了固定版本 → 重新解析
@@ -116,7 +116,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
     private static Key MatchKey(string pref, string? source)
     {
         var parsed = PackageHelper.Parse(pref);
-        return new((parsed.Label).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Pid, source);
+        return new((parsed.Repository).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Identity, source);
     }
 
     private record Key(string Label, string Namespace, string Pid, string? Source);

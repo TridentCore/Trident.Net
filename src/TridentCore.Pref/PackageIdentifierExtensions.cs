@@ -7,4 +7,7 @@ public static class PackageIdentifierExtensions
 
     public static ScopedPackageIdentifier ToScoped(this PackageIdentifier self) =>
         new(self.Namespace, self.Identity, self.Version);
+
+    public static ProjectIdentifier ToProjectIdentifier(this PackageIdentifier self) =>
+        new(self.Repository, self.Namespace, self.Identity);
 }

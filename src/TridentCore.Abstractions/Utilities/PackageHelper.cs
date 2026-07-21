@@ -9,18 +9,11 @@ namespace TridentCore.Abstractions.Utilities;
 
 public static class PackageHelper
 {
-    public static bool TryParse(
-        string pref,
-        out (string Label, string? Namespace, string Pid, string? Vid) result
-    )
+    public static bool TryParse(string pref, out PackageIdentifier result)
     {
         if (Parser.Default.TryParse(pref, out var parsed))
         {
-            result.Label = parsed.Repository;
-            result.Namespace = parsed.Namespace;
-            result.Pid = parsed.Identity;
-            result.Vid = parsed.Version;
-
+            result = new PackageIdentifier(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version);
             return true;
         }
 
@@ -28,27 +21,27 @@ public static class PackageHelper
         return false;
     }
 
-    public static (string Label, string? Namespace, string Pid, string? Vid) Parse(string pref) =>
+    public static PackageIdentifier Parse(string pref) =>
         TryParse(pref, out var result)
             ? result
             : throw new System.FormatException($"Invalid package reference: {pref}");
 
     public static bool IsMatched(string left, string label, string? ns, string pid) =>
         TryParse(left, out var l)
-        && string.Equals(l.Label, label, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(l.Repository, label, StringComparison.OrdinalIgnoreCase)
         && string.Equals(l.Namespace, ns, StringComparison.Ordinal)
-        && string.Equals(l.Pid, pid, StringComparison.Ordinal);
+        && string.Equals(l.Identity, pid, StringComparison.Ordinal);
 
     public static bool IsMatched(string left, string right) =>
         left == right
-        || (TryParse(right, out var r) && IsMatched(left, r.Label, r.Namespace, r.Pid));
+        || (TryParse(right, out var r) && IsMatched(left, r.Repository, r.Namespace, r.Identity));
 
     public static bool IsMatched(string left, Package right) =>
         IsMatched(left, right.Label, right.Namespace, right.ProjectId);
 
     public static string ExtractProjectIdentityIfValid(string pref) =>
         TryParse(pref, out var result)
-            ? ToPref(result.Label, result.Namespace, result.Pid, null)
+            ? ToPref(result.Repository, result.Namespace, result.Identity, null)
             : pref;
 
     public static string ToPref(string label, string? ns, string pid, string? vid) =>

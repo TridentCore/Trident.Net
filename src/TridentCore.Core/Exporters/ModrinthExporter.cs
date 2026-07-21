@@ -73,7 +73,7 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
             var packages = setup
                           .Packages.Where(x => x.Enabled)
                           .Select(x => PackageHelper.TryParse(x.Pref, out var pkg)
-                                           ? new PackageIdentifier(pkg.Label, pkg.Namespace, pkg.Pid, pkg.Vid)
+                                           ? new PackageIdentifier(pkg.Repository, pkg.Namespace, pkg.Identity, pkg.Version)
                                            : throw new FormatException($"Package {x.Pref} is not a valid package"))
                           .ToList();
             var resolved = await agent

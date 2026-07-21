@@ -1,3 +1,4 @@
+using TridentCore.Pref;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
@@ -26,8 +27,8 @@ internal static class PackageDtos
 
         var batch = entryList
             .Select(e => PackageHelper.TryParse(e.Pref, out var p) ? p : default)
-            .Where(p => p.Label is not null)
-            .Select(p => (p.Label, p.Namespace, p.Pid))
+            .Where(p => p.Repository is not null)
+            .Select(p => p.ToProjectIdentifier())
             .ToList();
 
         var filter = PackageCliHelper.BuildFilter(null, null, null, instance);

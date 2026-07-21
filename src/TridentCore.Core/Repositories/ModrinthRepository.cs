@@ -93,20 +93,20 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return ModrinthHelper.ToPackage(label, project, info, members.FirstOrDefault());
     }
 
-    public async Task<Project> QueryAsync(string? ns, string pid)
+    public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
-        var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
+        var project = await client.GetProjectAsync(id.Identity).ConfigureAwait(false);
         var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
         return ModrinthHelper.ToProject(label, project, members.FirstOrDefault());
     }
 
-    public async Task<BatchResolveResult<(string?, string pid), Project>> QueryBatchAsync(
-        IEnumerable<(string?, string pid)> batch
+    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+        IEnumerable<ScopedProjectIdentifier> batch
     )
     {
         var batchArray = batch.ToArray();
-        var successful = new Dictionary<(string?, string), Project>();
-        var failed = new Dictionary<(string?, string), Exception>();
+        var successful = new Dictionary<ScopedProjectIdentifier, Project>();
+        var failed = new Dictionary<ScopedProjectIdentifier, Exception>();
 
         Dictionary<string, ProjectInfo> projects;
         try
@@ -114,7 +114,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             projects = (
                 await client
                     .GetMultipleProjectsAsync(
-                        ArrayParameterConstructor(batchArray.Select(bm => bm.pid))
+                        ArrayParameterConstructor(batchArray.Select(bm => bm.Identity))
                     )
                     .ConfigureAwait(false)
             ).ToDictionary(x => x.Id);
@@ -157,37 +157,37 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             .Where(x => x.Error is not null)
             .ToDictionary(x => x.Id, x => x.Error!);
 
-        foreach (var (ns, pid) in batchArray)
+        foreach (var id in batchArray)
         {
-            if (!projects.TryGetValue(pid, out var project))
+            if (!projects.TryGetValue(id.Identity, out var project))
             {
-                failed[(ns, pid)] = new ResourceNotFoundException(
-                    $"{pid} not found in the repository"
+                failed[id] = new ResourceNotFoundException(
+                    $"{id.Identity} not found in the repository"
                 );
                 continue;
             }
 
             if (teamErrors.TryGetValue(project.Id, out var teamError))
             {
-                failed[(ns, pid)] = teamError;
+                failed[id] = teamError;
                 continue;
             }
 
-            successful[(ns, pid)] = ModrinthHelper.ToProject(label, project, teams[project.Id]);
+            successful[id] = ModrinthHelper.ToProject(label, project, teams[project.Id]);
         }
 
         return new(successful, failed);
     }
 
-    public async Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter)
+    public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
         try
         {
-            var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
-            if (vid != null)
+            var project = await client.GetProjectAsync(id.Identity).ConfigureAwait(false);
+            if (id.Version != null)
             {
                 var (versionTask, membersTask) = (
-                    client.GetVersionAsync(vid).ConfigureAwait(false),
+                    client.GetVersionAsync(id.Version).ConfigureAwait(false),
                     client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)
                 );
                 var (version, members) = (await versionTask, await membersTask);
@@ -202,7 +202,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 var (versionsTask, membersTask) = (
                     client
                         .GetProjectVersionsAsync(
-                            pid,
+                            id.Identity,
                             null,
                             loader is not null ? ArrayParameterConstructor([loader]) : null,
                             BuildLoaderFields(("game_versions", filter.Version)),
@@ -218,7 +218,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                 if (found == null)
                 {
                     throw new ResourceNotFoundException(
-                        $"{project.Name} ({label}:{pid}@*) has no matched version for {FormatTarget(filter)}"
+                        $"{project.Name} ({label}:{id.Identity}@*) has no matched version for {FormatTarget(filter)}"
                     );
                 }
 
@@ -230,7 +230,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             if (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 throw new ResourceNotFoundException(
-                    $"{pid}/{vid ?? "*"} not found in the repository"
+                    $"{id.Identity}/{id.Version ?? "*"} not found in the repository"
                 );
             }
 
@@ -432,32 +432,31 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return new(successful, failed);
     }
 
-    public async Task<string> ReadDescriptionAsync(string? ns, string pid)
+    public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
     {
-        var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
+        var project = await client.GetProjectAsync(id.Identity).ConfigureAwait(false);
         return project.Description;
     }
 
-    public async Task<string> ReadChangelogAsync(string? ns, string pid, string vid)
+    public async Task<string> ReadChangelogAsync(ScopedPackageIdentifier id)
     {
-        var version = await client.GetVersionAsync(vid).ConfigureAwait(false);
+        var version = await client.GetVersionAsync(id.Version).ConfigureAwait(false);
         return version.Changelog ?? string.Empty;
     }
 
     public async Task<IPaginationHandle<Version>> InspectAsync(
-        string? ns,
-        string pid,
+        ScopedProjectIdentifier id,
         Filter filter
     )
     {
-        var project = await client.GetProjectAsync(pid).ConfigureAwait(false);
+        var project = await client.GetProjectAsync(id.Identity).ConfigureAwait(false);
         var loader = ModrinthHelper.GetVersionLoaderFilter(
             project.ProjectTypes.FirstOrDefault(),
             filter.Loader
         );
         var first = await client
             .GetProjectVersionsAsync(
-                pid,
+                id.Identity,
                 null,
                 loader is not null ? ArrayParameterConstructor([loader]) : null,
                 BuildLoaderFields(("game_versions", filter.Version))

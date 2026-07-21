@@ -51,9 +51,9 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
             var parsed = PackageHelper.Parse(locked.Pref);
             var sourcePath = PathDef.Default.FileOfPackageObject(
-                parsed.Label,
+                parsed.Repository,
                 parsed.Namespace,
-                parsed.Pid,
+                parsed.Identity,
                 locked.Resolved.VersionId,
                 Path.GetExtension(locked.Resolved.FileName)
             );

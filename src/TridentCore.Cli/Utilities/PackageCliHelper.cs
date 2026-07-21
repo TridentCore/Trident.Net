@@ -3,15 +3,14 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;
+using TridentCore.Pref;
 using Profile = TridentCore.Abstractions.FileModels.Profile;
 
 namespace TridentCore.Cli.Utilities;
 
 public static class PackageCliHelper
 {
-    public static (string Label, string? Namespace, string Pid, string? Vid) ParsePref(
-        string pref
-    ) =>
+    public static PackageIdentifier ParsePref(string pref) =>
         PackageHelper.TryParse(pref, out var parsed)
             ? parsed
             : throw new CliException($"'{pref}' is not a valid package pref.", ExitCodes.USAGE);
@@ -48,7 +47,7 @@ public static class PackageCliHelper
     {
         var parsed = ParsePref(pref);
         return profile.Setup.Packages.FirstOrDefault(x =>
-                PackageHelper.IsMatched(x.Pref, parsed.Label, parsed.Namespace, parsed.Pid)
+                PackageHelper.IsMatched(x.Pref, parsed.Repository, parsed.Namespace, parsed.Identity)
             ) ?? throw new CliException($"Package '{pref}' is not installed.", ExitCodes.NOT_FOUND);
     }
 
@@ -56,7 +55,7 @@ public static class PackageCliHelper
     {
         var parsed = ParsePref(pref);
         return profile.Setup.Packages.Any(x =>
-            PackageHelper.IsMatched(x.Pref, parsed.Label, parsed.Namespace, parsed.Pid)
+            PackageHelper.IsMatched(x.Pref, parsed.Repository, parsed.Namespace, parsed.Identity)
         );
     }
 

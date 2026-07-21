@@ -91,9 +91,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new ResourceNotFoundException($"No file matched the fingerprint {hash}");
     }
 
-    public async Task<Project> QueryAsync(string? _, string pid)
+    public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
-        if (uint.TryParse(pid, out var modId))
+        if (uint.TryParse(id.Identity, out var modId))
         {
             try
             {
@@ -104,31 +104,31 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    throw new ResourceNotFoundException($"{pid} not found in the repository");
+                    throw new ResourceNotFoundException($"{id.Identity} not found in the repository");
                 }
 
                 throw;
             }
         }
 
-        throw new FormatException($"{pid} is not well formatted into modId");
+        throw new FormatException($"{id.Identity} is not well formatted into modId");
     }
 
-    public async Task<BatchResolveResult<(string?, string pid), Project>> QueryBatchAsync(
-        IEnumerable<(string?, string pid)> batch
+    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+        IEnumerable<ScopedProjectIdentifier> batch
     )
     {
         var batchArray = batch.ToArray();
-        var successful = new Dictionary<(string?, string), Project>();
-        var failed = new Dictionary<(string?, string), Exception>();
+        var successful = new Dictionary<ScopedProjectIdentifier, Project>();
+        var failed = new Dictionary<ScopedProjectIdentifier, Exception>();
 
-        var parsed = new List<((string? ns, string pid) Key, uint ModId)>();
+        var parsed = new List<(ScopedProjectIdentifier Key, uint ModId)>();
         foreach (var x in batchArray)
         {
-            if (uint.TryParse(x.pid, out var modId))
+            if (uint.TryParse(x.Identity, out var modId))
                 parsed.Add((x, modId));
             else
-                failed[x] = new FormatException($"{x.pid} is not well formatted into modId");
+                failed[x] = new FormatException($"{x.Identity} is not well formatted into modId");
         }
 
         if (parsed.Count > 0)
@@ -144,7 +144,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     if (modById.TryGetValue(modId, out var mod))
                         successful[key] = CurseForgeHelper.ToProject(label, mod);
                     else
-                        failed[key] = new ResourceNotFoundException($"{key.pid} not found in the repository");
+                        failed[key] = new ResourceNotFoundException($"{key.Identity} not found in the repository");
                 }
             }
             catch (OperationCanceledException)
@@ -161,18 +161,18 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return new(successful, failed);
     }
 
-    public async Task<Package> ResolveAsync(string? _, string pid, string? vid, Filter filter)
+    public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
-        if (uint.TryParse(pid, out var modId))
+        if (uint.TryParse(id.Identity, out var modId))
         {
             try
             {
                 // 是否具有 Vid 都应该具有相同次数的 IO Call，以避免其中一个具有更好的性能而受到不公平的待遇
                 // 做不到，LatestFiles 居然并不是最新的，CF 估计有缓存而导致数据迟滞（迟大概三四个月）
                 var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
-                if (vid is not null)
+                if (id.Version is not null)
                 {
-                    if (uint.TryParse(vid, out var fileId))
+                    if (uint.TryParse(id.Version, out var fileId))
                     {
                         var file = mod.LatestFiles.FirstOrDefault(x => x.Id == fileId)
                                 ?? (await client.GetModFileAsync(modId, fileId).ConfigureAwait(false)).Data;
@@ -180,7 +180,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
-                    throw new FormatException($"{vid} is not well formatted into fileId");
+                    throw new FormatException($"{id.Version} is not well formatted into fileId");
                 }
 
                 {
@@ -210,21 +210,21 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     }
 
                     throw new ResourceNotFoundException(
-                        $"{mod.Name} ({label}:{pid}@*) has no matched version for {FormatTarget(filter)}");
+                        $"{mod.Name} ({label}:{id.Identity}@*) has no matched version for {FormatTarget(filter)}");
                 }
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    throw new ResourceNotFoundException($"{pid}/{vid ?? "*"} not found in the repository");
+                    throw new ResourceNotFoundException($"{id.Identity}/{id.Version ?? "*"} not found in the repository");
                 }
 
                 throw;
             }
         }
 
-        throw new FormatException($"{pid} is not well formatted into modId");
+        throw new FormatException($"{id.Identity} is not well formatted into modId");
     }
 
     public async Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
@@ -330,9 +330,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return new(successful, failed);
     }
 
-    public async Task<string> ReadDescriptionAsync(string? ns, string pid)
+    public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
     {
-        if (uint.TryParse(pid, out var modId))
+        if (uint.TryParse(id.Identity, out var modId))
         {
             try
             {
@@ -343,19 +343,19 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    throw new ResourceNotFoundException($"{pid} not found in the repository");
+                    throw new ResourceNotFoundException($"{id.Identity} not found in the repository");
                 }
 
                 throw;
             }
         }
 
-        throw new FormatException($"{pid} is not well formatted into modId");
+        throw new FormatException($"{id.Identity} is not well formatted into modId");
     }
 
-    public async Task<string> ReadChangelogAsync(string? ns, string pid, string vid)
+    public async Task<string> ReadChangelogAsync(ScopedPackageIdentifier id)
     {
-        if (uint.TryParse(pid, out var modId) && uint.TryParse(vid, out var fileId))
+        if (uint.TryParse(id.Identity, out var modId) && uint.TryParse(id.Version, out var fileId))
         {
             try
             {
@@ -366,7 +366,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    throw new ResourceNotFoundException($"{pid}/{vid} not found in the repository");
+                    throw new ResourceNotFoundException($"{id.Identity}/{id.Version} not found in the repository");
                 }
 
                 throw;
@@ -376,9 +376,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new FormatException("Pid or Vid is not well formatted into modId or fileId");
     }
 
-    public async Task<IPaginationHandle<Version>> InspectAsync(string? _, string pid, Filter filter)
+    public async Task<IPaginationHandle<Version>> InspectAsync(ScopedProjectIdentifier id, Filter filter)
     {
-        if (uint.TryParse(pid, out var modId))
+        if (uint.TryParse(id.Identity, out var modId))
         {
             var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
             var loader = CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId, filter.Loader);

@@ -1,3 +1,4 @@
+using TridentCore.Pref;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
@@ -243,7 +244,7 @@ internal static class InstanceOperation
         var parsed = PackageCliHelper.ParsePref(pref);
 
         var project = await repositories
-            .QueryAsync(parsed.Label, parsed.Namespace, parsed.Pid)
+            .QueryAsync(parsed.ToProjectIdentifier())
             .ConfigureAwait(false);
         if (project.Kind != ResourceKind.Modpack)
         {
@@ -255,10 +256,10 @@ internal static class InstanceOperation
 
         return instanceManager.Install(
             identity ?? project.ProjectName,
-            parsed.Label,
+            parsed.Repository,
             parsed.Namespace,
-            parsed.Pid,
-            parsed.Vid
+            parsed.Identity,
+            parsed.Version
         );
     }
 

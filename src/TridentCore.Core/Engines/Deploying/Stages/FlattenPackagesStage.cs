@@ -114,11 +114,11 @@ public class FlattenPackagesStage : StageBase
         if (PackageHelper.TryParse(p.Pref, out var parsed))
         {
             return string.Concat(
-                (parsed.Label).ToLowerInvariant(),
+                (parsed.Repository).ToLowerInvariant(),
                 "|",
                 parsed.Namespace ?? string.Empty,
                 "|",
-                parsed.Pid);
+                parsed.Identity);
         }
 
         throw new FormatException("Invalid pref: " + p.Pref);

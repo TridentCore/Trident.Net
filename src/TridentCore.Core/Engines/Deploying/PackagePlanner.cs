@@ -41,7 +41,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
                 throw new FormatException($"Package {entry.Pref} is not a valid package");
             }
 
-            index.Add((new(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid), entry));
+            index.Add((new(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version), entry));
         }
 
         if (index.Count == 0)

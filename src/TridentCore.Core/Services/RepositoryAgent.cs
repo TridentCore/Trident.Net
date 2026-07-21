@@ -149,16 +149,13 @@ public class RepositoryAgent
     ) => Redirect(label).SearchAsync(query, filter);
 
     public Task<Package> ResolveAsync(
-        string label,
-        string? ns,
-        string pid,
-        string? vid,
+        PackageIdentifier id,
         Filter filter,
         bool cacheEnabled = true
     ) =>
         RetrieveCachedAsync(
-            $"package:{PackageHelper.Identify(label, ns, pid, vid, filter)}",
-            () => Redirect(label).ResolveAsync(ns, pid, vid, filter),
+            $"package:{PackageHelper.Identify(id.Repository, id.Namespace, id.Identity, id.Version, filter)}",
+            () => Redirect(id.Repository).ResolveAsync(id.ToScoped(), filter),
             cacheEnabled
         );
 
@@ -242,36 +239,36 @@ public class RepositoryAgent
     }
 
 
-    public Task<Project> QueryAsync(string label, string? ns, string pid) =>
+    public Task<Project> QueryAsync(ProjectIdentifier id) =>
         RetrieveCachedAsync(
-            $"project:{PackageHelper.Identify(label, ns, pid, null, null)}",
-            () => Redirect(label).QueryAsync(ns, pid)
+            $"project:{PackageHelper.Identify(id.Repository, id.Namespace, id.Identity, null, null)}",
+            () => Redirect(id.Repository).QueryAsync(id.ToScoped())
         );
 
-    public async Task<BatchResolveResult<(string label, string? ns, string pid), Project>> QueryBatchAsync(
-        IEnumerable<(string label, string? ns, string pid)> batch
+    public async Task<BatchResolveResult<ProjectIdentifier, Project>> QueryBatchAsync(
+        IEnumerable<ProjectIdentifier> batch
     )
     {
         var batchArray = batch.ToArray();
         var cached = await RetrieveCachedBatchAsync<
-            (string label, string? ns, string pid),
+            ProjectIdentifier,
             Project
-        >(batchArray, x => $"project:{PackageHelper.Identify(x.label, x.ns, x.pid, null, null)}")
+        >(batchArray, x => $"project:{PackageHelper.Identify(x.Repository, x.Namespace, x.Identity, null, null)}")
             .ConfigureAwait(false);
 
         var successful = cached.ToDictionary(x => x.Item, x => x.Cached);
-        var failed = new Dictionary<(string label, string? ns, string pid), Exception>();
+        var failed = new Dictionary<ProjectIdentifier, Exception>();
 
-        var toQuery = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.label);
+        var toQuery = batchArray.Except(cached.Select(x => x.Item)).GroupBy(x => x.Repository);
         var queryTasks = toQuery.Select(async group =>
         {
             var items = group.ToArray();
             try
             {
                 var result = await Redirect(group.Key)
-                    .QueryBatchAsync(items.Select(x => (x.ns, x.pid)))
+                    .QueryBatchAsync(items.Select(ProjectIdentifierExtensions.ToScoped))
                     .ConfigureAwait(false);
-                return result.MapKeys(((string? ns, string pid) x) => (label: group.Key, ns: x.ns, pid: x.pid));
+                return result.MapKeys(x => x.ToUnscoped(group.Key));
             }
             catch (OperationCanceledException)
             {
@@ -279,7 +276,7 @@ public class RepositoryAgent
             }
             catch (Exception ex)
             {
-                return BatchResolveResult<(string label, string? ns, string pid), Project>.FromFailures(items, ex);
+                return BatchResolveResult<ProjectIdentifier, Project>.FromFailures(items, ex);
             }
         });
 
@@ -289,7 +286,7 @@ public class RepositoryAgent
             {
                 successful[key] = project;
                 await CacheObjectAsync(
-                        $"project:{PackageHelper.Identify(key.label, key.ns, key.pid, null, null)}",
+                        $"project:{PackageHelper.Identify(key.Repository, key.Namespace, key.Identity, null, null)}",
                         project
                     )
                     .ConfigureAwait(false);
@@ -303,24 +300,20 @@ public class RepositoryAgent
     }
 
 
-    public Task<string> ReadDescriptionAsync(string label, string? ns, string pid) =>
+    public Task<string> ReadDescriptionAsync(ProjectIdentifier id) =>
         RetrieveCachedAsync(
-            $"description:{PackageHelper.Identify(label, ns, pid, null, null)}",
-            () => Redirect(label).ReadDescriptionAsync(ns, pid)
+            $"description:{PackageHelper.Identify(id.Repository, id.Namespace, id.Identity, null, null)}",
+            () => Redirect(id.Repository).ReadDescriptionAsync(id.ToScoped())
         );
 
-    public Task<string> ReadChangelogAsync(string label, string? ns, string pid, string vid) =>
+    public Task<string> ReadChangelogAsync(PackageIdentifier id) =>
         RetrieveCachedAsync(
-            $"changelog:{PackageHelper.Identify(label, ns, pid, vid, null)}",
-            () => Redirect(label).ReadChangelogAsync(ns, pid, vid)
+            $"changelog:{PackageHelper.Identify(id.Repository, id.Namespace, id.Identity, id.Version, null)}",
+            () => Redirect(id.Repository).ReadChangelogAsync(id.ToScoped())
         );
 
-    public Task<IPaginationHandle<Version>> InspectAsync(
-        string label,
-        string? ns,
-        string pid,
-        Filter filter
-    ) => Redirect(label).InspectAsync(ns, pid, filter);
+    public Task<IPaginationHandle<Version>> InspectAsync(ProjectIdentifier id, Filter filter) =>
+        Redirect(id.Repository).InspectAsync(id.ToScoped(), filter);
 
     private async Task<T> RetrieveCachedAsync<T>(
         string key,

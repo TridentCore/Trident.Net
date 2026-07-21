@@ -22,6 +22,7 @@ using TridentCore.Core.Igniters;
 using TridentCore.Core.Services.Instances;
 using TridentCore.Core.Services.Profiles;
 using TridentCore.Core.Utilities;
+using TridentCore.Pref;
 
 namespace TridentCore.Core.Services;
 
@@ -549,7 +550,7 @@ public class InstanceManager(
             key.Key
         );
         var package = await repositories
-            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
+            .ResolveAsync(new PackageIdentifier(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
             .ConfigureAwait(false);
         var (pack, container) = await DownloadAndImportPackageAsync(
                 key.Key,
@@ -609,7 +610,7 @@ public class InstanceManager(
             PackageHelper.ToPref(label, ns, pid, vid)
         );
         var package = await repositories
-            .ResolveAsync(label, ns, pid, vid, Filter.None with { Kind = ResourceKind.Modpack })
+            .ResolveAsync(new PackageIdentifier(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
             .ConfigureAwait(false);
         var (pack, container) = await DownloadAndImportPackageAsync(
                 key,

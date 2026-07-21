@@ -63,7 +63,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
             {
                 if (PackageHelper.TryParse(entry.Pref, out var parsed))
                 {
-                    if (uint.TryParse(parsed.Pid, out var pid) && uint.TryParse(parsed.Vid, out var vid))
+                    if (uint.TryParse(parsed.Identity, out var pid) && uint.TryParse(parsed.Version, out var vid))
                     {
                         attachments.Add(new(pid, vid, true));
                     }

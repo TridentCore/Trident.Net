@@ -41,50 +41,50 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     public Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content) =>
         throw new NotSupportedException("packwiz repositories cannot identify files");
 
-    public async Task<Project> QueryAsync(string? ns, string pid)
+    public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
-        var owner = RequireOwner(ns);
-        var head = await GetHeadCommitAsync(owner, pid).ConfigureAwait(false);
+        var owner = RequireOwner(id.Namespace);
+        var head = await GetHeadCommitAsync(owner, id.Identity).ConfigureAwait(false);
         var file = await github
-            .GetFileContentAsync(owner, pid, PackwizHelper.INDEX_FILE_NAME, head.Sha)
+            .GetFileContentAsync(owner, id.Identity, PackwizHelper.INDEX_FILE_NAME, head.Sha)
             .ConfigureAwait(false);
         var manifest = PackwizHelper.ParsePackManifest(PackwizHelper.DecodeContent(file));
-        return PackwizHelper.ToProject(label, owner, pid, head, manifest);
+        return PackwizHelper.ToProject(label, owner, id.Identity, head, manifest);
     }
 
-    public Task<BatchResolveResult<(string?, string pid), Project>> QueryBatchAsync(
-        IEnumerable<(string?, string pid)> batch
-    ) => ResolveAllAsync(batch, id => QueryAsync(id.Item1, id.pid));
+    public Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+        IEnumerable<ScopedProjectIdentifier> batch
+    ) => ResolveAllAsync(batch, QueryAsync);
 
-    public async Task<Package> ResolveAsync(string? ns, string pid, string? vid, Filter filter)
+    public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
-        var owner = RequireOwner(ns);
-        var commit = vid is null
-            ? await GetHeadCommitAsync(owner, pid).ConfigureAwait(false)
-            : await GetCommitByRefAsync(owner, pid, vid).ConfigureAwait(false);
+        var owner = RequireOwner(id.Namespace);
+        var commit = id.Version is null
+            ? await GetHeadCommitAsync(owner, id.Identity).ConfigureAwait(false)
+            : await GetCommitByRefAsync(owner, id.Identity, id.Version).ConfigureAwait(false);
         var file = await github
-            .GetFileContentAsync(owner, pid, PackwizHelper.INDEX_FILE_NAME, commit.Sha)
+            .GetFileContentAsync(owner, id.Identity, PackwizHelper.INDEX_FILE_NAME, commit.Sha)
             .ConfigureAwait(false);
         var manifest = PackwizHelper.ParsePackManifest(PackwizHelper.DecodeContent(file));
-        return PackwizHelper.ToPackage(label, owner, pid, commit, vid, manifest);
+        return PackwizHelper.ToPackage(label, owner, id.Identity, commit, id.Version, manifest);
     }
 
     public Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter
-    ) => ResolveAllAsync(batch, id => ResolveAsync(id.Namespace, id.Identity, id.Version, filter));
+    ) => ResolveAllAsync(batch, id => ResolveAsync(id, filter));
 
-    public Task<string> ReadDescriptionAsync(string? ns, string pid) =>
+    public Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id) =>
         Task.FromResult(string.Empty);
 
-    public async Task<string> ReadChangelogAsync(string? ns, string pid, string vid)
+    public async Task<string> ReadChangelogAsync(ScopedPackageIdentifier id)
     {
-        if (ns is null || vid is null)
+        if (id.Namespace is null || id.Version is null)
             return string.Empty;
 
         try
         {
-            var commit = await github.GetCommitAsync(ns, pid, vid).ConfigureAwait(false);
+            var commit = await github.GetCommitAsync(id.Namespace, id.Identity, id.Version).ConfigureAwait(false);
             return commit.Commit?.Message ?? string.Empty;
         }
         catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -93,13 +93,13 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         }
     }
 
-    public async Task<IPaginationHandle<Version>> InspectAsync(string? ns, string pid, Filter filter)
+    public async Task<IPaginationHandle<Version>> InspectAsync(ScopedProjectIdentifier id, Filter filter)
     {
-        var owner = RequireOwner(ns);
-        var tagMap = await BuildTagMapAsync(owner, pid).ConfigureAwait(false);
-        var first = await FetchCommitsAsync(owner, pid, PAGE_SIZE, 1).ConfigureAwait(false);
+        var owner = RequireOwner(id.Namespace);
+        var tagMap = await BuildTagMapAsync(owner, id.Identity).ConfigureAwait(false);
+        var first = await FetchCommitsAsync(owner, id.Identity, PAGE_SIZE, 1).ConfigureAwait(false);
         var initial = first
-            .Select(c => PackwizHelper.ToVersion(label, owner, pid, c, TagOf(tagMap, c.Sha)))
+            .Select(c => PackwizHelper.ToVersion(label, owner, id.Identity, c, TagOf(tagMap, c.Sha)))
             .ToList();
         return new PaginationHandle<Version>(
             initial,
@@ -107,10 +107,10 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
             (uint)initial.Count,
             async (pageIndex, _) =>
             {
-                var page = await FetchCommitsAsync(owner, pid, PAGE_SIZE, pageIndex + 1)
+                var page = await FetchCommitsAsync(owner, id.Identity, PAGE_SIZE, pageIndex + 1)
                     .ConfigureAwait(false);
                 return page
-                    .Select(c => PackwizHelper.ToVersion(label, owner, pid, c, TagOf(tagMap, c.Sha)))
+                    .Select(c => PackwizHelper.ToVersion(label, owner, id.Identity, c, TagOf(tagMap, c.Sha)))
                     .ToList();
             }
         );

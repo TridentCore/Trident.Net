@@ -96,7 +96,7 @@ internal static class PackageOperation
         try
         {
             var parsed = PackageCliHelper.ParsePref(pref);
-            var normalized = PackageHelper.ToPref(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            var normalized = PackageHelper.ToPref(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version);
             if (PackageCliHelper.ContainsProject(guard.Value, normalized))
             {
                 return new(normalized, false, "already-installed", ctx.Key);
@@ -137,7 +137,7 @@ internal static class PackageOperation
         }
 
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, PackageCliHelper.ParseKind(kind), ctx);
-        var package = await repositories.ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter).ConfigureAwait(false);
+        var package = await repositories.ResolveAsync(parsed, filter).ConfigureAwait(false);
         var dto = PackageDtos.FromPackage(package);
 
         return new(ctx?.Key, local, dto);
@@ -178,7 +178,7 @@ internal static class PackageOperation
         var parsed = PackageCliHelper.ParsePref(pref);
         resolver.TryResolve(instance, profile, out var ctx);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
-        var package = await repositories.ResolveAsync(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid, filter).ConfigureAwait(false);
+        var package = await repositories.ResolveAsync(parsed, filter).ConfigureAwait(false);
         var dependencies = package.Dependencies.Select(PackageDtos.FromDependency).ToArray();
         return new(package.ToString(), dependencies);
     }
@@ -197,7 +197,7 @@ internal static class PackageOperation
         var target = PackageCliHelper.ParsePref(pref);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind, ctx);
 
-        var parsed = new List<(Profile.Rice.Entry Entry, (string Label, string? Namespace, string Pid, string? Vid) Parsed)>();
+        var parsed = new List<(Profile.Rice.Entry Entry, PackageIdentifier Parsed)>();
         foreach (var entry in ctx.Profile.Setup.Packages.Where(x => x.Enabled))
         {
             if (PackageHelper.TryParse(entry.Pref, out var p))
@@ -212,7 +212,7 @@ internal static class PackageOperation
         }
 
         var identifiers = parsed
-            .Select(x => new PackageIdentifier(x.Parsed.Label, x.Parsed.Namespace, x.Parsed.Pid, x.Parsed.Vid))
+            .Select(x => x.Parsed)
             .ToArray();
 
         var resolved = await repositories
@@ -228,16 +228,16 @@ internal static class PackageOperation
 
         foreach (var (entry, p) in parsed)
         {
-            if (!lookup.TryGetValue((p.Namespace, p.Pid), out var package))
+            if (!lookup.TryGetValue((p.Namespace, p.Identity), out var package))
             {
                 failed.Add(entry.Pref);
                 continue;
             }
 
             if (package.Dependencies.Any(x =>
-                    x.Label == target.Label
+                    x.Label == target.Repository
                     && x.Namespace == target.Namespace
-                    && x.ProjectId == target.Pid))
+                    && x.ProjectId == target.Identity))
             {
                 dependents.Add(new(entry.Pref, package.ProjectName, package.VersionName));
             }
@@ -259,7 +259,7 @@ internal static class PackageOperation
         var parsed = PackageCliHelper.ParsePref(pref);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind);
         var handle = await repositories
-            .InspectAsync(parsed.Label, parsed.Namespace, parsed.Pid, filter)
+            .InspectAsync(parsed.ToProjectIdentifier(), filter)
             .ConfigureAwait(false);
 
         var versions = new List<VersionDto>();
@@ -283,7 +283,7 @@ internal static class PackageOperation
         string? profile)
     {
         var parsed = PackageCliHelper.ParsePref(pref);
-        if (string.IsNullOrWhiteSpace(parsed.Vid))
+        if (string.IsNullOrWhiteSpace(parsed.Version))
         {
             throw new CliException("A version pref with @version is required.", ExitCodes.USAGE);
         }
@@ -294,7 +294,7 @@ internal static class PackageOperation
         {
             var entry = PackageCliHelper.FindEntry(guard.Value, pref);
             var oldPref = entry.Pref;
-            entry.Pref = PackageHelper.ToPref(parsed.Label, parsed.Namespace, parsed.Pid, parsed.Vid);
+            entry.Pref = PackageHelper.ToPref(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version);
             return new(ctx.Key, oldPref, entry.Pref);
         }
         finally
