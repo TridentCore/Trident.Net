@@ -110,7 +110,7 @@ public static class PackwizHelper
             owner,
             repo,
             manifest.Name ?? repo,
-            OgImage(owner, repo),
+            OwnerAvatar(owner),
             manifest.Author ?? owner,
             string.Empty,
             new($"https://github.com/{owner}/{repo}"),
@@ -140,7 +140,7 @@ public static class PackwizHelper
             versionId ?? ShortSha(sha),
             manifest.Name ?? repo,
             $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
-            OgImage(owner, repo),
+            OwnerAvatar(owner),
             manifest.Author ?? owner,
             string.Empty,
             new($"https://github.com/{owner}/{repo}"),
@@ -190,8 +190,8 @@ public static class PackwizHelper
         return false;
     }
 
-    private static Uri OgImage(string owner, string repo) =>
-        new($"https://opengraph.githubassets.com/{owner}/{repo}");
+    private static Uri OwnerAvatar(string owner) =>
+        new($"https://github.com/{owner}.png");
 
     private static string ShortSha(string sha) => sha.Length > 7 ? sha[..7] : sha;
 
