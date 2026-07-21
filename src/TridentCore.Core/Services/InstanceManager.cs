@@ -549,6 +549,7 @@ public class InstanceManager(
             PackageHelper.ToPref(label, ns, pid, vid),
             key.Key
         );
+        tracker.ProgressStream.OnNext(null);
         var package = await repositories
             .ResolveAsync(new PackageIdentifier(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
             .ConfigureAwait(false);

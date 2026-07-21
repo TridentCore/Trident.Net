@@ -98,14 +98,15 @@ public class TrackerAwaiter(CliOutput output)
             )
             .StartAsync(async progressContext =>
             {
-                var task = progressContext.AddTask("[blue]Installing modpack[/]", maxValue: 1);
-                using var subscription = tracker.ProgressChanged
+                var task = progressContext.AddTask("[blue]Resolving modpack[/]", maxValue: 1);
+                using var subscription = MapInstallProgress(tracker.ProgressChanged)
                     .Sample(TimeSpan.FromSeconds(1))
-                    .Subscribe(p =>
+                    .Subscribe(x =>
                     {
-                        if (p is TrackerProgress.Determinate d)
+                        task.Description = $"[blue]{Markup.Escape(Label(x.Phase))}[/]";
+                        if (x.Percent is { } percent)
                         {
-                            task.Value = Math.Clamp(d.Percent, 0d, 1d);
+                            task.Value = Math.Clamp(percent, 0d, 1d);
                         }
                     });
                 await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
@@ -122,21 +123,54 @@ public class TrackerAwaiter(CliOutput output)
         CancellationToken cancellationToken
     )
     {
-        using var subscription = tracker.ProgressChanged
+        using var subscription = MapInstallProgress(tracker.ProgressChanged)
             .Sample(TimeSpan.FromSeconds(1))
-            .Subscribe(p =>
+            .Subscribe(x =>
             {
-                var payload = p switch
-                {
-                    TrackerProgress.Determinate d => (object)new { @event = "progress", percent = d.Percent },
-                    TrackerProgress.Indeterminate => new { @event = "progress", indeterminate = true },
-                    _ => new { @event = "progress" },
-                };
+                var phase = x.Phase.ToString().ToLowerInvariant();
+                object payload = x.Percent is { } percent
+                    ? new { @event = "progress", phase, percent }
+                    : new { @event = "progress", phase, indeterminate = true };
                 Console.Out.WriteLine(JsonSerializer.Serialize(payload));
             });
         await AwaitCompletionAsync(tracker, cancellationToken).ConfigureAwait(false);
         ThrowIfFaulted(tracker, "Install failed.");
     }
+
+    private enum InstallPhase { Resolving, Downloading, Extracting }
+
+    // NOTE: InstallTracker 只发标量 double?（null=不可量化，num=下载字节比），不带阶段语义。
+    // 安装流程阶段是单调的 解析→下载→解压，所以靠「首次出现 Determinate」和「Determinate 之后的 Indeterminate」
+    // 两次状态跃迁把标量流重写成三阶段，免改 Core 的 Tracker 模型。
+    private static IObservable<(InstallPhase Phase, double? Percent)> MapInstallProgress(
+        IObservable<TrackerProgress> source
+    )
+    {
+        InstallPhase phase = InstallPhase.Resolving;
+        return source.Select(p =>
+        {
+            switch (p)
+            {
+                case TrackerProgress.Determinate d:
+                    phase = InstallPhase.Downloading;
+                    return (phase, (double?)d.Percent);
+                case TrackerProgress.Indeterminate when phase == InstallPhase.Downloading:
+                    phase = InstallPhase.Extracting;
+                    return (phase, (double?)null);
+                default:
+                    return (phase, (double?)null);
+            }
+        });
+    }
+
+    private static string Label(InstallPhase phase) =>
+        phase switch
+        {
+            InstallPhase.Resolving => "Resolving modpack",
+            InstallPhase.Downloading => "Downloading modpack",
+            InstallPhase.Extracting => "Extracting modpack",
+            _ => "Installing modpack",
+        };
 
     public static void ThrowIfFaulted(TrackerBase tracker, string message)
     {
