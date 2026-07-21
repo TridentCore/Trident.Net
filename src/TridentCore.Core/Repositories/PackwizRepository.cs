@@ -45,11 +45,20 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     {
         var owner = RequireOwner(id.Namespace);
         var head = await GetHeadCommitAsync(owner, id.Identity).ConfigureAwait(false);
+        var info = await github.GetRepositoryAsync(owner, id.Identity).ConfigureAwait(false);
         var file = await github
             .GetFileContentAsync(owner, id.Identity, PackwizHelper.INDEX_FILE_NAME, head.Sha)
             .ConfigureAwait(false);
         var manifest = PackwizHelper.ParsePackManifest(PackwizHelper.DecodeContent(file));
-        return PackwizHelper.ToProject(label, owner, id.Identity, head, manifest);
+        return PackwizHelper.ToProject(
+            label,
+            owner,
+            id.Identity,
+            head,
+            manifest,
+            info.Description ?? string.Empty,
+            info.Topics ?? Array.Empty<string>()
+        );
     }
 
     public Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
@@ -62,11 +71,20 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         var commit = id.Version is null
             ? await GetHeadCommitAsync(owner, id.Identity).ConfigureAwait(false)
             : await GetCommitByRefAsync(owner, id.Identity, id.Version).ConfigureAwait(false);
+        var info = await github.GetRepositoryAsync(owner, id.Identity).ConfigureAwait(false);
         var file = await github
             .GetFileContentAsync(owner, id.Identity, PackwizHelper.INDEX_FILE_NAME, commit.Sha)
             .ConfigureAwait(false);
         var manifest = PackwizHelper.ParsePackManifest(PackwizHelper.DecodeContent(file));
-        return PackwizHelper.ToPackage(label, owner, id.Identity, commit, id.Version, manifest);
+        return PackwizHelper.ToPackage(
+            label,
+            owner,
+            id.Identity,
+            commit,
+            id.Version,
+            manifest,
+            info.Description ?? string.Empty
+        );
     }
 
     public Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
@@ -74,8 +92,19 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         Filter filter
     ) => ResolveAllAsync(batch, id => ResolveAsync(id, filter));
 
-    public Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id) =>
-        Task.FromResult(string.Empty);
+    public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
+    {
+        var owner = RequireOwner(id.Namespace);
+        try
+        {
+            var readme = await github.GetReadmeAsync(owner, id.Identity).ConfigureAwait(false);
+            return PackwizHelper.DecodeContent(readme);
+        }
+        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return string.Empty;
+        }
+    }
 
     public async Task<string> ReadChangelogAsync(ScopedPackageIdentifier id)
     {

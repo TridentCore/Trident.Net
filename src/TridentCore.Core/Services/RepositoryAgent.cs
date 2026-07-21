@@ -170,11 +170,12 @@ public class RepositoryAgent
     public Task<Package> IdentityAsync(ReadOnlyMemory<byte> content)
     {
         // 不走缓存
-        foreach (var (k, v) in _repositories)
+        foreach (var label in Labels)
         {
             try
             {
-                return v.IdentifyAsync(content);
+                var repository = _repositories[label];
+                return repository.IdentifyAsync(content);
             }
             catch (ResourceNotFoundException) { }
         }

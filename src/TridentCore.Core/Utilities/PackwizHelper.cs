@@ -101,7 +101,9 @@ public static class PackwizHelper
         string owner,
         string repo,
         CommitObject head,
-        PackManifest manifest
+        PackManifest manifest,
+        string summary,
+        IReadOnlyList<string> tags
     )
     {
         var date = head.Commit?.Committer?.Date ?? DateTimeOffset.MinValue;
@@ -112,10 +114,10 @@ public static class PackwizHelper
             manifest.Name ?? repo,
             OwnerAvatar(owner),
             manifest.Author ?? owner,
-            string.Empty,
+            summary,
             new($"https://github.com/{owner}/{repo}"),
             ResourceKind.Modpack,
-            Array.Empty<string>(),
+            tags,
             date,
             date,
             0,
@@ -129,7 +131,8 @@ public static class PackwizHelper
         string repo,
         CommitObject commit,
         string? versionId,
-        PackManifest manifest
+        PackManifest manifest,
+        string summary
     )
     {
         var sha = commit.Sha ?? string.Empty;
@@ -142,7 +145,7 @@ public static class PackwizHelper
             $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
             OwnerAvatar(owner),
             manifest.Author ?? owner,
-            string.Empty,
+            summary,
             new($"https://github.com/{owner}/{repo}"),
             ResourceKind.Modpack,
             ReleaseType.Release,

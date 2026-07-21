@@ -13,7 +13,7 @@ public interface IGitHubClient
         string owner,
         string repo,
         [AliasAs("per_page")] int perPage = 30,
-        [AliasAs("page")] uint page = 1
+        uint page = 1
     );
 
     [Get("/repos/{owner}/{repo}/contents/{path}")]
@@ -24,11 +24,17 @@ public interface IGitHubClient
         [AliasAs("ref")] string? gitRef = null
     );
 
+    [Get("/repos/{owner}/{repo}/readme")]
+    Task<FileContent> GetReadmeAsync(string owner, string repo, [AliasAs("ref")] string? gitRef = null);
+
     [Get("/repos/{owner}/{repo}/tags")]
     Task<IReadOnlyList<GithubTag>> GetTagsAsync(
         string owner,
         string repo,
         [AliasAs("per_page")] int perPage = 100,
-        [AliasAs("page")] uint page = 1
+        uint page = 1
     );
+
+    [Get("/repos/{owner}/{repo}")]
+    Task<RepositoryObject> GetRepositoryAsync(string owner, string repo);
 }
