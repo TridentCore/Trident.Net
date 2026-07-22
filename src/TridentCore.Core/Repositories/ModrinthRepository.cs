@@ -144,16 +144,16 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch)
     {
-        var batchArray = batch.ToArray();
-        var successful = new Dictionary<ScopedProjectIdentifier, Project>();
-        var failed = new Dictionary<ScopedProjectIdentifier, Exception>();
+        var ids = batch.ToArray();
+        var result = new RepositoryHelper.BatchResult<ScopedProjectIdentifier, Project>();
 
         Dictionary<string, ProjectInfo> projects;
         try
         {
             projects = (await client
-                             .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.Identity)))
-                             .ConfigureAwait(false)).ToDictionary(x => x.Id);
+                             .GetMultipleProjectsAsync(ArrayParameterConstructor(ids.Select(x => x.Identity)))
+                             .ConfigureAwait(false))
+                       .ToDictionary(x => x.Id);
         }
         catch (OperationCanceledException)
         {
@@ -161,57 +161,29 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
         catch (Exception ex)
         {
-            foreach (var x in batchArray)
-            {
-                failed[x] = ex;
-            }
-
-            return new(successful, failed);
+            return result.FailAll(ids, ex).ToResolveResult();
         }
 
-        var teamResults = await Task
-                               .WhenAll(projects.Values.Select(async project =>
-                                {
-                                    try
-                                    {
-                                        var member =
-                                            (await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false))
-                                           .FirstOrDefault()
-                                         ?? throw new
-                                                ResourceNotFoundException($"{project.Name} ({label}:{project.Id}) has no team member in the repository");
-                                        return (project.Id, Member: member, Error: null);
-                                    }
-                                    catch (OperationCanceledException)
-                                    {
-                                        throw;
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        return (project.Id, Member: (MemberInfo?)null, Error: ex);
-                                    }
-                                }))
-                               .ConfigureAwait(false);
-        var teams = teamResults.Where(x => x.Error is null).ToDictionary(x => x.Id, x => x.Member!);
-        var teamErrors = teamResults.Where(x => x.Error is not null).ToDictionary(x => x.Id, x => x.Error!);
+        var members = await PrefetchMembersAsync(projects.Values).ConfigureAwait(false);
 
-        foreach (var id in batchArray)
+        foreach (var id in ids)
         {
             if (!projects.TryGetValue(id.Identity, out var project))
             {
-                failed[id] = new ResourceNotFoundException($"{id.Identity} not found in the repository");
+                result.Fail(id, new ResourceNotFoundException($"{id.Identity} not found in the repository"));
                 continue;
             }
 
-            if (teamErrors.TryGetValue(project.Id, out var teamError))
+            if (members.Failed.TryGetValue(project.Id, out var memberError))
             {
-                failed[id] = teamError;
+                result.Fail(id, memberError);
                 continue;
             }
 
-            successful[id] = ModrinthHelper.ToProject(label, project, teams[project.Id]);
+            result.Succeed(id, ModrinthHelper.ToProject(label, project, members.Successful[project.Id]));
         }
 
-        return new(successful, failed);
+        return result.ToResolveResult();
     }
 
     public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
@@ -267,19 +239,18 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter)
     {
-        var batchArray = batch.ToArray();
-        var knownVids = batchArray.Where(x => x.Version is not null).ToArray();
-        var unknownVids = batchArray.Where(x => x.Version is null).ToArray();
-
-        var successful = new Dictionary<ScopedPackageIdentifier, Package>();
-        var failed = new Dictionary<ScopedPackageIdentifier, Exception>();
+        var ids = batch.ToArray();
+        var knownVids = ids.Where(x => x.Version is not null).ToArray();
+        var unknownVids = ids.Where(x => x.Version is null).ToArray();
+        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
 
         Dictionary<string, ProjectInfo> projects;
         try
         {
             projects = (await client
-                             .GetMultipleProjectsAsync(ArrayParameterConstructor(batchArray.Select(bm => bm.Identity)))
-                             .ConfigureAwait(false)).ToDictionary(x => x.Id);
+                             .GetMultipleProjectsAsync(ArrayParameterConstructor(ids.Select(x => x.Identity)))
+                             .ConfigureAwait(false))
+                       .ToDictionary(x => x.Id);
         }
         catch (OperationCanceledException)
         {
@@ -287,152 +258,114 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
         catch (Exception ex)
         {
-            foreach (var x in batchArray)
-            {
-                failed[x] = ex;
-            }
-
-            return new(successful, failed);
+            return result.FailAll(ids, ex).ToResolveResult();
         }
 
-        var memberResults = await Task
-                                 .WhenAll(projects.Values.Select(async project =>
-                                  {
-                                      try
-                                      {
-                                          var member =
-                                              (await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false))
-                                             .FirstOrDefault()
-                                           ?? throw new
-                                                  ResourceNotFoundException($"{project.Name} ({label}:{project.Id}) has no team member in the repository");
-                                          return (ProjectId: project.Id, Member: member, Error: null);
-                                      }
-                                      catch (OperationCanceledException)
-                                      {
-                                          throw;
-                                      }
-                                      catch (Exception ex)
-                                      {
-                                          return (ProjectId: project.Id, Member: (MemberInfo?)null, Error: ex);
-                                      }
-                                  }))
-                                 .ConfigureAwait(false);
-        var members = memberResults.Where(x => x.Error is null).ToDictionary(x => x.ProjectId, x => x.Member!);
-        var memberErrors = memberResults.Where(x => x.Error is not null).ToDictionary(x => x.ProjectId, x => x.Error!);
+        var members = await PrefetchMembersAsync(projects.Values).ConfigureAwait(false);
 
-        // 这一块依旧没法一次性拿全，都怪 Modrinth 的 API 设计。
-        // 每条独立请求，逐条归因，单条失败不拖累其它。
-        var unknownResults = await Task
-                                  .WhenAll(unknownVids.Select(async x =>
-                                   {
-                                       try
-                                       {
-                                           var project = projects.GetValueOrDefault(x.Identity)
-                                                      ?? throw new
-                                                             ResourceNotFoundException($"{x.Identity} not found in the repository");
-                                           if (memberErrors.TryGetValue(project.Id, out var memberError))
-                                           {
-                                               throw memberError;
-                                           }
-
-                                           var loader =
-                                               ModrinthHelper.GetVersionLoaderFilter(project.ProjectTypes
-                                                      .FirstOrDefault(),
-                                                   filter.Loader);
-                                           var versions = await client
-                                                               .GetProjectVersionsAsync(x.Identity,
-                                                                    null,
-                                                                    loader is not null
-                                                                        ? ArrayParameterConstructor([loader])
-                                                                        : null,
-                                                                    BuildLoaderFields(("game_versions",
-                                                                                    filter.Version)),
-                                                                    limit: 1)
-                                                               .ConfigureAwait(false);
-                                           var chosen = versions
-                                                       .OrderByDescending(y => y.DatePublished)
-                                                       .FirstOrDefault();
-                                           if (chosen == null)
-                                           {
-                                               throw new
-                                                   ResourceNotFoundException($"{project.Name} ({label}:{x.Identity}@*) has no matched version for {FormatTarget(filter)}");
-                                           }
-
-                                           return (Id: x,
-                                                   Package: ModrinthHelper.ToPackage(label,
-                                                       project,
-                                                       chosen,
-                                                       members[project.Id]), Error: null);
-                                       }
-                                       catch (OperationCanceledException)
-                                       {
-                                           throw;
-                                       }
-                                       catch (Exception ex)
-                                       {
-                                           return (Id: x, Package: (Package?)null, Error: ex);
-                                       }
-                                   }))
-                                  .ConfigureAwait(false);
-
-        foreach (var r in unknownResults)
+        if (unknownVids.Length > 0)
         {
-            if (r.Error is not null)
-            {
-                failed[r.Id] = r.Error;
-            }
-            else
-            {
-                successful[r.Id] = r.Package!;
-            }
+            result.Merge(await RepositoryHelper
+                             .ResolveAsync(unknownVids,
+                                 id => ResolveUnknownVersionAsync(id, filter, projects, members))
+                             .ConfigureAwait(false));
         }
 
-        // knownVids 走批量版本接口；失败时该批整体进 failed。
         if (knownVids.Length > 0)
         {
-            var knownGroups = knownVids.ToLookup(x => x.Version!);
+            result.Merge(await ResolveKnownVersionsAsync(knownVids, projects, members).ConfigureAwait(false));
+        }
+
+        return result.ToResolveResult();
+    }
+
+    private Task<RepositoryHelper.BatchResult<string, MemberInfo>> PrefetchMembersAsync(
+        IEnumerable<ProjectInfo> projects)
+    {
+        var byId = projects.ToDictionary(p => p.Id);
+        return RepositoryHelper.ResolveAsync(byId.Keys, async projectId =>
+        {
+            var project = byId[projectId];
+            var member = (await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)).FirstOrDefault()
+                      ?? throw new ResourceNotFoundException(
+                             $"{project.Name} ({label}:{project.Id}) has no team member in the repository");
+            return member;
+        });
+    }
+
+    private async Task<Package> ResolveUnknownVersionAsync(
+        ScopedPackageIdentifier id,
+        Filter filter,
+        IReadOnlyDictionary<string, ProjectInfo> projects,
+        RepositoryHelper.BatchResult<string, MemberInfo> members)
+    {
+        var project = projects.GetValueOrDefault(id.Identity)
+                    ?? throw new ResourceNotFoundException($"{id.Identity} not found in the repository");
+        if (members.Failed.TryGetValue(project.Id, out var memberError))
+        {
+            throw memberError;
+        }
+
+        var loader = ModrinthHelper.GetVersionLoaderFilter(project.ProjectTypes.FirstOrDefault(), filter.Loader);
+        var versions = await client
+                             .GetProjectVersionsAsync(id.Identity,
+                                                      null,
+                                                      loader is not null ? ArrayParameterConstructor([loader]) : null,
+                                                      BuildLoaderFields(("game_versions", filter.Version)),
+                                                      limit: 1)
+                             .ConfigureAwait(false);
+        var chosen = versions.OrderByDescending(x => x.DatePublished).FirstOrDefault()
+                  ?? throw new ResourceNotFoundException(
+                         $"{project.Name} ({label}:{id.Identity}@*) has no matched version for {FormatTarget(filter)}");
+        return ModrinthHelper.ToPackage(label, project, chosen, members.Successful[project.Id]);
+    }
+
+    private async Task<RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>> ResolveKnownVersionsAsync(
+        ScopedPackageIdentifier[] knownVids,
+        IReadOnlyDictionary<string, ProjectInfo> projects,
+        RepositoryHelper.BatchResult<string, MemberInfo> members)
+    {
+        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
+        var versionIds = knownVids.Select(x => x.Version!).Distinct().ToArray();
+
+        List<VersionInfo> versions;
+        try
+        {
+            versions = (await client.GetMultipleVersionsAsync(ArrayParameterConstructor(versionIds))
+                                    .ConfigureAwait(false))
+                       .ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return result.FailAll(knownVids, ex);
+        }
+
+        var versionById = versions.ToDictionary(x => x.Id);
+        foreach (var id in knownVids)
+        {
+            if (!versionById.TryGetValue(id.Version!, out var version))
+            {
+                result.Fail(id,
+                    new ResourceNotFoundException($"{id.Identity}/{id.Version} not found in the repository"));
+                continue;
+            }
+
             try
             {
-                var knownVersions = await client
-                                         .GetMultipleVersionsAsync(ArrayParameterConstructor(knownGroups.Select(x => x
-                                                                      .Key)))
-                                         .ConfigureAwait(false);
-
-                foreach (var v in knownVersions)
+                var project = projects.GetValueOrDefault(version.ProjectId)
+                            ?? throw new ResourceNotFoundException(
+                                   $"{version.ProjectId} not found in the repository");
+                if (members.Failed.TryGetValue(project.Id, out var memberError))
                 {
-                    foreach (var id in knownGroups[v.Id])
-                    {
-                        try
-                        {
-                            var project = projects.GetValueOrDefault(v.ProjectId)
-                                       ?? throw new
-                                              ResourceNotFoundException($"{v.ProjectId} not found in the repository");
-                            if (memberErrors.TryGetValue(project.Id, out var memberError))
-                            {
-                                throw memberError;
-                            }
-
-                            successful[id] = ModrinthHelper.ToPackage(label, project, v, members[project.Id]);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            throw;
-                        }
-                        catch (Exception ex)
-                        {
-                            failed[id] = ex;
-                        }
-                    }
+                    throw memberError;
                 }
 
-                foreach (var id in knownVids)
-                {
-                    if (!successful.ContainsKey(id) && !failed.ContainsKey(id))
-                    {
-                        failed[id] =
-                            new ResourceNotFoundException($"{id.Identity}/{id.Version} not found in the repository");
-                    }
-                }
+                result.Succeed(id,
+                    ModrinthHelper.ToPackage(label, project, version, members.Successful[project.Id]));
             }
             catch (OperationCanceledException)
             {
@@ -440,17 +373,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             }
             catch (Exception ex)
             {
-                foreach (var x in knownVids)
-                {
-                    if (!successful.ContainsKey(x))
-                    {
-                        failed[x] = ex;
-                    }
-                }
+                result.Fail(id, ex);
             }
         }
 
-        return new(successful, failed);
+        return result;
     }
 
     public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
@@ -461,6 +388,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     public async Task<string> ReadChangelogAsync(ScopedPackageIdentifier id)
     {
+        if (id.Version is null)
+        {
+            return string.Empty;
+        }
+
         var version = await client.GetVersionAsync(id.Version).ConfigureAwait(false);
         return version.Changelog ?? string.Empty;
     }

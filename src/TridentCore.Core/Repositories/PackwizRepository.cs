@@ -22,47 +22,6 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
 
     public bool IsHidden => true;
 
-    private static async Task<BatchResolveResult<TId, TItem>> ResolveAllAsync<TId, TItem>(
-        IEnumerable<TId> ids,
-        Func<TId, Task<TItem>> resolve) where TId : notnull where TItem : class
-    {
-        var items = ids.ToArray();
-        var successful = new Dictionary<TId, TItem>();
-        var failed = new Dictionary<TId, Exception>();
-
-        var results = await Task
-                           .WhenAll(items.Select(async id =>
-                            {
-                                try
-                                {
-                                    return (id, (TItem?)await resolve(id).ConfigureAwait(false), (Exception?)null);
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    throw;
-                                }
-                                catch (Exception ex)
-                                {
-                                    return (id, null, ex);
-                                }
-                            }))
-                           .ConfigureAwait(false);
-
-        foreach (var (id, item, error) in results)
-        {
-            if (error is not null)
-            {
-                failed[id] = error;
-            }
-            else if (item is not null)
-            {
-                successful[id] = item;
-            }
-        }
-
-        return new(successful, failed);
-    }
-
     private async Task<CommitObject> GetHeadCommitAsync(string owner, string repo)
     {
         var commits = await FetchCommitsAsync(owner, repo, 1, 1).ConfigureAwait(false);
@@ -168,9 +127,12 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                        info.Topics ?? Array.Empty<string>());
     }
 
-    public Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch) =>
-        ResolveAllAsync(batch, QueryAsync);
+        (await RepositoryHelper
+                 .ResolveAsync<ScopedProjectIdentifier, Project>(batch, QueryAsync)
+                 .ConfigureAwait(false))
+       .ToResolveResult();
 
     public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
@@ -192,10 +154,13 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                        info.Description ?? string.Empty);
     }
 
-    public Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
+    public async Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter) =>
-        ResolveAllAsync(batch, id => ResolveAsync(id, filter));
+        (await RepositoryHelper
+                 .ResolveAsync<ScopedPackageIdentifier, Package>(batch, id => ResolveAsync(id, filter))
+                 .ConfigureAwait(false))
+       .ToResolveResult();
 
     public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
     {
