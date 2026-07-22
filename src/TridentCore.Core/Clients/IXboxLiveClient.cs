@@ -6,7 +6,5 @@ namespace TridentCore.Core.Clients;
 public interface IXboxLiveClient
 {
     [Post("/user/authenticate")]
-    Task<XboxLiveResponse> AcquireXboxLiveTokenAsync(
-        [Body] XboxLiveRequest<XboxLiveTokenProperties> request
-    );
+    Task<XboxLiveResponse> AcquireXboxLiveTokenAsync([Body] XboxLiveRequest<XboxLiveTokenProperties> request);
 }

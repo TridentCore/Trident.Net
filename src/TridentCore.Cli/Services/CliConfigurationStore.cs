@@ -15,10 +15,9 @@ public class CliConfigurationStore
             return new Dictionary<string, object>();
         }
 
-        var settings = JsonSerializer.Deserialize<Dictionary<string, object>>(
-            File.ReadAllText(_path),
-            FileHelper.SerializerOptions
-        );
+        var settings =
+            JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(_path),
+                                                                   FileHelper.SerializerOptions);
         return settings ?? new Dictionary<string, object>();
     }
 
@@ -65,11 +64,8 @@ public class CliConfigurationStore
     private void Save(IReadOnlyDictionary<string, object> settings)
     {
         var ordered = settings
-            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.Value);
-        AtomicFileWriter.WriteAllText(
-            _path,
-            JsonSerializer.Serialize(ordered, FileHelper.SerializerOptions)
-        );
+                     .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                     .ToDictionary(x => x.Key, x => x.Value);
+        AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(ordered, FileHelper.SerializerOptions));
     }
 }

@@ -8,17 +8,13 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Config;
 
-public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : Command<T>
-    where T : ConfigScopeArguments
+public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : Command<T> where T : ConfigScopeArguments
 {
     protected InstanceContextResolver Resolver { get; } = resolver;
 
     protected ConfigScope ResolveScope(T settings)
     {
-        if (
-            string.IsNullOrWhiteSpace(settings.Instance)
-            && string.IsNullOrWhiteSpace(settings.Profile)
-        )
+        if (string.IsNullOrWhiteSpace(settings.Instance) && string.IsNullOrWhiteSpace(settings.Profile))
         {
             return ConfigScope.Global;
         }
@@ -27,17 +23,10 @@ public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : C
     }
 }
 
-public class ConfigGetCommand(
-    InstanceContextResolver resolver,
-    CliConfigurationStore configuration,
-    CliOutput output
-) : ConfigCommandBase<ConfigGetCommand.Arguments>(resolver)
+public class ConfigGetCommand(InstanceContextResolver resolver, CliConfigurationStore configuration, CliOutput output)
+    : ConfigCommandBase<ConfigGetCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = ConfigOperation.Get(Resolver, configuration, settings.Name, settings.Instance, settings.Profile);
 
@@ -47,13 +36,11 @@ public class ConfigGetCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Configuration value",
-                ("Scope", result.Scope),
-                ("Name", settings.Name),
-                ("Type", ConfigValueParser.Describe(result.Value)),
-                ("Value", ConfigValueParser.Format(result.Value))
-            );
+            output.WriteKeyValueTable("Configuration value",
+                                      ("Scope", result.Scope),
+                                      ("Name", settings.Name),
+                                      ("Type", ConfigValueParser.Describe(result.Value)),
+                                      ("Value", ConfigValueParser.Format(result.Value)));
         }
 
         return ExitCodes.SUCCESS;
@@ -70,17 +57,18 @@ public class ConfigSetCommand(
     InstanceContextResolver resolver,
     ProfileManager profileManager,
     CliConfigurationStore configuration,
-    CliOutput output
-) : ConfigCommandBase<ConfigSetCommand.Arguments>(resolver)
+    CliOutput output) : ConfigCommandBase<ConfigSetCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = ConfigOperation.Set(Resolver, configuration, profileManager,
-            settings.Name, settings.Value, settings.Type, settings.Instance, settings.Profile);
+        var result = ConfigOperation.Set(Resolver,
+                                         configuration,
+                                         profileManager,
+                                         settings.Name,
+                                         settings.Value,
+                                         settings.Type,
+                                         settings.Instance,
+                                         settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -88,13 +76,11 @@ public class ConfigSetCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Configuration saved",
-                ("Scope", result.Scope),
-                ("Name", settings.Name),
-                ("Type", ConfigValueParser.Describe(result.Value)),
-                ("Value", ConfigValueParser.Format(result.Value))
-            );
+            output.WriteKeyValueTable("Configuration saved",
+                                      ("Scope", result.Scope),
+                                      ("Name", settings.Name),
+                                      ("Type", ConfigValueParser.Describe(result.Value)),
+                                      ("Value", ConfigValueParser.Format(result.Value)));
             output.WriteSuccess($"Configuration {settings.Name} saved.");
         }
 
@@ -118,16 +104,16 @@ public class ConfigUnsetCommand(
     InstanceContextResolver resolver,
     ProfileManager profileManager,
     CliConfigurationStore configuration,
-    CliOutput output
-) : ConfigCommandBase<ConfigUnsetCommand.Arguments>(resolver)
+    CliOutput output) : ConfigCommandBase<ConfigUnsetCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        ConfigOperation.Unset(Resolver, configuration, profileManager, settings.Name, settings.Instance, settings.Profile);
+        ConfigOperation.Unset(Resolver,
+                              configuration,
+                              profileManager,
+                              settings.Name,
+                              settings.Instance,
+                              settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -135,10 +121,7 @@ public class ConfigUnsetCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Configuration removed",
-                ("Name", settings.Name)
-            );
+            output.WriteKeyValueTable("Configuration removed", ("Name", settings.Name));
             output.WriteSuccess($"Configuration {settings.Name} removed.");
         }
 
@@ -152,17 +135,10 @@ public class ConfigUnsetCommand(
     }
 }
 
-public class ConfigListCommand(
-    InstanceContextResolver resolver,
-    CliConfigurationStore configuration,
-    CliOutput output
-) : ConfigCommandBase<ConfigListCommand.Arguments>(resolver)
+public class ConfigListCommand(InstanceContextResolver resolver, CliConfigurationStore configuration, CliOutput output)
+    : ConfigCommandBase<ConfigListCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = ConfigOperation.List(Resolver, configuration, settings.Instance, settings.Profile);
 
@@ -174,10 +150,8 @@ public class ConfigListCommand(
 
         if (result.Values.Count == 0)
         {
-            output.WriteEmptyState(
-                "No configuration values",
-                "Set values with: trident config set --name <key> --value <value>"
-            );
+            output.WriteEmptyState("No configuration values",
+                                   "Set values with: trident config set --name <key> --value <value>");
             return ExitCodes.SUCCESS;
         }
 
@@ -188,11 +162,9 @@ public class ConfigListCommand(
         table.AddColumn("Value");
         foreach (var item in result.Values)
         {
-            table.AddRow(
-                Markup.Escape(item.Name),
-                Markup.Escape(ConfigValueParser.Describe(item.Value)),
-                Markup.Escape(ConfigValueParser.Format(item.Value))
-            );
+            table.AddRow(Markup.Escape(item.Name),
+                         Markup.Escape(ConfigValueParser.Describe(item.Value)),
+                         Markup.Escape(ConfigValueParser.Format(item.Value)));
         }
 
         output.WriteTable(table);
@@ -222,38 +194,17 @@ public sealed record ConfigScope(ResolvedInstanceContext? Instance)
     public static ConfigScope ForInstance(ResolvedInstanceContext instance) => new(instance);
 }
 
-public sealed record ConfigResult(
-    string? Action,
-    string Scope,
-    string? Key,
-    string Name,
-    string Type,
-    object? Value
-)
+public sealed record ConfigResult(string? Action, string Scope, string? Key, string Name, string Type, object? Value)
 {
-    public static ConfigResult From(
-        ConfigScope scope,
-        string name,
-        object? value,
-        string? action = null
-    ) =>
-        new(
-            action,
-            scope.ScopeName,
-            scope.Instance?.Key,
-            name,
-            ConfigValueParser.Describe(value),
-            value
-        );
+    public static ConfigResult From(ConfigScope scope, string name, object? value, string? action = null) =>
+        new(action, scope.ScopeName, scope.Instance?.Key, name, ConfigValueParser.Describe(value), value);
 }
 
 public static class ConfigValueParser
 {
     public static object Parse(string value, string? type)
     {
-        var normalizedType = string.IsNullOrWhiteSpace(type)
-            ? "auto"
-            : type.Trim().ToLowerInvariant();
+        var normalizedType = string.IsNullOrWhiteSpace(type) ? "auto" : type.Trim().ToLowerInvariant();
         return normalizedType switch
         {
             "auto" => ParseAuto(value),
@@ -262,10 +213,9 @@ public static class ConfigValueParser
             "bool" or "boolean" => ParseBoolean(value),
             "int" or "integer" => ParseInteger(value),
             "number" or "float" or "double" => ParseNumber(value),
-            _ => throw new CliException(
-                $"Configuration value type '{type}' is not supported. Use auto, string, bool, integer, or number.",
-                ExitCodes.USAGE
-            ),
+            _ => throw new
+                     CliException($"Configuration value type '{type}' is not supported. Use auto, string, bool, integer, or number.",
+                                  ExitCodes.USAGE)
         };
     }
 
@@ -277,7 +227,7 @@ public static class ConfigValueParser
             byte or sbyte or short or ushort or int or uint or long or ulong => "integer",
             float or double or decimal => "number",
             JsonElement element => element.ValueKind.ToString().ToLowerInvariant(),
-            _ => "string",
+            _ => "string"
         };
 
     public static string Format(object? value) =>
@@ -286,14 +236,26 @@ public static class ConfigValueParser
             null => string.Empty,
             IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             JsonElement element => element.ToString(),
-            _ => value.ToString() ?? string.Empty,
+            _ => value.ToString() ?? string.Empty
         };
 
     private static object ParseAuto(string value)
     {
-        if (bool.TryParse(value, out var boolean)) return boolean;
-        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer)) return integer;
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return number;
+        if (bool.TryParse(value, out var boolean))
+        {
+            return boolean;
+        }
+
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+        {
+            return integer;
+        }
+
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+        {
+            return number;
+        }
+
         return value;
     }
 

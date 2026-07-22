@@ -8,8 +8,7 @@ public static class AssetHelper
     private static bool TryResolveNonSymlinkDirectory(
         string root,
         ReadOnlySpan<string> pathSegments,
-        [MaybeNullWhen(false)] out DirectoryInfo directory
-    )
+        [MaybeNullWhen(false)] out DirectoryInfo directory)
     {
         directory = null;
 
@@ -42,15 +41,10 @@ public static class AssetHelper
     public static IReadOnlyList<FileInfo> ScanNonSymlinkFiles(
         string key,
         string pattern,
-        ReadOnlySpan<string> pathSegments
-    ) =>
-        ScanNonSymlink(
-            key,
-            pathSegments,
-            dir =>
-                dir.GetFiles(pattern, SearchOption.TopDirectoryOnly)
-                    .Where(x => x.LinkTarget is null)
-        );
+        ReadOnlySpan<string> pathSegments) =>
+        ScanNonSymlink(key,
+                       pathSegments,
+                       dir => dir.GetFiles(pattern, SearchOption.TopDirectoryOnly).Where(x => x.LinkTarget is null));
 
     /// <summary>
     ///     在 build/import/persist 三个目录下的非 Symlink 目录中搜索非 Symlink 目录
@@ -62,27 +56,23 @@ public static class AssetHelper
     public static IReadOnlyList<DirectoryInfo> ScanNonSymlinkDirectories(
         string key,
         string pattern,
-        ReadOnlySpan<string> pathSegments
-    ) =>
-        ScanNonSymlink(
-            key,
-            pathSegments,
-            dir =>
-                dir.GetDirectories(pattern, SearchOption.TopDirectoryOnly)
-                    .Where(x => x.LinkTarget is null)
-        );
+        ReadOnlySpan<string> pathSegments) =>
+        ScanNonSymlink(key,
+                       pathSegments,
+                       dir => dir
+                             .GetDirectories(pattern, SearchOption.TopDirectoryOnly)
+                             .Where(x => x.LinkTarget is null));
 
     private static IReadOnlyList<T> ScanNonSymlink<T>(
         string key,
         ReadOnlySpan<string> pathSegments,
-        Func<DirectoryInfo, IEnumerable<T>> selector
-    )
+        Func<DirectoryInfo, IEnumerable<T>> selector)
     {
         var storages = new[]
         {
             PathDef.Default.DirectoryOfBuild(key),
             PathDef.Default.DirectoryOfImport(key),
-            PathDef.Default.DirectoryOfPersist(key),
+            PathDef.Default.DirectoryOfPersist(key)
         };
 
         var results = new List<T>();

@@ -34,8 +34,7 @@ public record ProjectInfo(
     IReadOnlyList<bool> ClientOnly,
     IReadOnlyList<string> GameVersions,
     IReadOnlyList<string> MrpackLoaders,
-    IReadOnlyList<bool> ServerOnly
-)
+    IReadOnlyList<bool> ServerOnly)
 {
     #region Nested type: Messages
 
@@ -58,8 +57,7 @@ public record ProjectInfo(
         ProjectLinks.Links? Source,
         ProjectLinks.Links? Wiki,
         ProjectLinks.Links? Issues,
-        ProjectLinks.Links? Website
-    )
+        ProjectLinks.Links? Website)
     {
         #region Nested type: Links
 
@@ -79,8 +77,7 @@ public record ProjectInfo(
         string Name,
         string? Description,
         DateTimeOffset Created,
-        int Ordering
-    );
+        int Ordering);
 
     #endregion
 }

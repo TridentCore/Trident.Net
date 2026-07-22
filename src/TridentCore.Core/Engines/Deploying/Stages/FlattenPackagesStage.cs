@@ -25,23 +25,15 @@ public class FlattenPackagesStage : StageBase
     {
         var setup = Context.Setup;
 
-        var afterProject = Arbitrate(
-            Context.Lock.Packages,
-            ProjectKeyOf,
-            (_, winner) => winner.Resolved.ProjectName,
-            setup);
+        var afterProject = Arbitrate(Context.Lock.Packages,
+                                     ProjectKeyOf,
+                                     (_, winner) => winner.Resolved.ProjectName,
+                                     setup);
 
         var survivors = afterProject.Where(p => p.SuppressedBy is null);
-        var afterPath = Arbitrate(
-            survivors,
-            p => p.RelativeTarget(),
-            (target, _) => target,
-            setup);
+        var afterPath = Arbitrate(survivors, p => p.RelativeTarget(), (target, _) => target, setup);
 
-        var result = afterProject
-            .Where(p => p.SuppressedBy is not null)
-            .Concat(afterPath)
-            .ToList();
+        var result = afterProject.Where(p => p.SuppressedBy is not null).Concat(afterPath).ToList();
 
         Context.Lock = Context.Lock with { Packages = result };
         return Task.CompletedTask;
@@ -53,8 +45,7 @@ public class FlattenPackagesStage : StageBase
         IEnumerable<LockData.LockedPackage> items,
         Func<LockData.LockedPackage, string> keyOf,
         Func<string, LockData.LockedPackage, string> subjectOf,
-        Profile.Rice setup
-    )
+        Profile.Rice setup)
     {
         var result = new List<LockData.LockedPackage>();
 
@@ -67,17 +58,16 @@ public class FlattenPackagesStage : StageBase
                 continue;
             }
 
-            var ranked = members
-                .Select(p => (Pkg: p, Rank: RankOf(p, setup)))
-                .OrderByDescending(x => x.Rank)
-                .ToList();
+            var ranked = members.Select(p => (Pkg: p, Rank: RankOf(p, setup))).OrderByDescending(x => x.Rank).ToList();
 
             var topRank = ranked[0].Rank;
             if (ranked.Count(x => x.Rank.CompareTo(topRank) == 0) > 1)
             {
-                throw new PackageConflictException(
-                    subjectOf(group.Key, ranked[0].Pkg),
-                    ranked.Where(x => x.Rank.CompareTo(topRank) == 0).Select(x => x.Pkg).ToList());
+                throw new PackageConflictException(subjectOf(group.Key, ranked[0].Pkg),
+                                                   ranked
+                                                      .Where(x => x.Rank.CompareTo(topRank) == 0)
+                                                      .Select(x => x.Pkg)
+                                                      .ToList());
             }
 
             var winner = ranked[0].Pkg;
@@ -113,12 +103,11 @@ public class FlattenPackagesStage : StageBase
     {
         if (PackageHelper.TryParse(p.Pref, out var parsed))
         {
-            return string.Concat(
-                (parsed.Repository).ToLowerInvariant(),
-                "|",
-                parsed.Namespace ?? string.Empty,
-                "|",
-                parsed.Identity);
+            return string.Concat(parsed.Repository.ToLowerInvariant(),
+                                 "|",
+                                 parsed.Namespace ?? string.Empty,
+                                 "|",
+                                 parsed.Identity);
         }
 
         throw new FormatException("Invalid pref: " + p.Pref);

@@ -3,8 +3,10 @@ using System.Text.Json.Serialization;
 namespace TridentCore.Core.Models.PrismLauncherApi;
 
 public record Component(
-    [property: JsonPropertyName("+tweakers")] IReadOnlyList<string>? Tweakers,
-    [property: JsonPropertyName("+traits")] IReadOnlyList<string>? Traits,
+    [property: JsonPropertyName("+tweakers")]
+    IReadOnlyList<string>? Tweakers,
+    [property: JsonPropertyName("+traits")]
+    IReadOnlyList<string>? Traits,
     Component.AssetIndexEntry? AssetIndex,
     IReadOnlyList<uint>? CompatibleJavaMajors,
     int FormatVersion,
@@ -19,8 +21,7 @@ public record Component(
     IReadOnlyList<Component.Requirement> Requires,
     string Type,
     string Uid,
-    string Version
-)
+    string Version)
 {
     #region Nested type: AssetIndexEntry
 
@@ -36,15 +37,13 @@ public record Component(
         string Name,
         Uri? Url,
         Library.NativesEntry? Natives,
-        IReadOnlyList<Library.Rule>? Rules
-    )
+        IReadOnlyList<Library.Rule>? Rules)
     {
         #region Nested type: DownloadsEntry
 
         public record DownloadsEntry(
             DownloadsEntry.ArtifactEntry? Artifact,
-            IDictionary<string, DownloadsEntry.ArtifactEntry> Classifiers
-        )
+            IDictionary<string, DownloadsEntry.ArtifactEntry> Classifiers)
         {
             #region Nested type: ArtifactEntry
 
@@ -79,10 +78,10 @@ public record Component(
     #region Nested type: Requirement
 
     public record Requirement(
-        [property: JsonPropertyName("suggests")] string? Suggest,
+        [property: JsonPropertyName("suggests")]
+        string? Suggest,
         [property: JsonPropertyName("equals")] string? Equal,
-        string Uid
-    );
+        string Uid);
 
     #endregion
 }

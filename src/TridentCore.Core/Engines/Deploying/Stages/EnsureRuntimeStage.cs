@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services;
@@ -107,15 +107,14 @@ public class EnsureRuntimeStage(
             throw new FormatException($"Downloaded runtime manifest for Java {major} failed sha1 verification");
         }
 
-        File.Move(tmp, path, overwrite: true);
+        File.Move(tmp, path, true);
 
         Context.Lock = Context.Lock with { Runtime = new(major, first.Manifest.Sha1) };
 
         return await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
     }
 
-    private static (List<BundledRuntime.File> Files, List<BundledRuntime.Link> Links) ParseRuntimeFiles(
-        string content)
+    private static (List<BundledRuntime.File> Files, List<BundledRuntime.Link> Links) ParseRuntimeFiles(string content)
     {
         var files = new List<BundledRuntime.File>();
         var links = new List<BundledRuntime.Link>();
@@ -179,7 +178,7 @@ public class EnsureRuntimeStage(
             17 => "java-runtime-beta",
             21 => "java-runtime-delta",
             24 or 25 => "java-runtime-epsilon",
-            _ => "java-runtime-gamma",
+            _ => "java-runtime-gamma"
         };
 
     private static string GenerateOsString()

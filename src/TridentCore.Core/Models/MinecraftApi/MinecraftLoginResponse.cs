@@ -6,5 +6,4 @@ public record MinecraftLoginResponse(
     string Username,
     string AccessToken,
     string TokenType,
-    int ExpiresIn
-);
+    int ExpiresIn);

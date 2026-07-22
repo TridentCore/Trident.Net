@@ -19,15 +19,35 @@ public static class PackwizHelper
         ["fabric"] = LoaderHelper.LOADERID_FABRIC,
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
-        ["quilt"] = LoaderHelper.LOADERID_QUILT,
+        ["quilt"] = LoaderHelper.LOADERID_QUILT
     };
+
+    private static string? GetString(TomlTable table, string key) =>
+        table.TryGetValue(key, out var value) ? value?.ToString() : null;
+
+    private static bool TryGetTable(TomlTable table, string key, [NotNullWhen(true)] out TomlTable? value)
+    {
+        if (table.TryGetValue(key, out var raw) && raw is TomlTable sub)
+        {
+            value = sub;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static Uri OwnerAvatar(string owner) => new($"https://github.com/{owner}.png");
+
+    private static string ShortSha(string sha) => sha.Length > 7 ? sha[..7] : sha;
+
+    private static string FirstLine(string message) => message.Split('\n', 2)[0].Trim();
 
     public record PackManifest(
         string? Name,
         string? Author,
         string Minecraft,
-        (string Identity, string Version)? Loader
-    );
+        (string Identity, string Version)? Loader);
 
     #region Parsing
 
@@ -40,7 +60,7 @@ public static class PackwizHelper
         var name = GetString(toml, "name");
         var author = GetString(toml, "author");
 
-        string minecraft = string.Empty;
+        var minecraft = string.Empty;
         (string, string)? loader = null;
         if (TryGetTable(toml, "versions", out var versions))
         {
@@ -64,18 +84,20 @@ public static class PackwizHelper
     public static string? TryExtractPref(TomlTable mod)
     {
         if (!TryGetTable(mod, "update", out var update))
+        {
             return null;
+        }
 
         if (TryGetTable(update, "modrinth", out var modrinth)
-            && GetString(modrinth, "mod-id") is { } modId
-            && GetString(modrinth, "version") is { } version)
+         && GetString(modrinth, "mod-id") is { } modId
+         && GetString(modrinth, "version") is { } version)
         {
             return PackageHelper.ToPref(ModrinthHelper.LABEL, null, modId, version);
         }
 
         if (TryGetTable(update, "curseforge", out var curseforge)
-            && GetString(curseforge, "project-id") is { } projectId
-            && GetString(curseforge, "file-id") is { } fileId)
+         && GetString(curseforge, "project-id") is { } projectId
+         && GetString(curseforge, "file-id") is { } fileId)
         {
             return PackageHelper.ToPref(CurseForgeHelper.LABEL, null, projectId, fileId);
         }
@@ -103,26 +125,23 @@ public static class PackwizHelper
         CommitObject head,
         PackManifest manifest,
         string summary,
-        IReadOnlyList<string> tags
-    )
+        IReadOnlyList<string> tags)
     {
         var date = head.Commit?.Committer?.Date ?? DateTimeOffset.MinValue;
-        return new(
-            label,
-            owner,
-            repo,
-            manifest.Name ?? repo,
-            OwnerAvatar(owner),
-            manifest.Author ?? owner,
-            summary,
-            new($"https://github.com/{owner}/{repo}"),
-            ResourceKind.Modpack,
-            tags,
-            date,
-            date,
-            0,
-            Array.Empty<Project.Screenshot>()
-        );
+        return new(label,
+                   owner,
+                   repo,
+                   manifest.Name ?? repo,
+                   OwnerAvatar(owner),
+                   manifest.Author ?? owner,
+                   summary,
+                   new($"https://github.com/{owner}/{repo}"),
+                   ResourceKind.Modpack,
+                   tags,
+                   date,
+                   date,
+                   0,
+                   Array.Empty<Project.Screenshot>());
     }
 
     public static Package ToPackage(
@@ -132,71 +151,44 @@ public static class PackwizHelper
         CommitObject commit,
         string? versionId,
         PackManifest manifest,
-        string summary
-    )
+        string summary)
     {
         var sha = commit.Sha ?? string.Empty;
-        return new(
-            label,
-            owner,
-            repo,
-            versionId ?? ShortSha(sha),
-            manifest.Name ?? repo,
-            $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
-            OwnerAvatar(owner),
-            manifest.Author ?? owner,
-            summary,
-            new($"https://github.com/{owner}/{repo}"),
-            ResourceKind.Modpack,
-            ReleaseType.Release,
-            commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
-            new($"https://codeload.github.com/{owner}/{repo}/zip/{sha}"),
-            0,
-            $"{repo}-{sha}.zip",
-            null,
-            new Requirement(Array.Empty<string>(), Array.Empty<string>()),
-            Array.Empty<Dependency>()
-        );
+        return new(label,
+                   owner,
+                   repo,
+                   versionId ?? ShortSha(sha),
+                   manifest.Name ?? repo,
+                   $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
+                   OwnerAvatar(owner),
+                   manifest.Author ?? owner,
+                   summary,
+                   new($"https://github.com/{owner}/{repo}"),
+                   ResourceKind.Modpack,
+                   ReleaseType.Release,
+                   commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
+                   new($"https://codeload.github.com/{owner}/{repo}/zip/{sha}"),
+                   0,
+                   $"{repo}-{sha}.zip",
+                   null,
+                   new(Array.Empty<string>(), Array.Empty<string>()),
+                   Array.Empty<Dependency>());
     }
 
     public static Version ToVersion(string label, string owner, string repo, CommitObject commit, string? versionId)
     {
         var sha = commit.Sha ?? string.Empty;
-        return new(
-            label,
-            owner,
-            repo,
-            versionId ?? ShortSha(sha),
-            $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
-            ReleaseType.Release,
-            commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
-            0,
-            new Requirement(Array.Empty<string>(), Array.Empty<string>()),
-            Array.Empty<Dependency>()
-        );
+        return new(label,
+                   owner,
+                   repo,
+                   versionId ?? ShortSha(sha),
+                   $"{ShortSha(sha)} {FirstLine(commit.Commit?.Message ?? string.Empty)}".Trim(),
+                   ReleaseType.Release,
+                   commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
+                   0,
+                   new(Array.Empty<string>(), Array.Empty<string>()),
+                   Array.Empty<Dependency>());
     }
 
     #endregion
-
-    private static string? GetString(TomlTable table, string key) =>
-        table.TryGetValue(key, out var value) ? value?.ToString() : null;
-
-    private static bool TryGetTable(TomlTable table, string key, [NotNullWhen(true)] out TomlTable? value)
-    {
-        if (table.TryGetValue(key, out var raw) && raw is TomlTable sub)
-        {
-            value = sub;
-            return true;
-        }
-
-        value = null;
-        return false;
-    }
-
-    private static Uri OwnerAvatar(string owner) =>
-        new($"https://github.com/{owner}.png");
-
-    private static string ShortSha(string sha) => sha.Length > 7 ? sha[..7] : sha;
-
-    private static string FirstLine(string message) => message.Split('\n', 2)[0].Trim();
 }

@@ -13,10 +13,8 @@ using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Exporters;
 
-public class MultiMcExporter(
-    PrismLauncherService prismLauncherService,
-    IServiceProvider serviceProvider
-) : IProfileExporter
+public class MultiMcExporter(PrismLauncherService prismLauncherService, IServiceProvider serviceProvider)
+    : IProfileExporter
 {
     private static readonly JsonSerializerOptions SERIALIZER_OPTIONS =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -29,23 +27,18 @@ public class MultiMcExporter(
     {
         var container = new PackedProfileContainer(pack.Key)
         {
-            OverrideDirectoryName = MultiMcHelper.PACK_MINECRAFT_DIR,
+            OverrideDirectoryName = MultiMcHelper.PACK_MINECRAFT_DIR
         };
         var setup = pack.Profile.Setup;
 
         // mmc-pack.json: resolve LWJGL version from Prism Launcher metadata
         var mcComponent = await prismLauncherService
-            .GetVersionAsync(MultiMcHelper.UID_MINECRAFT, setup.Version, default)
-            .ConfigureAwait(false);
+                               .GetVersionAsync(MultiMcHelper.UID_MINECRAFT, setup.Version, default)
+                               .ConfigureAwait(false);
 
-        var lwjglVersion = mcComponent.Requires
-            .FirstOrDefault(r => r.Uid == MultiMcHelper.UID_LWJGL3)
-            ?.Suggest;
+        var lwjglVersion = mcComponent.Requires.FirstOrDefault(r => r.Uid == MultiMcHelper.UID_LWJGL3)?.Suggest;
 
-        var components = new List<MmcPack.ComponentEntry>
-        {
-            new(MultiMcHelper.UID_MINECRAFT, setup.Version),
-        };
+        var components = new List<MmcPack.ComponentEntry> { new(MultiMcHelper.UID_MINECRAFT, setup.Version) };
 
         if (lwjglVersion is not null)
         {
@@ -62,9 +55,7 @@ public class MultiMcExporter(
 
         var mmcPack = new MmcPack(1, components);
         var mmcPackStream = new MemoryStream();
-        await JsonSerializer
-            .SerializeAsync(mmcPackStream, mmcPack, SERIALIZER_OPTIONS)
-            .ConfigureAwait(false);
+        await JsonSerializer.SerializeAsync(mmcPackStream, mmcPack, SERIALIZER_OPTIONS).ConfigureAwait(false);
         mmcPackStream.Position = 0;
         container.Attachments.Add(MultiMcHelper.PACK_INDEX_FILE_NAME, mmcPackStream);
 
@@ -81,22 +72,18 @@ public class MultiMcExporter(
         var planner = serviceProvider.GetRequiredService<PackagePlanner>();
         var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
         var plans = await planner
-            .PlanAsync(
-                setup.Packages.Where(x => x.Enabled).ToList(),
-                new(
-                    setup.Rules.Where(x => x.Enabled).ToList(),
-                    Filter.FromSetup(setup)
-                )
-            )
-            .ToListAsync()
-            .ConfigureAwait(false);
+                         .PlanAsync(setup.Packages.Where(x => x.Enabled).ToList(),
+                                    new(setup.Rules.Where(x => x.Enabled).ToList(), Filter.FromSetup(setup)))
+                         .ToListAsync()
+                         .ConfigureAwait(false);
         var bag = new ConcurrentBag<(string, string)>();
         await materializer
-            .MaterializeAsync(
-                plans,
-                (plan, _, path) => { bag.Add((plan.RelativeTargetPath, path)); }
-            )
-            .ConfigureAwait(false);
+             .MaterializeAsync(plans,
+                               (plan, _, path) =>
+                               {
+                                   bag.Add((plan.RelativeTargetPath, path));
+                               })
+             .ConfigureAwait(false);
         foreach (var (rel, abs) in bag)
         {
             var relative = Path.Combine(container.OverrideDirectoryName, rel);

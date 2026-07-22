@@ -16,8 +16,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
     // not use this — it uses ResolveAsync / EvaluateRule directly against the lock.
     public async IAsyncEnumerable<PackagePlan> PlanAsync(
         IReadOnlyList<Profile.Rice.Entry> packages,
-        PackagePlannerContext context
-    )
+        PackagePlannerContext context)
     {
         var resolved = await ResolveAsync(packages, context.Filter).ConfigureAwait(false);
         foreach (var (entry, package) in resolved)
@@ -30,8 +29,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
     // Network resolve: batch-resolves the supplied entries against the repositories.
     public async Task<IReadOnlyList<(Profile.Rice.Entry Entry, Package Package)>> ResolveAsync(
         IReadOnlyList<Profile.Rice.Entry> packages,
-        Filter filter
-    )
+        Filter filter)
     {
         var index = new List<(PackageIdentifier Key, Profile.Rice.Entry Origin)>();
         foreach (var entry in packages)
@@ -49,26 +47,21 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
             return [];
         }
 
-        var resolved = await agent
-            .ResolveBatchAsync(index.Select(x => x.Key).Distinct(), filter)
-            .ConfigureAwait(false);
+        var resolved = await agent.ResolveBatchAsync(index.Select(x => x.Key).Distinct(), filter).ConfigureAwait(false);
 
         resolved.ThrowIfFailures();
 
         // Same project+version from distinct sources now coexist (SyncPackages keys on
         // (project, source)); fan a single resolution out to every entry sharing that key.
         var byKey = index.ToLookup(x => x.Key, x => x.Origin);
-        return resolved.Successful
-            .SelectMany(x => byKey[x.Key].Select(origin => (origin, x.Value)))
-            .ToList();
+        return resolved.Successful.SelectMany(x => byKey[x.Key].Select(origin => (origin, x.Value))).ToList();
     }
 
     // Pure rule evaluation for a freshly resolved package.
     public LockData.PackageRule EvaluateRule(
         Profile.Rice.Entry entry,
         Package package,
-        IReadOnlyList<Profile.Rice.Rule> rules
-    )
+        IReadOnlyList<Profile.Rice.Rule> rules)
     {
         var result = RuleHelper.Evaluate(new RuleHelper.Input(entry, package), rules);
         return ToPackageRule(result, entry);
@@ -89,28 +82,21 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         return new(false, null, false);
     }
 
-    private static PackagePlan ToPlan(
-        Profile.Rice.Entry entry,
-        Package package,
-        LockData.PackageRule rule
-    )
+    private static PackagePlan ToPlan(Profile.Rice.Entry entry, Package package, LockData.PackageRule rule)
     {
-        var relativeTarget = PackagePathHelper.RelativeTarget(
-            rule.Normalizing,
-            rule.Destination,
-            package.ProjectName,
-            package.FileName,
-            package.Kind);
+        var relativeTarget = PackagePathHelper.RelativeTarget(rule.Normalizing,
+                                                              rule.Destination,
+                                                              package.ProjectName,
+                                                              package.FileName,
+                                                              package.Kind);
 
-        return new(
-            package.Label,
-            package.Namespace,
-            package.ProjectId,
-            package.VersionId,
-            relativeTarget,
-            package.Download,
-            package.Hash
-        )
+        return new(package.Label,
+                   package.Namespace,
+                   package.ProjectId,
+                   package.VersionId,
+                   relativeTarget,
+                   package.Download,
+                   package.Hash)
         { IsSkipping = rule.Skipping };
     }
 }

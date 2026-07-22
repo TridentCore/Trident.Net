@@ -11,10 +11,10 @@ public class LaunchTracker(
     LaunchOptions options,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
-    CancellationToken token = default
-) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
 {
     public override InstanceState Kind => InstanceState.Running;
+
     public Process? Process
     {
         get;
@@ -27,14 +27,15 @@ public class LaunchTracker(
             }
         }
     }
+
     public Subject<Scrap> ScrapStream { get; } = new();
     public LaunchOptions Options => options;
-    public event EventHandler<Process>? ProcessAssigned;
 
     public string? JavaHome { get; set; }
     public uint? JavaVersion { get; set; }
     public string? CommandLine { get; set; }
     public bool IsDetaching { get; set; }
+    public event EventHandler<Process>? ProcessAssigned;
 
     protected override void OnStart()
     {

@@ -4,22 +4,19 @@ namespace TridentCore.Abstractions;
 
 public class PathDef
 {
-    private static readonly string USER_PROFILE =
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    private static readonly string USER_PROFILE = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
     private static readonly string EFFECTIVE_HOME = LocateEffectiveHome();
 
     // NOTE: 启动瞬间冻结——有显式 override，或当时已存在遗留 ~/.trident，则整个进程统一用 EFFECTIVE_HOME 作单一根目录。
     // 不再用每次调用都现查的 Directory.Exists，否则运行中 ~/.trident 一旦被创建会令根目录在多根/单根之间漂移。
-    private static readonly bool USE_HOME_AS_ROOT =
-        EFFECTIVE_HOME != FallbackHome || Directory.Exists(FallbackHome);
+    private static readonly bool USE_HOME_AS_ROOT = EFFECTIVE_HOME != FallbackHome || Directory.Exists(FallbackHome);
 
     public static readonly PathDef Default = new();
 
     #region Platform names
 
-    public static readonly PlatformNames TridentNames =
-        new("trident", "Trident", "dev.dearain.trident");
+    public static readonly PlatformNames TridentNames = new("trident", "Trident", "dev.dearain.trident");
 
     private static PlatformNames? _brandNames;
 
@@ -27,9 +24,8 @@ public class PathDef
     {
         get =>
             _brandNames
-            ?? throw new InvalidOperationException(
-                "PathDef.BrandNames has not been configured. Set it at application startup."
-            );
+         ?? throw new
+                InvalidOperationException("PathDef.BrandNames has not been configured. Set it at application startup.");
         set => _brandNames = value;
     }
 
@@ -40,14 +36,11 @@ public class PathDef
 
     #region Roots
 
-    public string PrivateConfigDirectory() =>
-        ResolveWithSuffix(HomeBrandSuffix, SystemBrandConfigPath);
+    public string PrivateConfigDirectory() => ResolveWithSuffix(HomeBrandSuffix, SystemBrandConfigPath);
 
-    public string PrivateDataDirectory() =>
-        ResolveWithSuffix(HomeBrandSuffix, SystemBrandDataPath);
+    public string PrivateDataDirectory() => ResolveWithSuffix(HomeBrandSuffix, SystemBrandDataPath);
 
-    public string PrivateCacheDirectory() =>
-        ResolveWithSuffix(HomeBrandSuffix, SystemBrandCachePath);
+    public string PrivateCacheDirectory() => ResolveWithSuffix(HomeBrandSuffix, SystemBrandCachePath);
 
     private string ResolveDataHome() => ResolveWithSuffix("", SystemDataPath);
 
@@ -59,7 +52,9 @@ public class PathDef
     {
         // NOTE: 根目录决策在进程首次访问时冻结，运行中即使 ~/.trident 被创建或删除也不再翻转
         if (USE_HOME_AS_ROOT)
+        {
             return Path.Combine(EFFECTIVE_HOME, suffix);
+        }
 
         return systemPath();
     }
@@ -85,8 +80,7 @@ public class PathDef
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
     public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
-    public string DirectoryOfSnapshotObjects(string key) =>
-        Path.Combine(DirectoryOfSnapshots(key), "objects");
+    public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");
 
     public string FileOfSnapshotObject(string key, string hash) =>
         Path.Combine(DirectoryOfSnapshotObjects(key), hash[..2], hash);
@@ -94,6 +88,7 @@ public class PathDef
     #endregion
 
     #region Cache Folder — rooted at CacheDirectory
+
     public string CacheDirectory
     {
         get
@@ -102,6 +97,7 @@ public class PathDef
             return field;
         }
     }
+
     public string CacheAssetDirectory => Path.Combine(CacheDirectory, "assets");
     public string CacheIconDirectory => Path.Combine(CacheDirectory, "icons");
     public string CacheLibraryDirectory => Path.Combine(CacheDirectory, "libraries");
@@ -140,21 +136,19 @@ public class PathDef
     #region System paths
 
     private static string SystemDataPath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                     TridentNames.Current);
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), TridentNames.Current);
 
     private static string SystemCachePath() =>
-        Path.Combine(
-            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
-                : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? Path.GetTempPath()
-                    : Path.Combine(USER_PROFILE, ".cache"),
-            TridentNames.Current);
+        Path.Combine(RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                         ?
+                         Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
+                         : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                             ? Path.GetTempPath()
+                             : Path.Combine(USER_PROFILE, ".cache"),
+                     TridentNames.Current);
 
     private static string SystemConfigPath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     TridentNames.Current);
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TridentNames.Current);
 
     private static string SystemBrandConfigPath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), BrandFolder);
@@ -165,10 +159,11 @@ public class PathDef
     private static string SystemBrandCachePath()
     {
         var basePath = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
-            : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? Path.GetTempPath()
-                : Path.Combine(USER_PROFILE, ".cache");
+                           ?
+                           Environment.GetFolderPath(Environment.SpecialFolder.InternetCache)
+                           : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                               ? Path.GetTempPath()
+                               : Path.Combine(USER_PROFILE, ".cache");
 
         return Path.Combine(basePath, BrandFolder);
     }
@@ -202,14 +197,18 @@ public class PathDef
         }
 
         if (home != null)
+        {
             return home;
+        }
 
         var overrideFile = Path.Combine(USER_PROFILE, ".trident.home");
         if (File.Exists(overrideFile))
         {
             var firstLine = File.ReadLines(overrideFile).FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(firstLine) && Path.IsPathRooted(firstLine) && !File.Exists(firstLine))
+            {
                 return firstLine;
+            }
         }
 
         return FallbackHome;

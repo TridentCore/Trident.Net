@@ -13,6 +13,5 @@ public record FileHash(HashAlgorithm Algorithm, string Value)
     /// <summary>
     ///     从 nullable SHA1 字符串构造 FileHash，向下兼容。
     /// </summary>
-    public static FileHash? FromSha1(string? sha1) =>
-        sha1 is not null ? new(HashAlgorithm.Sha1, sha1) : null;
+    public static FileHash? FromSha1(string? sha1) => sha1 is not null ? new(HashAlgorithm.Sha1, sha1) : null;
 }

@@ -6,11 +6,11 @@ public class AuthlibAccount : IAccount
 {
     public required string ServerUrl { get; init; }
 
-    public required string AccessToken { get; set; }
-
     public string? ClientToken { get; set; }
 
     public string? SkinUrl { get; set; }
+
+    public required string AccessToken { get; set; }
 
     #region IAccount Members
 

@@ -13,12 +13,10 @@ public static class InstanceIdentityValidator
         }
 
         var sanitized = FileHelper.Sanitize(identity).ToLowerInvariant();
-        if (
-            string.IsNullOrWhiteSpace(sanitized)
-            || sanitized is "." or ".."
-            || sanitized.Contains(Path.DirectorySeparatorChar)
-            || sanitized.Contains(Path.AltDirectorySeparatorChar)
-        )
+        if (string.IsNullOrWhiteSpace(sanitized)
+         || sanitized is "." or ".."
+         || sanitized.Contains(Path.DirectorySeparatorChar)
+         || sanitized.Contains(Path.AltDirectorySeparatorChar))
         {
             error = $"Instance identity '{identity}' does not produce a valid filesystem key.";
             return false;

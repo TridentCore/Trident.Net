@@ -45,18 +45,18 @@ internal static class PackageOperation
         var ctx = resolver.Resolve(instance!, profile);
         var entries = ctx.Profile.Setup.Packages;
         var resolved = entries.Count > 0
-            ? await PackageDtos.ResolveEntriesAsync(entries, repositories, ctx).ConfigureAwait(false)
-            : [];
+                           ? await PackageDtos.ResolveEntriesAsync(entries, repositories, ctx).ConfigureAwait(false)
+                           : [];
 
         var matched = resolved
-            .Where(x =>
-                (x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                || (x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                || (x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true)
-                || x.Pref.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .Where(x => kind is null || x.Kind == kind)
-            .Where(x => repository is null || x.Pref.StartsWith($"{repository}:", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+                     .Where(x => x.ProjectName?.Contains(query, StringComparison.OrdinalIgnoreCase) is true
+                              || x.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) is true
+                              || x.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) is true
+                              || x.Pref.Contains(query, StringComparison.OrdinalIgnoreCase))
+                     .Where(x => kind is null || x.Kind == kind)
+                     .Where(x => repository is null
+                              || x.Pref.StartsWith($"{repository}:", StringComparison.OrdinalIgnoreCase))
+                     .ToArray();
 
         var paged = matched.Skip(index).Take(limit).ToArray();
         return new(ctx.Key, paged, matched.Length);
@@ -102,12 +102,7 @@ internal static class PackageOperation
                 return new(normalized, false, "already-installed", ctx.Key);
             }
 
-            guard.Value.Setup.Packages.Add(new()
-            {
-                Enabled = true,
-                Pref = normalized,
-                Source = null,
-            });
+            guard.Value.Setup.Packages.Add(new() { Enabled = true, Pref = normalized, Source = null });
 
             return new(normalized, true, null, ctx.Key);
         }
@@ -211,18 +206,11 @@ internal static class PackageOperation
             return new(ctx.Key, pref, [], []);
         }
 
-        var identifiers = parsed
-            .Select(x => x.Parsed)
-            .ToArray();
+        var identifiers = parsed.Select(x => x.Parsed).ToArray();
 
-        var resolved = await repositories
-            .ResolveBatchAsync(identifiers, filter)
-            .ConfigureAwait(false);
+        var resolved = await repositories.ResolveBatchAsync(identifiers, filter).ConfigureAwait(false);
 
-        var lookup = resolved.Successful.ToDictionary(
-            x => (x.Key.Namespace, x.Key.Identity),
-            x => x.Value
-        );
+        var lookup = resolved.Successful.ToDictionary(x => (x.Key.Namespace, x.Key.Identity), x => x.Value);
         var dependents = new List<DependentDto>();
         var failed = new List<string>();
 
@@ -234,10 +222,9 @@ internal static class PackageOperation
                 continue;
             }
 
-            if (package.Dependencies.Any(x =>
-                    x.Label == target.Repository
-                    && x.Namespace == target.Namespace
-                    && x.ProjectId == target.Identity))
+            if (package.Dependencies.Any(x => x.Label == target.Repository
+                                           && x.Namespace == target.Namespace
+                                           && x.ProjectId == target.Identity))
             {
                 dependents.Add(new(entry.Pref, package.ProjectName, package.VersionName));
             }
@@ -258,9 +245,7 @@ internal static class PackageOperation
     {
         var parsed = PackageCliHelper.ParsePref(pref);
         var filter = PackageCliHelper.BuildFilter(gameVersion, loader, kind);
-        var handle = await repositories
-            .InspectAsync(parsed.ToProjectIdentifier(), filter)
-            .ConfigureAwait(false);
+        var handle = await repositories.InspectAsync(parsed.ToProjectIdentifier(), filter).ConfigureAwait(false);
 
         var versions = new List<VersionDto>();
         await foreach (var version in PaginationHelper.FetchWindowAsync(handle, index, limit, CancellationToken.None))
@@ -269,8 +254,8 @@ internal static class PackageOperation
         }
 
         versions = string.Equals(sort, "asc", StringComparison.OrdinalIgnoreCase)
-            ? [.. versions.OrderBy(x => x.PublishedAt)]
-            : [.. versions.OrderByDescending(x => x.PublishedAt)];
+                       ? [.. versions.OrderBy(x => x.PublishedAt)]
+                       : [.. versions.OrderByDescending(x => x.PublishedAt)];
 
         return new(pref, (int)handle.TotalCount, versions);
     }
@@ -305,13 +290,27 @@ internal static class PackageOperation
 }
 
 internal sealed record PackageListResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
+
 internal sealed record PackageSearchLocalResult(string Key, IReadOnlyList<ResolvedLocalPackageDto> Packages, int Total);
+
 internal sealed record PackageAddResult(string Pref, bool Added, string? Reason, string Key);
+
 internal sealed record PackageInspectResult(string? Key, LocalPackageDto? Local, PackageDto Package);
+
 internal sealed record PackageSetEnabledResult(string Action, string Key, string Pref, bool Enabled);
+
 internal sealed record PackageDependencyListResult(string Pref, IReadOnlyList<DependencyDto> Dependencies);
+
 internal sealed record DependentDto(string Pref, string? ProjectName, string? VersionName);
-internal sealed record PackageDependentListResult(string Key, string Target, IReadOnlyList<DependentDto> Dependents, IReadOnlyList<string> Failed);
+
+internal sealed record PackageDependentListResult(
+    string Key,
+    string Target,
+    IReadOnlyList<DependentDto> Dependents,
+    IReadOnlyList<string> Failed);
+
 internal sealed record PackageVersionListResult(string Pref, int Total, IReadOnlyList<VersionDto> Versions);
+
 internal sealed record PackageSearchRemoteResult(string Repository, int Total, IReadOnlyList<ExhibitDto> Packages);
+
 internal sealed record PackageVersionSetResult(string Key, string OldPref, string NewPref);

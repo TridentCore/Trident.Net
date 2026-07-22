@@ -8,19 +8,13 @@ namespace TridentCore.Cli.Commands;
 public class CreateCommand(ProfileManager profileManager, CliOutput output)
     : CreationCommandBase<CreateCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = InstanceOperation.Create(
-            profileManager,
-            settings.Name,
-            settings.Version,
-            settings.Loader,
-            settings.EffectiveIdentity
-        );
+        var result = InstanceOperation.Create(profileManager,
+                                              settings.Name,
+                                              settings.Version,
+                                              settings.Loader,
+                                              settings.EffectiveIdentity);
 
         if (output.UseStructuredOutput)
         {
@@ -28,13 +22,11 @@ public class CreateCommand(ProfileManager profileManager, CliOutput output)
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Instance created",
-                ("Key", result.Key),
-                ("Name", result.Name),
-                ("Version", result.Version),
-                ("Loader", result.Loader)
-            );
+            output.WriteKeyValueTable("Instance created",
+                                      ("Key", result.Key),
+                                      ("Name", result.Name),
+                                      ("Version", result.Version),
+                                      ("Loader", result.Loader));
             output.WriteSuccess($"Instance {result.Key} created.");
         }
 

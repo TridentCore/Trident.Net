@@ -9,8 +9,7 @@ public sealed class CliContext
         bool debug,
         bool mcp,
         bool inputRedirected,
-        bool outputRedirected
-    )
+        bool outputRedirected)
     {
         Json = json;
         NoInteractive = noInteractive;
@@ -69,15 +68,13 @@ public sealed class CliContext
             }
         }
 
-        var context = new CliContext(
-            json,
-            noInteractive,
-            verbose,
-            debug,
-            mcp,
-            Console.IsInputRedirected,
-            Console.IsOutputRedirected
-        );
+        var context = new CliContext(json,
+                                     noInteractive,
+                                     verbose,
+                                     debug,
+                                     mcp,
+                                     Console.IsInputRedirected,
+                                     Console.IsOutputRedirected);
         return new(remaining.ToArray(), context);
     }
 }

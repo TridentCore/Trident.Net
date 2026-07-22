@@ -4,18 +4,6 @@ namespace TridentCore.Core.Accounts;
 
 public class TrialAccount : IAccount
 {
-    #region IAccount Members
-
-    public required string Username { get; init; }
-
-    public required string Uuid { get; init; }
-
-    public string AccessToken => "bird_is_the_word";
-
-    public string UserType => "legacy";
-
-    #endregion
-
     public string Skin { get; init; } = "Steve";
 
     public static TrialAccount CreateStewie() =>
@@ -34,5 +22,22 @@ public class TrialAccount : IAccount
         new() { Username = "Lois", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty) };
 
     public static TrialAccount CreateHerobrine() =>
-        new() { Username = "Herobrine", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty), Skin = "Herobrine" };
+        new()
+        {
+            Username = "Herobrine",
+            Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty),
+            Skin = "Herobrine"
+        };
+
+    #region IAccount Members
+
+    public required string Username { get; init; }
+
+    public required string Uuid { get; init; }
+
+    public string AccessToken => "bird_is_the_word";
+
+    public string UserType => "legacy";
+
+    #endregion
 }

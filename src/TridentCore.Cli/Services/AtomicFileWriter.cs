@@ -10,10 +10,8 @@ public static class AtomicFileWriter
             Directory.CreateDirectory(directory);
         }
 
-        var tempPath = Path.Combine(
-            directory ?? Directory.GetCurrentDirectory(),
-            $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp"
-        );
+        var tempPath = Path.Combine(directory ?? Directory.GetCurrentDirectory(),
+                                    $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
 
         try
         {

@@ -8,8 +8,8 @@ namespace TridentCore.Core.Accounts;
 public class MicrosoftAccountConfigurer : IAccountConfigurer
 {
     private readonly MicrosoftService _microsoft;
-    private readonly XboxLiveService _xbox;
     private readonly MinecraftService _minecraft;
+    private readonly XboxLiveService _xbox;
 
     public MicrosoftAccountConfigurer(MicrosoftService microsoft, XboxLiveService xbox, MinecraftService minecraft)
     {
@@ -20,7 +20,10 @@ public class MicrosoftAccountConfigurer : IAccountConfigurer
 
     public Type AccountType => typeof(MicrosoftAccount);
 
-    public Task ConfigureLaunchAsync(IAccount account, AccountConfigurerAgent.LaunchContext context, CancellationToken token) =>
+    public Task ConfigureLaunchAsync(
+        IAccount account,
+        AccountConfigurerAgent.LaunchContext context,
+        CancellationToken token) =>
         Task.CompletedTask;
 
     public async Task<bool> ValidateAsync(IAccount account, CancellationToken token)
@@ -28,10 +31,12 @@ public class MicrosoftAccountConfigurer : IAccountConfigurer
         var msa = (MicrosoftAccount)account;
 
         var shouldValidate = msa.AccessTokenExpiresAt is null
-                         || DateTimeOffset.UtcNow >= msa.AccessTokenExpiresAt.Value.AddMinutes(-5);
+                          || DateTimeOffset.UtcNow >= msa.AccessTokenExpiresAt.Value.AddMinutes(-5);
 
         if (!shouldValidate)
+        {
             return true;
+        }
 
         try
         {
@@ -49,14 +54,16 @@ public class MicrosoftAccountConfigurer : IAccountConfigurer
         var msa = (MicrosoftAccount)account;
 
         var microsoft = await _microsoft.RefreshUserAsync(msa.RefreshToken).ConfigureAwait(false);
-        var xbox = await _xbox.AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken).ConfigureAwait(false);
+        var xbox = await _xbox
+                        .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
+                        .ConfigureAwait(false);
         var xsts = await _xbox.AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token).ConfigureAwait(false);
-        var minecraft = await _minecraft.AuthenticateByXboxLiveServiceTokenAsync(xsts.Token, xsts.DisplayClaims.Xui.First().Uhs).ConfigureAwait(false);
+        var minecraft = await _minecraft
+                             .AuthenticateByXboxLiveServiceTokenAsync(xsts.Token, xsts.DisplayClaims.Xui.First().Uhs)
+                             .ConfigureAwait(false);
 
         msa.AccessToken = minecraft.AccessToken;
         msa.AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(minecraft.ExpiresIn);
-        msa.RefreshToken = !string.IsNullOrEmpty(microsoft.RefreshToken)
-                               ? microsoft.RefreshToken
-                               : msa.RefreshToken;
+        msa.RefreshToken = !string.IsNullOrEmpty(microsoft.RefreshToken) ? microsoft.RefreshToken : msa.RefreshToken;
     }
 }

@@ -5,11 +5,7 @@ namespace TridentCore.Cli.Services;
 
 public class InstanceContextResolver(ProfileManager profileManager, LookupContext lookup)
 {
-    public bool TryResolve(
-        string? instance,
-        string? profilePath,
-        out ResolvedInstanceContext context
-    )
+    public bool TryResolve(string? instance, string? profilePath, out ResolvedInstanceContext context)
     {
         try
         {
@@ -41,10 +37,8 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
             return ResolveByProfilePath(selectedProfile);
         }
 
-        throw new CliException(
-            "No instance context found. Use --instance <key> or run from an instance directory.",
-            ExitCodes.USAGE
-        );
+        throw new CliException("No instance context found. Use --instance <key> or run from an instance directory.",
+                               ExitCodes.USAGE);
     }
 
     private ResolvedInstanceContext ResolveByKey(string key)
@@ -54,40 +48,26 @@ public class InstanceContextResolver(ProfileManager profileManager, LookupContex
             throw new CliException($"Instance '{key}' was not found.", ExitCodes.NOT_FOUND);
         }
 
-        return new(
-            key,
-            PathDef.Default.DirectoryOfHome(key),
-            PathDef.Default.FileOfProfile(key),
-            profile
-        );
+        return new(key, PathDef.Default.DirectoryOfHome(key), PathDef.Default.FileOfProfile(key), profile);
     }
 
     private ResolvedInstanceContext ResolveByProfilePath(string profilePath)
     {
         var fullProfilePath = Path.GetFullPath(profilePath);
-        var instanceDir = EnsureTrailingSeparator(
-            Path.GetFullPath(PathDef.Default.InstanceDirectory)
-        );
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+        var instanceDir = EnsureTrailingSeparator(Path.GetFullPath(PathDef.Default.InstanceDirectory));
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
         if (!fullProfilePath.StartsWith(instanceDir, comparison))
         {
-            throw new CliException(
-                $"Profile path '{fullProfilePath}' is outside Trident home.",
-                ExitCodes.USAGE
-            );
+            throw new CliException($"Profile path '{fullProfilePath}' is outside Trident home.", ExitCodes.USAGE);
         }
 
         var relative = Path.GetRelativePath(instanceDir, fullProfilePath);
         var parts = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (parts.Length != 2 || !string.Equals(parts[1], "profile.json", comparison))
         {
-            throw new CliException(
-                $"Profile path '{fullProfilePath}' is not a managed instance profile.",
-                ExitCodes.USAGE
-            );
+            throw new CliException($"Profile path '{fullProfilePath}' is not a managed instance profile.",
+                                   ExitCodes.USAGE);
         }
 
         return ResolveByKey(parts[0]);

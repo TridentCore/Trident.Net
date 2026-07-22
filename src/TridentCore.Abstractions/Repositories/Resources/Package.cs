@@ -22,8 +22,7 @@ public record Package(
     string FileName,
     FileHash? Hash,
     Requirement Requirements,
-    IReadOnlyList<Dependency> Dependencies
-)
+    IReadOnlyList<Dependency> Dependencies)
 {
     public override string ToString() => PackageHelper.ToPref(this);
 }

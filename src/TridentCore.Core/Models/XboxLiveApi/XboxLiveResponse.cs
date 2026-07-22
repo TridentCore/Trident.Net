@@ -6,8 +6,7 @@ public record XboxLiveResponse(
     DateTimeOffset IssueInstant,
     DateTimeOffset NotAfter,
     string Token,
-    XboxLiveResponse.Claims DisplayClaims
-)
+    XboxLiveResponse.Claims DisplayClaims)
 {
     #region Nested type: Claims
 

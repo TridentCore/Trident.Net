@@ -94,18 +94,12 @@ public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
             }
 
             // 被普通文件或目录占用了
-            if (
-                (File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null)
-                || (
-                    Directory.Exists(remain.Path)
-                    && Directory.ResolveLinkTarget(remain.Path, false) is null
-                )
-            )
+            if ((File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null)
+             || (Directory.Exists(remain.Path) && Directory.ResolveLinkTarget(remain.Path, false) is null))
             {
-                throw new BuildArtifactConflictException(
-                    remain.Path,
-                    BuildArtifactConflictException.ConflictKind.OccupiedByRegularFileSystemEntry
-                );
+                throw new BuildArtifactConflictException(remain.Path,
+                                                         BuildArtifactConflictException.ConflictKind
+                                                            .OccupiedByRegularFileSystemEntry);
             }
 
             if (remain.IsDirectory)

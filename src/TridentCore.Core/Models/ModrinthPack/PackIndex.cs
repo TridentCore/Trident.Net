@@ -7,8 +7,7 @@ public record PackIndex(
     string Name,
     string? Summary,
     IReadOnlyList<PackIndex.IndexFile> Files,
-    IDictionary<string, string> Dependencies
-)
+    IDictionary<string, string> Dependencies)
 {
     #region Nested type: IndexFile
 
@@ -17,8 +16,7 @@ public record PackIndex(
         IndexFile.FileHashes Hashes,
         IndexFile.FileEnv? Env,
         IReadOnlyList<Uri> Downloads,
-        ulong FileSize
-    )
+        ulong FileSize)
     {
         #region Nested type: FileEnv
 

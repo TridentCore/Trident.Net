@@ -14,8 +14,5 @@ public static class HashHelper
         return FlattenHashBytes(SHA1.HashData(stream));
     }
 
-    public static string FlattenHashBytes(byte[] hash)
-    {
-        return Convert.ToHexString(hash);
-    }
+    public static string FlattenHashBytes(byte[] hash) => Convert.ToHexString(hash);
 }

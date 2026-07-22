@@ -15,13 +15,12 @@ internal static class ConfigOperation
         string? profile)
     {
         var scope = ResolveScope(resolver, instance, profile);
-        var values = scope.IsGlobal
-            ? configuration.Load()
-            : scope.Instance!.Profile.Overrides.ToDictionary();
+        var values = scope.IsGlobal ? configuration.Load() : scope.Instance!.Profile.Overrides.ToDictionary();
 
         if (!values.TryGetValue(name, out var value))
         {
-            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NOT_FOUND);
+            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.",
+                                   ExitCodes.NOT_FOUND);
         }
 
         return ConfigResult.From(scope, name, value);
@@ -76,7 +75,8 @@ internal static class ConfigOperation
 
         if (!removed)
         {
-            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.", ExitCodes.NOT_FOUND);
+            throw new CliException($"Configuration '{name}' was not found in {scope.DisplayName}.",
+                                   ExitCodes.NOT_FOUND);
         }
     }
 
@@ -87,14 +87,12 @@ internal static class ConfigOperation
         string? profile)
     {
         var scope = ResolveScope(resolver, instance, profile);
-        var values = scope.IsGlobal
-            ? configuration.Load()
-            : scope.Instance!.Profile.Overrides.ToDictionary();
+        var values = scope.IsGlobal ? configuration.Load() : scope.Instance!.Profile.Overrides.ToDictionary();
 
         var items = values
-            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(x => ConfigResult.From(scope, x.Key, x.Value))
-            .ToArray();
+                   .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                   .Select(x => ConfigResult.From(scope, x.Key, x.Value))
+                   .ToArray();
 
         return new(scope.ScopeName, scope.Instance?.Key, items);
     }

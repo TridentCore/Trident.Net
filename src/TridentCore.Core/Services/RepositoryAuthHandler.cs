@@ -12,38 +12,37 @@ public class RepositoryAuthHandler : DelegatingHandler
             lock (AUTH_MAP_LOCK)
             {
                 _authMap ??= accessors
-            .SelectMany(a => a.Build())
-            .Where(p => p.AuthorizationHeader is { Key: not null, Value: not null } auth)
-            .SelectMany(p =>
-            {
-                var auth = p.AuthorizationHeader!.Value;
-                var entries = new List<(string Host, (string Key, string Value) Auth)>
-                {
-                    // Always include the API endpoint host
-                    (new Uri(p.Endpoint).Host, auth)
-                };
+                            .SelectMany(a => a.Build())
+                            .Where(p => p.AuthorizationHeader is { Key: not null, Value: not null } auth)
+                            .SelectMany(p =>
+                             {
+                                 var auth = p.AuthorizationHeader!.Value;
+                                 var entries = new List<(string Host, (string Key, string Value) Auth)>
+                                 {
+                                     // Always include the API endpoint host
+                                     (new Uri(p.Endpoint).Host, auth)
+                                 };
 
-                // Include explicitly declared CDN hosts
-                if (p.CdnHosts is { Count: > 0 })
-                {
-                    foreach (var host in p.CdnHosts)
-                    {
-                        entries.Add((host, auth));
-                    }
-                }
+                                 // Include explicitly declared CDN hosts
+                                 if (p.CdnHosts is { Count: > 0 })
+                                 {
+                                     foreach (var host in p.CdnHosts)
+                                     {
+                                         entries.Add((host, auth));
+                                     }
+                                 }
 
-                return entries;
-            })
-            .DistinctBy(x => x.Host)
-            .ToDictionary(x => x.Host, x => x.Auth, StringComparer.OrdinalIgnoreCase);
+                                 return entries;
+                             })
+                            .DistinctBy(x => x.Host)
+                            .ToDictionary(x => x.Host, x => x.Auth, StringComparer.OrdinalIgnoreCase);
             }
         }
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken
-    )
+        CancellationToken cancellationToken)
     {
         if (request.RequestUri is { } uri && _authMap!.TryGetValue(uri.Host, out var auth))
         {

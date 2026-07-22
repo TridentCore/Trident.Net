@@ -10,9 +10,7 @@ namespace TridentCore.Core.Utilities;
 public static class ViabilityHashHelper
 {
     public static string PriorityOf(Profile.Rice setup) =>
-        HashHelper.ComputeObjectHash(
-            new { setup.Source, Order = string.Join('\n', setup.SourceOrders) }
-        );
+        HashHelper.ComputeObjectHash(new { setup.Source, Order = string.Join('\n', setup.SourceOrders) });
 
     public static string OptionsOf(DeployOptions options) => HashHelper.ComputeObjectHash(options);
 }

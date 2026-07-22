@@ -1,10 +1,10 @@
-using TridentCore.Pref;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Cli.Services;
 using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
+using TridentCore.Pref;
 
 namespace TridentCore.Cli.Commands.Package;
 
@@ -16,8 +16,7 @@ internal static class PackageDtos
     public static async Task<IReadOnlyList<ResolvedLocalPackageDto>> ResolveEntriesAsync(
         IEnumerable<Profile.Rice.Entry> entries,
         RepositoryAgent repositories,
-        ResolvedInstanceContext instance
-    )
+        ResolvedInstanceContext instance)
     {
         var entryList = entries.ToList();
         if (entryList.Count == 0)
@@ -26,42 +25,41 @@ internal static class PackageDtos
         }
 
         var batch = entryList
-            .Select(e => PackageHelper.TryParse(e.Pref, out var p) ? p : default)
-            .Where(p => p.Repository is not null)
-            .Select(p => p.ToProjectIdentifier())
-            .ToList();
+                   .Select(e => PackageHelper.TryParse(e.Pref, out var p) ? p : default)
+                   .Where(p => p.Repository is not null)
+                   .Select(p => p.ToProjectIdentifier())
+                   .ToList();
 
         var filter = PackageCliHelper.BuildFilter(null, null, null, instance);
         var projects = await repositories.QueryBatchAsync(batch).ConfigureAwait(false);
 
-        var projectLookup = projects.Successful.ToDictionary(
-            p => PackageHelper.ToPref(p.Value.Label, p.Value.Namespace, p.Value.ProjectId, null),
-            p => p.Value,
-            StringComparer.OrdinalIgnoreCase
-        );
+        var projectLookup =
+            projects.Successful.ToDictionary(p => PackageHelper.ToPref(p.Value.Label,
+                                                                       p.Value.Namespace,
+                                                                       p.Value.ProjectId,
+                                                                       null),
+                                             p => p.Value,
+                                             StringComparer.OrdinalIgnoreCase);
 
         return entryList
-            .Select(e =>
-            {
-                var key = PackageHelper.ExtractProjectIdentityIfValid(e.Pref);
-                var project = projectLookup.GetValueOrDefault(key);
-                return new ResolvedLocalPackageDto(
-                    e.Pref,
-                    e.Enabled,
-                    e.Source,
-                    e.Tags.ToArray(),
-                    project?.ProjectName,
-                    project?.Author,
-                    project?.Summary,
-                    project?.Kind
-                );
-            })
-            .ToList();
+              .Select(e =>
+               {
+                   var key = PackageHelper.ExtractProjectIdentityIfValid(e.Pref);
+                   var project = projectLookup.GetValueOrDefault(key);
+                   return new ResolvedLocalPackageDto(e.Pref,
+                                                      e.Enabled,
+                                                      e.Source,
+                                                      e.Tags.ToArray(),
+                                                      project?.ProjectName,
+                                                      project?.Author,
+                                                      project?.Summary,
+                                                      project?.Kind);
+               })
+              .ToList();
     }
 
     public static ExhibitDto FromExhibit(Exhibit exhibit) =>
-        new(
-            PackageHelper.ToPref(exhibit.Label, exhibit.Namespace, exhibit.Pid, null),
+        new(PackageHelper.ToPref(exhibit.Label, exhibit.Namespace, exhibit.Pid, null),
             exhibit.Label,
             exhibit.Namespace,
             exhibit.Pid,
@@ -72,19 +70,10 @@ internal static class PackageDtos
             exhibit.DownloadCount,
             exhibit.Tags,
             exhibit.Reference,
-            exhibit.UpdatedAt
-        );
+            exhibit.UpdatedAt);
 
-    public static PackageDto FromPackage(
-        TridentCore.Abstractions.Repositories.Resources.Package package
-    ) =>
-        new(
-            PackageHelper.ToPref(
-                package.Label,
-                package.Namespace,
-                package.ProjectId,
-                package.VersionId
-            ),
+    public static PackageDto FromPackage(Abstractions.Repositories.Resources.Package package) =>
+        new(PackageHelper.ToPref(package.Label, package.Namespace, package.ProjectId, package.VersionId),
             package.Label,
             package.Namespace,
             package.ProjectId,
@@ -100,19 +89,10 @@ internal static class PackageDtos
             package.Size,
             package.FileName,
             package.Hash?.Value,
-            package.Dependencies.Select(FromDependency).ToArray()
-        );
+            package.Dependencies.Select(FromDependency).ToArray());
 
-    public static VersionDto FromVersion(
-        TridentCore.Abstractions.Repositories.Resources.Version version
-    ) =>
-        new(
-            PackageHelper.ToPref(
-                version.Label,
-                version.Namespace,
-                version.ProjectId,
-                version.VersionId
-            ),
+    public static VersionDto FromVersion(Abstractions.Repositories.Resources.Version version) =>
+        new(PackageHelper.ToPref(version.Label, version.Namespace, version.ProjectId, version.VersionId),
             version.Label,
             version.Namespace,
             version.ProjectId,
@@ -121,33 +101,18 @@ internal static class PackageDtos
             version.ReleaseType,
             version.PublishedAt,
             version.DownloadCount,
-            version.Dependencies.Select(FromDependency).ToArray()
-        );
+            version.Dependencies.Select(FromDependency).ToArray());
 
-    public static DependencyDto FromDependency(
-        TridentCore.Abstractions.Repositories.Resources.Dependency dependency
-    ) =>
-        new(
-            PackageHelper.ToPref(
-                dependency.Label,
-                dependency.Namespace,
-                dependency.ProjectId,
-                dependency.VersionId
-            ),
+    public static DependencyDto FromDependency(Abstractions.Repositories.Resources.Dependency dependency) =>
+        new(PackageHelper.ToPref(dependency.Label, dependency.Namespace, dependency.ProjectId, dependency.VersionId),
             dependency.Label,
             dependency.Namespace,
             dependency.ProjectId,
             dependency.VersionId,
-            dependency.IsRequired
-        );
+            dependency.IsRequired);
 }
 
-internal sealed record LocalPackageDto(
-    string Pref,
-    bool Enabled,
-    string? Source,
-    IReadOnlyList<string> Tags
-);
+internal sealed record LocalPackageDto(string Pref, bool Enabled, string? Source, IReadOnlyList<string> Tags);
 
 internal sealed record ResolvedLocalPackageDto(
     string Pref,
@@ -157,8 +122,7 @@ internal sealed record ResolvedLocalPackageDto(
     string? ProjectName,
     string? Author,
     string? Summary,
-    ResourceKind? Kind
-) : IPackageTableRow;
+    ResourceKind? Kind) : IPackageTableRow;
 
 internal sealed record ExhibitDto(
     string Pref,
@@ -172,8 +136,7 @@ internal sealed record ExhibitDto(
     ulong DownloadCount,
     IReadOnlyList<string> Tags,
     Uri Reference,
-    DateTimeOffset UpdatedAt
-);
+    DateTimeOffset UpdatedAt);
 
 internal sealed record PackageDto(
     string Pref,
@@ -192,8 +155,7 @@ internal sealed record PackageDto(
     ulong Size,
     string FileName,
     string? Sha1,
-    IReadOnlyList<DependencyDto> Dependencies
-);
+    IReadOnlyList<DependencyDto> Dependencies);
 
 internal sealed record VersionDto(
     string Pref,
@@ -205,8 +167,7 @@ internal sealed record VersionDto(
     ReleaseType ReleaseType,
     DateTimeOffset PublishedAt,
     ulong DownloadCount,
-    IReadOnlyList<DependencyDto> Dependencies
-);
+    IReadOnlyList<DependencyDto> Dependencies);
 
 internal sealed record DependencyDto(
     string Pref,
@@ -214,5 +175,4 @@ internal sealed record DependencyDto(
     string? Namespace,
     string ProjectId,
     string? VersionId,
-    bool IsRequired
-) : IDependencyTableRow;
+    bool IsRequired) : IDependencyTableRow;

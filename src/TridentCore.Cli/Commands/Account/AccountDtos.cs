@@ -5,14 +5,7 @@ namespace TridentCore.Cli.Commands.Account;
 internal static class AccountDtos
 {
     public static AccountDto FromStored(StoredAccount account) =>
-        new(
-            account.Uuid,
-            account.Username,
-            account.Type,
-            account.EnrolledAt,
-            account.LastUsedAt,
-            account.IsDefault
-        );
+        new(account.Uuid, account.Username, account.Type, account.EnrolledAt, account.LastUsedAt, account.IsDefault);
 }
 
 internal sealed record AccountDto(
@@ -21,5 +14,4 @@ internal sealed record AccountDto(
     string Type,
     DateTimeOffset EnrolledAt,
     DateTimeOffset? LastUsedAt,
-    bool IsDefault
-);
+    bool IsDefault);

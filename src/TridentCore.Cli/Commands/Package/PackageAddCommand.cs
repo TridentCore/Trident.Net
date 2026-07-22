@@ -10,14 +10,9 @@ public class PackageAddCommand(
     InstanceContextResolver resolver,
     ProfileManager profileManager,
     StdinValueReader stdin,
-    CliOutput output
-) : InstanceCommandBase<PackageAddCommand.Arguments>(resolver)
+    CliOutput output) : InstanceCommandBase<PackageAddCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var prefs = new List<string>();
         if (!string.IsNullOrWhiteSpace(settings.Pref))
@@ -43,19 +38,12 @@ public class PackageAddCommand(
         if (output.IsInteractive && !output.UseStructuredOutput && uniquePrefs.Length > 1)
         {
             AnsiConsole
-                .Progress()
-                .AutoClear(false)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn()
-                )
-                .Start(progressContext =>
+               .Progress()
+               .AutoClear(false)
+               .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn())
+               .Start(progressContext =>
                 {
-                    var task = progressContext.AddTask(
-                        "[blue]Processing packages[/]",
-                        maxValue: uniquePrefs.Length
-                    );
+                    var task = progressContext.AddTask("[blue]Processing packages[/]", maxValue: uniquePrefs.Length);
                     foreach (var pref in uniquePrefs)
                     {
                         ProcessPref(pref);
@@ -78,17 +66,15 @@ public class PackageAddCommand(
         else
         {
             var table = new Table().RoundedBorder();
-            table.Title = new($"[bold]Package add results[/]");
+            table.Title = new("[bold]Package add results[/]");
             table.AddColumn("PREF");
             table.AddColumn("Status");
             table.AddColumn("Reason");
             foreach (var item in results)
             {
-                table.AddMarkupRow(
-                    Markup.Escape(item.Pref),
-                    item.Added ? "[green]added[/]" : "[yellow]skipped[/]",
-                    CliOutput.FormatValue(item.Reason)
-                );
+                table.AddMarkupRow(Markup.Escape(item.Pref),
+                                   item.Added ? "[green]added[/]" : "[yellow]skipped[/]",
+                                   CliOutput.FormatValue(item.Reason));
             }
 
             output.WriteTable(table);

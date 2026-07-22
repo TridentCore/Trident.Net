@@ -6,23 +6,13 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceResetCommand(
-    InstanceContextResolver resolver,
-    InstanceManager instanceManager,
-    CliOutput output
-) : InstanceCommandBase<InstanceResetCommand.Arguments>(resolver)
+public class InstanceResetCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliOutput output)
+    : InstanceCommandBase<InstanceResetCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
-        output.RequireConfirmation(
-            $"Reset build artifacts for instance '{instance.Key}'?",
-            settings.Yes
-        );
+        output.RequireConfirmation($"Reset build artifacts for instance '{instance.Key}'?", settings.Yes);
 
         var result = InstanceOperation.Reset(Resolver, instanceManager, instance.Key, settings.Profile);
 
@@ -32,11 +22,9 @@ public class InstanceResetCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Instance reset",
-                ("Instance", result.Key),
-                ("Deleted Items", result.Deleted.Count.ToString())
-            );
+            output.WriteKeyValueTable("Instance reset",
+                                      ("Instance", result.Key),
+                                      ("Deleted Items", result.Deleted.Count.ToString()));
             if (result.Deleted.Count > 0)
             {
                 var table = new Table().RoundedBorder();

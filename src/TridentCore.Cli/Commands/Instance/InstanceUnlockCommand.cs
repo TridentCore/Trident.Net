@@ -5,17 +5,10 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceUnlockCommand(
-    InstanceContextResolver resolver,
-    ProfileManager profileManager,
-    CliOutput output
-) : InstanceCommandBase<InstanceUnlockCommand.Arguments>(resolver)
+public class InstanceUnlockCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
+    : InstanceCommandBase<InstanceUnlockCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation.Unlock(Resolver, profileManager, instance.Key, settings.Profile);
@@ -26,12 +19,10 @@ public class InstanceUnlockCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Instance unlocked",
-                ("Instance", result.Key),
-                ("Old Source", result.OldSource),
-                ("New Source", (string?)null)
-            );
+            output.WriteKeyValueTable("Instance unlocked",
+                                      ("Instance", result.Key),
+                                      ("Old Source", result.OldSource),
+                                      ("New Source", null));
             output.WriteSuccess($"Instance {result.Key} unlocked.");
         }
 

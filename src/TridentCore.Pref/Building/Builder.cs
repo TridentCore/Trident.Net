@@ -13,8 +13,7 @@ public class Builder : IBuilder<string>
 
     #region IBuilder<string> Members
 
-    public string Build() =>
-        Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
+    public string Build() => Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
 
     #endregion
 
@@ -23,8 +22,7 @@ public class Builder : IBuilder<string>
         string? @namespace,
         string identity,
         string? version,
-        ReadOnlySpan<(string, string?)> filters = default
-    )
+        ReadOnlySpan<(string, string?)> filters = default)
     {
         var builder = new StringBuilder();
         builder.Append("pref://").Append(repository);
@@ -41,9 +39,15 @@ public class Builder : IBuilder<string>
             foreach (var (key, value) in filters)
             {
                 if (value == null)
+                {
                     continue;
+                }
+
                 if (query.Length > 0)
+                {
                     query.Append('&');
+                }
+
                 query.Append(key).Append('=').Append(value);
             }
 

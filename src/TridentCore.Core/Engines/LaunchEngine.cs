@@ -29,7 +29,7 @@ public partial class LaunchEngine : IAsyncEnumerable<Scrap>
 
     #region Nested type: LaunchEngineEnumerator
 
-    public partial class LaunchEngineEnumerator : IAsyncEnumerator<Scrap>
+    public class LaunchEngineEnumerator : IAsyncEnumerator<Scrap>
     {
         private readonly CancellationToken _cancellationToken;
         private readonly Channel<Scrap> _channel = Channel.CreateUnbounded<Scrap>();

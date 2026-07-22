@@ -9,11 +9,7 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput output)
     : Command<RepositoryStatusCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;
@@ -43,12 +39,10 @@ public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput out
         table.AddColumn("Kinds");
         foreach (var result in results)
         {
-            table.AddEscapedRow(
-                result.Label,
-                string.Join(",", result.SupportedLoaders),
-                result.VersionCount.ToString(),
-                string.Join(",", result.SupportedKinds)
-            );
+            table.AddEscapedRow(result.Label,
+                                string.Join(",", result.SupportedLoaders),
+                                result.VersionCount.ToString(),
+                                string.Join(",", result.SupportedKinds));
         }
 
         output.WriteTable(table);

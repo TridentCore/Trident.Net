@@ -52,7 +52,6 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
 
         if (pack.Options.OfflineMode)
         {
-
             var setup = exported.Setup;
             var planner = serviceProvider.GetRequiredService<PackagePlanner>();
             var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
@@ -74,6 +73,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
                 var relative = Path.Combine(container.OverrideDirectoryName, rel);
                 container.Files.Add(relative, abs);
             }
+
             exported.Setup.Packages.Clear();
         }
 

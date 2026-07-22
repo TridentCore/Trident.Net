@@ -18,20 +18,8 @@ public class DeployEngine(
     DeployEngineOptions options,
     string optionsHash,
     string priorityHash,
-    JavaHomeLocatorDelegate javaHomeLocator
-) : IEnumerable<StageBase>
+    JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
 {
-    #region IEnumerable<StageBase> Members
-
-    public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(
-            new(key, setup, provider, options, optionsHash, priorityHash, javaHomeLocator)
-        );
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    #endregion
-
     #region Nested type: DeployEngineEnumerator
 
     private class DeployEngineEnumerator(DeployContext context) : IEnumerator<StageBase>
@@ -50,6 +38,13 @@ public class DeployEngine(
         ];
 
         private int _index = -1;
+
+        private StageBase CreateStage(Type type)
+        {
+            var stage = (StageBase)ActivatorUtilities.CreateInstance(context.Provider, type);
+            stage.Context = context;
+            return stage;
+        }
 
         #region IEnumerator<StageBase> Members
 
@@ -87,17 +82,16 @@ public class DeployEngine(
         }
 
         #endregion
-
-        private StageBase CreateStage(Type type)
-        {
-            var stage = (StageBase)ActivatorUtilities.CreateInstance(
-                context.Provider,
-                type
-            );
-            stage.Context = context;
-            return stage;
-        }
     }
+
+    #endregion
+
+    #region IEnumerable<StageBase> Members
+
+    public IEnumerator<StageBase> GetEnumerator() =>
+        new DeployEngineEnumerator(new(key, setup, provider, options, optionsHash, priorityHash, javaHomeLocator));
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     #endregion
 }

@@ -17,20 +17,15 @@ public static class FileHelper
 
     public static readonly string[] SupportedBitmapMimes =
     [
-        "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff",
+        "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff"
     ];
 
-    public static readonly string[] SupportedBitmapExtensions = ["jpeg", "jpg", "png", "bmp", "gif", "tiff",];
+    public static readonly string[] SupportedBitmapExtensions = ["jpeg", "jpg", "png", "bmp", "gif", "tiff"];
 
     private static readonly IContentInspector INSPECTOR = new ContentInspectorBuilder
     {
-        Definitions = DefaultDefinitions.All(),
+        Definitions = DefaultDefinitions.All()
     }.Build();
-
-    // Linux defaults to case-sensitive filesystems; Windows and macOS default to
-    // case-insensitive-but-case-preserving, so path and name comparisons follow suit.
-    private static StringComparison PathComparison =>
-        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
     static FileHelper()
     {
@@ -39,6 +34,11 @@ public static class FileHelper
         SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }
+
+    // Linux defaults to case-sensitive filesystems; Windows and macOS default to
+    // case-insensitive-but-case-preserving, so path and name comparisons follow suit.
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
     public static string Sanitize(string fileName)
     {
@@ -110,8 +110,7 @@ public static class FileHelper
     //  IsInDirectory / IsPathEquivalent pair below.
     public static bool IsInDirectory(string file, string directory)
     {
-        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory))
-                   + Path.DirectorySeparatorChar;
+        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory)) + Path.DirectorySeparatorChar;
         return Path.GetFullPath(file).StartsWith(prefix, PathComparison);
     }
 
@@ -128,9 +127,7 @@ public static class FileHelper
     }
 
     public static bool IsFileNameEquivalent(string? name1, string? name2) =>
-        !string.IsNullOrEmpty(name1)
-     && !string.IsNullOrEmpty(name2)
-     && name1.Equals(name2, PathComparison);
+        !string.IsNullOrEmpty(name1) && !string.IsNullOrEmpty(name2) && name1.Equals(name2, PathComparison);
 
     public static async Task TryWriteToFileAsync(string path, Stream stream)
     {
@@ -167,7 +164,7 @@ public static class FileHelper
             ResourceKind.ShaderPack => "shaderpacks",
             ResourceKind.ResourcePack => "resourcepacks",
             ResourceKind.DataPack => "datapacks",
-            _ => throw new NotImplementedException(),
+            _ => throw new NotImplementedException()
         };
 
     public static (ulong, ulong) CalculateDirectorySize(string path)
@@ -221,11 +218,9 @@ public static class FileHelper
                     // 文件相同直接通过
                     return true;
                 }
-                else
-                {
-                    // 提供了 hash 但是没通过，算判定失败
-                    return false;
-                }
+
+                // 提供了 hash 但是没通过，算判定失败
+                return false;
             }
 
             // 修改了，但是没有提供 hash，判定为存在性检验，直接通过
@@ -251,9 +246,7 @@ public static class FileHelper
         Convert.ToHexString(SelectHashAlgorithm(algorithm).ComputeHash(stream));
 
     public static async ValueTask<string> ComputeHashAsync(Stream stream, HashAlgorithm algorithm) =>
-        Convert.ToHexString(await SelectHashAlgorithm(algorithm)
-            .ComputeHashAsync(stream)
-            .ConfigureAwait(false));
+        Convert.ToHexString(await SelectHashAlgorithm(algorithm).ComputeHashAsync(stream).ConfigureAwait(false));
 
     private static System.Security.Cryptography.HashAlgorithm SelectHashAlgorithm(HashAlgorithm algorithm) =>
         algorithm switch

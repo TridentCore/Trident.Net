@@ -24,8 +24,7 @@ public static class ServiceCollectionExtensions
             return services;
         }
 
-        public IServiceCollection AddLifetimeService<T>()
-            where T : class, ILifetimeService
+        public IServiceCollection AddLifetimeService<T>() where T : class, ILifetimeService
         {
             services.AddSingleton<T>();
             services.AddSingleton<ILifetimeService>(sp => sp.GetRequiredService<T>());
@@ -35,9 +34,9 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddPrismLauncher()
         {
             services
-               .AddRefitClient<IPrismLauncherClient>(_ =>
-                                                         new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
-                                                    )
+               .AddRefitClient<
+                    IPrismLauncherClient>(_ =>
+                                              new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(PrismLauncherService.ENDPOINT);
@@ -51,17 +50,17 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMojangLauncher()
         {
             services
-               .AddRefitClient<IMojangLauncherClient>(_ =>
-                                                          new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
-                                                     )
+               .AddRefitClient<
+                    IMojangLauncherClient>(_ =>
+                                               new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                      .Web))))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(MojangService.LAUNCHER_ENDPOINT);
                 });
             services
-               .AddRefitClient<IMojangPistonClient>(_ =>
-                                                        new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
-                                                   )
+               .AddRefitClient<
+                    IMojangPistonClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(MojangService.PISTON_ENDPOINT);
@@ -76,41 +75,34 @@ public static class ServiceCollectionExtensions
         {
             services
                .AddRefitClient<IMicrosoftClient>(_ =>
-                                                     new(
-                                                         new SystemTextJsonContentSerializer(
-                                                              new(JsonSerializerDefaults.Web)
-                                                              {
-                                                                  PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                                                              }
-                                                             )
-                                                        )
+                                                     new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                            .Web)
                                                      {
-                                                         ExceptionFactory = async message =>
-                                                             message switch
-                                                             {
-                                                                 { IsSuccessStatusCode: true } => null,
-                                                                 { StatusCode: HttpStatusCode.BadRequest } => null,
-                                                                 { RequestMessage: not null } => await ApiException
-                                                                        .Create(
-                                                                                message.RequestMessage,
-                                                                                message.RequestMessage.Method,
-                                                                                message,
-                                                                                DUMMY
-                                                                               )
-                                                                        .ConfigureAwait(false),
-                                                                 _ => new NotImplementedException(),
-                                                             },
-                                                     }
-                                                )
+                                                         PropertyNamingPolicy = JsonNamingPolicy
+                                                                .SnakeCaseLower
+                                                     }))
+                                                     {
+                                                         ExceptionFactory = async message => message switch
+                                                         {
+                                                             { IsSuccessStatusCode: true } => null,
+                                                             { StatusCode: HttpStatusCode.BadRequest } => null,
+                                                             { RequestMessage: not null } => await ApiException
+                                                                .Create(message.RequestMessage,
+                                                                        message.RequestMessage.Method,
+                                                                        message,
+                                                                        DUMMY)
+                                                                .ConfigureAwait(false),
+                                                             _ => new NotImplementedException()
+                                                         }
+                                                     })
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(MicrosoftService.ENDPOINT);
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
             services.AddSingleton<MicrosoftService>();
             return services;
@@ -119,40 +111,34 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddXboxLive()
         {
             services
-               .AddRefitClient<IXboxLiveClient>(_ =>
-                                                    new(
-                                                        new SystemTextJsonContentSerializer(
-                                                             new(JsonSerializerDefaults.General) { PropertyNameCaseInsensitive = true }
-                                                            )
-                                                       )
-                                               )
+               .AddRefitClient<
+                    IXboxLiveClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.General)
+                    {
+                        PropertyNameCaseInsensitive = true
+                    })))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(XboxLiveService.XBOX_ENDPOINT);
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
             services
-               .AddRefitClient<IXboxServiceClient>(_ =>
-                                                       new(
-                                                           new SystemTextJsonContentSerializer(
-                                                                new(JsonSerializerDefaults.General) { PropertyNameCaseInsensitive = true }
-                                                               )
-                                                          )
-                                                  )
+               .AddRefitClient<
+                    IXboxServiceClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.General)
+                    {
+                        PropertyNameCaseInsensitive = true
+                    })))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(XboxLiveService.XSTS_ENDPOINT);
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
             services.AddSingleton<XboxLiveService>();
             return services;
@@ -161,25 +147,21 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMinecraft()
         {
             services
-               .AddRefitClient<IMinecraftClient>(_ =>
-                                                     new(
-                                                         new SystemTextJsonContentSerializer(
-                                                              new(JsonSerializerDefaults.Web)
-                                                              {
-                                                                  PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                                                              }
-                                                             )
-                                                        )
-                                                )
+               .AddRefitClient<
+                    IMinecraftClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)
+                    {
+                        PropertyNamingPolicy =
+                        JsonNamingPolicy
+                           .SnakeCaseLower
+                    })))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(MinecraftService.ENDPOINT);
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
             services.AddSingleton<MinecraftService>();
             return services;
@@ -188,18 +170,18 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddAuthlibInjector()
         {
             services
-               .AddRefitClient<IAuthlibInjectorClient>(_ =>
-                                                            new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
-                                                       )
+               .AddRefitClient<
+                    IAuthlibInjectorClient>(_ =>
+                                                new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                       .Web))))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new(AuthlibInjectorService.ENDPOINT);
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
             services.AddSingleton<AuthlibInjectorService>();
             return services;
@@ -208,18 +190,16 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMclogs()
         {
             services
-               .AddRefitClient<IMclogsClient>(_ =>
-                                                  new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)))
-                                             )
+               .AddRefitClient<
+                    IMclogsClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new("https://api.mclo.gs");
-                    client.DefaultRequestHeaders.UserAgent.Add(
-                                                               new(
-                                                                   "Trident.Net",
-                                                                   Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                                                                  )
-                                                              );
+                    client.DefaultRequestHeaders.UserAgent.Add(new("Trident.Net",
+                                                                   Assembly
+                                                                      .GetExecutingAssembly()
+                                                                      .GetName()
+                                                                      .Version?.ToString()));
                 });
 
             return services;
@@ -239,7 +219,10 @@ public static class ServiceCollectionExtensions
         ///         <see cref="MinecraftService" />, <see cref="YggdrasilService" />,
         ///         <see cref="AuthlibInjectorService" />.
         ///     </para>
-        ///     <para>Call <see cref="AddMicrosoft" />, <see cref="AddXboxLive" />, <see cref="AddMinecraft" />, <see cref="AddYggdrasil" />, and <see cref="AddAuthlibInjector" /> before this method.</para>
+        ///     <para>
+        ///         Call <see cref="AddMicrosoft" />, <see cref="AddXboxLive" />, <see cref="AddMinecraft" />,
+        ///         <see cref="AddYggdrasil" />, and <see cref="AddAuthlibInjector" /> before this method.
+        ///     </para>
         /// </summary>
         public IServiceCollection AddAccountConfigurers()
         {
@@ -254,9 +237,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddRepositoryInfrastructure()
         {
             services.AddTransient<RepositoryAuthHandler>();
-            services
-                .AddHttpClient(RepositoryAgent.CLIENT_NAME)
-                .AddHttpMessageHandler<RepositoryAuthHandler>();
+            services.AddHttpClient(RepositoryAgent.CLIENT_NAME).AddHttpMessageHandler<RepositoryAuthHandler>();
             return services;
         }
 

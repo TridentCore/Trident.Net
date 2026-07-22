@@ -13,5 +13,4 @@ public record Exhibit(
     IReadOnlyList<string> Tags,
     Uri Reference,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
-);
+    DateTimeOffset UpdatedAt);

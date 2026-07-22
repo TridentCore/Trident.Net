@@ -11,14 +11,9 @@ public class AccountAddCommand(
     MicrosoftService microsoftService,
     XboxLiveService xboxLiveService,
     MinecraftService minecraftService,
-    CliOutput output
-) : Command<AccountAddCommand.Arguments>
+    CliOutput output) : Command<AccountAddCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;
@@ -30,11 +25,9 @@ public class AccountAddCommand(
         {
             if (string.IsNullOrWhiteSpace(settings.Username))
             {
-                throw new CliException(
-                    "Username is required for offline accounts.",
-                    ExitCodes.USAGE
-                );
+                throw new CliException("Username is required for offline accounts.", ExitCodes.USAGE);
             }
+
             var result = AccountOperation.AddOffline(accounts, settings.Username, settings.Uuid);
             WriteResult(result);
             return;
@@ -42,10 +35,7 @@ public class AccountAddCommand(
 
         if (settings.Type.ToLowerInvariant() != "microsoft")
         {
-            throw new CliException(
-                $"Account type '{settings.Type}' is not supported.",
-                ExitCodes.USAGE
-            );
+            throw new CliException($"Account type '{settings.Type}' is not supported.", ExitCodes.USAGE);
         }
 
         var stored = await AddMicrosoftAsync(cancellationToken).ConfigureAwait(false);
@@ -62,13 +52,11 @@ public class AccountAddCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Account added",
-                ("Username", account.Username),
-                ("UUID", account.Uuid),
-                ("Type", account.Type),
-                ("Default", account.IsDefault ? "yes" : "no")
-            );
+            output.WriteKeyValueTable("Account added",
+                                      ("Username", account.Username),
+                                      ("UUID", account.Uuid),
+                                      ("Type", account.Type),
+                                      ("Default", account.IsDefault ? "yes" : "no"));
             output.WriteSuccess($"Account {account.Username} added.");
         }
     }
@@ -76,95 +64,73 @@ public class AccountAddCommand(
     private async Task<StoredAccount> AddMicrosoftAsync(CancellationToken cancellationToken)
     {
         var code = await output
-            .StatusAsync(
-                "Requesting Microsoft device code...",
-                async () => await microsoftService.AcquireUserCodeAsync().ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                        .StatusAsync("Requesting Microsoft device code...",
+                                     async () => await microsoftService.AcquireUserCodeAsync().ConfigureAwait(false))
+                        .ConfigureAwait(false);
         var verificationUri = code.VerificationUri ?? new Uri("https://aka.ms/devicelogin");
         WriteDeviceCode(code.UserCode, verificationUri, code.ExpiresIn);
 
         var microsoft = await output
-            .StatusAsync(
-                "Waiting for Microsoft authorization...",
-                async () =>
-                    await microsoftService
-                        .AuthenticateAsync(code.DeviceCode, code.Interval, cancellationToken)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                             .StatusAsync("Waiting for Microsoft authorization...",
+                                          async () => await microsoftService
+                                                           .AuthenticateAsync(code.DeviceCode,
+                                                                              code.Interval,
+                                                                              cancellationToken)
+                                                           .ConfigureAwait(false))
+                             .ConfigureAwait(false);
         var xbox = await output
-            .StatusAsync(
-                "Authenticating with Xbox Live...",
-                async () =>
-                    await xboxLiveService
-                        .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft.AccessToken)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                        .StatusAsync("Authenticating with Xbox Live...",
+                                     async () => await xboxLiveService
+                                                      .AuthenticateForXboxLiveTokenByMicrosoftTokenAsync(microsoft
+                                                          .AccessToken)
+                                                      .ConfigureAwait(false))
+                        .ConfigureAwait(false);
         var xsts = await output
-            .StatusAsync(
-                "Authorizing Xbox service token...",
-                async () =>
-                    await xboxLiveService
-                        .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                        .StatusAsync("Authorizing Xbox service token...",
+                                     async () => await xboxLiveService
+                                                      .AuthorizeForServiceTokenByXboxLiveTokenAsync(xbox.Token)
+                                                      .ConfigureAwait(false))
+                        .ConfigureAwait(false);
         var minecraft = await output
-            .StatusAsync(
-                "Authenticating with Minecraft services...",
-                async () =>
-                    await minecraftService
-                        .AuthenticateByXboxLiveServiceTokenAsync(
-                            xsts.Token,
-                            xsts.DisplayClaims.Xui.First().Uhs
-                        )
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                             .StatusAsync("Authenticating with Minecraft services...",
+                                          async () => await minecraftService
+                                                           .AuthenticateByXboxLiveServiceTokenAsync(xsts.Token,
+                                                                xsts.DisplayClaims.Xui.First().Uhs)
+                                                           .ConfigureAwait(false))
+                             .ConfigureAwait(false);
         var profile = await output
-            .StatusAsync(
-                "Loading Minecraft profile...",
-                async () =>
-                    await minecraftService
-                        .AcquireAccountProfileByMinecraftTokenAsync(minecraft.AccessToken)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+                           .StatusAsync("Loading Minecraft profile...",
+                                        async () => await minecraftService
+                                                         .AcquireAccountProfileByMinecraftTokenAsync(minecraft
+                                                             .AccessToken)
+                                                         .ConfigureAwait(false))
+                           .ConfigureAwait(false);
 
-        return AccountStore.CreateMicrosoft(
-            new()
-            {
-                AccessToken = minecraft.AccessToken,
-                AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(minecraft.ExpiresIn),
-                RefreshToken = microsoft.RefreshToken,
-                Uuid = profile.Id,
-                Username = profile.Name,
-            }
-        );
+        return AccountStore.CreateMicrosoft(new()
+        {
+            AccessToken = minecraft.AccessToken,
+            AccessTokenExpiresAt =
+                DateTimeOffset.UtcNow.AddSeconds(minecraft.ExpiresIn),
+            RefreshToken = microsoft.RefreshToken,
+            Uuid = profile.Id,
+            Username = profile.Name
+        });
     }
 
     private void WriteDeviceCode(string userCode, Uri verificationUri, int expiresIn)
     {
         if (output.UseStructuredOutput)
         {
-            Console.Error.WriteLine(
-                $"Open {verificationUri} and enter code {userCode}. Code expires in {expiresIn} seconds."
-            );
+            Console.Error
+                   .WriteLine($"Open {verificationUri} and enter code {userCode}. Code expires in {expiresIn} seconds.");
             return;
         }
 
-        AnsiConsole.Write(
-            new Panel(
-                new Markup(
-                    $"Open [blue]{Markup.Escape(verificationUri.ToString())}[/]\nEnter code [green]{Markup.Escape(userCode)}[/]\n[dim]Code expires in {expiresIn} seconds.[/]"
-                )
-            )
-                .Header("Microsoft device login")
-                .RoundedBorder()
-                .BorderColor(Color.Blue)
-        );
+        AnsiConsole.Write(new Panel(new
+                                        Markup($"Open [blue]{Markup.Escape(verificationUri.ToString())}[/]\nEnter code [green]{Markup.Escape(userCode)}[/]\n[dim]Code expires in {expiresIn} seconds.[/]"))
+                         .Header("Microsoft device login")
+                         .RoundedBorder()
+                         .BorderColor(Color.Blue));
     }
 
     public class Arguments : CommandSettings

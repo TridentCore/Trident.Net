@@ -24,17 +24,11 @@ public record VersionInfo(
     IReadOnlyList<string>? MrpackLoaders,
     bool ServerOnly,
     IReadOnlyList<string> GameVersions,
-    bool ClientOnly
-)
+    bool ClientOnly)
 {
     #region Nested type: VersionDependency
 
-    public record VersionDependency(
-        string ProjectId,
-        string VersionId,
-        string? FileName,
-        string DependencyType
-    );
+    public record VersionDependency(string ProjectId, string VersionId, string? FileName, string DependencyType);
 
     #endregion
 
@@ -46,8 +40,7 @@ public record VersionInfo(
         string Filename,
         bool Primary,
         ulong Size,
-        string? FileType
-    )
+        string? FileType)
     {
         #region Nested type: FileHashes
 

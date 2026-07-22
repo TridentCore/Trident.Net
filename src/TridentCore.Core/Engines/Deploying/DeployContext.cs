@@ -10,8 +10,7 @@ public class DeployContext(
     DeployEngineOptions options,
     string optionsHash,
     string priorityHash,
-    JavaHomeLocatorDelegate javaHomeLocator
-)
+    JavaHomeLocatorDelegate javaHomeLocator)
 {
     // BaseLock: read-only snapshot of the on-disk lock (null when absent or legacy FORMAT=1).
     // Lock: the product being built this cycle. Stages judge validity against BaseLock and

@@ -1,3 +1,4 @@
+using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Cli.Commands.Repository;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
@@ -10,19 +11,11 @@ internal static class RepositoryOperation
         UserRepositoryStore userRepositories,
         CliRepositoryProviderAccessor combined)
     {
-        var userLabels = userRepositories
-            .Load()
-            .Select(x => x.Label)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return combined
-            .Build()
-            .Select(x => RepositoryDtos.FromProvider(x, userLabels.Contains(x.Label)))
-            .ToArray();
+        var userLabels = userRepositories.Load().Select(x => x.Label).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return combined.Build().Select(x => RepositoryDtos.FromProvider(x, userLabels.Contains(x.Label))).ToArray();
     }
 
-    public static async Task<IReadOnlyList<RepositoryStatusItem>> Status(
-        RepositoryAgent repositories,
-        string? label)
+    public static async Task<IReadOnlyList<RepositoryStatusItem>> Status(RepositoryAgent repositories, string? label)
     {
         var labels = label is not null ? [label] : repositories.Labels.ToArray();
         var results = new List<RepositoryStatusItem>();
@@ -53,18 +46,14 @@ internal static class RepositoryOperation
 
         var repository = new UserRepositoryProfile(label, resolvedDriver, endpoint, apiKey, userAgent);
         userRepositories.AddOrReplace(repository);
-        return new(
-            repository.Label,
-            repository.Driver,
-            repository.Endpoint,
-            !string.IsNullOrWhiteSpace(repository.ApiKey),
-            repository.UserAgent
-        );
+        return new(repository.Label,
+                   repository.Driver,
+                   repository.Endpoint,
+                   !string.IsNullOrWhiteSpace(repository.ApiKey),
+                   repository.UserAgent);
     }
 
-    public static RepositoryRemoveResult Remove(
-        UserRepositoryStore userRepositories,
-        string label)
+    public static RepositoryRemoveResult Remove(UserRepositoryStore userRepositories, string label)
     {
         if (!userRepositories.Remove(label))
         {
@@ -79,15 +68,13 @@ public sealed record RepositoryStatusItem(
     string Label,
     IReadOnlyList<string> SupportedLoaders,
     int VersionCount,
-    IReadOnlyList<TridentCore.Abstractions.Repositories.Resources.ResourceKind> SupportedKinds
-);
+    IReadOnlyList<ResourceKind> SupportedKinds);
 
 internal sealed record RepositoryAddResult(
     string Label,
     string Driver,
     string Endpoint,
     bool HasAuthorization,
-    string? UserAgent
-);
+    string? UserAgent);
 
 internal sealed record RepositoryRemoveResult(string Label);

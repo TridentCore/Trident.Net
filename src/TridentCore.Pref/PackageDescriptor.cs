@@ -8,8 +8,7 @@ public readonly record struct PackageDescriptor(
     string? Namespace,
     string Identity,
     string? Version,
-    ImmutableArray<(string, string?)> Filters
-)
+    ImmutableArray<(string, string?)> Filters)
 {
     public override string ToString() => Builder.Build(Repository, Namespace, Identity, Version, Filters.AsSpan());
 }

@@ -6,17 +6,13 @@ namespace TridentCore.Cli.Commands.Loader;
 
 public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = new
         {
             lurl = "<loader-id>:<loader-version>",
             example = "net.neoforged:21.1.200",
-            supported = LoaderSupport.Supported,
+            supported = LoaderSupport.Supported
         };
 
         if (output.UseStructuredOutput)
@@ -25,16 +21,11 @@ public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arg
             return ExitCodes.SUCCESS;
         }
 
-        AnsiConsole.Write(
-            new Panel(
-                new Markup(
-                    "Loader URLs use the format [cyan]<loader-id>:<loader-version>[/]\nExample: [green]net.neoforged:21.1.200[/]"
-                )
-            )
-                .Header("Loader URL format")
-                .RoundedBorder()
-                .BorderColor(Color.Blue)
-        );
+        AnsiConsole.Write(new Panel(new
+                                        Markup("Loader URLs use the format [cyan]<loader-id>:<loader-version>[/]\nExample: [green]net.neoforged:21.1.200[/]"))
+                         .Header("Loader URL format")
+                         .RoundedBorder()
+                         .BorderColor(Color.Blue));
         var table = new Table().RoundedBorder();
         table.Title = new("[bold]Supported loaders[/]");
         table.AddColumn("Name");

@@ -6,20 +6,12 @@ namespace TridentCore.Cli.Commands.Account;
 
 public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var types = new[]
         {
             new { type = "microsoft", description = "Microsoft device-code flow account." },
-            new
-            {
-                type = "offline",
-                description = "Offline account with generated or provided UUID.",
-            },
+            new { type = "offline", description = "Offline account with generated or provided UUID." }
         };
 
         if (output.UseStructuredOutput)
@@ -28,24 +20,18 @@ public class AccountHelpCommand(CliOutput output) : Command<AccountHelpCommand.A
             return ExitCodes.SUCCESS;
         }
 
-        AnsiConsole.Write(
-            new Panel(
-                "Microsoft accounts use device-code login. Offline accounts are local-only and can use a generated UUID."
-            )
-                .Header("Account types")
-                .RoundedBorder()
-                .BorderColor(Color.Blue)
-        );
+        AnsiConsole.Write(new
+                              Panel("Microsoft accounts use device-code login. Offline accounts are local-only and can use a generated UUID.")
+                         .Header("Account types")
+                         .RoundedBorder()
+                         .BorderColor(Color.Blue));
         var table = new Table().RoundedBorder();
         table.Title = new("[bold]Supported account types[/]");
         table.AddColumn("Type");
         table.AddColumn("Description");
         foreach (var type in types)
         {
-            table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(type.type)}[/]",
-                Markup.Escape(type.description)
-            );
+            table.AddMarkupRow($"[cyan]{Markup.Escape(type.type)}[/]", Markup.Escape(type.description));
         }
 
         output.WriteTable(table);

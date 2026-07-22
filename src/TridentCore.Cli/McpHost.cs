@@ -18,16 +18,15 @@ public static class McpHost
             logging.SetMinimumLevel(LogLevel.Warning);
         });
 
-        appServices
-            .AddMcpServer()
-            .WithStdioServerTransport()
-            .WithToolsFromAssembly(typeof(McpHost).Assembly);
+        appServices.AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly(typeof(McpHost).Assembly);
 
         var hostBuilder = new HostBuilder();
         hostBuilder.ConfigureServices((_, hostServices) =>
         {
             foreach (var descriptor in appServices)
+            {
                 hostServices.Add(descriptor);
+            }
         });
 
         using var host = hostBuilder.Build();

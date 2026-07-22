@@ -4,8 +4,7 @@ namespace TridentCore.Cli.Services;
 
 public class CliRepositoryProviderAccessor(
     BuiltinRepositoryProviderAccessor builtins,
-    UserRepositoryStore userRepositories
-) : IRepositoryProviderAccessor
+    UserRepositoryStore userRepositories) : IRepositoryProviderAccessor
 {
     public IReadOnlyList<IRepositoryProviderAccessor.ProviderProfile> Build()
     {
@@ -13,14 +12,12 @@ public class CliRepositoryProviderAccessor(
         foreach (var user in userRepositories.Load())
         {
             var driver = UserRepositoryStore.ParseDriver(user.Driver);
-            map[user.Label] = new(
-                user.Label,
-                driver,
-                user.Endpoint,
-                BuildAuthorizationHeader(driver, user.ApiKey),
-                user.UserAgent,
-                CdnHostsFor(driver)
-            );
+            map[user.Label] = new(user.Label,
+                                  driver,
+                                  user.Endpoint,
+                                  BuildAuthorizationHeader(driver, user.ApiKey),
+                                  user.UserAgent,
+                                  CdnHostsFor(driver));
         }
 
         return [.. map.Values.OrderBy(x => x.Label, StringComparer.OrdinalIgnoreCase)];
@@ -30,8 +27,7 @@ public class CliRepositoryProviderAccessor(
 
     private static (string Key, string Value)? BuildAuthorizationHeader(
         IRepositoryProviderAccessor.ProviderProfile.DriverType driver,
-        string? apiKey
-    )
+        string? apiKey)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -40,24 +36,19 @@ public class CliRepositoryProviderAccessor(
 
         return driver switch
         {
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge => (
-                "x-api-key",
-                apiKey
-            ),
-            IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth => (
-                "Authorization",
-                apiKey
-            ),
-            _ => null,
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge => ("x-api-key", apiKey),
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth => ("Authorization", apiKey),
+            _ => null
         };
     }
 
-    private static IReadOnlyList<string>? CdnHostsFor(
-        IRepositoryProviderAccessor.ProviderProfile.DriverType driver
-    ) => driver switch
-    {
-        IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge =>
-            ["edge.forgecdn.net", "media.forgecdn.net"],
-        _ => null,
-    };
+    private static IReadOnlyList<string>? CdnHostsFor(IRepositoryProviderAccessor.ProviderProfile.DriverType driver) =>
+        driver switch
+        {
+            IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge =>
+            [
+                "edge.forgecdn.net", "media.forgecdn.net"
+            ],
+            _ => null
+        };
 }

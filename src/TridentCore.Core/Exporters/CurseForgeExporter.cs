@@ -18,11 +18,23 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
         [LoaderHelper.LOADERID_FORGE] = "forge",
         [LoaderHelper.LOADERID_NEOFORGE] = "neoforge",
         [LoaderHelper.LOADERID_FABRIC] = "fabric",
-        [LoaderHelper.LOADERID_QUILT] = "quilt",
+        [LoaderHelper.LOADERID_QUILT] = "quilt"
     };
 
     private static readonly JsonSerializerOptions SERIALIZER_OPTIONS =
-        new(JsonSerializerDefaults.Web) { WriteIndented = true, };
+        new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+    private IReadOnlyList<Manifest.MinecraftModel.ModLoaderModel> MakeLoader(string? lurl)
+    {
+        if (!string.IsNullOrEmpty(lurl)
+         && LoaderHelper.TryParse(lurl, out var tuple)
+         && LOADER_MAPPINGS.TryGetValue(tuple.Identity, out var mapping))
+        {
+            return [new($"{mapping}-{tuple.Version}", true)];
+        }
+
+        return [];
+    }
 
     #region IProfileExporter Members
 
@@ -30,7 +42,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
 
     public async Task<PackedProfileContainer> PackAsync(UncompressedProfilePack pack)
     {
-        var container = new PackedProfileContainer(pack.Key) { OverrideDirectoryName = "overrides", };
+        var container = new PackedProfileContainer(pack.Key) { OverrideDirectoryName = "overrides" };
         var setup = pack.Profile.Setup;
         var attachments = new List<Manifest.FileModel>();
 
@@ -91,16 +103,4 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
     }
 
     #endregion
-
-    private IReadOnlyList<Manifest.MinecraftModel.ModLoaderModel> MakeLoader(string? lurl)
-    {
-        if (!string.IsNullOrEmpty(lurl)
-         && LoaderHelper.TryParse(lurl, out var tuple)
-         && LOADER_MAPPINGS.TryGetValue(tuple.Identity, out var mapping))
-        {
-            return [new($"{mapping}-{tuple.Version}", true)];
-        }
-
-        return [];
-    }
 }

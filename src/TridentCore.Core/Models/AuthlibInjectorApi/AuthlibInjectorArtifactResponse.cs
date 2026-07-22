@@ -12,10 +12,5 @@ public record AuthlibInjectorArtifactResponse(
     [property: JsonPropertyName("checksums")]
     AuthlibInjectorArtifactResponse.AuthlibInjectorChecksums Checksums)
 {
-
-
-    public record AuthlibInjectorChecksums(
-        [property: JsonPropertyName("sha256")] string Sha256
-    );
-
+    public record AuthlibInjectorChecksums([property: JsonPropertyName("sha256")] string Sha256);
 }

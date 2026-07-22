@@ -19,8 +19,7 @@ public static class PackageCliHelper
         string? gameVersion,
         string? loader,
         ResourceKind? kind,
-        ResolvedInstanceContext? instance = null
-    )
+        ResolvedInstanceContext? instance = null)
     {
         gameVersion ??= instance?.Profile.Setup.Version;
         if (loader is null && instance?.Profile.Setup.Loader is { } lurl)
@@ -39,33 +38,31 @@ public static class PackageCliHelper
         }
 
         return Enum.TryParse<ResourceKind>(kind, true, out var parsed)
-            ? parsed
-            : throw new CliException($"Package kind '{kind}' is not supported.", ExitCodes.USAGE);
+                   ? parsed
+                   : throw new CliException($"Package kind '{kind}' is not supported.", ExitCodes.USAGE);
     }
 
     public static Profile.Rice.Entry FindEntry(Profile profile, string pref)
     {
         var parsed = ParsePref(pref);
-        return profile.Setup.Packages.FirstOrDefault(x =>
-                PackageHelper.IsMatched(x.Pref, parsed.Repository, parsed.Namespace, parsed.Identity)
-            ) ?? throw new CliException($"Package '{pref}' is not installed.", ExitCodes.NOT_FOUND);
+        return profile.Setup.Packages.FirstOrDefault(x => PackageHelper.IsMatched(x.Pref,
+                                                         parsed.Repository,
+                                                         parsed.Namespace,
+                                                         parsed.Identity))
+            ?? throw new CliException($"Package '{pref}' is not installed.", ExitCodes.NOT_FOUND);
     }
 
     public static bool ContainsProject(Profile profile, string pref)
     {
         var parsed = ParsePref(pref);
-        return profile.Setup.Packages.Any(x =>
-            PackageHelper.IsMatched(x.Pref, parsed.Repository, parsed.Namespace, parsed.Identity)
-        );
+        return profile.Setup.Packages.Any(x => PackageHelper.IsMatched(x.Pref,
+                                                                       parsed.Repository,
+                                                                       parsed.Namespace,
+                                                                       parsed.Identity));
     }
 
     public static string ToPref(Dependency dependency) =>
-        PackageHelper.ToPref(
-            dependency.Label,
-            dependency.Namespace,
-            dependency.ProjectId,
-            dependency.VersionId
-        );
+        PackageHelper.ToPref(dependency.Label, dependency.Namespace, dependency.ProjectId, dependency.VersionId);
 
     public static Table CreatePackageTable(string title, IEnumerable<IPackageTableRow> packages)
     {
@@ -78,24 +75,17 @@ public static class PackageCliHelper
         table.AddColumn("PREF");
         foreach (var package in packages)
         {
-            table.AddMarkupRow(
-                CliOutput.FormatValue(package.ProjectName),
-                CliOutput.FormatValue(package.Author),
-                package.Kind?.ToString() is string k
-                    ? CliOutput.FormatStatus(k, "blue")
-                    : "[dim]-[/]",
-                CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
-                Markup.Escape(package.Pref)
-            );
+            table.AddMarkupRow(CliOutput.FormatValue(package.ProjectName),
+                               CliOutput.FormatValue(package.Author),
+                               package.Kind?.ToString() is string k ? CliOutput.FormatStatus(k, "blue") : "[dim]-[/]",
+                               CliOutput.FormatBoolean(package.Enabled, "enabled", "disabled"),
+                               Markup.Escape(package.Pref));
         }
 
         return table;
     }
 
-    public static Table CreateDependencyTable(
-        string title,
-        IEnumerable<IDependencyTableRow> dependencies
-    )
+    public static Table CreateDependencyTable(string title, IEnumerable<IDependencyTableRow> dependencies)
     {
         var table = new Table().RoundedBorder();
         table.Title = new($"[bold]{Markup.Escape(title)}[/]");
@@ -103,10 +93,8 @@ public static class PackageCliHelper
         table.AddColumn("Required");
         foreach (var dependency in dependencies)
         {
-            table.AddMarkupRow(
-                Markup.Escape(dependency.Pref),
-                CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional")
-            );
+            table.AddMarkupRow(Markup.Escape(dependency.Pref),
+                               CliOutput.FormatBoolean(dependency.IsRequired, "required", "optional"));
         }
 
         return table;

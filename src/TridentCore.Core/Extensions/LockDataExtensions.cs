@@ -24,15 +24,11 @@ public static class LockDataExtensions
 
         foreach (var library in self.Libraries.Where(x => x.IsPresent))
         {
-            igniter.AddLibrary(
-                PathDef.Default.FileOfLibrary(
-                    library.Id.Namespace,
-                    library.Id.Name,
-                    library.Id.Version,
-                    library.Id.Platform,
-                    library.Id.Extension
-                )
-            );
+            igniter.AddLibrary(PathDef.Default.FileOfLibrary(library.Id.Namespace,
+                                                             library.Id.Name,
+                                                             library.Id.Version,
+                                                             library.Id.Platform,
+                                                             library.Id.Extension));
         }
 
         igniter.SetMainClass(self.MainClass).SetAssetIndex(self.AssetIndex.Id);
@@ -44,25 +40,22 @@ public static class LockDataExtensions
     // Centralized so FlattenPackages (conflict grouping) and GenerateManifest (materialization)
     // never compute it differently.
     public static string RelativeTarget(this LockData.LockedPackage self) =>
-        PackagePathHelper.RelativeTarget(
-            self.Rule.Normalizing,
-            self.Rule.Destination,
-            self.Resolved.ProjectName,
-            self.Resolved.FileName,
-            self.Resolved.Kind);
+        PackagePathHelper.RelativeTarget(self.Rule.Normalizing,
+                                         self.Rule.Destination,
+                                         self.Resolved.ProjectName,
+                                         self.Resolved.FileName,
+                                         self.Resolved.Kind);
 
     // Mutable-list library accumulation with the same dedup rules the platform-computed
     // artifact needs while being rebuilt (vanilla + loader both add libraries incrementally).
     public static void AddLibrary(this IList<LockData.Library> libs, LockData.Library library)
     {
         // 允许除 IsNative 不同的同时存在，但不允许除了 IsPresent 不同的同时存在， IsPresent==True的优先
-        var found = libs.FirstOrDefault(x =>
-            x.Id.Namespace == library.Id.Namespace
-            && x.Id.Name == library.Id.Name
-            && x.Id.Platform == library.Id.Platform
-            && x.Id.Extension == library.Id.Extension
-            && x.IsNative == library.IsNative
-        );
+        var found = libs.FirstOrDefault(x => x.Id.Namespace == library.Id.Namespace
+                                          && x.Id.Name == library.Id.Name
+                                          && x.Id.Platform == library.Id.Platform
+                                          && x.Id.Extension == library.Id.Extension
+                                          && x.IsNative == library.IsNative);
         if (found != null)
         {
             if (found.Id.Version == library.Id.Version)
@@ -91,24 +84,18 @@ public static class LockDataExtensions
         Uri url,
         FileHash? hash,
         bool native = false,
-        bool present = true
-    ) => libs.AddLibrary(new(ParseLibraryIdentity(fullname), url, hash, native, present));
+        bool present = true) =>
+        libs.AddLibrary(new(ParseLibraryIdentity(fullname), url, hash, native, present));
 
     // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
-    public static void AddLibraryPrismFlavor(
-        this IList<LockData.Library> libs,
-        string fullname,
-        Uri url
-    )
+    public static void AddLibraryPrismFlavor(this IList<LockData.Library> libs, string fullname, Uri url)
     {
         var exactUrl = url.AbsoluteUri.EndsWith('/') ? url : new(url.AbsoluteUri + '/');
         // 当迁移到 TridentCore/launcher-meta 的之后移除该函数
         var id = ParseLibraryIdentity(fullname);
 
-        var fullUrl = new Uri(
-            exactUrl,
-            $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}"
-        );
+        var fullUrl = new Uri(exactUrl,
+                              $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}");
         libs.AddLibrary(new(id, fullUrl, null));
     }
 
@@ -127,7 +114,7 @@ public static class LockDataExtensions
         {
             4 => new(split[0], split[1], split[2], split[3], extension),
             3 => new(split[0], split[1], split[2], null, extension),
-            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}"),
+            _ => throw new NotSupportedException($"Not recognized package name format: {fullname}")
         };
     }
 }

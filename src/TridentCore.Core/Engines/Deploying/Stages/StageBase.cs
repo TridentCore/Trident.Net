@@ -7,6 +7,10 @@ public abstract class StageBase : IDisposableLifetime
 {
     public DeployContext Context { get; set; } = null!;
 
+    protected abstract Task OnProcessAsync(CancellationToken token);
+
+    public Task ProcessAsync(CancellationToken token) => OnProcessAsync(token);
+
     #region IDisposableLifetime Members
 
     public CompositeDisposable DisposableLifetime { get; } = new();
@@ -14,8 +18,4 @@ public abstract class StageBase : IDisposableLifetime
     public virtual void Dispose() => DisposableLifetime.Dispose();
 
     #endregion
-
-    protected abstract Task OnProcessAsync(CancellationToken token);
-
-    public Task ProcessAsync(CancellationToken token) => OnProcessAsync(token);
 }

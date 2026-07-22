@@ -16,17 +16,11 @@ public interface IRepositoryProviderAccessor
         string Endpoint,
         (string Key, string Value)? AuthorizationHeader,
         string? UserAgent,
-        IReadOnlyList<string>? CdnHosts = null
-    )
+        IReadOnlyList<string>? CdnHosts = null)
     {
         #region DriverType enum
 
-        public enum DriverType
-        {
-            CurseForge,
-            Modrinth,
-            Packwiz,
-        }
+        public enum DriverType { CurseForge, Modrinth, Packwiz }
 
         #endregion
     }
@@ -35,9 +29,7 @@ public interface IRepositoryProviderAccessor
 
     #region Nested type: ProviderCustom
 
-    record struct ProviderCustom(string Label, IRepository Instance)
-    {
+    record struct ProviderCustom(string Label, IRepository Instance) { }
 
-    }
     #endregion
 }

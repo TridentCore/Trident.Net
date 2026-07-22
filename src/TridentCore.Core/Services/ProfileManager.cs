@@ -145,8 +145,7 @@ public class ProfileManager : IDisposable
         string version,
         string? loader,
         IReadOnlyList<string> packages,
-        IDictionary<string, object> overrides
-    )
+        IDictionary<string, object> overrides)
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
         if (handle is null)
@@ -156,11 +155,7 @@ public class ProfileManager : IDisposable
 
         var changeSet = packages.ToDictionary(PackageHelper.ExtractProjectIdentityIfValid);
         var removeSet = new List<Profile.Rice.Entry>();
-        foreach (
-            var entry in handle.Value.Setup.Packages.Where(x =>
-                x.Source == handle.Value.Setup.Source
-            )
-        )
+        foreach (var entry in handle.Value.Setup.Packages.Where(x => x.Source == handle.Value.Setup.Source))
         {
             var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Pref);
             if (changeSet.TryGetValue(extracted, out var change))
@@ -182,14 +177,7 @@ public class ProfileManager : IDisposable
 
         foreach (var add in changeSet.Values)
         {
-            handle.Value.Setup.Packages.Add(
-                new()
-                {
-                    Enabled = true,
-                    Source = source,
-                    Pref = add,
-                }
-            );
+            handle.Value.Setup.Packages.Add(new() { Enabled = true, Source = source, Pref = add });
         }
 
         foreach (var (k, v) in overrides)
@@ -221,14 +209,11 @@ public class ProfileManager : IDisposable
 
     public event EventHandler<ProfileChangedEventArgs>? ProfileAdded;
 
-    internal void OnProfileUpdated(string key, Profile profile) =>
-        ProfileUpdated?.Invoke(this, new(key, profile));
+    internal void OnProfileUpdated(string key, Profile profile) => ProfileUpdated?.Invoke(this, new(key, profile));
 
-    internal void OnProfileRemoved(string key, Profile profile) =>
-        ProfileRemoved?.Invoke(this, new(key, profile));
+    internal void OnProfileRemoved(string key, Profile profile) => ProfileRemoved?.Invoke(this, new(key, profile));
 
-    internal void OnProfileAdded(string key, Profile profile) =>
-        ProfileAdded?.Invoke(this, new(key, profile));
+    internal void OnProfileAdded(string key, Profile profile) => ProfileAdded?.Invoke(this, new(key, profile));
 
     #endregion
 

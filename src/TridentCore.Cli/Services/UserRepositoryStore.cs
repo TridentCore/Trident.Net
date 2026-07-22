@@ -6,12 +6,10 @@ namespace TridentCore.Cli.Services;
 
 public class UserRepositoryStore
 {
-    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new(
-        JsonSerializerDefaults.Web
-    )
+    private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     private readonly string _path = CliDataPaths.File("repositories.json");
@@ -23,30 +21,21 @@ public class UserRepositoryStore
             return [];
         }
 
-        var repositories = JsonSerializer.Deserialize<List<UserRepositoryProfile>>(
-            File.ReadAllText(_path),
-            SERIALIZER_OPTIONS
-        );
+        var repositories =
+            JsonSerializer.Deserialize<List<UserRepositoryProfile>>(File.ReadAllText(_path), SERIALIZER_OPTIONS);
         return repositories ?? [];
     }
 
-    public void Save(IEnumerable<UserRepositoryProfile> repositories)
-    {
-        AtomicFileWriter.WriteAllText(
-            _path,
-            JsonSerializer.Serialize(repositories, SERIALIZER_OPTIONS)
-        );
-    }
+    public void Save(IEnumerable<UserRepositoryProfile> repositories) =>
+        AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(repositories, SERIALIZER_OPTIONS));
 
     public void AddOrReplace(UserRepositoryProfile repository)
     {
         var repositories = Load()
-            .Where(x =>
-                !string.Equals(x.Label, repository.Label, StringComparison.OrdinalIgnoreCase)
-            )
-            .Append(repository)
-            .OrderBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+                          .Where(x => !string.Equals(x.Label, repository.Label, StringComparison.OrdinalIgnoreCase))
+                          .Append(repository)
+                          .OrderBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
+                          .ToArray();
         Save(repositories);
     }
 
@@ -54,8 +43,8 @@ public class UserRepositoryStore
     {
         var repositories = Load();
         var next = repositories
-            .Where(x => !string.Equals(x.Label, label, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+                  .Where(x => !string.Equals(x.Label, label, StringComparison.OrdinalIgnoreCase))
+                  .ToArray();
         if (next.Length == repositories.Count)
         {
             return false;
@@ -65,17 +54,12 @@ public class UserRepositoryStore
         return true;
     }
 
-    public static IRepositoryProviderAccessor.ProviderProfile.DriverType ParseDriver(
-        string driver
-    ) =>
+    public static IRepositoryProviderAccessor.ProviderProfile.DriverType ParseDriver(string driver) =>
         driver.ToLowerInvariant() switch
         {
             "curseforge" => IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge,
             "modrinth" => IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth,
-            _ => throw new CliException(
-                $"Repository driver '{driver}' is not supported.",
-                ExitCodes.USAGE
-            ),
+            _ => throw new CliException($"Repository driver '{driver}' is not supported.", ExitCodes.USAGE)
         };
 }
 
@@ -84,5 +68,4 @@ public sealed record UserRepositoryProfile(
     string Driver,
     string Endpoint,
     string? ApiKey,
-    string? UserAgent
-);
+    string? UserAgent);

@@ -8,12 +8,11 @@ public abstract class TrackerBase(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
-    CancellationToken token = default
-) : IDisposableLifetime
+    CancellationToken token = default) : IDisposableLifetime
 {
-    private readonly CancellationTokenSource _tokenSource =
-        CancellationTokenSource.CreateLinkedTokenSource(token);
     private readonly Subject<TrackerProgress> _progressSubject = new();
+
+    private readonly CancellationTokenSource _tokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
     public string Key => key;
     public CancellationToken Token => _tokenSource.Token;
@@ -37,19 +36,6 @@ public abstract class TrackerBase(
         Progress = progress;
         _progressSubject.OnNext(progress);
     }
-
-    #region IDisposableLifetime Members
-
-    public CompositeDisposable DisposableLifetime { get; } = new();
-
-    public virtual void Dispose()
-    {
-        _progressSubject.Dispose();
-        _tokenSource.Dispose();
-        DisposableLifetime.Dispose();
-    }
-
-    #endregion
 
     public event TrackerStateUpdatedHandler? StateUpdated;
 
@@ -100,4 +86,17 @@ public abstract class TrackerBase(
         StateUpdated?.Invoke(this, State);
         onCompleted?.Invoke(this);
     }
+
+    #region IDisposableLifetime Members
+
+    public CompositeDisposable DisposableLifetime { get; } = new();
+
+    public virtual void Dispose()
+    {
+        _progressSubject.Dispose();
+        _tokenSource.Dispose();
+        DisposableLifetime.Dispose();
+    }
+
+    #endregion
 }

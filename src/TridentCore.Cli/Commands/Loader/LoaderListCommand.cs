@@ -7,11 +7,7 @@ namespace TridentCore.Cli.Commands.Loader;
 
 public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var loaders = LoaderOperation.List();
 
@@ -28,11 +24,9 @@ public class LoaderListCommand(CliOutput output) : Command<LoaderListCommand.Arg
         table.AddColumn("Prism UID");
         foreach (var loader in loaders)
         {
-            table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(loader.Name)}[/]",
-                Markup.Escape(loader.Identity),
-                Markup.Escape(loader.PrismUid)
-            );
+            table.AddMarkupRow($"[cyan]{Markup.Escape(loader.Name)}[/]",
+                               Markup.Escape(loader.Identity),
+                               Markup.Escape(loader.PrismUid));
         }
 
         output.WriteTable(table);

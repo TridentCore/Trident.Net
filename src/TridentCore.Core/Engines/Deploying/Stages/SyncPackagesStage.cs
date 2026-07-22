@@ -44,8 +44,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
         // NOTE: floating 解析的 filter 只依赖 platform(Version/Loader)，不依赖 deploy options——
         //  options 变更走 Verify(重部署门)，不在这里触发 floating 重解析。
-        var platformChanged = baseLock == null
-            || baseLock.Platform != Context.Lock.Platform;
+        var platformChanged = baseLock == null || baseLock.Platform != Context.Lock.Platform;
 
         var result = new List<LockData.LockedPackage>();
         var toResolve = new List<Profile.Rice.Entry>();
@@ -63,8 +62,10 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             // resolution was filter-dependent). Fixed prefs keep their vid unless the user
             // explicitly repinned it (vid differs from the locked one) — honoring intent.
             var resolvedInvalid = floating
-                ? platformChanged
-                : !string.Equals(parsed.Version, locked.Resolved.VersionId, StringComparison.InvariantCulture);
+                                      ? platformChanged
+                                      : !string.Equals(parsed.Version,
+                                                       locked.Resolved.VersionId,
+                                                       StringComparison.InvariantCulture);
             if (resolvedInvalid)
             {
                 // filter/策略变了，或用户重定了固定版本 → 重新解析
@@ -106,8 +107,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
     private LockData.LockedPackage BuildLocked(
         Profile.Rice.Entry entry,
         Package package,
-        IReadOnlyList<Profile.Rice.Rule> rules
-    )
+        IReadOnlyList<Profile.Rice.Rule> rules)
     {
         var rule = planner.EvaluateRule(entry, package, rules);
         return new(entry.Pref, entry.Source, package, rule);
@@ -116,7 +116,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
     private static Key MatchKey(string pref, string? source)
     {
         var parsed = PackageHelper.Parse(pref);
-        return new((parsed.Repository).ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Identity, source);
+        return new(parsed.Repository.ToLowerInvariant(), parsed.Namespace ?? string.Empty, parsed.Identity, source);
     }
 
     private record Key(string Label, string Namespace, string Pid, string? Source);

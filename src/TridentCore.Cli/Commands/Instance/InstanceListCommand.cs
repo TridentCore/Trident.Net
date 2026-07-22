@@ -9,11 +9,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceListCommand(ProfileManager profileManager, CliOutput output)
     : Command<InstanceListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instances = InstanceOperation.List(profileManager);
 
@@ -25,10 +21,8 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
 
         if (instances.Count == 0)
         {
-            output.WriteEmptyState(
-                "No instances",
-                "Create one with: trident instance create --identity <key> --name <name> --version <version>"
-            );
+            output.WriteEmptyState("No instances",
+                                   "Create one with: trident instance create --identity <key> --name <name> --version <version>");
             return ExitCodes.SUCCESS;
         }
 
@@ -43,14 +37,12 @@ public class InstanceListCommand(ProfileManager profileManager, CliOutput output
 
         foreach (var instance in instances)
         {
-            table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(instance.Key)}[/]",
-                Markup.Escape(instance.Name),
-                Markup.Escape(instance.Version),
-                CliOutput.FormatValue(instance.Loader),
-                Markup.Escape(instance.PackageCount.ToString()),
-                CliOutput.FormatValue(instance.Source)
-            );
+            table.AddMarkupRow($"[cyan]{Markup.Escape(instance.Key)}[/]",
+                               Markup.Escape(instance.Name),
+                               Markup.Escape(instance.Version),
+                               CliOutput.FormatValue(instance.Loader),
+                               Markup.Escape(instance.PackageCount.ToString()),
+                               CliOutput.FormatValue(instance.Source));
         }
 
         output.WriteTable(table);

@@ -7,5 +7,4 @@ public record AuthlibInjectorAuthenticationResult(
     IReadOnlyList<YggdrasilGameProfile>? AvailableProfiles,
     string ServerUrl,
     string AccessToken,
-    string ClientToken
-);
+    string ClientToken);

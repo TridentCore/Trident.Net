@@ -5,25 +5,15 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceImportCommand(
-    ProfileManager profileManager,
-    ImporterAgent importerAgent,
-    CliOutput output
-) : Command<InstanceImportCommand.Arguments>
+public class InstanceImportCommand(ProfileManager profileManager, ImporterAgent importerAgent, CliOutput output)
+    : Command<InstanceImportCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = InstanceOperation.ImportAsync(
-            profileManager,
-            importerAgent,
-            settings.Path,
-            settings.Name,
-            settings.Identity
-        ).GetAwaiter().GetResult();
+        var result = InstanceOperation
+                    .ImportAsync(profileManager, importerAgent, settings.Path, settings.Name, settings.Identity)
+                    .GetAwaiter()
+                    .GetResult();
 
         if (output.UseStructuredOutput)
         {
@@ -31,14 +21,12 @@ public class InstanceImportCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Instance imported",
-                ("Key", result.Key),
-                ("Name", result.Name),
-                ("Version", result.Version),
-                ("Loader", result.Loader),
-                ("Source", result.Path)
-            );
+            output.WriteKeyValueTable("Instance imported",
+                                      ("Key", result.Key),
+                                      ("Name", result.Name),
+                                      ("Version", result.Version),
+                                      ("Loader", result.Loader),
+                                      ("Source", result.Path));
             output.WriteSuccess($"Instance {result.Key} imported.");
         }
 

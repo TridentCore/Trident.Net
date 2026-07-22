@@ -9,10 +9,6 @@ namespace TridentCore.Core.Repositories;
 //  bool to lowercase and defer everything else to the default formatter.
 public class LowercaseBoolUrlParameterFormatter : DefaultUrlParameterFormatter
 {
-    public override string? Format(
-        object? value,
-        ICustomAttributeProvider attributeProvider,
-        Type type
-    ) =>
-        value is bool b ? (b ? "true" : "false") : base.Format(value, attributeProvider, type);
+    public override string? Format(object? value, ICustomAttributeProvider attributeProvider, Type type) =>
+        value is bool b ? b ? "true" : "false" : base.Format(value, attributeProvider, type);
 }

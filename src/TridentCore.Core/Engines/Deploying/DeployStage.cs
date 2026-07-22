@@ -10,5 +10,5 @@ public enum DeployStage
     PersistLock,
     EnsureRuntime,
     GenerateManifest,
-    SolidifyManifest,
+    SolidifyManifest
 }

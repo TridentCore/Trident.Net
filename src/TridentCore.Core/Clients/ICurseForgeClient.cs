@@ -15,15 +15,15 @@ public interface ICurseForgeClient
 
     [Get("/v1/mods/search")]
     Task<SearchResponse<ModInfo>> SearchModsAsync(
-        string searchFilter,
+        string? searchFilter,
         uint? classId,
         string? gameVersion,
         ModLoaderTypeModel? modLoaderType,
         string sortOrder = "desc",
         uint index = 0,
         uint pageSize = 50,
-        uint gameId = CurseForgeHelper.GAME_ID
-    );
+        uint gameId = CurseForgeHelper.GAME_ID,
+        string? slug = null);
 
     [Get("/v1/mods/{modId}")]
     Task<ObjectResponse<ModInfo>> GetModAsync(uint modId);
@@ -43,8 +43,7 @@ public interface ICurseForgeClient
         string? gameVersion,
         ModLoaderTypeModel? modLoaderType,
         uint? index,
-        uint? pageSize
-    );
+        uint? pageSize);
 
     [Get("/v1/mods/{modId}/description")]
     Task<ObjectResponse<string>> GetModDescriptionAsync(uint modId);
@@ -55,6 +54,5 @@ public interface ICurseForgeClient
     [Post("/v1/fingerprints/{gameId}")]
     Task<ObjectResponse<FingerprintMatches>> GetFingerprintMatchesByGameId(
         [Body] GetFingerprintMatchesRequest request,
-        uint gameId = CurseForgeHelper.GAME_ID
-    );
+        uint gameId = CurseForgeHelper.GAME_ID);
 }

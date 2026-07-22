@@ -5,29 +5,23 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceBuildCommand(
-    InstanceContextResolver resolver,
-    InstanceManager instanceManager,
-    CliOutput output
-) : InstanceCommandBase<InstanceBuildCommand.Arguments>(resolver)
+public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliOutput output)
+    : InstanceCommandBase<InstanceBuildCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
-        var result = InstanceOperation.BuildAsync(
-            Resolver,
-            instanceManager,
-            instance.Key,
-            settings.Profile,
-            settings.FastMode ?? false,
-            settings.ResolveDependency ?? false,
-            settings.FullCheck ?? false,
-            settings.JavaHome
-        ).GetAwaiter().GetResult();
+        var result = InstanceOperation
+                    .BuildAsync(Resolver,
+                                instanceManager,
+                                instance.Key,
+                                settings.Profile,
+                                settings.FastMode ?? false,
+                                settings.ResolveDependency ?? false,
+                                settings.FullCheck ?? false,
+                                settings.JavaHome)
+                    .GetAwaiter()
+                    .GetResult();
 
         if (output.UseStructuredOutput)
         {
@@ -35,11 +29,7 @@ public class InstanceBuildCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Build completed",
-                ("Instance", result.Key),
-                ("State", result.State)
-            );
+            output.WriteKeyValueTable("Build completed", ("Instance", result.Key), ("State", result.State));
             output.WriteSuccess($"Instance {result.Key} built.");
         }
 

@@ -9,26 +9,22 @@ namespace TridentCore.Cli.Commands.Package.Dependent;
 public class PackageDependentListCommand(
     InstanceContextResolver resolver,
     RepositoryAgent repositories,
-    CliOutput output
-) : InstanceCommandBase<PackageDependentListCommand.Arguments>(resolver)
+    CliOutput output) : InstanceCommandBase<PackageDependentListCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
-        var result = PackageOperation.DependentList(
-            Resolver,
-            repositories,
-            settings.Pref,
-            settings.GameVersion,
-            settings.Loader,
-            settings.ParsedKind,
-            instance.Key,
-            settings.Profile
-        ).GetAwaiter().GetResult();
+        var result = PackageOperation
+                    .DependentList(Resolver,
+                                   repositories,
+                                   settings.Pref,
+                                   settings.GameVersion,
+                                   settings.Loader,
+                                   settings.ParsedKind,
+                                   instance.Key,
+                                   settings.Profile)
+                    .GetAwaiter()
+                    .GetResult();
 
         if (output.UseStructuredOutput)
         {
@@ -43,10 +39,8 @@ public class PackageDependentListCommand(
 
         if (result.Dependents.Count == 0)
         {
-            output.WriteEmptyState(
-                "No dependents found",
-                $"No enabled package in {instance.Key} depends on {settings.Pref}."
-            );
+            output.WriteEmptyState("No dependents found",
+                                   $"No enabled package in {instance.Key} depends on {settings.Pref}.");
             return ExitCodes.SUCCESS;
         }
 
@@ -57,11 +51,9 @@ public class PackageDependentListCommand(
         table.AddColumn("Version");
         foreach (var dep in result.Dependents)
         {
-            table.AddMarkupRow(
-                Markup.Escape(dep.Pref),
-                Markup.Escape(dep.ProjectName ?? "-"),
-                Markup.Escape(dep.VersionName ?? "-")
-            );
+            table.AddMarkupRow(Markup.Escape(dep.Pref),
+                               Markup.Escape(dep.ProjectName ?? "-"),
+                               Markup.Escape(dep.VersionName ?? "-"));
         }
 
         output.WriteTable(table);

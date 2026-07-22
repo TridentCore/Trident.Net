@@ -1,9 +1,6 @@
 namespace TridentCore.Core.Models.MojangLauncherApi;
 
-public record MinecraftReleasePatchesResponse(
-    int Version,
-    IReadOnlyList<MinecraftReleasePatchesResponse.Entry> Entries
-)
+public record MinecraftReleasePatchesResponse(int Version, IReadOnlyList<MinecraftReleasePatchesResponse.Entry> Entries)
 {
     #region Nested type: Entry
 
@@ -15,8 +12,7 @@ public record MinecraftReleasePatchesResponse(
         DateTimeOffset Date,
         string ContentPath,
         string ShortText,
-        Entry.EntryImage Image
-    )
+        Entry.EntryImage Image)
     {
         #region Nested type: EntryImage
 

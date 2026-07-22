@@ -9,34 +9,25 @@ public class InstanceInstallCommand(
     InstanceManager instanceManager,
     RepositoryAgent repositories,
     TrackerAwaiter awaiter,
-    CliOutput output
-) : Command<InstanceInstallCommand.Arguments>
+    CliOutput output) : Command<InstanceInstallCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var tracker = InstanceOperation
-            .StartInstallAsync(instanceManager, repositories, settings.Pref, settings.Identity)
-            .GetAwaiter()
-            .GetResult();
+                     .StartInstallAsync(instanceManager, repositories, settings.Pref, settings.Identity)
+                     .GetAwaiter()
+                     .GetResult();
         awaiter.AwaitInstallAsync(tracker, CancellationToken.None).GetAwaiter().GetResult();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new { action = "install", key = tracker.Key, source = tracker.Reference }
-            );
+            output.WriteData(new { action = "install", key = tracker.Key, source = tracker.Reference });
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Modpack installed",
-                ("Instance", tracker.Key),
-                ("Source", tracker.Reference ?? "-")
-            );
+            output.WriteKeyValueTable("Modpack installed",
+                                      ("Instance", tracker.Key),
+                                      ("Source", tracker.Reference ?? "-"));
             output.WriteSuccess($"Instance {tracker.Key} installed.");
         }
 

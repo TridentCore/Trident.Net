@@ -19,7 +19,7 @@ public static class LoaderHelper
             LOADERID_FABRIC => "Fabric",
             LOADERID_QUILT => "Quilt",
             LOADERID_FLINT => "Flint",
-            _ => identity,
+            _ => identity
         };
 
     public static string ToDisplayLabel(string identity, string version) => $"{ToDisplayName(identity)} {version}";

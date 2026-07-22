@@ -8,14 +8,9 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryListCommand(
     UserRepositoryStore userRepositories,
     CliRepositoryProviderAccessor combined,
-    CliOutput output
-) : Command<RepositoryListCommand.Arguments>
+    CliOutput output) : Command<RepositoryListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var repositories = RepositoryOperation.List(userRepositories, combined);
 
@@ -27,10 +22,8 @@ public class RepositoryListCommand(
 
         if (repositories.Count == 0)
         {
-            output.WriteEmptyState(
-                "No repositories",
-                "Add one with: trident repository add --label <label> --endpoint <uri>"
-            );
+            output.WriteEmptyState("No repositories",
+                                   "Add one with: trident repository add --label <label> --endpoint <uri>");
             return ExitCodes.SUCCESS;
         }
 
@@ -43,13 +36,11 @@ public class RepositoryListCommand(
         table.AddColumn("Auth");
         foreach (var repo in repositories)
         {
-            table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(repo.Label)}[/]",
-                Markup.Escape(repo.Driver),
-                Markup.Escape(repo.Endpoint),
-                CliOutput.FormatBoolean(repo.UserDefined, "user", "built-in"),
-                CliOutput.FormatBoolean(repo.HasAuthorization)
-            );
+            table.AddMarkupRow($"[cyan]{Markup.Escape(repo.Label)}[/]",
+                               Markup.Escape(repo.Driver),
+                               Markup.Escape(repo.Endpoint),
+                               CliOutput.FormatBoolean(repo.UserDefined, "user", "built-in"),
+                               CliOutput.FormatBoolean(repo.HasAuthorization));
         }
 
         output.WriteTable(table);

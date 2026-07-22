@@ -7,20 +7,14 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutput output)
     : Command<RepositoryAddCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = RepositoryOperation.Add(
-            userRepositories,
-            settings.Label,
-            settings.Driver,
-            settings.Endpoint,
-            settings.ApiKey,
-            settings.UserAgent
-        );
+        var result = RepositoryOperation.Add(userRepositories,
+                                             settings.Label,
+                                             settings.Driver,
+                                             settings.Endpoint,
+                                             settings.ApiKey,
+                                             settings.UserAgent);
 
         if (output.UseStructuredOutput)
         {
@@ -31,19 +25,17 @@ public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutpu
                 result.Driver,
                 result.Endpoint,
                 hasAuthorization = result.HasAuthorization,
-                result.UserAgent,
+                result.UserAgent
             });
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Repository saved",
-                ("Label", result.Label),
-                ("Driver", result.Driver),
-                ("Endpoint", result.Endpoint),
-                ("Authorization", result.HasAuthorization ? "yes" : "no"),
-                ("User Agent", result.UserAgent)
-            );
+            output.WriteKeyValueTable("Repository saved",
+                                      ("Label", result.Label),
+                                      ("Driver", result.Driver),
+                                      ("Endpoint", result.Endpoint),
+                                      ("Authorization", result.HasAuthorization ? "yes" : "no"),
+                                      ("User Agent", result.UserAgent));
             output.WriteSuccess($"Repository {result.Label} saved.");
         }
 

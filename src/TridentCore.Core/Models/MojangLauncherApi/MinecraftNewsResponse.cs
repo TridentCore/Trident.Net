@@ -1,9 +1,6 @@
 namespace TridentCore.Core.Models.MojangLauncherApi;
 
-public record MinecraftNewsResponse(
-    int Version,
-    IReadOnlyList<MinecraftNewsResponse.Entry> Entries
-)
+public record MinecraftNewsResponse(int Version, IReadOnlyList<MinecraftNewsResponse.Entry> Entries)
 {
     #region Nested type: Entry
 
@@ -20,16 +17,11 @@ public record MinecraftNewsResponse(
         string ArticleBody,
         IReadOnlyList<string> NewsType,
         string Id,
-        bool? NeedsTranslation
-    )
+        bool? NeedsTranslation)
     {
         #region Nested type: EntryImage
 
-        public record EntryImage(
-            string Title,
-            Uri Url,
-            EntryImage.ImageDimensions? Dimensions = null
-        )
+        public record EntryImage(string Title, Uri Url, EntryImage.ImageDimensions? Dimensions = null)
         {
             #region Nested type: ImageDimensions
 

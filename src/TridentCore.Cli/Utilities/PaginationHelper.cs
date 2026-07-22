@@ -9,8 +9,7 @@ public static class PaginationHelper
         IPaginationHandle<T> handle,
         int index,
         int limit,
-        [EnumeratorCancellation] CancellationToken cancellationToken
-    )
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         if (limit <= 0 || index < 0 || (ulong)index >= handle.TotalCount)
         {
@@ -25,9 +24,7 @@ public static class PaginationHelper
         for (var page = startPage; yielded < limit; page++)
         {
             handle.PageIndex = page;
-            var batch = (
-                await handle.FetchAsync(cancellationToken).ConfigureAwait(false)
-            ).ToArray();
+            var batch = (await handle.FetchAsync(cancellationToken).ConfigureAwait(false)).ToArray();
             if (batch.Length == 0)
             {
                 yield break;

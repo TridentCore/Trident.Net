@@ -5,22 +5,18 @@ namespace TridentCore.Core.Utilities;
 
 public static partial class ScrapHelper
 {
-    [GeneratedRegex(
-        @"^\[(?:(?<date>.+?)\s+)?(?<time>\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\] \[(?<thread>[^\]/]+)\/(?<level>[A-Z]+)\](?: \[(?<source>[^\]]+)\])?: (?<message>.*)$"
-    )]
-    private static partial Regex GenerateRegex();
+    private static readonly Regex pattern = GenerateRegex();
 
-    private static Regex pattern = GenerateRegex();
+    [GeneratedRegex(@"^\[(?:(?<date>.+?)\s+)?(?<time>\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\] \[(?<thread>[^\]/]+)\/(?<level>[A-Z]+)\](?: \[(?<source>[^\]]+)\])?: (?<message>.*)$")]
+    private static partial Regex GenerateRegex();
 
     public static Scrap Parse(string data)
     {
         var match = pattern.Match(data);
-        if (
-            match.Success
-            && match.Groups.TryGetValue("level", out var level)
-            && match.Groups.TryGetValue("thread", out var thread)
-            && match.Groups.TryGetValue("message", out var message)
-        )
+        if (match.Success
+         && match.Groups.TryGetValue("level", out var level)
+         && match.Groups.TryGetValue("thread", out var thread)
+         && match.Groups.TryGetValue("message", out var message))
         {
             match.Groups.TryGetValue("source", out var sender);
 
@@ -30,25 +26,24 @@ public static partial class ScrapHelper
             {
                 parsedDate = date.Value;
             }
+
             if (match.Groups.TryGetValue("time", out var time) && !string.IsNullOrEmpty(time.Value))
             {
                 parsedTime = time.Value;
             }
 
-            return new(
-                message.Value,
-                level.Value.ToUpper() switch
-                {
-                    "INFO" => ScrapLevel.Information,
-                    "WARN" => ScrapLevel.Warning,
-                    "ERROR" => ScrapLevel.Error,
-                    _ => ScrapLevel.Information,
-                },
-                parsedDate,
-                parsedTime,
-                thread.Value,
-                sender?.Value
-            );
+            return new(message.Value,
+                       level.Value.ToUpper() switch
+                       {
+                           "INFO" => ScrapLevel.Information,
+                           "WARN" => ScrapLevel.Warning,
+                           "ERROR" => ScrapLevel.Error,
+                           _ => ScrapLevel.Information
+                       },
+                       parsedDate,
+                       parsedTime,
+                       thread.Value,
+                       sender?.Value);
         }
 
         return new(data);

@@ -7,11 +7,7 @@ namespace TridentCore.Cli.Commands.Loader;
 public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output)
     : InstanceCommandBase<LoaderGetCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = LoaderOperation.Get(Resolver, instance.Key, settings.Profile);
@@ -23,15 +19,13 @@ public class LoaderGetCommand(InstanceContextResolver resolver, CliOutput output
             return ExitCodes.SUCCESS;
         }
 
-        output.WriteKeyValueTable(
-            "Instance loader",
-            ("Instance", result.Key),
-            ("Loader", loader.Lurl),
-            ("Name", loader.Name),
-            ("Identity", loader.Identity),
-            ("Version", loader.Version),
-            ("Supported", loader.Supported ? "yes" : "no")
-        );
+        output.WriteKeyValueTable("Instance loader",
+                                  ("Instance", result.Key),
+                                  ("Loader", loader.Lurl),
+                                  ("Name", loader.Name),
+                                  ("Identity", loader.Identity),
+                                  ("Version", loader.Version),
+                                  ("Supported", loader.Supported ? "yes" : "no"));
         if (loader.Lurl is null)
         {
             output.WriteWarning("This instance does not have a loader configured.");

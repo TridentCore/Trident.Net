@@ -6,16 +6,12 @@ namespace TridentCore.Cli.Commands.Repository;
 
 public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var drivers = new[]
         {
             new { driver = "curseforge", apiKeyHeader = "x-api-key" },
-            new { driver = "modrinth", apiKeyHeader = "Authorization" },
+            new { driver = "modrinth", apiKeyHeader = "Authorization" }
         };
 
         if (output.UseStructuredOutput)
@@ -24,24 +20,18 @@ public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCom
             return ExitCodes.SUCCESS;
         }
 
-        AnsiConsole.Write(
-            new Panel(
-                "User repositories can override built-in labels. API keys are stored locally and never printed by list/status commands."
-            )
-                .Header("Repository drivers")
-                .RoundedBorder()
-                .BorderColor(Color.Blue)
-        );
+        AnsiConsole.Write(new
+                              Panel("User repositories can override built-in labels. API keys are stored locally and never printed by list/status commands.")
+                         .Header("Repository drivers")
+                         .RoundedBorder()
+                         .BorderColor(Color.Blue));
         var table = new Table().RoundedBorder();
         table.Title = new("[bold]Supported drivers[/]");
         table.AddColumn("Driver");
         table.AddColumn("API Key Header");
         foreach (var driver in drivers)
         {
-            table.AddMarkupRow(
-                $"[cyan]{Markup.Escape(driver.driver)}[/]",
-                Markup.Escape(driver.apiKeyHeader)
-            );
+            table.AddMarkupRow($"[cyan]{Markup.Escape(driver.driver)}[/]", Markup.Escape(driver.apiKeyHeader));
         }
 
         output.WriteTable(table);

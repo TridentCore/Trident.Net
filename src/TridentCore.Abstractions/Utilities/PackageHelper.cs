@@ -13,7 +13,7 @@ public static class PackageHelper
     {
         if (Parser.Default.TryParse(pref, out var parsed))
         {
-            result = new PackageIdentifier(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version);
+            result = new(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version);
             return true;
         }
 
@@ -47,8 +47,7 @@ public static class PackageHelper
         {
             switch (key)
             {
-                case "type" when value is not null
-                    && Enum.TryParse<ResourceKind>(value, ignoreCase: true, out var k):
+                case "type" when value is not null && Enum.TryParse<ResourceKind>(value, true, out var k):
                     kind = k;
                     break;
                 case "version":
@@ -59,31 +58,27 @@ public static class PackageHelper
                     break;
             }
         }
+
         return new(version, loader, kind);
     }
 
     public static PackageIdentifier Parse(string pref) =>
-        TryParse(pref, out PackageIdentifier result)
-            ? result
-            : throw new System.FormatException($"Invalid package reference: {pref}");
+        TryParse(pref, out var result) ? result : throw new FormatException($"Invalid package reference: {pref}");
 
     public static bool IsMatched(string left, string label, string? ns, string pid) =>
-        TryParse(left, out PackageIdentifier l)
-        && string.Equals(l.Repository, label, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(l.Namespace, ns, StringComparison.Ordinal)
-        && string.Equals(l.Identity, pid, StringComparison.Ordinal);
+        TryParse(left, out var l)
+     && string.Equals(l.Repository, label, StringComparison.OrdinalIgnoreCase)
+     && string.Equals(l.Namespace, ns, StringComparison.Ordinal)
+     && string.Equals(l.Identity, pid, StringComparison.Ordinal);
 
     public static bool IsMatched(string left, string right) =>
-        left == right
-        || (TryParse(right, out PackageIdentifier r) && IsMatched(left, r.Repository, r.Namespace, r.Identity));
+        left == right || (TryParse(right, out var r) && IsMatched(left, r.Repository, r.Namespace, r.Identity));
 
     public static bool IsMatched(string left, Package right) =>
         IsMatched(left, right.Label, right.Namespace, right.ProjectId);
 
     public static string ExtractProjectIdentityIfValid(string pref) =>
-        TryParse(pref, out PackageIdentifier result)
-            ? ToPref(result.Repository, result.Namespace, result.Identity, null)
-            : pref;
+        TryParse(pref, out var result) ? ToPref(result.Repository, result.Namespace, result.Identity, null) : pref;
 
     public static string ToPref(string label, string? ns, string pid, string? vid) =>
         Builder.Build(label, ns, pid, vid);
@@ -97,30 +92,20 @@ public static class PackageHelper
     public static string SafeMigrate(string? value)
     {
         if (string.IsNullOrEmpty(value))
+        {
             return string.Empty;
+        }
+
         return Parser.Default.TryParse(value, out var parsed) ? parsed.Build() : value;
     }
 
     // vid 存在则固定为特定版本，vid 不存在且 filter 存在则为浮动版本
-    public static string Identify(
-        string label,
-        string? ns,
-        string pid,
-        string? vid,
-        Filter? filter
-    ) =>
-        Builder.Build(
-            label,
-            ns,
-            pid,
-            vid,
-            vid is null && filter is not null
-                ?
-                [
-                    ("type", filter.Kind?.ToString()),
-                    ("version", filter.Version),
-                    ("loader", filter.Loader),
-                ]
-                : null
-        );
+    public static string Identify(string label, string? ns, string pid, string? vid, Filter? filter) =>
+        Builder.Build(label,
+                      ns,
+                      pid,
+                      vid,
+                      vid is null && filter is not null
+                          ? [("type", filter.Kind?.ToString()), ("version", filter.Version), ("loader", filter.Loader)]
+                          : null);
 }

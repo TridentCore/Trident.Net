@@ -5,14 +5,9 @@ using TridentCore.Cli.Services;
 
 namespace TridentCore.Cli.Commands.Account;
 
-public class AccountListCommand(AccountStore accounts, CliOutput output)
-    : Command<AccountListCommand.Arguments>
+public class AccountListCommand(AccountStore accounts, CliOutput output) : Command<AccountListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = AccountOperation.List(accounts);
         if (output.UseStructuredOutput)
@@ -23,10 +18,7 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
 
         if (result.Count == 0)
         {
-            output.WriteEmptyState(
-                "No accounts",
-                "Add one with: trident account add --type offline --username <name>"
-            );
+            output.WriteEmptyState("No accounts", "Add one with: trident account add --type offline --username <name>");
             return ExitCodes.SUCCESS;
         }
 
@@ -40,23 +32,17 @@ public class AccountListCommand(AccountStore accounts, CliOutput output)
         table.AddColumn("Last Used");
         foreach (var account in result)
         {
-            var typeColor = string.Equals(
-                account.Type,
-                "microsoft",
-                StringComparison.OrdinalIgnoreCase
-            )
-                ? "green"
-                : "yellow";
-            table.AddMarkupRow(
-                Markup.Escape(account.Uuid),
-                $"[cyan]{Markup.Escape(account.Username)}[/]",
-                CliOutput.FormatStatus(account.Type, typeColor),
-                CliOutput.FormatBoolean(account.IsDefault, "default", "no"),
-                Markup.Escape(account.EnrolledAt.ToString("u")),
-                account.LastUsedAt is null
-                    ? "[dim]-[/]"
-                    : Markup.Escape(account.LastUsedAt.Value.ToString("u"))
-            );
+            var typeColor = string.Equals(account.Type, "microsoft", StringComparison.OrdinalIgnoreCase)
+                                ? "green"
+                                : "yellow";
+            table.AddMarkupRow(Markup.Escape(account.Uuid),
+                               $"[cyan]{Markup.Escape(account.Username)}[/]",
+                               CliOutput.FormatStatus(account.Type, typeColor),
+                               CliOutput.FormatBoolean(account.IsDefault, "default"),
+                               Markup.Escape(account.EnrolledAt.ToString("u")),
+                               account.LastUsedAt is null
+                                   ? "[dim]-[/]"
+                                   : Markup.Escape(account.LastUsedAt.Value.ToString("u")));
         }
 
         output.WriteTable(table);

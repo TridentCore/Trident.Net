@@ -5,8 +5,7 @@ public record MinecraftStoreResponse(
     string? ErrorMessage,
     IReadOnlyList<MinecraftStoreResponse.Item> Items,
     string Signature,
-    int KeyId
-)
+    int KeyId)
 {
     #region Nested type: Item
 

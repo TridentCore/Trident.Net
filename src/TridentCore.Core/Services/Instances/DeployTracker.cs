@@ -9,8 +9,7 @@ public class DeployTracker(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted = null,
-    CancellationToken token = default
-) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
 {
     public override InstanceState Kind => InstanceState.Deploying;
 
@@ -26,12 +25,9 @@ public class DeployTracker(
 
     protected override void OnStart()
     {
-        StageStream.Subscribe(stage =>
-            ReportProgress(new TrackerProgress.Indeterminate(stage.ToString())));
-        ProgressStream.Subscribe(x =>
-            ReportProgress(
-                new TrackerProgress.Determinate(CurrentStage.ToString(), (double)x.Current / x.Total)
-            ));
+        StageStream.Subscribe(stage => ReportProgress(new TrackerProgress.Indeterminate(stage.ToString())));
+        ProgressStream.Subscribe(x => ReportProgress(new TrackerProgress.Determinate(CurrentStage.ToString(),
+                                                         (double)x.Current / x.Total)));
         base.OnStart();
     }
 

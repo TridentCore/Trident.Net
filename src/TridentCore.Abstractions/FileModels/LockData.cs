@@ -43,8 +43,7 @@ public record LockData
         IReadOnlyList<string> GameArguments,
         IReadOnlyList<string> JavaArguments,
         IReadOnlyList<Library> Libraries,
-        AssetData AssetIndex
-    );
+        AssetData AssetIndex);
 
     #endregion
 
@@ -63,12 +62,15 @@ public record LockData
         string? Source,
         Package Resolved,
         PackageRule Rule,
-        string? SuppressedBy = null
-    )
+        string? SuppressedBy = null)
     {
         [Obsolete("compat: legacy purl key, remove once on-disk lock files have migrated")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Purl { get => null; init => Pref = PackageHelper.SafeMigrate(value); }
+        public string? Purl
+        {
+            get => null;
+            init => Pref = PackageHelper.SafeMigrate(value);
+        }
     }
 
     #endregion
@@ -90,23 +92,11 @@ public record LockData
     #region Nested type: Library
 
     // IsNative 决定是否解压到 Natives 目录，IsPresent 决定是否添加到 ClassPath，两者互不干扰
-    public record Library(
-        Library.Identity Id,
-        Uri Url,
-        FileHash? Hash,
-        bool IsNative = false,
-        bool IsPresent = true
-    )
+    public record Library(Library.Identity Id, Uri Url, FileHash? Hash, bool IsNative = false, bool IsPresent = true)
     {
         #region Nested type: Identity
 
-        public record Identity(
-            string Namespace,
-            string Name,
-            string Version,
-            string? Platform,
-            string Extension
-        );
+        public record Identity(string Namespace, string Name, string Version, string? Platform, string Extension);
 
         #endregion
     }

@@ -7,5 +7,4 @@ public record TokenResponse(
     string AccessToken,
     string RefreshToken,
     string IdToken,
-    int ExpiresIn
-);
+    int ExpiresIn);

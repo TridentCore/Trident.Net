@@ -10,11 +10,7 @@ namespace TridentCore.Cli.Commands.Loader;
 public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOutput output)
     : Command<LoaderVersionListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;
@@ -23,8 +19,13 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
     private async Task ExecuteAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var result = await LoaderOperation
-            .VersionList(prismLauncher, settings.LoaderId, settings.Version, settings.Sort, settings.Index, settings.Limit)
-            .ConfigureAwait(false);
+                          .VersionList(prismLauncher,
+                                       settings.LoaderId,
+                                       settings.Version,
+                                       settings.Sort,
+                                       settings.Index,
+                                       settings.Limit)
+                          .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)
         {
@@ -34,17 +35,14 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
 
         if (result.Items.Count == 0)
         {
-            output.WriteEmptyState(
-                "No loader versions found",
-                $"No {settings.LoaderId} versions matched Minecraft {settings.Version}."
-            );
+            output.WriteEmptyState("No loader versions found",
+                                   $"No {settings.LoaderId} versions matched Minecraft {settings.Version}.");
             return;
         }
 
         var table = new Table().RoundedBorder();
-        table.Title = new(
-            $"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]"
-        );
+        table.Title =
+            new($"[bold]{Markup.Escape(settings.LoaderId)} versions for Minecraft {Markup.Escape(settings.Version)}[/]");
         table.AddColumn("Version");
         table.AddColumn("LURL");
         table.AddColumn("Type");
@@ -52,13 +50,11 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         table.AddColumn("Released");
         foreach (var item in result.Items)
         {
-            table.AddMarkupRow(
-                Markup.Escape(item.Version),
-                Markup.Escape(item.Lurl),
-                Markup.Escape(item.Type),
-                CliOutput.FormatBoolean(item.Recommended, "recommended", "no"),
-                Markup.Escape(item.ReleaseTime.ToString("u"))
-            );
+            table.AddMarkupRow(Markup.Escape(item.Version),
+                               Markup.Escape(item.Lurl),
+                               Markup.Escape(item.Type),
+                               CliOutput.FormatBoolean(item.Recommended, "recommended"),
+                               Markup.Escape(item.ReleaseTime.ToString("u")));
         }
 
         output.WriteTable(table);
@@ -81,7 +77,6 @@ public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOut
         [CommandArgument(0, "<LOADER_ID>")]
         public required string LoaderId { get; set; }
 
-        public override ValidationResult Validate() =>
-            PagingValidation.Validate(Sort, Index, Limit);
+        public override ValidationResult Validate() => PagingValidation.Validate(Sort, Index, Limit);
     }
 }

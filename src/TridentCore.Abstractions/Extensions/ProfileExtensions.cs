@@ -17,11 +17,7 @@ public static class ProfileExtensions
 
     extension(Profile profile)
     {
-        public bool TryGetOverride<T>(
-            string key,
-            [MaybeNullWhen(false)] out T value,
-            T? defaultValue = default
-        )
+        public bool TryGetOverride<T>(string key, [MaybeNullWhen(false)] out T value, T? defaultValue = default)
         {
             if (profile.Overrides.TryGetValue(key, out var result) && result is T rv)
             {
@@ -60,12 +56,7 @@ public static class ProfileExtensions
         {
             var overrides = new Dictionary<string, object>(profile.Overrides);
 
-            return new()
-            {
-                Name = profile.Name,
-                Setup = profile.Setup.Clone(),
-                Overrides = overrides,
-            };
+            return new() { Name = profile.Name, Setup = profile.Setup.Clone(), Overrides = overrides };
         }
     }
 

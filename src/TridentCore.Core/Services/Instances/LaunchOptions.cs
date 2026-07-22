@@ -11,8 +11,7 @@ public class LaunchOptions(
     string? quickConnectAddress = null,
     uint maxMemory = 4096,
     string? additionalArguments = null,
-    string? commandWrapperTemplate = null
-)
+    string? commandWrapperTemplate = null)
 {
     public LaunchMode Mode { get; set; } = launchMode;
 

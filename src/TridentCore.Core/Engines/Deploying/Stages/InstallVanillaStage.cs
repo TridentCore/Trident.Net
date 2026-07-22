@@ -9,17 +9,13 @@ namespace TridentCore.Core.Engines.Deploying.Stages;
 public class InstallVanillaStage(
     ILogger<InstallVanillaStage> logger,
     PrismLauncherService prismLauncherService,
-    AuthlibInjectorService authlibInjectorService
-) : StageBase
+    AuthlibInjectorService authlibInjectorService) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         // Cache hit: platform unchanged and a whole artifact exists → migrate it atomically.
         // vanilla and loader are coupled (Forge rewrites args/mainClass), so they travel together.
-        if (
-            Context.BaseLock?.Platform == Context.Lock.Platform
-            && Context.BaseLock.Artifact is { } cached
-        )
+        if (Context.BaseLock?.Platform == Context.Lock.Platform && Context.BaseLock.Artifact is { } cached)
         {
             Context.Lock = Context.Lock with { Artifact = cached };
             logger.LogInformation("Migrated artifact from BaseLock (platform unchanged)");
@@ -37,14 +33,12 @@ public class InstallVanillaStage(
         var javaArguments = new List<string>();
 
         var version = await prismLauncherService
-            .GetVersionAsync(PrismLauncherService.UID_MINECRAFT, Context.Setup.Version, token)
-            .ConfigureAwait(false);
+                           .GetVersionAsync(PrismLauncherService.UID_MINECRAFT, Context.Setup.Version, token)
+                           .ConfigureAwait(false);
         logger.LogInformation("Got version index {version}({uid})", version.Version, version.Uid);
 
         // Libraries
-        var patched = await prismLauncherService
-            .GetPatchedLibraries(version, token)
-            .ConfigureAwait(false);
+        var patched = await prismLauncherService.GetPatchedLibraries(version, token).ConfigureAwait(false);
         PrismLauncherService.AddValidatedLibrariesToArtifact(libraries, patched);
 
         logger.LogInformation("Libraries added, refer to artifact file for details");
@@ -77,9 +71,8 @@ public class InstallVanillaStage(
 
         if (OperatingSystem.IsWindows())
         {
-            javaArguments.Add(
-                "-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump"
-            );
+            javaArguments
+               .Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
         }
 
         javaArguments.AddRange([
@@ -94,7 +87,7 @@ public class InstallVanillaStage(
             // 最大内存
             "-Xmx${jvm_max_memory}",
             "-cp",
-            "${classpath}",
+            "${classpath}"
         ]);
 
         logger.LogInformation("Jvm arguments generated, refer to artifact file for details");
@@ -125,23 +118,14 @@ public class InstallVanillaStage(
         logger.LogInformation("Set main class path to {mainClass}", mainClass);
 
         // authlib-injector (always present on disk, only activated via -javaagent at launch)
-        var aiArtifact = await authlibInjectorService
-            .GetLatestAsync(token)
-            .ConfigureAwait(false);
+        var aiArtifact = await authlibInjectorService.GetLatestAsync(token).ConfigureAwait(false);
         var aiLibraryId = AuthlibInjectorService.LibraryIdentity(aiArtifact.Version);
         libraries.AddLibrary(new(aiLibraryId, aiArtifact.DownloadUrl, aiArtifact.Hash, false, false));
         logger.LogInformation("authlib-injector {version} registered as library", aiArtifact.Version);
 
         Context.Lock = Context.Lock with
         {
-            Artifact = new(
-                           mainClass,
-                           firstJreVersion,
-                           gameArguments,
-                           javaArguments,
-                           libraries,
-                           assetIndex
-                          )
+            Artifact = new(mainClass, firstJreVersion, gameArguments, javaArguments, libraries, assetIndex)
         };
     }
 

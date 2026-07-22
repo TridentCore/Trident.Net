@@ -8,8 +8,7 @@ public class InstallTracker(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted = null,
-    CancellationToken token = default
-) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
 {
     public override InstanceState Kind => InstanceState.Installing;
 
@@ -20,11 +19,9 @@ public class InstallTracker(
 
     protected override void OnStart()
     {
-        ProgressStream.Subscribe(p =>
-            ReportProgress(p.HasValue
-                ? new TrackerProgress.Determinate(null, p.Value)
-                : new TrackerProgress.Indeterminate(null))
-        );
+        ProgressStream.Subscribe(p => ReportProgress(p.HasValue
+                                                         ? new TrackerProgress.Determinate(null, p.Value)
+                                                         : new TrackerProgress.Indeterminate(null)));
         base.OnStart();
     }
 

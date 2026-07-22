@@ -6,16 +6,13 @@ internal static class RepositoryDtos
 {
     public static RepositoryProfileDto FromProvider(
         IRepositoryProviderAccessor.ProviderProfile profile,
-        bool userDefined
-    ) =>
-        new(
-            profile.Label,
+        bool userDefined) =>
+        new(profile.Label,
             profile.Driver.ToString(),
             profile.Endpoint,
             userDefined,
             profile.AuthorizationHeader is not null,
-            profile.UserAgent
-        );
+            profile.UserAgent);
 }
 
 internal sealed record RepositoryProfileDto(
@@ -24,5 +21,4 @@ internal sealed record RepositoryProfileDto(
     string Endpoint,
     bool UserDefined,
     bool HasAuthorization,
-    string? UserAgent
-);
+    string? UserAgent);

@@ -20,8 +20,7 @@ public interface IModrinthClient
         string facets,
         string? index = null,
         uint offset = 0,
-        uint limit = 10
-    );
+        uint limit = 10);
 
     [Get("/v3/project/{projectId}")]
     Task<ProjectInfo> GetProjectAsync(string projectId);
@@ -49,8 +48,7 @@ public interface IModrinthClient
         [AliasAs("loader_fields")] string? loaderFields = null,
         [AliasAs("include_changelog")] bool includeChangelog = false,
         uint? limit = null,
-        uint? offset = null
-    );
+        uint? offset = null);
 
     // NOTE: pinned to sha1 — the only call site (IdentifyAsync) hashes with SHA1. The API
     //  auto-detects by hash length when omitted, but Refit always sends this default, so a

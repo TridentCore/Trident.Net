@@ -6,8 +6,7 @@ public record ModLoader(
     IReadOnlyList<string> SupportedProjectTypes,
     IReadOnlyList<string> SupportedGames,
     IReadOnlyList<string> SupportedFields,
-    ModLoader.LoaderMetadata Metadata
-)
+    ModLoader.LoaderMetadata Metadata)
 {
     #region Nested type: LoaderMetadata
 

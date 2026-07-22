@@ -34,9 +34,7 @@ public static class NumericConversionHelper
                 return true;
             }
         }
-        catch (Exception ex)
-            when (ex is InvalidCastException or OverflowException or FormatException)
-        { }
+        catch (Exception ex) when (ex is InvalidCastException or OverflowException or FormatException) { }
 
         value = default!;
         return false;
@@ -46,17 +44,17 @@ public static class NumericConversionHelper
         Type.GetTypeCode(type) switch
         {
             TypeCode.Byte
-            or TypeCode.SByte
-            or TypeCode.Int16
-            or TypeCode.UInt16
-            or TypeCode.Int32
-            or TypeCode.UInt32
-            or TypeCode.Int64
-            or TypeCode.UInt64
-            or TypeCode.Single
-            or TypeCode.Double
-            or TypeCode.Decimal => true,
-            _ => false,
+             or TypeCode.SByte
+             or TypeCode.Int16
+             or TypeCode.UInt16
+             or TypeCode.Int32
+             or TypeCode.UInt32
+             or TypeCode.Int64
+             or TypeCode.UInt64
+             or TypeCode.Single
+             or TypeCode.Double
+             or TypeCode.Decimal => true,
+            _ => false
         };
 
     private static bool TryConvertJsonNumber<T>(JsonElement element, Type targetType, out T value)
@@ -82,7 +80,7 @@ public static class NumericConversionHelper
                 TypeCode.Single => element.GetSingle(),
                 TypeCode.Double => element.GetDouble(),
                 TypeCode.Decimal => element.GetDecimal(),
-                _ => null,
+                _ => null
             };
 
             if (converted is T typed)
@@ -91,9 +89,7 @@ public static class NumericConversionHelper
                 return true;
             }
         }
-        catch (Exception ex)
-            when (ex is InvalidOperationException or FormatException or OverflowException)
-        { }
+        catch (Exception ex) when (ex is InvalidOperationException or FormatException or OverflowException) { }
 
         value = default!;
         return false;

@@ -22,6 +22,12 @@ public class CompressedProfilePack : IDisposable
     public IReadOnlyList<string> FileNames { get; }
     public Package? Reference { get; set; }
 
+    #region IDisposable Members
+
+    public void Dispose() => _archive.Dispose();
+
+    #endregion
+
     private static string? DetectRootPrefix(IReadOnlyList<string> names)
     {
         string? prefix = null;
@@ -29,25 +35,25 @@ public class CompressedProfilePack : IDisposable
         {
             var slash = name.IndexOf('/');
             if (slash < 0)
+            {
                 return null;
+            }
 
             var top = name[..(slash + 1)];
             if (prefix is null)
+            {
                 prefix = top;
+            }
             else if (prefix != top)
+            {
                 return null;
+            }
         }
 
         return prefix;
     }
 
-    #region IDisposable Members
-
-    public void Dispose() => _archive.Dispose();
-
-    #endregion
-
     public Stream Open(string fileName) =>
         _archive.GetEntry(fileName)?.Open()
-        ?? throw new FileNotFoundException($"Entry '{fileName}' not found in the profile pack.");
+     ?? throw new FileNotFoundException($"Entry '{fileName}' not found in the profile pack.");
 }

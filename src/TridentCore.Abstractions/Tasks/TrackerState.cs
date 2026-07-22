@@ -1,9 +1,3 @@
 namespace TridentCore.Abstractions.Tasks;
 
-public enum TrackerState
-{
-    Idle,
-    Running,
-    Finished,
-    Faulted,
-}
+public enum TrackerState { Idle, Running, Finished, Faulted }

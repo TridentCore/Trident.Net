@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -22,14 +23,9 @@ public class InstanceRunCommand(
     AccountStore accountStore,
     TrackerAwaiter trackerAwaiter,
     CliConfigurationStore configuration,
-    CliOutput output
-) : InstanceCommandBase<InstanceRunCommand.Arguments>(resolver)
+    CliOutput output) : InstanceCommandBase<InstanceRunCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         RunAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;
@@ -41,83 +37,63 @@ public class InstanceRunCommand(
 
         var account = ResolveAccount(settings);
         var profile = instance.Profile;
-        var width =
-            settings.Width
-            ?? profile.GetOverride(
-                TridentProfile.OVERRIDE_WINDOW_WIDTH,
-                configuration.Get(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u)
-            );
-        var height =
-            settings.Height
-            ?? profile.GetOverride(
-                TridentProfile.OVERRIDE_WINDOW_HEIGHT,
-                configuration.Get(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u)
-            );
+        var width = settings.Width
+                 ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_WIDTH,
+                                        configuration.Get(TridentProfile.OVERRIDE_WINDOW_WIDTH, 1270u));
+        var height = settings.Height
+                  ?? profile.GetOverride(TridentProfile.OVERRIDE_WINDOW_HEIGHT,
+                                         configuration.Get(TridentProfile.OVERRIDE_WINDOW_HEIGHT, 720u));
 
-        var launchOptions = new LaunchOptions(
-            launchMode: settings.Mode ?? LaunchMode.Managed,
-            account: account,
-            windowSize: (width, height),
-            quickConnectAddress: settings.QuickConnect
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER,
-                    configuration.Get<string>(TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER)
-                ),
-            maxMemory: settings.MaxMemory
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_JAVA_MAX_MEMORY,
-                    configuration.Get(TridentProfile.OVERRIDE_JAVA_MAX_MEMORY, 4096u)
-                ),
-            additionalArguments: settings.AdditionalArguments
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS,
-                    configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS)
-                ),
-            commandWrapperTemplate: settings.CommandWrapper
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER,
-                    configuration.Get<string>(TridentProfile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)
-                )
-        );
-        var deployOptions = new DeployOptions(
-            settings.FastMode
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
-                    configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE, false)
-                ),
-            settings.ResolveDependency
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
-                    configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY, false)
-                ),
-            settings.FullCheck
-        );
+        var launchOptions = new LaunchOptions(launchMode: settings.Mode ?? LaunchMode.Managed,
+                                              account: account,
+                                              windowSize: (width, height),
+                                              quickConnectAddress:
+                                              settings.QuickConnect
+                                           ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_CONNECT_SERVER,
+                                                                  configuration.Get<string>(TridentProfile
+                                                                     .OVERRIDE_BEHAVIOR_CONNECT_SERVER)),
+                                              maxMemory: settings.MaxMemory
+                                                      ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_MAX_MEMORY,
+                                                                             configuration.Get(TridentProfile
+                                                                                    .OVERRIDE_JAVA_MAX_MEMORY,
+                                                                                 4096u)),
+                                              additionalArguments: settings.AdditionalArguments
+                                                                ?? profile.GetOverride(TridentProfile
+                                                                          .OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS,
+                                                                       configuration.Get<string>(TridentProfile
+                                                                          .OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS)),
+                                              commandWrapperTemplate: settings.CommandWrapper
+                                                                   ?? profile.GetOverride(TridentProfile
+                                                                             .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER,
+                                                                          configuration.Get<string>(TridentProfile
+                                                                             .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)));
+        var deployOptions =
+            new DeployOptions(settings.FastMode
+                           ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
+                                                  configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
+                                                                    false)),
+                              settings.ResolveDependency
+                           ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
+                                                  configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
+                                                                    false)),
+                              settings.FullCheck);
 
-        var locator = JavaHelper.MakeLocator(
-            _ =>
-                settings.JavaHome
-                ?? profile.GetOverride(
-                    TridentProfile.OVERRIDE_JAVA_HOME,
-                    configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_HOME)
-                ),
-            true
-        );
+        var locator = JavaHelper.MakeLocator(_ => settings.JavaHome
+                                               ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_HOME,
+                                                                      configuration.Get<string>(TridentProfile
+                                                                         .OVERRIDE_JAVA_HOME)));
 
         if (!output.UseStructuredOutput)
         {
-            output.WriteKeyValueTable(
-                "Run plan",
-                ("Instance", instance.Key),
-                ("Mode", launchOptions.Mode.ToString()),
-                ("Account", account.Username),
-                ("Deploy", deployOptions.FastMode ? "fast" : "full")
-            );
+            output.WriteKeyValueTable("Run plan",
+                                      ("Instance", instance.Key),
+                                      ("Mode", launchOptions.Mode.ToString()),
+                                      ("Account", account.Username),
+                                      ("Deploy", deployOptions.FastMode ? "fast" : "full"));
         }
 
         var deployTracker = instanceManager.Deploy(instance.Key, deployOptions, locator);
-        await trackerAwaiter
-            .AwaitDeployAsync(deployTracker, cancellationToken)
-            .ConfigureAwait(false);
+        await trackerAwaiter.AwaitDeployAsync(deployTracker, cancellationToken).ConfigureAwait(false);
 
         var tracker = instanceManager.Launch(instance.Key, launchOptions, locator);
 
@@ -133,10 +109,7 @@ public class InstanceRunCommand(
 
     private async Task AwaitLaunchAsync(LaunchTracker tracker, CancellationToken cancellationToken)
     {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(
-            cancellationToken,
-            tracker.Token
-        );
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, tracker.Token);
 
         var scrapDisposable = tracker.ScrapStream.Subscribe(scrap =>
         {
@@ -165,21 +138,17 @@ public class InstanceRunCommand(
                 if (ex is ProcessFaultedException pfe)
                 {
                     output.WriteError($"Game exited with code {pfe.ExitCode}.");
-                    throw new CliException(
-                        $"Game exited with code {pfe.ExitCode}.",
-                        pfe,
-                        ExitCodes.UNKNOWN
-                    );
+                    throw new CliException($"Game exited with code {pfe.ExitCode}.", pfe);
                 }
 
                 var message = ex?.Message ?? "Launch failed.";
                 output.WriteError(message);
                 if (ex != null)
                 {
-                    throw new CliException(message, ex, ExitCodes.UNKNOWN);
+                    throw new CliException(message, ex);
                 }
 
-                throw new CliException(message, ExitCodes.UNKNOWN);
+                throw new CliException(message);
             }
 
             if (output.CanUseRichOutput)
@@ -196,17 +165,12 @@ public class InstanceRunCommand(
         }
     }
 
-    private async Task AwaitFireAndForgetAsync(
-        LaunchTracker tracker,
-        CancellationToken cancellationToken
-    )
+    private async Task AwaitFireAndForgetAsync(LaunchTracker tracker, CancellationToken cancellationToken)
     {
         await output
-            .StatusAsync(
-                $"Launching instance {tracker.Key}...",
-                () => TrackerAwaiter.AwaitCompletionAsync(tracker, cancellationToken)
-            )
-            .ConfigureAwait(false);
+             .StatusAsync($"Launching instance {tracker.Key}...",
+                          () => TrackerAwaiter.AwaitCompletionAsync(tracker, cancellationToken))
+             .ConfigureAwait(false);
 
         if (tracker.State == TrackerState.Faulted)
         {
@@ -215,23 +179,15 @@ public class InstanceRunCommand(
             output.WriteError(message);
             if (ex != null)
             {
-                throw new CliException(message, ex, ExitCodes.UNKNOWN);
+                throw new CliException(message, ex);
             }
 
-            throw new CliException(message, ExitCodes.UNKNOWN);
+            throw new CliException(message);
         }
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(
-                new
-                {
-                    action = "run",
-                    key = tracker.Key,
-                    mode = "fire-and-forget",
-                    state = "launched",
-                }
-            );
+            output.WriteData(new { action = "run", key = tracker.Key, mode = "fire-and-forget", state = "launched" });
         }
         else
         {
@@ -239,10 +195,7 @@ public class InstanceRunCommand(
         }
     }
 
-    private async Task AwaitLaunchStartAsync(
-        LaunchTracker tracker,
-        CancellationToken cancellationToken
-    )
+    private async Task AwaitLaunchStartAsync(LaunchTracker tracker, CancellationToken cancellationToken)
     {
         if (!output.IsInteractive || output.UseStructuredOutput)
         {
@@ -251,22 +204,15 @@ public class InstanceRunCommand(
         }
 
         await AnsiConsole
-            .Status()
-            .Spinner(Spinner.Known.Star)
-            .SpinnerStyle(Style.Parse("green"))
-            .StartAsync(
-                $"[green]Starting game[/] [cyan]{Markup.Escape(tracker.Key)}[/]...",
-                async _ =>
-                    await AwaitLaunchStartCoreAsync(tracker, cancellationToken)
-                        .ConfigureAwait(false)
-            )
-            .ConfigureAwait(false);
+             .Status()
+             .Spinner(Spinner.Known.Star)
+             .SpinnerStyle(Style.Parse("green"))
+             .StartAsync($"[green]Starting game[/] [cyan]{Markup.Escape(tracker.Key)}[/]...",
+                         async _ => await AwaitLaunchStartCoreAsync(tracker, cancellationToken).ConfigureAwait(false))
+             .ConfigureAwait(false);
     }
 
-    private static async Task AwaitLaunchStartCoreAsync(
-        LaunchTracker tracker,
-        CancellationToken cancellationToken
-    )
+    private static async Task AwaitLaunchStartCoreAsync(LaunchTracker tracker, CancellationToken cancellationToken)
     {
         using var cancelReg = cancellationToken.Register(() =>
         {
@@ -291,10 +237,7 @@ public class InstanceRunCommand(
         cancellationToken.ThrowIfCancellationRequested();
     }
 
-    private static bool TryGetStartedProcessId(
-        System.Diagnostics.Process? process,
-        out int processId
-    )
+    private static bool TryGetStartedProcessId(Process? process, out int processId)
     {
         processId = 0;
         if (process == null)
@@ -326,22 +269,16 @@ public class InstanceRunCommand(
             ScrapLevel.Error => ("ERROR", "red"),
             ScrapLevel.Warning => ("WARN", "yellow"),
             ScrapLevel.Information => ("INFO", "green"),
-            _ => ("GAME", "cyan"),
+            _ => ("GAME", "cyan")
         };
-        var time = string.IsNullOrWhiteSpace(scrap.Time)
-            ? "[dim]--:--:--[/]"
-            : $"[grey]{Markup.Escape(scrap.Time)}[/]";
-        var thread = string.IsNullOrWhiteSpace(scrap.Thread)
-            ? "[dim]-[/]"
-            : $"[dim]{Markup.Escape(scrap.Thread)}[/]";
+        var time = string.IsNullOrWhiteSpace(scrap.Time) ? "[dim]--:--:--[/]" : $"[grey]{Markup.Escape(scrap.Time)}[/]";
+        var thread = string.IsNullOrWhiteSpace(scrap.Thread) ? "[dim]-[/]" : $"[dim]{Markup.Escape(scrap.Thread)}[/]";
         var sender = string.IsNullOrWhiteSpace(scrap.Sender)
-            ? string.Empty
-            : $" [purple]{Markup.Escape(scrap.Sender)}[/]";
+                         ? string.Empty
+                         : $" [purple]{Markup.Escape(scrap.Sender)}[/]";
         var message = Markup.Escape(scrap.Message);
 
-        AnsiConsole.MarkupLine(
-            $"{time} [{color}]{level,-5}[/] [grey]{thread}[/]{sender} {message}"
-        );
+        AnsiConsole.MarkupLine($"{time} [{color}]{level,-5}[/] [grey]{thread}[/]{sender} {message}");
     }
 
     private IAccount ResolveAccount(Arguments settings)
@@ -350,20 +287,20 @@ public class InstanceRunCommand(
 
         if (!string.IsNullOrEmpty(settings.Account))
         {
-            var match = accounts.FirstOrDefault(a =>
-                string.Equals(a.Uuid, settings.Account, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(a.Username, settings.Account, StringComparison.OrdinalIgnoreCase)
-            );
+            var match =
+                accounts.FirstOrDefault(a => string.Equals(a.Uuid, settings.Account, StringComparison.OrdinalIgnoreCase)
+                                          || string.Equals(a.Username,
+                                                           settings.Account,
+                                                           StringComparison.OrdinalIgnoreCase));
 
             if (match != null)
             {
                 return DeserializeAccount(match);
             }
 
-            throw new CliException(
-                $"Account '{settings.Account}' not found. Use 'trident account list' to see available accounts.",
-                ExitCodes.NOT_FOUND
-            );
+            throw new
+                CliException($"Account '{settings.Account}' not found. Use 'trident account list' to see available accounts.",
+                             ExitCodes.NOT_FOUND);
         }
 
         var defaultAccount = accounts.FirstOrDefault(a => a.IsDefault) ?? accounts.FirstOrDefault();
@@ -378,35 +315,25 @@ public class InstanceRunCommand(
             return new OfflineAccount
             {
                 Username = settings.Username,
-                Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty),
+                Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty)
             };
         }
 
-        return new OfflineAccount
-        {
-            Username = "Player",
-            Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty),
-        };
+        return new OfflineAccount { Username = "Player", Uuid = Guid.NewGuid().ToString().Replace("-", string.Empty) };
     }
 
     private static IAccount DeserializeAccount(StoredAccount stored)
     {
         if (stored.Type == "microsoft")
         {
-            var payload = JsonSerializer.Deserialize<MicrosoftAccount>(
-                stored.Data,
-                AccountStore.SerializerOptions
-            );
+            var payload = JsonSerializer.Deserialize<MicrosoftAccount>(stored.Data, AccountStore.SerializerOptions);
             if (payload != null)
             {
                 return payload;
             }
         }
 
-        var offline = JsonSerializer.Deserialize<StoredOfflineAccount>(
-            stored.Data,
-            AccountStore.SerializerOptions
-        );
+        var offline = JsonSerializer.Deserialize<StoredOfflineAccount>(stored.Data, AccountStore.SerializerOptions);
         if (offline != null)
         {
             return new OfflineAccount { Username = offline.Username, Uuid = offline.Uuid };

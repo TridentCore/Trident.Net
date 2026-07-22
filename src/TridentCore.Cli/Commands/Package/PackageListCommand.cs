@@ -6,17 +6,10 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package;
 
-public class PackageListCommand(
-    InstanceContextResolver resolver,
-    RepositoryAgent repositories,
-    CliOutput output
-) : InstanceCommandBase<PackageListCommand.Arguments>(resolver)
+public class PackageListCommand(InstanceContextResolver resolver, RepositoryAgent repositories, CliOutput output)
+    : InstanceCommandBase<PackageListCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ListAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;
@@ -25,8 +18,13 @@ public class PackageListCommand(
     private async Task ListAsync(Arguments settings, CancellationToken cancellationToken)
     {
         var result = await PackageOperation
-            .List(Resolver, repositories, settings.Instance!, settings.Profile, settings.Index, settings.Limit)
-            .ConfigureAwait(false);
+                          .List(Resolver,
+                                repositories,
+                                settings.Instance!,
+                                settings.Profile,
+                                settings.Index,
+                                settings.Limit)
+                          .ConfigureAwait(false);
 
         if (output.UseStructuredOutput)
         {
@@ -36,22 +34,15 @@ public class PackageListCommand(
 
         if (result.Packages.Count == 0)
         {
-            output.WriteEmptyState(
-                "No packages",
-                $"Instance {result.Key} does not have installed packages."
-            );
+            output.WriteEmptyState("No packages", $"Instance {result.Key} does not have installed packages.");
             return;
         }
 
-        output.WriteTable(
-            PackageCliHelper.CreatePackageTable($"Packages in {result.Key}", result.Packages)
-        );
+        output.WriteTable(PackageCliHelper.CreatePackageTable($"Packages in {result.Key}", result.Packages));
 
         if (result.Total > result.Packages.Count)
         {
-            output.WriteInfo(
-                $"Showing {result.Packages.Count} of {result.Total} packages (offset {settings.Index}). Use --index and --limit to paginate."
-            );
+            output.WriteInfo($"Showing {result.Packages.Count} of {result.Total} packages (offset {settings.Index}). Use --index and --limit to paginate.");
         }
     }
 

@@ -1,4 +1,3 @@
-using TridentCore.Pref;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
@@ -9,26 +8,23 @@ using TridentCore.Cli.Utilities;
 using TridentCore.Core.Services;
 using TridentCore.Core.Services.Instances;
 using TridentCore.Core.Utilities;
+using TridentCore.Pref;
 
 namespace TridentCore.Cli.Operations;
 
 internal static class InstanceOperation
 {
-    public static IReadOnlyList<InstanceSummary> List(ProfileManager profileManager)
-    {
-        return profileManager
-            .Profiles.Select(x => new InstanceSummary(
-                x.Item1,
-                x.Item2.Name,
-                x.Item2.Setup.Version,
-                x.Item2.Setup.Loader,
-                x.Item2.Setup.Source,
-                x.Item2.Setup.Packages.Count,
-                PathDef.Default.DirectoryOfHome(x.Item1)
-            ))
-            .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
+    public static IReadOnlyList<InstanceSummary> List(ProfileManager profileManager) =>
+        profileManager
+           .Profiles.Select(x => new InstanceSummary(x.Item1,
+                                                     x.Item2.Name,
+                                                     x.Item2.Setup.Version,
+                                                     x.Item2.Setup.Loader,
+                                                     x.Item2.Setup.Source,
+                                                     x.Item2.Setup.Packages.Count,
+                                                     PathDef.Default.DirectoryOfHome(x.Item1)))
+           .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+           .ToArray();
 
     public static async Task<InstanceDetail> Inspect(
         InstanceContextResolver resolver,
@@ -42,21 +38,27 @@ internal static class InstanceOperation
         var preview = entries.Take(previewLimit).ToList();
 
         var resolved = preview.Count > 0
-            ? await PackageDtos.ResolveEntriesAsync(preview, repositories, ctx).ConfigureAwait(false)
-            : [];
+                           ? await PackageDtos.ResolveEntriesAsync(preview, repositories, ctx).ConfigureAwait(false)
+                           : [];
 
-        return new(
-            ctx.Key,
-            ctx.Profile.Name,
-            ctx.Profile.Setup.Version,
-            ctx.Profile.Setup.Loader,
-            ctx.Profile.Setup.Source,
-            ctx.InstancePath,
-            ctx.ProfilePath,
-            entries.Count,
-            [.. resolved.Select(p => new PackagePreview(p.Pref, p.Enabled, p.Source, p.Tags, p.ProjectName, p.Author, p.Kind))],
-            Math.Max(0, entries.Count - previewLimit)
-        );
+        return new(ctx.Key,
+                   ctx.Profile.Name,
+                   ctx.Profile.Setup.Version,
+                   ctx.Profile.Setup.Loader,
+                   ctx.Profile.Setup.Source,
+                   ctx.InstancePath,
+                   ctx.ProfilePath,
+                   entries.Count,
+                   [
+                       .. resolved.Select(p => new PackagePreview(p.Pref,
+                                                                  p.Enabled,
+                                                                  p.Source,
+                                                                  p.Tags,
+                                                                  p.ProjectName,
+                                                                  p.Author,
+                                                                  p.Kind))
+                   ],
+                   Math.Max(0, entries.Count - previewLimit));
     }
 
     public static InstanceCreateResult Create(
@@ -66,19 +68,8 @@ internal static class InstanceOperation
         string? loader,
         string? identity)
     {
-        var key = profileManager.RequestKey(
-            InstanceIdentityValidator.EnsureValid(identity ?? name)
-        );
-        var profile = new Profile()
-        {
-            Name = name,
-            Setup = new()
-            {
-                Version = version,
-                Source = null,
-                Loader = loader,
-            },
-        };
+        var key = profileManager.RequestKey(InstanceIdentityValidator.EnsureValid(identity ?? name));
+        var profile = new Profile { Name = name, Setup = new() { Version = version, Source = null, Loader = loader } };
         profileManager.Add(key, profile);
         return new(key.Key, profile.Name, profile.Setup.Version, profile.Setup.Loader);
     }
@@ -146,7 +137,7 @@ internal static class InstanceOperation
     {
         var ctx = resolver.Resolve(instance, profile);
         var options = new DeployOptions(fastMode, resolveDependency, fullCheck);
-        var locator = JavaHelper.MakeLocator(_ => javaHome, true);
+        var locator = JavaHelper.MakeLocator(_ => javaHome);
         var tracker = instanceManager.Deploy(ctx.Key, options, locator);
         await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None).ConfigureAwait(false);
         return new(ctx.Key, "finished");
@@ -170,12 +161,12 @@ internal static class InstanceOperation
         {
             IncludingSource = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase),
             IncludingTags = !noTags,
-            OfflineMode = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase),
+            OfflineMode = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase)
         };
 
         using var container = await exporterAgent
-            .ExportAsync(options, format, ctx.Key, name ?? ctx.Profile.Name, author, version)
-            .ConfigureAwait(false);
+                                   .ExportAsync(options, format, ctx.Key, name ?? ctx.Profile.Name, author, version)
+                                   .ConfigureAwait(false);
 
         var outputPath = Path.GetFullPath(output);
         var dir = Path.GetDirectoryName(outputPath);
@@ -216,51 +207,41 @@ internal static class InstanceOperation
             container.Profile.Name = name;
         }
 
-        var id = InstanceIdentityValidator.EnsureValid(
-            identity
-                ?? container.Profile.Name
-                ?? Path.GetFileNameWithoutExtension(sourcePath)
-        );
+        var id = InstanceIdentityValidator.EnsureValid(identity
+                                                    ?? container.Profile.Name
+                                                    ?? Path.GetFileNameWithoutExtension(sourcePath));
         var key = profileManager.RequestKey(id);
         await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
         profileManager.Add(key, container.Profile);
 
-        return new(
-            key.Key,
-            container.Profile.Name ?? id,
-            container.Profile.Setup.Version,
-            container.Profile.Setup.Loader,
-            sourcePath
-        );
+        return new(key.Key,
+                   container.Profile.Name ?? id,
+                   container.Profile.Setup.Version,
+                   container.Profile.Setup.Loader,
+                   sourcePath);
     }
 
     public static async Task<InstallTracker> StartInstallAsync(
         InstanceManager instanceManager,
         RepositoryAgent repositories,
         string pref,
-        string? identity
-    )
+        string? identity)
     {
         var parsed = PackageCliHelper.ParsePref(pref);
 
-        var project = await repositories
-            .QueryAsync(parsed.ToProjectIdentifier())
-            .ConfigureAwait(false);
+        var project = await repositories.QueryAsync(parsed.ToProjectIdentifier()).ConfigureAwait(false);
         if (project.Kind != ResourceKind.Modpack)
         {
-            throw new CliException(
-                $"'{pref}' is a {project.Kind.ToString().ToLowerInvariant()}, not a modpack. Use `package add` to add non-modpack packages.",
-                ExitCodes.USAGE
-            );
+            throw new
+                CliException($"'{pref}' is a {project.Kind.ToString().ToLowerInvariant()}, not a modpack. Use `package add` to add non-modpack packages.",
+                             ExitCodes.USAGE);
         }
 
-        return instanceManager.Install(
-            identity ?? project.ProjectName,
-            parsed.Repository,
-            parsed.Namespace,
-            parsed.Identity,
-            parsed.Version
-        );
+        return instanceManager.Install(identity ?? project.ProjectName,
+                                       parsed.Repository,
+                                       parsed.Namespace,
+                                       parsed.Identity,
+                                       parsed.Version);
     }
 
     private static void DeleteDirectory(string path, IList<string> deleted)
@@ -293,8 +274,7 @@ public sealed record InstanceSummary(
     string? Loader,
     string? Source,
     int PackageCount,
-    string Path
-);
+    string Path);
 
 public sealed record InstanceDetail(
     string Key,
@@ -306,8 +286,7 @@ public sealed record InstanceDetail(
     string ProfilePath,
     int PackageCount,
     IReadOnlyList<PackagePreview> Packages,
-    int HiddenPackageCount
-);
+    int HiddenPackageCount);
 
 public sealed record PackagePreview(
     string Pref,
@@ -316,13 +295,18 @@ public sealed record PackagePreview(
     IReadOnlyList<string> Tags,
     string? ProjectName,
     string? Author,
-    TridentCore.Abstractions.Repositories.Resources.ResourceKind? Kind
-) : IPackageTableRow;
+    ResourceKind? Kind) : IPackageTableRow;
 
 internal sealed record InstanceCreateResult(string Key, string Name, string Version, string? Loader);
+
 internal sealed record InstanceUnlockResult(string Key, string? OldSource);
+
 internal sealed record InstanceDeleteResult(string Key, string Bomb);
+
 internal sealed record InstanceResetResult(string Key, IReadOnlyList<string> Deleted);
+
 internal sealed record InstanceBuildResult(string Key, string State);
+
 internal sealed record InstanceExportResult(string Key, string Format, string Type, string Output);
+
 internal sealed record InstanceImportResult(string Key, string Name, string Version, string? Loader, string Path);

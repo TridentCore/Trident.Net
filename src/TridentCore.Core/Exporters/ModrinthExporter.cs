@@ -21,13 +21,13 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
         [LoaderHelper.LOADERID_FORGE] = "forge",
         [LoaderHelper.LOADERID_NEOFORGE] = "neoforge",
         [LoaderHelper.LOADERID_FABRIC] = "fabric-loader",
-        [LoaderHelper.LOADERID_QUILT] = "quilt-loader",
+        [LoaderHelper.LOADERID_QUILT] = "quilt-loader"
     };
 
     private static readonly JsonSerializerOptions SERIALIZER_OPTIONS = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     #region IProfileExporter Members
@@ -36,7 +36,7 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
 
     public async Task<PackedProfileContainer> PackAsync(UncompressedProfilePack pack)
     {
-        var container = new PackedProfileContainer(pack.Key) { OverrideDirectoryName = "overrides", };
+        var container = new PackedProfileContainer(pack.Key) { OverrideDirectoryName = "overrides" };
         var setup = pack.Profile.Setup;
 
         (string Identity, string Version)? loader = !string.IsNullOrEmpty(setup.Loader)
@@ -73,7 +73,10 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
             var packages = setup
                           .Packages.Where(x => x.Enabled)
                           .Select(x => PackageHelper.TryParse(x.Pref, out var pkg)
-                                           ? new PackageIdentifier(pkg.Repository, pkg.Namespace, pkg.Identity, pkg.Version)
+                                           ? new PackageIdentifier(pkg.Repository,
+                                                                   pkg.Namespace,
+                                                                   pkg.Identity,
+                                                                   pkg.Version)
                                            : throw new FormatException($"Package {x.Pref} is not a valid package"))
                           .ToList();
             var resolved = await agent
@@ -82,13 +85,20 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
 
             resolved.ThrowIfFailures();
 
-            files.AddRange(resolved.Successful
-                          .Select(x => x.Value)
+            files.AddRange(resolved
+                          .Successful.Select(x => x.Value)
                           .Select(package =>
                                       new
                                           PackIndex.IndexFile($"{FileHelper.GetAssetFolderName(package.Kind)}/{package.FileName}",
-                                                              new(package.Hash is { Algorithm: TridentCore.Abstractions.Utilities.HashAlgorithm.Sha1 } h ? h.Value : null,
-                                                                  package.Hash is { Algorithm: TridentCore.Abstractions.Utilities.HashAlgorithm.Sha512 } h512 ? h512.Value : null),
+                                                              new(package.Hash is { Algorithm: HashAlgorithm.Sha1 } h
+                                                                      ? h.Value
+                                                                      : null,
+                                                                  package.Hash is
+                                                                  {
+                                                                      Algorithm: HashAlgorithm.Sha512
+                                                                  } h512
+                                                                      ? h512.Value
+                                                                      : null),
                                                               new("required", "unsupported"),
                                                               [package.Download],
                                                               package.Size)));

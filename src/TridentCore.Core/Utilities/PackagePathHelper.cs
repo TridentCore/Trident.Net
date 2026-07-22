@@ -15,10 +15,10 @@ public static class PackagePathHelper
         ResourceKind kind)
     {
         var actual = normalizing
-            ? string.Concat(FileHelper.Sanitize(projectName), Path.GetExtension(fileName))
-            : fileName;
+                         ? string.Concat(FileHelper.Sanitize(projectName), Path.GetExtension(fileName))
+                         : fileName;
         return destination is not null
-            ? Path.Combine(destination, actual)
-            : Path.Combine(FileHelper.GetAssetFolderName(kind), actual);
+                   ? Path.Combine(destination, actual)
+                   : Path.Combine(FileHelper.GetAssetFolderName(kind), actual);
     }
 }

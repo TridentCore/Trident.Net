@@ -11,33 +11,41 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
     protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
-        var result = InstanceOperation.ExportAsync(
-            Resolver,
-            exporterAgent,
-            instance.Key,
-            settings.Profile,
-            settings.Format,
-            settings.Type,
-            settings.Name,
-            settings.Author,
-            settings.Version,
-            settings.Output,
-            settings.NoTags
-        ).GetAwaiter().GetResult();
+        var result = InstanceOperation
+                    .ExportAsync(Resolver,
+                                 exporterAgent,
+                                 instance.Key,
+                                 settings.Profile,
+                                 settings.Format,
+                                 settings.Type,
+                                 settings.Name,
+                                 settings.Author,
+                                 settings.Version,
+                                 settings.Output,
+                                 settings.NoTags)
+                    .GetAwaiter()
+                    .GetResult();
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { action = "export", key = result.Key, format = result.Format, type = result.Type, output = result.Output });
+            output.WriteData(new
+            {
+                action = "export",
+                key = result.Key,
+                format = result.Format,
+                type = result.Type,
+                output = result.Output
+            });
         }
         else
         {
             var size = File.Exists(result.Output) ? new FileInfo(result.Output).Length : 0;
             output.WriteKeyValueTable("Instance exported",
-                ("Instance", result.Key),
-                ("Format", result.Format),
-                ("Type", result.Type),
-                ("Output", result.Output),
-                ("Size", $"{size:n0} bytes"));
+                                      ("Instance", result.Key),
+                                      ("Format", result.Format),
+                                      ("Type", result.Type),
+                                      ("Output", result.Output),
+                                      ("Size", $"{size:n0} bytes"));
             output.WriteSuccess($"Instance {result.Key} exported.");
         }
 

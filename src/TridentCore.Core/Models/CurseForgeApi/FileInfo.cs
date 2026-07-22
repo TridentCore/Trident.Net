@@ -26,17 +26,11 @@ public record FileInfo(
     bool? IsEarlyAccessContent,
     DateTimeOffset? EarlyAccessEndDate,
     ulong FileFingerprint,
-    IReadOnlyList<FileInfo.FileModule> Modules
-)
+    IReadOnlyList<FileInfo.FileModule> Modules)
 {
     #region FileReleaseType enum
 
-    public enum FileReleaseType
-    {
-        Release = 1,
-        Beta,
-        Alpha,
-    }
+    public enum FileReleaseType { Release = 1, Beta, Alpha }
 
     #endregion
 
@@ -58,7 +52,7 @@ public record FileInfo(
         Deprecated,
         Baking,
         AwaitingPublishing,
-        FailedPublishing,
+        FailedPublishing
     }
 
     #endregion
@@ -71,12 +65,7 @@ public record FileInfo(
 
         public enum FileRelationType
         {
-            EmbeddedLibrary = 1,
-            OptionalDependency,
-            RequiredDependency,
-            Tool,
-            Incompatible,
-            Include,
+            EmbeddedLibrary = 1, OptionalDependency, RequiredDependency, Tool, Incompatible, Include
         }
 
         #endregion
@@ -90,11 +79,7 @@ public record FileInfo(
     {
         #region HashAlgo enum
 
-        public enum HashAlgo
-        {
-            Sha1 = 1,
-            Md5,
-        }
+        public enum HashAlgo { Sha1 = 1, Md5 }
 
         #endregion
     }

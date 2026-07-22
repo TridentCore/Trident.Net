@@ -15,7 +15,13 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 {
     private const uint PAGE_SIZE = 20;
 
-    private static readonly Converter CONVERTER = new(new() { Flavor = Config.MarkdownFlavor.GitHub, Links = { SmartHref = true } });
+    private static readonly Converter CONVERTER = new(new()
+    {
+        Flavor = Config.MarkdownFlavor.GitHub,
+        Links = { SmartHref = true }
+    });
+
+    private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";
 
     #region IRepository Members
 
@@ -27,7 +33,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                        LoaderHelper.LOADERID_NEOFORGE,
                        LoaderHelper.LOADERID_FORGE,
                        LoaderHelper.LOADERID_FABRIC,
-                       LoaderHelper.LOADERID_QUILT,
+                       LoaderHelper.LOADERID_QUILT
                    ],
                    versions,
                    [
@@ -36,7 +42,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                        ResourceKind.ResourcePack,
                        ResourceKind.ShaderPack,
                        ResourceKind.World,
-                       ResourceKind.DataPack,
+                       ResourceKind.DataPack
                    ]);
     }
 
@@ -91,6 +97,44 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new ResourceNotFoundException($"No file matched the fingerprint {hash}");
     }
 
+    public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
+    {
+        if (!uri.Host.EndsWith("curseforge.com", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ResourceNotFoundException($"{uri} is not a curseforge URL");
+        }
+
+        var (slug, fileId) = ExtractReference(uri);
+        if (string.IsNullOrEmpty(slug))
+        {
+            throw new ResourceNotFoundException($"{uri} has no project slug");
+        }
+
+        var resp = await client.SearchModsAsync(null, null, null, null, slug: slug).ConfigureAwait(false);
+        var mod = resp.Data.FirstOrDefault();
+        if (mod is null)
+        {
+            throw new ResourceNotFoundException($"{slug} not found in the repository");
+        }
+
+        return new(label, null, mod.Id.ToString(), fileId);
+    }
+
+    // curseforge.com/minecraft/{class}/{slug} and .../{slug}/files/{fileId}
+    private static (string? Slug, string? FileId) ExtractReference(Uri uri)
+    {
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < segments.Length; i++)
+        {
+            if (segments[i] == "files" && i > 0 && i + 1 < segments.Length)
+            {
+                return (segments[i - 1], segments[i + 1]);
+            }
+        }
+
+        return (segments.LastOrDefault(), null);
+    }
+
     public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
         if (uint.TryParse(id.Identity, out var modId))
@@ -115,8 +159,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
     }
 
     public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
-        IEnumerable<ScopedProjectIdentifier> batch
-    )
+        IEnumerable<ScopedProjectIdentifier> batch)
     {
         var batchArray = batch.ToArray();
         var successful = new Dictionary<ScopedProjectIdentifier, Project>();
@@ -126,25 +169,31 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         foreach (var x in batchArray)
         {
             if (uint.TryParse(x.Identity, out var modId))
+            {
                 parsed.Add((x, modId));
+            }
             else
+            {
                 failed[x] = new FormatException($"{x.Identity} is not well formatted into modId");
+            }
         }
 
         if (parsed.Count > 0)
         {
             try
             {
-                var mods = await client
-                    .GetModsAsync(new(parsed.Select(x => x.ModId).ToList()))
-                    .ConfigureAwait(false);
+                var mods = await client.GetModsAsync(new(parsed.Select(x => x.ModId).ToList())).ConfigureAwait(false);
                 var modById = mods.Data.ToDictionary(x => x.Id);
                 foreach (var (key, modId) in parsed)
                 {
                     if (modById.TryGetValue(modId, out var mod))
+                    {
                         successful[key] = CurseForgeHelper.ToProject(label, mod);
+                    }
                     else
+                    {
                         failed[key] = new ResourceNotFoundException($"{key.Identity} not found in the repository");
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -154,7 +203,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             catch (Exception ex)
             {
                 foreach (var (key, _) in parsed)
+                {
                     failed[key] = ex;
+                }
             }
         }
 
@@ -197,10 +248,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     var file = (await client
                                      .GetModFilesAsync(modId,
                                                        filter.Version,
-                                                       CurseForgeHelper.GetVersionLoaderFilter(
-                                                           mod.ClassId,
-                                                           filter.Loader
-                                                       ),
+                                                       CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId,
+                                                           filter.Loader),
                                                        0,
                                                        1)
                                      .ConfigureAwait(false)).Data.FirstOrDefault();
@@ -209,15 +258,16 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                         return CurseForgeHelper.ToPackage(label, mod, file);
                     }
 
-                    throw new ResourceNotFoundException(
-                        $"{mod.Name} ({label}:{id.Identity}@*) has no matched version for {FormatTarget(filter)}");
+                    throw new
+                        ResourceNotFoundException($"{mod.Name} ({label}:{id.Identity}@*) has no matched version for {FormatTarget(filter)}");
                 }
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    throw new ResourceNotFoundException($"{id.Identity}/{id.Version ?? "*"} not found in the repository");
+                    throw new
+                        ResourceNotFoundException($"{id.Identity}/{id.Version ?? "*"} not found in the repository");
                 }
 
                 throw;
@@ -240,44 +290,53 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
         // 这一块依旧没法一次性拿全，都怪 CurseForge 的 API 设计。
         // 每条独立请求，逐条归因，单条失败不拖累其它。
-        var unknownResults = await Task.WhenAll(unknownVids.Select(async x =>
-        {
-            try
-            {
-                if (!uint.TryParse(x.Identity, out var modId))
-                    throw new FormatException($"{x.Identity} is not well formatted into modId");
+        var unknownResults = await Task
+                                  .WhenAll(unknownVids.Select(async x =>
+                                   {
+                                       try
+                                       {
+                                           if (!uint.TryParse(x.Identity, out var modId))
+                                           {
+                                               throw new
+                                                   FormatException($"{x.Identity} is not well formatted into modId");
+                                           }
 
-                var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
-                var file = (await client
-                                 .GetModFilesAsync(modId,
-                                                   filter.Version,
-                                                   CurseForgeHelper.GetVersionLoaderFilter(
-                                                       mod.ClassId,
-                                                       filter.Loader
-                                                   ),
-                                                   0,
-                                                   1)
-                                 .ConfigureAwait(false)).Data.FirstOrDefault()
-                           ?? throw new ResourceNotFoundException(
-                               $"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
-                return (Id: x, Package: CurseForgeHelper.ToPackage(label, mod, file), Error: (Exception?)null);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                return (Id: x, Package: (Package?)null, Error: ex);
-            }
-        })).ConfigureAwait(false);
+                                           var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
+                                           var file = (await client
+                                                            .GetModFilesAsync(modId,
+                                                                              filter.Version,
+                                                                              CurseForgeHelper
+                                                                                 .GetVersionLoaderFilter(mod.ClassId,
+                                                                                      filter.Loader),
+                                                                              0,
+                                                                              1)
+                                                            .ConfigureAwait(false)).Data.FirstOrDefault()
+                                                   ?? throw new
+                                                          ResourceNotFoundException($"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
+                                           return (Id: x, Package: CurseForgeHelper.ToPackage(label, mod, file),
+                                                   Error: null);
+                                       }
+                                       catch (OperationCanceledException)
+                                       {
+                                           throw;
+                                       }
+                                       catch (Exception ex)
+                                       {
+                                           return (Id: x, Package: (Package?)null, Error: ex);
+                                       }
+                                   }))
+                                  .ConfigureAwait(false);
 
         foreach (var r in unknownResults)
         {
             if (r.Error is not null)
+            {
                 failed[r.Id] = r.Error;
+            }
             else
+            {
                 successful[r.Id] = r.Package!;
+            }
         }
 
         // 已知 Vid 的走批量接口。先逐条解析 modId/fileId，解析失败的单条进 failed；
@@ -286,9 +345,13 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         foreach (var x in knownVids)
         {
             if (uint.TryParse(x.Identity, out var modId) && uint.TryParse(x.Version, out var fileId))
+            {
                 parsedKnown.Add((x, modId, fileId));
+            }
             else
+            {
                 failed[x] = new FormatException($"{x.Identity}/{x.Version} is not well formatted into modId/fileId");
+            }
         }
 
         if (parsedKnown.Count > 0)
@@ -296,24 +359,27 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             try
             {
                 var knownMods = await client
-                                   .GetModsAsync(new([.. parsedKnown.Select(x => x.ModId)]))
-                                   .ConfigureAwait(false);
+                                     .GetModsAsync(new([.. parsedKnown.Select(x => x.ModId)]))
+                                     .ConfigureAwait(false);
                 var knownFiles = await client
-                                    .GetFilesAsync(new([.. parsedKnown.Select(x => x.FileId)]))
-                                    .ConfigureAwait(false);
+                                      .GetFilesAsync(new([.. parsedKnown.Select(x => x.FileId)]))
+                                      .ConfigureAwait(false);
                 var modById = knownMods.Data.ToDictionary(x => x.Id);
                 var fileById = knownFiles.Data.ToDictionary(x => x.Id);
 
                 foreach (var (id, modId, fileId) in parsedKnown)
                 {
                     if (modById.TryGetValue(modId, out var mod)
-                        && fileById.TryGetValue(fileId, out var file)
-                        && file.ModId == modId)
+                     && fileById.TryGetValue(fileId, out var file)
+                     && file.ModId == modId)
+                    {
                         successful[id] = CurseForgeHelper.ToPackage(label, mod, file);
+                    }
                     else
-                        failed[id] = new ResourceNotFoundException(
-                            $"{id.Identity}/{id.Version} not found in the repository"
-                        );
+                    {
+                        failed[id] =
+                            new ResourceNotFoundException($"{id.Identity}/{id.Version} not found in the repository");
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -323,7 +389,9 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             catch (Exception ex)
             {
                 foreach (var (id, _, _) in parsedKnown)
+                {
                     failed[id] = ex;
+                }
             }
         }
 
@@ -406,6 +474,4 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
     }
 
     #endregion
-
-    private static string FormatTarget(Filter filter) => $"{filter.Version ?? "*"}/{filter.Loader ?? "*"}";
 }

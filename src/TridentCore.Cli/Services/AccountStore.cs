@@ -8,12 +8,10 @@ namespace TridentCore.Cli.Services;
 
 public class AccountStore
 {
-    internal static readonly JsonSerializerOptions SerializerOptions = new(
-        JsonSerializerDefaults.Web
-    )
+    internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     private readonly string _path = CliDataPaths.File("accounts.json");
@@ -25,24 +23,17 @@ public class AccountStore
             return [];
         }
 
-        return JsonSerializer.Deserialize<List<StoredAccount>>(
-                File.ReadAllText(_path),
-                SerializerOptions
-            ) ?? [];
+        return JsonSerializer.Deserialize<List<StoredAccount>>(File.ReadAllText(_path), SerializerOptions) ?? [];
     }
 
-    public void Save(IEnumerable<StoredAccount> accounts)
-    {
+    public void Save(IEnumerable<StoredAccount> accounts) =>
         AtomicFileWriter.WriteAllText(_path, JsonSerializer.Serialize(accounts, SerializerOptions));
-    }
 
     public void AddOrReplace(StoredAccount account)
     {
         var accounts = Load().ToList();
         var isDefault = accounts.Count == 0 || account.IsDefault;
-        accounts.RemoveAll(x =>
-            string.Equals(x.Uuid, account.Uuid, StringComparison.OrdinalIgnoreCase)
-        );
+        accounts.RemoveAll(x => string.Equals(x.Uuid, account.Uuid, StringComparison.OrdinalIgnoreCase));
         if (isDefault)
         {
             accounts = [.. accounts.Select(x => x with { IsDefault = false })];
@@ -55,9 +46,7 @@ public class AccountStore
     public bool Remove(string uuid)
     {
         var accounts = Load().ToList();
-        var removed =
-            accounts.RemoveAll(x => string.Equals(x.Uuid, uuid, StringComparison.OrdinalIgnoreCase))
-            > 0;
+        var removed = accounts.RemoveAll(x => string.Equals(x.Uuid, uuid, StringComparison.OrdinalIgnoreCase)) > 0;
         if (!removed)
         {
             return false;
@@ -74,32 +63,23 @@ public class AccountStore
 
     public static StoredAccount CreateOffline(string username, string? uuid)
     {
-        var account = new StoredOfflineAccount(
-            username,
-            NormalizeUuid(uuid) ?? GenerateOfflineUuid(username),
-            GenerateAccessToken()
-        );
+        var account = new StoredOfflineAccount(username,
+                                               NormalizeUuid(uuid) ?? GenerateOfflineUuid(username),
+                                               GenerateAccessToken());
         return FromPayload("offline", account.Uuid, account.Username, account);
     }
 
     public static StoredAccount CreateMicrosoft(MicrosoftAccount account) =>
         FromPayload("microsoft", account.Uuid, account.Username, account);
 
-    private static StoredAccount FromPayload<T>(
-        string type,
-        string uuid,
-        string username,
-        T payload
-    ) =>
-        new(
-            uuid,
+    private static StoredAccount FromPayload<T>(string type, string uuid, string username, T payload) =>
+        new(uuid,
             username,
             type,
             DateTimeOffset.UtcNow,
             null,
             false,
-            JsonSerializer.Serialize(payload, SerializerOptions)
-        );
+            JsonSerializer.Serialize(payload, SerializerOptions));
 
     private static string GenerateOfflineUuid(string playerName)
     {
@@ -118,8 +98,8 @@ public class AccountStore
         }
 
         return Guid.TryParse(uuid, out var parsed)
-            ? parsed.ToString("N")
-            : throw new CliException("--uuid must be a valid UUID.", ExitCodes.USAGE);
+                   ? parsed.ToString("N")
+                   : throw new CliException("--uuid must be a valid UUID.", ExitCodes.USAGE);
     }
 
     private static string GenerateAccessToken()
@@ -137,8 +117,7 @@ public sealed record StoredAccount(
     DateTimeOffset EnrolledAt,
     DateTimeOffset? LastUsedAt,
     bool IsDefault,
-    string Data
-);
+    string Data);
 
 public sealed record StoredOfflineAccount(string Username, string Uuid, string AccessToken)
 {

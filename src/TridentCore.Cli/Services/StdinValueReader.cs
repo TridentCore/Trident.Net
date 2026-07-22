@@ -25,12 +25,7 @@ public class StdinValueReader(CliContext context)
         input = input.Trim();
         if (!input.StartsWith('{') && !input.StartsWith('[') && !input.StartsWith('"'))
         {
-            return input
-                .Split(
-                    ['\r', '\n'],
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-                )
-                .ToArray();
+            return input.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
         try
@@ -59,26 +54,15 @@ public class StdinValueReader(CliContext context)
 
                 break;
             case JsonValueKind.Object:
-                if (
-                    element.TryGetProperty("pref", out var pref)
-                    && pref.ValueKind == JsonValueKind.String
-                )
+                if (element.TryGetProperty("pref", out var pref) && pref.ValueKind == JsonValueKind.String)
                 {
                     yield return pref.GetString()!;
                 }
 
-                foreach (
-                    var property in new[]
-                    {
-                        "items",
-                        "packages",
-                        "package",
-                        "dependencies",
-                        "versions",
-                        "results",
-                        "account",
-                    }
-                )
+                foreach (var property in new[]
+                         {
+                             "items", "packages", "package", "dependencies", "versions", "results", "account"
+                         })
                 {
                     if (!element.TryGetProperty(property, out var nested))
                     {

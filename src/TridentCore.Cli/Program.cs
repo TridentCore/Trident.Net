@@ -93,24 +93,13 @@ string? LocateProfile(string startDir)
 
 void WriteStartupError(CliContext? context, Exception exception, int exitCode)
 {
-    var message = string.IsNullOrWhiteSpace(exception.Message)
-        ? exception.GetType().Name
-        : exception.Message;
+    var message = string.IsNullOrWhiteSpace(exception.Message) ? exception.GetType().Name : exception.Message;
     var detail = isDebug || context?.Debug is true ? exception.ToString() : null;
 
     if (context?.UseStructuredOutput is true)
     {
-        Console.Error.WriteLine(
-            JsonSerializer.Serialize(
-                new
-                {
-                    error = message,
-                    detail,
-                    exitCode,
-                },
-                new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            )
-        );
+        Console.Error.WriteLine(JsonSerializer.Serialize(new { error = message, detail, exitCode },
+                                                         new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         return;
     }
 
@@ -121,11 +110,9 @@ void WriteStartupError(CliContext? context, Exception exception, int exitCode)
         body += $"\n\n[grey]{Markup.Escape(detail)}[/]";
     }
 
-    error.Write(
-        new Panel(body)
-            .Header($"[bold red]ERROR[/] [dim]exit {exitCode}[/]")
-            .RoundedBorder()
-            .BorderColor(Color.Red)
-            .Expand()
-    );
+    error.Write(new Panel(body)
+               .Header($"[bold red]ERROR[/] [dim]exit {exitCode}[/]")
+               .RoundedBorder()
+               .BorderColor(Color.Red)
+               .Expand());
 }

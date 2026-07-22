@@ -17,16 +17,14 @@ public class MultiMcImporter : IProfileImporter
     {
         await using var indexStream = pack.Open(MultiMcHelper.PACK_INDEX_FILE_NAME);
         var mmcPack = await JsonSerializer
-            .DeserializeAsync<MmcPack>(indexStream, JsonSerializerOptions.Web)
-            .ConfigureAwait(false);
+                           .DeserializeAsync<MmcPack>(indexStream, JsonSerializerOptions.Web)
+                           .ConfigureAwait(false);
         if (mmcPack is null)
         {
             throw new FormatException($"{MultiMcHelper.PACK_INDEX_FILE_NAME} is not a valid mmc-pack.json");
         }
 
-        var mcVersion = mmcPack.Components
-            .FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)
-            ?.Version;
+        var mcVersion = mmcPack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
         if (mcVersion is null)
         {
             throw new FormatException("mmc-pack.json does not contain net.minecraft component");
@@ -57,35 +55,25 @@ public class MultiMcImporter : IProfileImporter
             }
         }
 
-        var importFileNames = pack.FileNames
-            .Where(x =>
-                x.StartsWith(MultiMcHelper.PACK_MINECRAFT_DIR)
-                && x != MultiMcHelper.PACK_MINECRAFT_DIR
-                && x.Length > MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1
-            )
-            .Select(x => (x, x[(MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)..]))
-            .Where(x =>
-                !x.Item2.EndsWith('/')
-                && !x.Item2.EndsWith('\\')
-                && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)
-            )
-            .ToList();
+        var importFileNames = pack
+                             .FileNames
+                             .Where(x => x.StartsWith(MultiMcHelper.PACK_MINECRAFT_DIR)
+                                      && x != MultiMcHelper.PACK_MINECRAFT_DIR
+                                      && x.Length > MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)
+                             .Select(x => (x, x[(MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)..]))
+                             .Where(x => !x.Item2.EndsWith('/')
+                                      && !x.Item2.EndsWith('\\')
+                                      && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                             .ToList();
 
-        return new(
-            new()
-            {
-                Name = instanceName ?? "Imported MultiMc Pack",
-                Setup = new()
-                {
-                    Version = mcVersion,
-                    Loader = loaderLurl,
-                    Packages = [],
-                },
-            },
-            importFileNames,
-            [],
-            null
-        );
+        return new(new()
+        {
+            Name = instanceName ?? "Imported MultiMc Pack",
+            Setup = new() { Version = mcVersion, Loader = loaderLurl, Packages = [] }
+        },
+                   importFileNames,
+                   [],
+                   null);
     }
 
     #endregion

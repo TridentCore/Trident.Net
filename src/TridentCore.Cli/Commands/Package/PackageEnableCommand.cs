@@ -5,19 +5,17 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Package;
 
-public class PackageEnableCommand(
-    InstanceContextResolver resolver,
-    ProfileManager profileManager,
-    CliOutput output
-) : InstanceCommandBase<PackageEnableCommand.Arguments>(resolver)
+public class PackageEnableCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
+    : InstanceCommandBase<PackageEnableCommand.Arguments>(resolver)
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = PackageOperation.SetEnabled(Resolver, profileManager, settings.Pref, settings.Instance!, true, settings.Profile);
+        var result = PackageOperation.SetEnabled(Resolver,
+                                                 profileManager,
+                                                 settings.Pref,
+                                                 settings.Instance!,
+                                                 true,
+                                                 settings.Profile);
 
         if (output.UseStructuredOutput)
         {
@@ -25,12 +23,10 @@ public class PackageEnableCommand(
         }
         else
         {
-            output.WriteKeyValueTable(
-                "Package enabled",
-                ("Instance", result.Key),
-                ("PREF", result.Pref),
-                ("State", "enabled")
-            );
+            output.WriteKeyValueTable("Package enabled",
+                                      ("Instance", result.Key),
+                                      ("PREF", result.Pref),
+                                      ("State", "enabled"));
             output.WriteSuccess($"Package {result.Pref} enabled.");
         }
 

@@ -9,22 +9,19 @@ namespace TridentCore.Cli.Commands.Package.Version;
 public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput output)
     : Command<PackageVersionListCommand.Arguments>
 {
-    protected override int Execute(
-        CommandContext context,
-        Arguments settings,
-        CancellationToken cancellationToken
-    )
+    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
-        var result = PackageOperation.VersionList(
-            repositories,
-            settings.Pref,
-            settings.GameVersion,
-            settings.Loader,
-            settings.ParsedKind,
-            settings.Sort,
-            settings.Index,
-            settings.Limit
-        ).GetAwaiter().GetResult();
+        var result = PackageOperation
+                    .VersionList(repositories,
+                                 settings.Pref,
+                                 settings.GameVersion,
+                                 settings.Loader,
+                                 settings.ParsedKind,
+                                 settings.Sort,
+                                 settings.Index,
+                                 settings.Limit)
+                    .GetAwaiter()
+                    .GetResult();
 
         if (output.UseStructuredOutput)
         {
@@ -34,10 +31,7 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
 
         if (result.Versions.Count == 0)
         {
-            output.WriteEmptyState(
-                "No versions found",
-                $"No versions matched filters for {settings.Pref}."
-            );
+            output.WriteEmptyState("No versions found", $"No versions matched filters for {settings.Pref}.");
             return ExitCodes.SUCCESS;
         }
 
@@ -49,19 +43,15 @@ public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput o
         table.AddColumn("Downloads");
         foreach (var version in result.Versions)
         {
-            var releaseColor = string.Equals(
-                version.ReleaseType.ToString(),
-                "Release",
-                StringComparison.OrdinalIgnoreCase
-            )
-                ? "green"
-                : "yellow";
-            table.AddMarkupRow(
-                Markup.Escape(version.Pref),
-                Markup.Escape(version.VersionName),
-                CliOutput.FormatStatus(version.ReleaseType.ToString(), releaseColor),
-                Markup.Escape(version.DownloadCount.ToString())
-            );
+            var releaseColor = string.Equals(version.ReleaseType.ToString(),
+                                             "Release",
+                                             StringComparison.OrdinalIgnoreCase)
+                                   ? "green"
+                                   : "yellow";
+            table.AddMarkupRow(Markup.Escape(version.Pref),
+                               Markup.Escape(version.VersionName),
+                               CliOutput.FormatStatus(version.ReleaseType.ToString(), releaseColor),
+                               Markup.Escape(version.DownloadCount.ToString()));
         }
 
         output.WriteTable(table);

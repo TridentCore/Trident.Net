@@ -25,13 +25,18 @@
 
 </div>
 
-Trident.Net is the .NET implementation of Trident: a set of core libraries for Minecraft instances, modpacks, package repositories, and accounts, plus the `trident` command-line tool built on the same core capabilities.
+Trident.Net is the .NET implementation of Trident: a set of core libraries for Minecraft instances, modpacks, package
+repositories, and accounts, plus the `trident` command-line tool built on the same core capabilities.
 
-Trident keeps an instance declarative, rebuildable, importable, exportable, and friendly to automation. The libraries define the model and execution engine; the CLI exposes those capabilities as a product-ready entry point for local play, modpack maintenance, and CI/CD publishing.
+Trident keeps an instance declarative, rebuildable, importable, exportable, and friendly to automation. The libraries
+define the model and execution engine; the CLI exposes those capabilities as a product-ready entry point for local play,
+modpack maintenance, and CI/CD publishing.
 
 ## One Model, Two Entrypoints
 
-The core object in Trident is `profile.json`. It describes the game version, loader, packages, rules, and runtime overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI provides commands for creating, importing, building, running, exporting, and managing packages.
+The core object in Trident is `profile.json`. It describes the game version, loader, packages, rules, and runtime
+overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI provides
+commands for creating, importing, building, running, exporting, and managing packages.
 
 ```text
 TridentCore.Abstractions  -> file models, repository interfaces, trackers, account interfaces
@@ -49,7 +54,9 @@ This section is for developers embedding Trident into launchers, desktop apps, s
 
 ### Data Layout
 
-Trident only manages data under the selected home directory. By default, home is resolved by walking up from the current directory and looking for `.trident`; if none is found, Trident falls back to `~/.trident`. Host applications can override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
+Trident only manages data under the selected home directory. By default, home is resolved by walking up from the current
+directory and looking for `.trident`; if none is found, Trident falls back to `~/.trident`. Host applications can
+override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 
 ```text
 .trident/
@@ -74,12 +81,19 @@ Trident only manages data under the selected home directory. By default, home is
 
 ### Core Concepts
 
-- Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and runtime overrides.
-- Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes `data.lock.json`.
-- Layer: `import/` stores modpack or exportable files (projected as real files into `build/` so the game reads them directly), and `persist/` stores user data (symlinked into `build/`). Runtime mutations to imported content land in `build/`.
-- Projection: deployment incrementally projects the virtual file structure into `build/` — import as real files, packages and persistence as symlinks.
-- Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident Prefs.
-- Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI subscribers.
+- Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and
+  runtime overrides.
+- Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes
+  `data.lock.json`.
+- Layer: `import/` stores modpack or exportable files (projected as real files into `build/` so the game reads them
+  directly), and `persist/` stores user data (symlinked into `build/`). Runtime mutations to imported content land in
+  `build/`.
+- Projection: deployment incrementally projects the virtual file structure into `build/` — import as real files,
+  packages and persistence as symlinks.
+- Repository: a unified interface for package sources such as Modrinth and CurseForge; package identities use Trident
+  Prefs.
+- Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI
+  subscribers.
 
 ### Capabilities
 
@@ -92,7 +106,8 @@ Trident only manages data under the selected home directory. By default, home is
 
 ### Integration
 
-Core is primarily integrated through dependency injection. `src/TridentCore.Cli/Startup.cs` is the most complete host example and shows how to register HTTP clients, caches, importers, exporters, remote services, and core managers.
+Core is primarily integrated through dependency injection. `src/TridentCore.Cli/Startup.cs` is the most complete host
+example and shows how to register HTTP clients, caches, importers, exporters, remote services, and core managers.
 
 ```csharp
 services.AddMemoryCache();
@@ -119,13 +134,18 @@ services
     .AddSingleton<InstanceManager>();
 ```
 
-In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent` plus `ExporterAgent` convert modpacks.
+In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile
+lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent`
+plus `ExporterAgent` convert modpacks.
 
 ## Trident As A CLI
 
-This section is for modpack authors, server maintainers, and users who want to manage Minecraft instances from the terminal.
+This section is for modpack authors, server maintainers, and users who want to manage Minecraft instances from the
+terminal.
 
-`trident` is the productized command-line entrypoint for Trident. It can create an instance from scratch, import existing modpacks, search and install packages, build launchable directories, log in accounts, run the game, and export the same instance into multiple modpack formats.
+`trident` is the productized command-line entrypoint for Trident. It can create an instance from scratch, import
+existing modpacks, search and install packages, build launchable directories, log in accounts, run the game, and export
+the same instance into multiple modpack formats.
 
 ### Use Cases
 
@@ -156,7 +176,8 @@ dotnet tool update --global TridentCore.Cli
 dotnet tool uninstall --global TridentCore.Cli
 ```
 
-The examples below assume `trident` is already on PATH. If a newly installed tool is not found in the current shell, verify that the .NET global tools directory has been added to PATH.
+The examples below assume `trident` is already on PATH. If a newly installed tool is not found in the current shell,
+verify that the .NET global tools directory has been added to PATH.
 
 ### Quick Start
 
@@ -172,33 +193,36 @@ trident instance export --instance cherry_picks --format modrinth --type online 
 
 Global options are preprocessed before command dispatch and can appear anywhere in the command line.
 
-| Option | Purpose |
-| --- | --- |
-| `--home <path>` / `--home=<path>` | Sets the Trident home directory and overrides automatic `.trident` discovery. |
-| `--json` | Forces structured JSON output. |
-| `--no-interactive` | Disables prompts, spinners, and progress UI; destructive commands also require `--yes`. |
-| `--verbose` | Enables information-level logs. |
-| `--debug` | Enables debug logs and full exceptions; also enables verbose output. |
-| `--mcp` | Starts Trident as an MCP (Model Context Protocol) server over stdio. Implies `--json` and `--no-interactive`. |
+| Option                            | Purpose                                                                                                       |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `--home <path>` / `--home=<path>` | Sets the Trident home directory and overrides automatic `.trident` discovery.                                 |
+| `--json`                          | Forces structured JSON output.                                                                                |
+| `--no-interactive`                | Disables prompts, spinners, and progress UI; destructive commands also require `--yes`.                       |
+| `--verbose`                       | Enables information-level logs.                                                                               |
+| `--debug`                         | Enables debug logs and full exceptions; also enables verbose output.                                          |
+| `--mcp`                           | Starts Trident as an MCP (Model Context Protocol) server over stdio. Implies `--json` and `--no-interactive`. |
 
 When stdout is redirected, the CLI automatically prefers JSON output for pipeline and scripting scenarios.
 
 ### Command Overview
 
-| Scenario | Commands |
-| --- | --- |
-| Instances | `trident instance create/list/inspect/build/import/export/unlock/reset/delete/run` |
-| Shortcuts | `trident create/import/build/run/list/inspect` |
-| Loaders | `trident loader list/get/set`, `trident loader version list` |
-| Packages | `trident package list/search/add/inspect/enable/disable` |
-| Package relations | `trident package dependency list`, `trident package dependent list` |
-| Package versions | `trident package version list/set` |
-| Package shortcuts | `trident search`, `trident add` |
-| Configuration | `trident config list/get/set/unset` |
-| Accounts | `trident account list/add/remove` |
-| Repositories | `trident repository list/status/add/remove` |
+| Scenario          | Commands                                                                           |
+|-------------------|------------------------------------------------------------------------------------|
+| Instances         | `trident instance create/list/inspect/build/import/export/unlock/reset/delete/run` |
+| Shortcuts         | `trident create/import/build/run/list/inspect`                                     |
+| Loaders           | `trident loader list/get/set`, `trident loader version list`                       |
+| Packages          | `trident package list/search/add/inspect/enable/disable`                           |
+| Package relations | `trident package dependency list`, `trident package dependent list`                |
+| Package versions  | `trident package version list/set`                                                 |
+| Package shortcuts | `trident search`, `trident add`                                                    |
+| Configuration     | `trident config list/get/set/unset`                                                |
+| Accounts          | `trident account list/add/remove`                                                  |
+| Repositories      | `trident repository list/status/add/remove`                                        |
 
-Commands that need an instance context resolve it in this order: `--instance <key>`, `--profile <path>`, then a managed `profile.json` in the current directory or one of its parents. Common short options include `-I|--instance`, `-R|--repository`, `-v|--version`, `-n|--name`, `-i|--id`, `-l|--loader`, `-y|--yes`, `-A|--account`, and `-u|--username`.
+Commands that need an instance context resolve it in this order: `--instance <key>`, `--profile <path>`, then a managed
+`profile.json` in the current directory or one of its parents. Common short options include `-I|--instance`,
+`-R|--repository`, `-v|--version`, `-n|--name`, `-i|--id`, `-l|--loader`, `-y|--yes`, `-A|--account`, and
+`-u|--username`.
 
 ### Workflow Examples
 
@@ -219,7 +243,9 @@ trident run --instance imported_pack --username Steve --max-memory 6144
 trident instance reset --instance imported_pack --yes
 ```
 
-`trident config` without an instance manages CLI-global defaults in `<trident-home>/.trident.cli/settings.json`; `--instance <key>` or `--profile <path>` manages that instance's `profile.json` overrides. Launch options use `command-line option > instance override > CLI-global setting > built-in default`.
+`trident config` without an instance manages CLI-global defaults in `<trident-home>/.trident.cli/settings.json`;
+`--instance <key>` or `--profile <path>` manages that instance's `profile.json` overrides. Launch options use
+`command-line option > instance override > CLI-global setting > built-in default`.
 
 Search, install, and switch package versions:
 
@@ -248,7 +274,8 @@ trident repository status --label modrinth-cn
 
 ### MCP Server
 
-Trident can run as an MCP (Model Context Protocol) server, exposing its capabilities as tools to AI agents and MCP clients:
+Trident can run as an MCP (Model Context Protocol) server, exposing its capabilities as tools to AI agents and MCP
+clients:
 
 ```sh
 trident --mcp
@@ -269,34 +296,40 @@ The server communicates over stdio. Configure it in an MCP client (e.g. Claude D
 
 Available tools:
 
-| Tool | Description |
-| --- | --- |
-| `List` (InstanceTools) | List all Trident instances. |
-| `Inspect` (InstanceTools) | Inspect an instance with package preview. |
-| `List` (PackageTools) | List packages installed in an instance. |
-| `Search` (PackageTools) | Search packages in remote repositories or within an instance. |
-| `Add` (PackageTools) | Add a package to an instance by Pref. |
-| `Inspect` (PackageTools) | Inspect a package by Pref. |
-| `SetEnabled` (PackageTools) | Enable or disable an installed package. |
-| `Get` / `Set` / `Unset` / `List` (ConfigTools) | Manage configuration values. |
-| `List` / `Status` (RepositoryTools) | List repositories and check their status. |
-| `List` (AccountTools) | List registered accounts. |
-| `List` / `VersionList` (LoaderTools) | List supported loaders and query versions. |
+| Tool                                           | Description                                                   |
+|------------------------------------------------|---------------------------------------------------------------|
+| `List` (InstanceTools)                         | List all Trident instances.                                   |
+| `Inspect` (InstanceTools)                      | Inspect an instance with package preview.                     |
+| `List` (PackageTools)                          | List packages installed in an instance.                       |
+| `Search` (PackageTools)                        | Search packages in remote repositories or within an instance. |
+| `Add` (PackageTools)                           | Add a package to an instance by Pref.                         |
+| `Inspect` (PackageTools)                       | Inspect a package by Pref.                                    |
+| `SetEnabled` (PackageTools)                    | Enable or disable an installed package.                       |
+| `Get` / `Set` / `Unset` / `List` (ConfigTools) | Manage configuration values.                                  |
+| `List` / `Status` (RepositoryTools)            | List repositories and check their status.                     |
+| `List` (AccountTools)                          | List registered accounts.                                     |
+| `List` / `VersionList` (LoaderTools)           | List supported loaders and query versions.                    |
 
 All tools return JSON. The `--home` option is also respected in MCP mode.
 
 #### Surface Boundaries
 
-The MCP surface intentionally excludes operations that are irreversible, resource-heavy, involve external trust negotiation, or fire only zero-to-one times across the software lifecycle:
+The MCP surface intentionally excludes operations that are irreversible, resource-heavy, involve external trust
+negotiation, or fire only zero-to-one times across the software lifecycle:
 
-- **Launching the game** — `trident run` spawns a heavyweight process that holds CPU/GPU/memory and mutates saves; "the game is already running" is not a state an agent can roll back.
-- **OAuth account login** — Microsoft device-code login is a one-shot trust negotiation with the identity provider, performed once in the GUI. An agent driving it gains nothing while touching credential lifecycle.
+- **Launching the game** — `trident run` spawns a heavyweight process that holds CPU/GPU/memory and mutates saves; "the
+  game is already running" is not a state an agent can roll back.
+- **OAuth account login** — Microsoft device-code login is a one-shot trust negotiation with the identity provider,
+  performed once in the GUI. An agent driving it gains nothing while touching credential lifecycle.
 
-What belongs on the surface is the rest: reversible, idempotent, data-level operations such as package Prefs, version selection, dependency analysis, and import/export. This is a design contract, not a backlog — do not add launch or credential-lifecycle tools without raising it first.
+What belongs on the surface is the rest: reversible, idempotent, data-level operations such as package Prefs, version
+selection, dependency analysis, and import/export. This is a design contract, not a backlog — do not add launch or
+credential-lifecycle tools without raising it first.
 
 ### CI/CD Modpack Publishing
 
-Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
+Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the
+repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
 
 ```yaml
 name: Build and Publish Modpack
@@ -334,19 +367,21 @@ jobs:
 
 - Human-readable output uses Spectre Console tables, panels, status messages, and progress feedback.
 - `--json` or stdout redirection emits structured JSON; Microsoft device-code login prompts still write to stderr.
-- CLI account and repository secrets are stored in `<trident-home>/.trident.cli/*.json`; the current implementation does not encrypt them with the system keychain.
-- `package dependent list` scans local reverse dependencies inside an instance; it is not a global reverse-dependency query against remote repositories.
+- CLI account and repository secrets are stored in `<trident-home>/.trident.cli/*.json`; the current implementation does
+  not encrypt them with the system keychain.
+- `package dependent list` scans local reverse dependencies inside an instance; it is not a global reverse-dependency
+  query against remote repositories.
 - See [`docs/CLI.md`](docs/CLI.md) for more CLI details and validation notes.
 
 ## Repository Layout
 
-| Path | Description |
-| --- | --- |
-| `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities. |
-| `src/TridentCore.Core/` | Core business logic, deployment/run engine, import/export, and remote services. |
-| `src/TridentCore.Pref/` | Trident package reference parsing and formatting. |
-| `src/TridentCore.Cli/` | The `trident` command-line product (CLI + MCP server). |
-| `docs/CLI.md` | Detailed CLI reference and validation notes. |
+| Path                            | Description                                                                     |
+|---------------------------------|---------------------------------------------------------------------------------|
+| `src/TridentCore.Abstractions/` | Shared models, interfaces, and utilities.                                       |
+| `src/TridentCore.Core/`         | Core business logic, deployment/run engine, import/export, and remote services. |
+| `src/TridentCore.Pref/`         | Trident package reference parsing and formatting.                               |
+| `src/TridentCore.Cli/`          | The `trident` command-line product (CLI + MCP server).                          |
+| `docs/CLI.md`                   | Detailed CLI reference and validation notes.                                    |
 
 ## Development
 
@@ -358,12 +393,12 @@ dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 
 ## AI Disclosure
 
-| Project | AI disclosure |
-| --- | --- |
-| `TridentCore.Abstractions` | Human-written |
-| `TridentCore.Core` | Human-written |
-| `TridentCore.Pref` | Human-written |
-| `TridentCore.Cli` | Vibe-coded (GPT-5.5) |
+| Project                    | AI disclosure        |
+|----------------------------|----------------------|
+| `TridentCore.Abstractions` | Human-written        |
+| `TridentCore.Core`         | Human-written        |
+| `TridentCore.Pref`         | Human-written        |
+| `TridentCore.Cli`          | Vibe-coded (GPT-5.5) |
 
 ---
 

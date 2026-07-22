@@ -7,12 +7,10 @@ namespace TridentCore.Core.Exceptions;
 // tie is a setup mistake the user must resolve by ordering SourceOrders or removing the
 // duplicate. Cross-tier conflicts are always decidable and never reach here.
 public class PackageConflictException(string subject, IReadOnlyList<LockData.LockedPackage> collisions)
-    : Exception(
-        $"Unresolvable package conflict on {subject}: "
-        + $"{collisions.Count} packages share the top priority — "
-        + $"{string.Join(", ", collisions.Select(c => $"{c.Pref} [{c.Source ?? "manual"}]"))}. "
-        + $"Reorder them in SourceOrders or remove duplicates."
-    )
+    : Exception($"Unresolvable package conflict on {subject}: "
+              + $"{collisions.Count} packages share the top priority — "
+              + $"{string.Join(", ", collisions.Select(c => $"{c.Pref} [{c.Source ?? "manual"}]"))}. "
+              + $"Reorder them in SourceOrders or remove duplicates.")
 {
     public string Subject { get; } = subject;
 

@@ -50,7 +50,11 @@ public class Profile
 
             [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-            public string? Purl { get => null; set => Pref = PackageHelper.SafeMigrate(value); }
+            public string? Purl
+            {
+                get => null;
+                set => Pref = PackageHelper.SafeMigrate(value);
+            }
 
             public required bool Enabled { get; set; }
             public string? Source { get; set; }
@@ -72,16 +76,7 @@ public class Profile
             {
                 #region SelectorType enum
 
-                public enum SelectorType
-                {
-                    And,
-                    Or,
-                    Not,
-                    Pref,
-                    Repository,
-                    Tag,
-                    Kind,
-                }
+                public enum SelectorType { And, Or, Not, Pref, Repository, Tag, Kind }
 
                 #endregion
 
@@ -92,7 +87,11 @@ public class Profile
 
                 [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
                 [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-                public string? Purl { get => null; set => Pref = PackageHelper.SafeMigrate(value); }
+                public string? Purl
+                {
+                    get => null;
+                    set => Pref = PackageHelper.SafeMigrate(value);
+                }
 
                 public string? Repository { get; set; }
                 public string? Tag { get; set; }

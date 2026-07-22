@@ -15,11 +15,8 @@ public class PersistLockStage : StageBase
             Directory.CreateDirectory(dir);
         }
 
-        await File.WriteAllTextAsync(
-                path,
-                JsonSerializer.Serialize(Context.Lock, JsonSerializerOptions.Web),
-                token
-            )
-            .ConfigureAwait(false);
+        await File
+             .WriteAllTextAsync(path, JsonSerializer.Serialize(Context.Lock, JsonSerializerOptions.Web), token)
+             .ConfigureAwait(false);
     }
 }

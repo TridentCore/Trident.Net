@@ -8,8 +8,7 @@ public class UncompressedProfilePack(
     PackData options,
     string name,
     string author,
-    string version
-)
+    string version)
 {
     public string Key => key;
     public Profile Profile => profile;

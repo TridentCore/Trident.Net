@@ -22,7 +22,6 @@ using TridentCore.Core.Igniters;
 using TridentCore.Core.Services.Instances;
 using TridentCore.Core.Services.Profiles;
 using TridentCore.Core.Utilities;
-using TridentCore.Pref;
 
 namespace TridentCore.Core.Services;
 
@@ -33,8 +32,7 @@ public class InstanceManager(
     ImporterAgent importers,
     AccountConfigurerAgent accountConfigurer,
     IServiceProvider provider,
-    IHttpClientFactory clientFactory
-)
+    IHttpClientFactory clientFactory)
 {
     // 主要是在 UI 线程中增删改查，实际不需要保证线程同步
     private readonly Dictionary<string, TrackerBase> _trackers = new();
@@ -54,19 +52,13 @@ public class InstanceManager(
     {
         if (!string.IsNullOrEmpty(startInfo.Arguments))
         {
-            return string.Join(
-                ' ',
-                QuoteCommandLineArgument(startInfo.FileName),
-                startInfo.Arguments
-            );
+            return string.Join(' ', QuoteCommandLineArgument(startInfo.FileName), startInfo.Arguments);
         }
 
-        return string.Join(
-            ' ',
-            new[] { startInfo.FileName }
-                .Concat(startInfo.ArgumentList)
-                .Select(QuoteCommandLineArgument)
-        );
+        return string.Join(' ',
+                           new[] { startInfo.FileName }
+                              .Concat(startInfo.ArgumentList)
+                              .Select(QuoteCommandLineArgument));
     }
 
     private static string QuoteCommandLineArgument(string argument)
@@ -77,8 +69,8 @@ public class InstanceManager(
         }
 
         return argument.Any(char.IsWhiteSpace) || argument.Contains('"')
-            ? $"\"{argument.Replace("\"", "\\\"")}\""
-            : argument;
+                   ? $"\"{argument.Replace("\"", "\\\"")}\""
+                   : argument;
     }
 
     public bool IsTracking(string key, [MaybeNullWhen(false)] out TrackerBase tracker)
@@ -99,8 +91,7 @@ public class InstanceManager(
         string key,
         DeployOptions deploy,
         LaunchOptions launch,
-        JavaHomeLocatorDelegate javaHomeLocator
-    )
+        JavaHomeLocatorDelegate javaHomeLocator)
     {
         if (IsInUse(key))
         {
@@ -111,39 +102,29 @@ public class InstanceManager(
         var profile = profileManager.GetImmutable(key);
         if (deploy.FastMode && File.Exists(path))
         {
-            var existing = JsonSerializer.Deserialize<LockData>(
-                File.ReadAllText(path),
-                JsonSerializerOptions.Web
-            );
+            var existing = JsonSerializer.Deserialize<LockData>(File.ReadAllText(path), JsonSerializerOptions.Web);
 
-            if (
-                existing is { Artifact: not null }
-                && existing.Verify(
-                    profile.Setup,
-                    ViabilityHashHelper.OptionsOf(deploy),
-                    ViabilityHashHelper.PriorityOf(profile.Setup)
-                )
-            )
+            if (existing is { Artifact: not null }
+             && existing.Verify(profile.Setup,
+                                ViabilityHashHelper.OptionsOf(deploy),
+                                ViabilityHashHelper.PriorityOf(profile.Setup)))
             {
                 Launch(key, launch, javaHomeLocator);
                 return;
             }
         }
 
-        var tracker = new DeployTracker(
-            key,
-            async t =>
-                await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
-                    .ConfigureAwait(false),
-            t =>
-            {
-                TrackerOnCompleted(t);
-                if (t is { State: TrackerState.Finished })
-                {
-                    Launch(key, launch, javaHomeLocator);
-                }
-            }
-        );
+        var tracker = new DeployTracker(key,
+                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
+                                                      .ConfigureAwait(false),
+                                        t =>
+                                        {
+                                            TrackerOnCompleted(t);
+                                            if (t is { State: TrackerState.Finished })
+                                            {
+                                                Launch(key, launch, javaHomeLocator);
+                                            }
+                                        });
         _trackers.Add(key, tracker);
         InstanceDeploying?.Invoke(this, tracker);
         tracker.Start();
@@ -156,8 +137,7 @@ public class InstanceManager(
         ulong size,
         Subject<double?>? reporter,
         HttpClient client,
-        CancellationToken token
-    )
+        CancellationToken token)
     {
         await using var stream = await client.GetStreamAsync(download, token).ConfigureAwait(false);
         var memory = new MemoryStream();
@@ -177,15 +157,9 @@ public class InstanceManager(
         return memory;
     }
 
-    private static async Task ExtractIconFileAsync(
-        string key,
-        ImportedProfileContainer container,
-        HttpClient client
-    )
+    private static async Task ExtractIconFileAsync(string key, ImportedProfileContainer container, HttpClient client)
     {
-        await using var iconReader = await client
-            .GetStreamAsync(container.IconUrl)
-            .ConfigureAwait(false);
+        await using var iconReader = await client.GetStreamAsync(container.IconUrl).ConfigureAwait(false);
         await using var iconMemory = new MemoryStream();
         await iconReader.CopyToAsync(iconMemory).ConfigureAwait(false);
         iconMemory.Position = 0;
@@ -207,24 +181,17 @@ public class InstanceManager(
 
     #region Deploy
 
-    public DeployTracker Deploy(
-        string key,
-        DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator
-    )
+    public DeployTracker Deploy(string key, DeployOptions options, JavaHomeLocatorDelegate javaHomeLocator)
     {
         if (IsInUse(key))
         {
             throw new InvalidOperationException($"Instance {key} is operated in progress");
         }
 
-        var tracker = new DeployTracker(
-            key,
-            async t =>
-                await DeployCoreAsync((DeployTracker)t, options, javaHomeLocator)
-                    .ConfigureAwait(false),
-            TrackerOnCompleted
-        );
+        var tracker = new DeployTracker(key,
+                                        async t => await DeployCoreAsync((DeployTracker)t, options, javaHomeLocator)
+                                                      .ConfigureAwait(false),
+                                        TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceDeploying?.Invoke(this, tracker);
         tracker.Start();
@@ -234,26 +201,23 @@ public class InstanceManager(
     private async Task DeployCoreAsync(
         DeployTracker tracker,
         DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator
-    )
+        JavaHomeLocatorDelegate javaHomeLocator)
     {
         logger.LogInformation("Begin deploy {}", tracker.Key);
 
         var profile = profileManager.GetImmutable(tracker.Key);
-        var engine = new DeployEngine(
-            tracker.Key,
-            profile.Setup,
-            provider,
-            new()
-            {
-                FastMode = options.FastMode,
-                ResolveDependency = options.ResolveDependency,
-                FullCheckMode = options.FullCheckMode,
-            },
-            HashHelper.ComputeObjectHash(options),
-            ViabilityHashHelper.PriorityOf(profile.Setup),
-            javaHomeLocator
-        );
+        var engine = new DeployEngine(tracker.Key,
+                                      profile.Setup,
+                                      provider,
+                                      new()
+                                      {
+                                          FastMode = options.FastMode,
+                                          ResolveDependency = options.ResolveDependency,
+                                          FullCheckMode = options.FullCheckMode
+                                      },
+                                      HashHelper.ComputeObjectHash(options),
+                                      ViabilityHashHelper.PriorityOf(profile.Setup),
+                                      javaHomeLocator);
 
         var watch = Stopwatch.StartNew();
         foreach (var stage in engine)
@@ -301,8 +265,8 @@ public class InstanceManager(
                     tracker.StageStream.OnNext(DeployStage.SolidifyManifest);
                     tracker.CurrentStage = DeployStage.SolidifyManifest;
                     solidifyManifestStage
-                        .ProgressStream.Subscribe(tracker.ProgressStream)
-                        .DisposeWith(solidifyManifestStage);
+                       .ProgressStream.Subscribe(tracker.ProgressStream)
+                       .DisposeWith(solidifyManifestStage);
                     break;
             }
 
@@ -319,25 +283,18 @@ public class InstanceManager(
 
     #region Launch
 
-    public LaunchTracker Launch(
-        string key,
-        LaunchOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator
-    )
+    public LaunchTracker Launch(string key, LaunchOptions options, JavaHomeLocatorDelegate javaHomeLocator)
     {
         if (IsInUse(key))
         {
             throw new InvalidOperationException($"Instance {key} is operated in progress");
         }
 
-        var tracker = new LaunchTracker(
-            key,
-            options,
-            async t =>
-                await LaunchCoreAsync((LaunchTracker)t, options, javaHomeLocator)
-                    .ConfigureAwait(false),
-            TrackerOnCompleted
-        );
+        var tracker = new LaunchTracker(key,
+                                        options,
+                                        async t => await LaunchCoreAsync((LaunchTracker)t, options, javaHomeLocator)
+                                                      .ConfigureAwait(false),
+                                        TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceLaunching?.Invoke(this, tracker);
         tracker.Start();
@@ -347,8 +304,7 @@ public class InstanceManager(
     private async Task LaunchCoreAsync(
         LaunchTracker tracker,
         LaunchOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator
-    )
+        JavaHomeLocatorDelegate javaHomeLocator)
     {
         logger.LogInformation("Begin launch {}", tracker.Key);
 
@@ -365,10 +321,11 @@ public class InstanceManager(
         var found = File.Exists(artifactPath);
         if (found)
         {
-            var lockData = JsonSerializer.Deserialize<LockData>(
-                await File.ReadAllTextAsync(artifactPath, tracker.Token).ConfigureAwait(false),
-                JsonSerializerOptions.Web
-            );
+            var lockData =
+                JsonSerializer.Deserialize<LockData>(await File
+                                                          .ReadAllTextAsync(artifactPath, tracker.Token)
+                                                          .ConfigureAwait(false),
+                                                     JsonSerializerOptions.Web);
 
             if (lockData?.Artifact is not { } artifactData)
             {
@@ -388,27 +345,25 @@ public class InstanceManager(
                 tracker.JavaVersion = artifactData.JavaMajorVersion;
 
                 igniter
-                    .SetJavaHome(javaHome)
-                    .SetWorkingDirectory(workingDir)
-                    .SetAssetRootDirectory(assetDir)
-                    .SetNativesRootDirectory(nativeDir)
-                    .SetLibraryRootDirectory(libraryDir)
-                    .SetLauncherName(options.Brand)
-                    .SetLauncherVersion(
-                        Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Eternal"
-                    )
-                    .SetOsName(PlatformHelper.GetOsName())
-                    .SetOsArch(PlatformHelper.GetOsArch())
-                    .SetOsVersion(PlatformHelper.GetOsVersion())
-                    .SetUserUuid(options.Account.Uuid)
-                    .SetUserType(options.Account.UserType)
-                    .SetUserName(options.Account.Username)
-                    .SetUserAccessToken(options.Account.AccessToken)
-                    .SetVersionName(profile.Setup.Version)
-                    .SetWindowSize(options.WindowSize)
-                    .SetMaxMemory(options.MaxMemory)
-                    .SetCommandWrapperTemplate(options.CommandWrapperTemplate)
-                    .SetReleaseType(options.Brand);
+                   .SetJavaHome(javaHome)
+                   .SetWorkingDirectory(workingDir)
+                   .SetAssetRootDirectory(assetDir)
+                   .SetNativesRootDirectory(nativeDir)
+                   .SetLibraryRootDirectory(libraryDir)
+                   .SetLauncherName(options.Brand)
+                   .SetLauncherVersion(Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Eternal")
+                   .SetOsName(PlatformHelper.GetOsName())
+                   .SetOsArch(PlatformHelper.GetOsArch())
+                   .SetOsVersion(PlatformHelper.GetOsVersion())
+                   .SetUserUuid(options.Account.Uuid)
+                   .SetUserType(options.Account.UserType)
+                   .SetUserName(options.Account.Username)
+                   .SetUserAccessToken(options.Account.AccessToken)
+                   .SetVersionName(profile.Setup.Version)
+                   .SetWindowSize(options.WindowSize)
+                   .SetMaxMemory(options.MaxMemory)
+                   .SetCommandWrapperTemplate(options.CommandWrapperTemplate)
+                   .SetReleaseType(options.Brand);
                 if (!string.IsNullOrEmpty(options.QuickConnectAddress))
                 {
                     igniter.SetQuickConnectAddress(options.QuickConnectAddress);
@@ -420,7 +375,9 @@ public class InstanceManager(
                 }
 
                 var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, lockData);
-                await accountConfigurer.ConfigureLaunchAsync(options.Account, launchContext, tracker.Token).ConfigureAwait(false);
+                await accountConfigurer
+                     .ConfigureLaunchAsync(options.Account, launchContext, tracker.Token)
+                     .ConfigureAwait(false);
 
                 if (options.Mode == LaunchMode.Debug)
                 {
@@ -438,20 +395,17 @@ public class InstanceManager(
 
                 if (options.Mode == LaunchMode.Debug)
                 {
-                    await File.WriteAllLinesAsync(
-                            Path.Combine(build, "trident.launch.dump.txt"),
-                            [process.StartInfo.FileName, .. process.StartInfo.ArgumentList]
-                        )
-                        .ConfigureAwait(false);
+                    await File
+                         .WriteAllLinesAsync(Path.Combine(build, "trident.launch.dump.txt"),
+                                             [process.StartInfo.FileName, .. process.StartInfo.ArgumentList])
+                         .ConfigureAwait(false);
                 }
 
                 if (options.Mode == LaunchMode.Managed)
                 {
                     tracker.Process = process;
                     var launcher = new LaunchEngine(process);
-                    await foreach (
-                        var scrap in launcher.WithCancellation(tracker.Token).ConfigureAwait(false)
-                    )
+                    await foreach (var scrap in launcher.WithCancellation(tracker.Token).ConfigureAwait(false))
                     {
                         tracker.ScrapStream.OnNext(scrap);
                     }
@@ -474,10 +428,8 @@ public class InstanceManager(
                         {
                             var code = process.ExitCode;
                             process.Close();
-                            throw new ProcessFaultedException(
-                                code,
-                                $"The process has exited with non-zero code {code}"
-                            );
+                            throw new ProcessFaultedException(code,
+                                                              $"The process has exited with non-zero code {code}");
                         }
                     }
 
@@ -500,17 +452,18 @@ public class InstanceManager(
         }
     }
 
-    private async Task ValidateAndRefreshAccountAsync(
-        LaunchOptions options,
-        CancellationToken token
-    )
+    private async Task ValidateAndRefreshAccountAsync(LaunchOptions options, CancellationToken token)
     {
         if (options.Account is null)
+        {
             return;
+        }
 
         var refreshed = await accountConfigurer.ValidateAndRefreshAsync(options.Account, token).ConfigureAwait(false);
         if (refreshed)
+        {
             AccountUpdated?.Invoke(this, options.Account);
+        }
     }
 
     #endregion
@@ -522,13 +475,15 @@ public class InstanceManager(
         // 只有在线安装会有 Tracker，离线导入因为不需要等待，全在前端进行
 
         var reserved = profileManager.RequestKey(key);
-        var tracker = new InstallTracker(
-            reserved.Key,
-            async t =>
-                await InstallCoreAsync((InstallTracker)t, reserved, label, ns, pid, vid)
-                    .ConfigureAwait(false),
-            TrackerOnCompleted
-        );
+        var tracker = new InstallTracker(reserved.Key,
+                                         async t => await InstallCoreAsync((InstallTracker)t,
+                                                                           reserved,
+                                                                           label,
+                                                                           ns,
+                                                                           pid,
+                                                                           vid)
+                                                       .ConfigureAwait(false),
+                                         TrackerOnCompleted);
         _trackers.Add(reserved.Key, tracker);
         InstanceInstalling?.Invoke(this, tracker);
         tracker.Start();
@@ -541,25 +496,18 @@ public class InstanceManager(
         string label,
         string? ns,
         string pid,
-        string? vid
-    )
+        string? vid)
     {
-        logger.LogInformation(
-            "Begin install package {pref} as {key}",
-            PackageHelper.ToPref(label, ns, pid, vid),
-            key.Key
-        );
+        logger.LogInformation("Begin install package {pref} as {key}",
+                              PackageHelper.ToPref(label, ns, pid, vid),
+                              key.Key);
         tracker.ProgressStream.OnNext(null);
         var package = await repositories
-            .ResolveAsync(new PackageIdentifier(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
-            .ConfigureAwait(false);
-        var (pack, container) = await DownloadAndImportPackageAsync(
-                key.Key,
-                package,
-                tracker.ProgressStream,
-                tracker.Token
-            )
-            .ConfigureAwait(false);
+                           .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
+                           .ConfigureAwait(false);
+        var (pack, container) =
+            await DownloadAndImportPackageAsync(key.Key, package, tracker.ProgressStream, tracker.Token)
+               .ConfigureAwait(false);
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
@@ -583,13 +531,10 @@ public class InstanceManager(
             throw new InvalidOperationException($"Instance {key} is operated in progress");
         }
 
-        var tracker = new UpdateTracker(
-            key,
-            async t =>
-                await UpdateCoreAsync((UpdateTracker)t, key, label, ns, pid, vid)
-                    .ConfigureAwait(false),
-            TrackerOnCompleted
-        );
+        var tracker = new UpdateTracker(key,
+                                        async t => await UpdateCoreAsync((UpdateTracker)t, key, label, ns, pid, vid)
+                                                      .ConfigureAwait(false),
+                                        TrackerOnCompleted);
         _trackers.Add(key, tracker);
         InstanceUpdating?.Invoke(this, tracker);
         tracker.Start();
@@ -602,24 +547,14 @@ public class InstanceManager(
         string label,
         string? ns,
         string pid,
-        string vid
-    )
+        string vid)
     {
-        logger.LogInformation(
-            "Begin update {key} from package {pref}",
-            key,
-            PackageHelper.ToPref(label, ns, pid, vid)
-        );
+        logger.LogInformation("Begin update {key} from package {pref}", key, PackageHelper.ToPref(label, ns, pid, vid));
         var package = await repositories
-            .ResolveAsync(new PackageIdentifier(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
-            .ConfigureAwait(false);
-        var (pack, container) = await DownloadAndImportPackageAsync(
-                key,
-                package,
-                tracker.ProgressStream,
-                tracker.Token
-            )
-            .ConfigureAwait(false);
+                           .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
+                           .ConfigureAwait(false);
+        var (pack, container) = await DownloadAndImportPackageAsync(key, package, tracker.ProgressStream, tracker.Token)
+                                   .ConfigureAwait(false);
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
@@ -652,45 +587,30 @@ public class InstanceManager(
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;
 
-        profileManager.Update(
-            key,
-            container.Profile.Setup.Source,
-            container.Profile.Name,
-            container.Profile.Setup.Version,
-            container.Profile.Setup.Loader,
-            [.. container.Profile.Setup.Packages.Select(x => x.Pref)],
-            container.Profile.Overrides
-        );
+        profileManager.Update(key,
+                              container.Profile.Setup.Source,
+                              container.Profile.Name,
+                              container.Profile.Setup.Version,
+                              container.Profile.Setup.Loader,
+                              [.. container.Profile.Setup.Packages.Select(x => x.Pref)],
+                              container.Profile.Overrides);
 
         logger.LogInformation("{key} updated", key);
     }
 
-    private async Task<(
-        CompressedProfilePack Pack,
-        ImportedProfileContainer Container
-    )> DownloadAndImportPackageAsync(
-        string key,
-        Package package,
-        Subject<double?> progressStream,
-        CancellationToken cancellationToken
-    )
+    private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)>
+        DownloadAndImportPackageAsync(
+            string key,
+            Package package,
+            Subject<double?> progressStream,
+            CancellationToken cancellationToken)
     {
         var size = package.Size;
-        logger.LogDebug(
-            "Downloading package file {url} sized {size} bytes",
-            package.Download.AbsoluteUri,
-            size
-        );
+        logger.LogDebug("Downloading package file {url} sized {size} bytes", package.Download.AbsoluteUri, size);
         using var client = clientFactory.CreateClient();
 
-        var memory = await DownloadFileAsync(
-                package.Download,
-                size,
-                progressStream,
-                client,
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        var memory = await DownloadFileAsync(package.Download, size, progressStream, client, cancellationToken)
+                        .ConfigureAwait(false);
 
         logger.LogDebug("Downloaded {length} bytes", memory.Length);
 

@@ -15,81 +15,12 @@ public class ModrinthImporter : IProfileImporter
         ["forge"] = LoaderHelper.LOADERID_FORGE,
         ["neoforge"] = LoaderHelper.LOADERID_NEOFORGE,
         ["fabric-loader"] = LoaderHelper.LOADERID_FABRIC,
-        ["quilt-loader"] = LoaderHelper.LOADERID_QUILT,
+        ["quilt-loader"] = LoaderHelper.LOADERID_QUILT
     };
-
-    #region IProfileImporter Members
-
-    public bool CanHandle(CompressedProfilePack pack) =>
-        pack.RootPrefix is null && pack.FileNames.Contains(ModrinthHelper.PACK_INDEX_FILE_NAME);
-
-    public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
-    {
-        await using var manifestStream = pack.Open(ModrinthHelper.PACK_INDEX_FILE_NAME);
-        var index = await JsonSerializer
-            .DeserializeAsync<PackIndex>(manifestStream, JsonSerializerOptions.Web)
-            .ConfigureAwait(false);
-        if (
-            index is null
-            || !TryExtractLoader(index.Dependencies, out var loader)
-            || !TryExtractVersion(index.Dependencies, out var version)
-        )
-        {
-            throw new FormatException($"{ModrinthHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
-        }
-
-        var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
-        return new(
-            new()
-            {
-                Name = index.Name,
-                Setup = new()
-                {
-                    Source = source,
-                    Version = version,
-                    Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                    Packages =
-                    [
-                        .. index
-                            .Files.Where(x => x.Env?.Client is not "unsupported")
-                            .Select(x => ToPackage(x, source)),
-                    ],
-                },
-            },
-            pack.FileNames.Where(x =>
-                    x.StartsWith("overrides")
-                    && x != "overrides"
-                    && x.Length > "overrides".Length + 1
-                )
-                .Select(x => (x, x[("overrides".Length + 1)..]))
-                .Where(x =>
-                    !x.Item2.EndsWith('/') && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)
-                )
-                .Concat(
-                    pack.FileNames.Where(x =>
-                            x.StartsWith("client-overrides")
-                            && x != "client-overrides"
-                            && x.Length > "client-overrides".Length + 1
-                        )
-                        .Select(x => (x, x[("client-overrides".Length + 1)..]))
-                        .Where(x =>
-                            !x.Item2.EndsWith('/')
-                            && !x.Item2.EndsWith('\\')
-                            && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)
-                        )
-                )
-                .ToList(),
-            [],
-            pack.Reference?.Thumbnail
-        );
-    }
-
-    #endregion
 
     private bool TryExtractLoader(
         IDictionary<string, string> dependencies,
-        out (string Identity, string Version) loader
-    )
+        out (string Identity, string Version) loader)
     {
         foreach (var (k, v) in dependencies)
         {
@@ -104,10 +35,7 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private bool TryExtractVersion(
-        IDictionary<string, string> dependencies,
-        [MaybeNullWhen(false)] out string version
-    )
+    private bool TryExtractVersion(IDictionary<string, string> dependencies, [MaybeNullWhen(false)] out string version)
     {
         if (dependencies.TryGetValue("minecraft", out var v))
         {
@@ -138,7 +66,7 @@ public class ModrinthImporter : IProfileImporter
                 {
                     Pref = PackageHelper.ToPref(ModrinthHelper.LABEL, null, projectId, versionId),
                     Enabled = true,
-                    Source = source,
+                    Source = source
                 };
             }
         }
@@ -146,4 +74,61 @@ public class ModrinthImporter : IProfileImporter
         // or dead end
         throw new NotSupportedException($"{file.Path} can not be recognized as an attachment");
     }
+
+    #region IProfileImporter Members
+
+    public bool CanHandle(CompressedProfilePack pack) =>
+        pack.RootPrefix is null && pack.FileNames.Contains(ModrinthHelper.PACK_INDEX_FILE_NAME);
+
+    public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
+    {
+        await using var manifestStream = pack.Open(ModrinthHelper.PACK_INDEX_FILE_NAME);
+        var index = await JsonSerializer
+                         .DeserializeAsync<PackIndex>(manifestStream, JsonSerializerOptions.Web)
+                         .ConfigureAwait(false);
+        if (index is null
+         || !TryExtractLoader(index.Dependencies, out var loader)
+         || !TryExtractVersion(index.Dependencies, out var version))
+        {
+            throw new FormatException($"{ModrinthHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
+        }
+
+        var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
+        return new(new()
+        {
+            Name = index.Name,
+            Setup =
+                           new()
+                           {
+                               Source = source,
+                               Version = version,
+                               Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
+                               Packages =
+                               [
+                                   .. index
+                                     .Files.Where(x => x.Env?.Client is not "unsupported")
+                                     .Select(x => ToPackage(x, source))
+                               ]
+                           }
+        },
+                   pack
+                      .FileNames
+                      .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
+                      .Select(x => (x, x[("overrides".Length + 1)..]))
+                      .Where(x => !x.Item2.EndsWith('/') && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                      .Concat(pack
+                             .FileNames
+                             .Where(x => x.StartsWith("client-overrides")
+                                      && x != "client-overrides"
+                                      && x.Length > "client-overrides".Length + 1)
+                             .Select(x => (x, x[("client-overrides".Length + 1)..]))
+                             .Where(x => !x.Item2.EndsWith('/')
+                                      && !x.Item2.EndsWith('\\')
+                                      && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)))
+                      .ToList(),
+                   [],
+                   pack.Reference?.Thumbnail);
+    }
+
+    #endregion
 }

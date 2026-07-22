@@ -1,5 +1,5 @@
 namespace TridentCore.Core.Exceptions;
 
-public class AccountAuthenticationException(string message, Exception? inner = null)
-    : AccountException(message, inner)
+public class
+    AccountAuthenticationException(string message, Exception? inner = null) : AccountException(message, inner)
 { }

@@ -21,7 +21,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
     {
         var channel = Channel.CreateBounded<FileInfo>(new BoundedChannelOptions(1000)
         {
-            FullMode = BoundedChannelFullMode.Wait,
+            FullMode = BoundedChannelFullMode.Wait
         });
         var totalCollected = 0;
         var totalProcessed = 0;
@@ -30,11 +30,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         var setup = profileManager.GetImmutable(key).Setup.Clone();
 
         var home = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
-        var dirs = new[]
-        {
-            PathDef.Default.DirectoryOfImport(key),
-            PathDef.Default.DirectoryOfPersist(key)
-        };
+        var dirs = new[] { PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key) };
 
 
         var producer = Task.Run(async () =>
@@ -48,7 +44,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                             {
                                                 continue;
                                             }
-                                            foreach (var file in directory.EnumerateFiles("*.*", SearchOption.AllDirectories))
+
+                                            foreach (var file in directory.EnumerateFiles("*.*",
+                                                         SearchOption.AllDirectories))
                                             {
                                                 await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
                                                 Interlocked.Increment(ref totalCollected);
@@ -145,181 +143,206 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         return (snapshot, bag.ToArray());
     }
 
-    public Task CommitAsync(ISnapshotStore store, string key, SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null, CancellationToken token = default)
-    {
-        return Task.Run(() =>
-        {
-            var home = PathDef.Default.DirectoryOfHome(key);
-            var processed = 0;
+    public Task CommitAsync(
+        ISnapshotStore store,
+        string key,
+        SnapshotInfo snapshot,
+        IReadOnlyList<ReferenceInfo> references,
+        IProgress<int>? copied = null,
+        CancellationToken token = default) =>
+        Task.Run(() =>
+                 {
+                     var home = PathDef.Default.DirectoryOfHome(key);
+                     var processed = 0;
 
-            foreach (var reference in references)
-            {
-                token.ThrowIfCancellationRequested();
+                     foreach (var reference in references)
+                     {
+                         token.ThrowIfCancellationRequested();
 
-                var sourcePath = Path.Combine(home, reference.RelativePath);
-                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                         var sourcePath = Path.Combine(home, reference.RelativePath);
+                         var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
 
-                if (File.Exists(objectPath))
-                {
-                    var existingSize = new FileInfo(objectPath).Length;
-                    if (existingSize != reference.Size)
-                    {
-                        throw new InvalidDataException(
-                            $"Snapshot store corruption: object {reference.Hash} size mismatch (expected {reference.Size}, actual {existingSize})");
-                    }
+                         if (File.Exists(objectPath))
+                         {
+                             var existingSize = new FileInfo(objectPath).Length;
+                             if (existingSize != reference.Size)
+                             {
+                                 throw new
+                                     InvalidDataException($"Snapshot store corruption: object {reference.Hash} size mismatch (expected {reference.Size}, actual {existingSize})");
+                             }
 
-                    processed++;
-                    copied?.Report(processed);
-                    continue;
-                }
+                             processed++;
+                             copied?.Report(processed);
+                             continue;
+                         }
 
-                var prefix = Path.GetDirectoryName(objectPath)!;
-                Directory.CreateDirectory(prefix);
-                var tempPath = Path.Combine(prefix, $"{Guid.NewGuid():N}.tmp");
+                         var prefix = Path.GetDirectoryName(objectPath)!;
+                         Directory.CreateDirectory(prefix);
+                         var tempPath = Path.Combine(prefix, $"{Guid.NewGuid():N}.tmp");
 
-                File.Copy(sourcePath, tempPath);
-                File.Move(tempPath, objectPath, overwrite: true);
+                         File.Copy(sourcePath, tempPath);
+                         File.Move(tempPath, objectPath, true);
 
-                processed++;
-                copied?.Report(processed);
-            }
+                         processed++;
+                         copied?.Report(processed);
+                     }
 
-            store.InsertSnapshot(snapshot, references);
-        }, token);
-    }
+                     store.InsertSnapshot(snapshot, references);
+                 },
+                 token);
 
-    public Task RestoreAsync(ISnapshotStore store, string key, object snapshotId, IProgress<int>? restored = null, CancellationToken token = default)
-    {
-        return Task.Run(() =>
-        {
-            token.ThrowIfCancellationRequested();
+    public Task RestoreAsync(
+        ISnapshotStore store,
+        string key,
+        object snapshotId,
+        IProgress<int>? restored = null,
+        CancellationToken token = default) =>
+        Task.Run(() =>
+                 {
+                     token.ThrowIfCancellationRequested();
 
-            var home = PathDef.Default.DirectoryOfHome(key);
-            var references = store.GetReferences(snapshotId);
-            var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
-            var processed = 0;
-            var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                     var home = PathDef.Default.DirectoryOfHome(key);
+                     var references = store.GetReferences(snapshotId);
+                     var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
+                     var processed = 0;
+                     var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            var dirs = new[]
-            {
-                PathDef.Default.DirectoryOfImport(key),
-                PathDef.Default.DirectoryOfPersist(key)
-            };
+                     var dirs = new[]
+                         {
+                             PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key)
+                         };
 
-            foreach (var dir in dirs)
-            {
-                if (!Directory.Exists(dir)) continue;
-                var root = new DirectoryInfo(dir);
+                     foreach (var dir in dirs)
+                     {
+                         if (!Directory.Exists(dir))
+                         {
+                             continue;
+                         }
 
-                foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
-                {
-                    token.ThrowIfCancellationRequested();
+                         var root = new DirectoryInfo(dir);
 
-                    var relative = Path.GetRelativePath(home, file.FullName);
+                         foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
+                         {
+                             token.ThrowIfCancellationRequested();
 
-                    if (refByPath.TryGetValue(relative, out var reference))
-                    {
-                        matched.Add(reference.RelativePath);
+                             var relative = Path.GetRelativePath(home, file.FullName);
 
-                        var changed = file.Length != reference.Size;
+                             if (refByPath.TryGetValue(relative, out var reference))
+                             {
+                                 matched.Add(reference.RelativePath);
 
-                        if (!changed)
-                        {
-                            using var stream = File.OpenRead(file.FullName);
-                            var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
-                            changed = hash != reference.Hash;
-                        }
+                                 var changed = file.Length != reference.Size;
 
-                        if (changed)
-                        {
-                            var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                            File.Copy(objectPath, file.FullName, overwrite: true);
-                        }
+                                 if (!changed)
+                                 {
+                                     using var stream = File.OpenRead(file.FullName);
+                                     var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                                     changed = hash != reference.Hash;
+                                 }
 
-                        if (file.Attributes != reference.Attributes)
-                            file.Attributes = reference.Attributes;
+                                 if (changed)
+                                 {
+                                     var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                                     File.Copy(objectPath, file.FullName, true);
+                                 }
 
-                        if (file.LastWriteTime != reference.LastModifiedAt)
-                            File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
-                    }
-                    else
-                    {
-                        file.Delete();
-                    }
+                                 if (file.Attributes != reference.Attributes)
+                                 {
+                                     file.Attributes = reference.Attributes;
+                                 }
 
-                    processed++;
-                    restored?.Report(processed);
-                }
+                                 if (file.LastWriteTime != reference.LastModifiedAt)
+                                 {
+                                     File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                                 }
+                             }
+                             else
+                             {
+                                 file.Delete();
+                             }
 
-                foreach (var d in root.EnumerateDirectories("*", SearchOption.AllDirectories)
-                             .OrderByDescending(d => d.FullName.Length))
-                {
-                    if (!d.EnumerateFileSystemInfos().Any())
-                        d.Delete(false);
-                }
-            }
+                             processed++;
+                             restored?.Report(processed);
+                         }
 
-            // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets）。
-            // 上面已把 import 还原到快照状态，以此时的 import 清单枚举 build 受管路径：在引用里则还原、不在则删。
-            foreach (var file in EnumerateImportProjection(key))
-            {
-                token.ThrowIfCancellationRequested();
+                         foreach (var d in root
+                                          .EnumerateDirectories("*", SearchOption.AllDirectories)
+                                          .OrderByDescending(d => d.FullName.Length))
+                         {
+                             if (!d.EnumerateFileSystemInfos().Any())
+                             {
+                                 d.Delete(false);
+                             }
+                         }
+                     }
 
-                var relative = Path.GetRelativePath(home, file.FullName);
+                     // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets）。
+                     // 上面已把 import 还原到快照状态，以此时的 import 清单枚举 build 受管路径：在引用里则还原、不在则删。
+                     foreach (var file in EnumerateImportProjection(key))
+                     {
+                         token.ThrowIfCancellationRequested();
 
-                if (refByPath.TryGetValue(relative, out var reference))
-                {
-                    matched.Add(reference.RelativePath);
+                         var relative = Path.GetRelativePath(home, file.FullName);
 
-                    var changed = file.Length != reference.Size;
-                    if (!changed)
-                    {
-                        using var stream = File.OpenRead(file.FullName);
-                        var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
-                        changed = hash != reference.Hash;
-                    }
+                         if (refByPath.TryGetValue(relative, out var reference))
+                         {
+                             matched.Add(reference.RelativePath);
 
-                    if (changed)
-                    {
-                        var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                        File.Copy(objectPath, file.FullName, overwrite: true);
-                    }
+                             var changed = file.Length != reference.Size;
+                             if (!changed)
+                             {
+                                 using var stream = File.OpenRead(file.FullName);
+                                 var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                                 changed = hash != reference.Hash;
+                             }
 
-                    if (file.Attributes != reference.Attributes)
-                        file.Attributes = reference.Attributes;
+                             if (changed)
+                             {
+                                 var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                                 File.Copy(objectPath, file.FullName, true);
+                             }
 
-                    if (file.LastWriteTime != reference.LastModifiedAt)
-                        File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
-                }
-                else
-                {
-                    file.Delete();
-                }
+                             if (file.Attributes != reference.Attributes)
+                             {
+                                 file.Attributes = reference.Attributes;
+                             }
 
-                processed++;
-                restored?.Report(processed);
-            }
+                             if (file.LastWriteTime != reference.LastModifiedAt)
+                             {
+                                 File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                             }
+                         }
+                         else
+                         {
+                             file.Delete();
+                         }
 
-            foreach (var reference in references)
-            {
-                token.ThrowIfCancellationRequested();
+                         processed++;
+                         restored?.Report(processed);
+                     }
 
-                if (matched.Contains(reference.RelativePath))
-                    continue;
+                     foreach (var reference in references)
+                     {
+                         token.ThrowIfCancellationRequested();
 
-                var targetPath = Path.Combine(home, reference.RelativePath);
-                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+                         if (matched.Contains(reference.RelativePath))
+                         {
+                             continue;
+                         }
 
-                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                File.Copy(objectPath, targetPath, overwrite: false);
-                File.SetAttributes(targetPath, reference.Attributes);
-                File.SetLastWriteTime(targetPath, reference.LastModifiedAt);
+                         var targetPath = Path.Combine(home, reference.RelativePath);
+                         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
-                processed++;
-                restored?.Report(processed);
-            }
-        }, token);
-    }
+                         var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                         File.Copy(objectPath, targetPath, false);
+                         File.SetAttributes(targetPath, reference.Attributes);
+                         File.SetLastWriteTime(targetPath, reference.LastModifiedAt);
+
+                         processed++;
+                         restored?.Report(processed);
+                     }
+                 },
+                 token);
 
     private static IEnumerable<FileInfo> EnumerateImportProjection(string key)
     {
@@ -336,7 +359,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             var target = Path.Combine(buildDir, rel);
             if (File.Exists(target) && File.ResolveLinkTarget(target, false) is null)
             {
-                yield return new FileInfo(target);
+                yield return new(target);
             }
         }
     }
@@ -367,9 +390,18 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
         public void Delete(object id) => store.DeleteSnapshot(id);
 
-        public Task CommitAsync(SnapshotInfo snapshot, IReadOnlyList<ReferenceInfo> references, IProgress<int>? copied = null, CancellationToken token = default) => manager.CommitAsync(store, key, snapshot, references, copied, token);
+        public Task CommitAsync(
+            SnapshotInfo snapshot,
+            IReadOnlyList<ReferenceInfo> references,
+            IProgress<int>? copied = null,
+            CancellationToken token = default) =>
+            manager.CommitAsync(store, key, snapshot, references, copied, token);
 
-        public Task RestoreAsync(object snapshotId, IProgress<int>? restored = null, CancellationToken token = default) => manager.RestoreAsync(store, key, snapshotId, restored, token);
+        public Task RestoreAsync(
+            object snapshotId,
+            IProgress<int>? restored = null,
+            CancellationToken token = default) =>
+            manager.RestoreAsync(store, key, snapshotId, restored, token);
     }
 
     #endregion

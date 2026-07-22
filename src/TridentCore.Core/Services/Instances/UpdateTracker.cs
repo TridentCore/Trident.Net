@@ -8,8 +8,7 @@ public class UpdateTracker(
     string key,
     Func<TrackerBase, Task> handler,
     Action<TrackerBase>? onCompleted,
-    CancellationToken token = default
-) : TrackerBase(key, handler, onCompleted, token)
+    CancellationToken token = default) : TrackerBase(key, handler, onCompleted, token)
 {
     public override InstanceState Kind => InstanceState.Updating;
 
@@ -21,11 +20,9 @@ public class UpdateTracker(
 
     protected override void OnStart()
     {
-        ProgressStream.Subscribe(p =>
-            ReportProgress(p.HasValue
-                ? new TrackerProgress.Determinate(null, p.Value)
-                : new TrackerProgress.Indeterminate(null))
-        );
+        ProgressStream.Subscribe(p => ReportProgress(p.HasValue
+                                                         ? new TrackerProgress.Determinate(null, p.Value)
+                                                         : new TrackerProgress.Indeterminate(null)));
         base.OnStart();
     }
 
