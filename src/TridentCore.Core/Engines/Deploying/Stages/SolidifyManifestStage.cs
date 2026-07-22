@@ -71,7 +71,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
         var total = files.Count + manifest.ExplosiveFiles.Count;
         logger.LogInformation("Created solidifying tasks of {}", total);
 
-        var downloaded = 0;
+        var processed = 0;
         var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
         var watch = Stopwatch.StartNew();
         var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -303,8 +303,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                     }
                             }
 
-                            Interlocked.Increment(ref downloaded);
-                            ProgressStream.OnNext((downloaded, total));
+                            Interlocked.Increment(ref processed);
+                            ProgressStream.OnNext((processed, total));
                         }
                         catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
                         {
@@ -368,7 +368,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                 }
             }
 
-            ProgressStream.OnNext((++downloaded, total));
+            ProgressStream.OnNext((++processed, total));
         }
 
         SymlinkPhotos.Apply(buildDirectory, entities.ToArray());
