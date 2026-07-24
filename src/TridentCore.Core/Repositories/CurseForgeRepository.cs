@@ -17,7 +17,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
     private static readonly Converter CONVERTER = new(new()
     {
-        Flavor = Config.MarkdownFlavor.GitHub,
+        Flavor = Config.MarkdownFlavor.Default,
         Links = { SmartHref = true }
     });
 
