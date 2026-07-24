@@ -147,6 +147,8 @@ terminal.
 existing modpacks, search and install packages, build launchable directories, log in accounts, run the game, and export
 the same instance into multiple modpack formats.
 
+[![asciicast](https://asciinema.org/a/1261198.svg)](https://asciinema.org/a/1261198)
+
 ### Use Cases
 
 - Maintain a locally rebuildable Minecraft instance.

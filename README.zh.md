@@ -126,6 +126,8 @@ services
 
 `trident` 是 Trident 的产品化命令行入口。它能从零创建实例，导入已有整合包，搜索并安装包，构建可启动目录，登录账号，运行游戏，并把同一个实例导出成多平台整合包。
 
+[![asciicast](https://asciinema.org/a/1261198.svg)](https://asciinema.org/a/1261198)
+
 ### 适合做什么
 
 - 本地维护一个可重复构建的 Minecraft 实例。
