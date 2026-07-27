@@ -135,17 +135,17 @@ public class RepositoryAgent
                             () => Redirect(id.Repository).ResolveAsync(id.ToScoped(), filter),
                             cacheEnabled);
 
-    public Task<Package> IdentityAsync(string filePath)
+    public Task<Package> IdentifyAsync(string filePath)
     {
         // 如果文件不存在会返回 IOException
         // 如果文件过大导致 IO 异常或内存占用异常导致闪退是预期内事件
         var content = File.ReadAllBytes(filePath);
-        return IdentityAsync(new ReadOnlyMemory<byte>(content));
+        return IdentifyAsync(new ReadOnlyMemory<byte>(content));
     }
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri)
     {
-        // NOTE: deliberately not cached, mirroring IdentityAsync. Recognition is a cheap
+        // NOTE: deliberately not cached, mirroring IdentifyAsync. Recognition is a cheap
         //  try-all-repos probe, and frequent misses (ResourceNotFoundException) while the user
         //  is still typing must not be cached or logged as errors.
         foreach (var label in Labels)
@@ -161,7 +161,7 @@ public class RepositoryAgent
         throw new ResourceNotFoundException($"No repository can recognize {uri}");
     }
 
-    public Task<Package> IdentityAsync(ReadOnlyMemory<byte> content)
+    public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
     {
         // 不走缓存
         foreach (var label in Labels)
@@ -169,8 +169,9 @@ public class RepositoryAgent
             try
             {
                 var repository = _repositories[label];
-                return repository.IdentifyAsync(content);
+                return await repository.IdentifyAsync(content).ConfigureAwait(false);
             }
+            catch (NotSupportedException) { }
             catch (ResourceNotFoundException) { }
         }
 

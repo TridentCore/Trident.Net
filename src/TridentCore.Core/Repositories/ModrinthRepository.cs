@@ -89,10 +89,22 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
     {
         var hash = Convert.ToHexString(SHA1.HashData(content.Span));
-        var info = await client.GetVersionFromHashAsync(hash).ConfigureAwait(false);
-        var project = await client.GetProjectAsync(info.ProjectId).ConfigureAwait(false);
-        var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
-        return ModrinthHelper.ToPackage(label, project, info, members.FirstOrDefault());
+        try
+        {
+            var info = await client.GetVersionFromHashAsync(hash).ConfigureAwait(false);
+            var project = await client.GetProjectAsync(info.ProjectId).ConfigureAwait(false);
+            var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+            return ModrinthHelper.ToPackage(label, project, info, members.FirstOrDefault());
+        }
+        catch (ApiException ex)
+        {
+            if (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new ResourceNotFoundException($"No version matched the hash {hash} in the repository");
+            }
+
+            throw;
+        }
     }
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
