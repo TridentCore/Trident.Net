@@ -2,64 +2,87 @@ using TridentCore.Abstractions.Lifetimes;
 
 namespace TridentCore.Core.Lifetimes;
 
-public sealed class LifetimeServiceRuntime(IEnumerable<ILifetimeService> services)
+public sealed class LifetimeServiceRuntime
 {
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly ILifetimeService[] _services = services.ToArray();
+    private readonly object _sync = new();
+    private readonly ILifetimeService[] _services;
+    private readonly bool[] _started;
+    private bool _stopping;
 
-    private int _startedCount;
+    public LifetimeServiceRuntime(IEnumerable<ILifetimeService> services)
+    {
+        _services = services.ToArray();
+        _started = new bool[_services.Length];
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
-        try
+        for (var i = 0; i < _services.Length; i++)
         {
-            if (_startedCount == _services.Length)
+            bool abort;
+            bool skip;
+            lock (_sync)
+            {
+                abort = _stopping;
+                skip = _started[i];
+            }
+
+            // NOTE: _stopping is a one-way latch. Once shutdown has been requested the runtime
+            // will not start any further services, so a slow Start can never block a Stop.
+            if (abort)
             {
                 return;
             }
 
-            var startedCount = 0;
+            if (skip)
+            {
+                continue;
+            }
+
             try
             {
-                foreach (var service in _services)
-                {
-                    await service.StartAsync(cancellationToken);
-                    startedCount++;
-                }
-
-                _startedCount = startedCount;
+                await _services[i].StartAsync(cancellationToken);
             }
             catch
             {
-                await StopStartedServicesAsync(startedCount, cancellationToken);
+                await StopRangeAsync(i, cancellationToken);
                 throw;
             }
-        }
-        finally
-        {
-            _gate.Release();
+
+            lock (_sync)
+            {
+                _started[i] = true;
+            }
         }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
-        try
+        lock (_sync)
         {
-            await StopStartedServicesAsync(_startedCount, cancellationToken);
+            _stopping = true;
         }
-        finally
-        {
-            _gate.Release();
-        }
+
+        await StopRangeAsync(_services.Length, cancellationToken);
     }
 
-    private async Task StopStartedServicesAsync(int startedCount, CancellationToken cancellationToken)
+    private async Task StopRangeAsync(int count, CancellationToken cancellationToken)
     {
         var exceptions = new List<Exception>();
-        for (var i = startedCount - 1; i >= 0; i--)
+        for (var i = count - 1; i >= 0; i--)
         {
+            bool shouldStop;
+            lock (_sync)
+            {
+                shouldStop = _started[i];
+                _started[i] = false;
+            }
+
+            if (!shouldStop)
+            {
+                continue;
+            }
+
             try
             {
                 await _services[i].StopAsync(cancellationToken);
@@ -69,8 +92,6 @@ public sealed class LifetimeServiceRuntime(IEnumerable<ILifetimeService> service
                 exceptions.Add(ex);
             }
         }
-
-        _startedCount = 0;
 
         if (exceptions.Count == 1)
         {
