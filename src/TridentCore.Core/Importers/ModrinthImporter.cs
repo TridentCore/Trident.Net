@@ -4,11 +4,12 @@ using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.ModrinthPack;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Importers;
 
-public class ModrinthImporter : IProfileImporter
+public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
 {
     private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
     {
@@ -47,31 +48,63 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private Profile.Rice.Entry ToPackage(PackIndex.IndexFile file, string? source)
+    private async Task<Profile.Rice.Entry> ToPackageAsync(PackIndex.IndexFile file, string? source)
     {
         // FIX: 需要兼容 bbsmc
         //  bbsmc 用的第三方包，其中部分使用 mrpack，而 mrpack 使用多个源，其中就有 forgecdn
         //  也就是 mrpack 可以包含多个托管站
         // FIX: 有些 %版本% 写的是文件名
-        var download = file.Downloads.FirstOrDefault(x => x.Host == "cdn.modrinth.com");
-        // https://cdn.modrinth.com/data/88888888/versions/88888888/filename.jar
-        if (download != null)
+        foreach (var download in file.Downloads)
         {
             var path = download.AbsolutePath;
-            if (path.Length > 32)
+
+            switch (download.Host)
             {
-                var projectId = path[6..14];
-                var versionId = path[24..32];
-                return new()
+                // https://cdn.modrinth.com/data/88888888/versions/88888888/filename.jar
+                case "cdn.modrinth.com" when path.Length > 32:
                 {
-                    Pref = PackageHelper.ToPref(ModrinthHelper.LABEL, null, projectId, versionId),
-                    Enabled = true,
-                    Source = source
-                };
+                    var projectId = path[6..14];
+                    var versionId = path[24..32];
+                    return new()
+                    {
+                        Pref = PackageHelper.ToPref(ModrinthHelper.LABEL, null, projectId, versionId),
+                        Enabled = true,
+                        Source = source
+                    };
+                }
+                // https://edge.forgecdn.net/files/1234/567/filename.jar
+                case "edge.forgecdn.net":
+                {
+                    var segments = download.Segments;
+                    // /files/1234/567/filename.jar => ["/", "files/", "1234/", "567/", "filename.jar"]
+                    if (segments is [_, "files/", _, _, ..])
+                    {
+                        var part1 = segments[2].TrimEnd('/');
+                        var part2 = segments[3].TrimEnd('/');
+                        if (uint.TryParse(part1, out var high) && uint.TryParse(part2, out var low))
+                        {
+                            var fileId = high * 1000 + low;
+                            var fileInfo = await repository.GetCurseForgeFileAsync(fileId).ConfigureAwait(false);
+                            if (fileInfo is not null)
+                            {
+                                return new()
+                                {
+                                    Pref = PackageHelper.ToPref(CurseForgeHelper.LABEL,
+                                                                null,
+                                                                fileInfo.ModId.ToString(),
+                                                                fileId.ToString()),
+                                    Enabled = true,
+                                    Source = source
+                                };
+                            }
+                        }
+                    }
+
+                    break;
+                }
             }
         }
 
-        // or dead end
         throw new NotSupportedException($"{file.Path} can not be recognized as an attachment");
     }
 
@@ -94,23 +127,24 @@ public class ModrinthImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
+        var packageTasks = index
+                          .Files.Where(x => x.Env?.Client is not "unsupported")
+                          .Select(x => ToPackageAsync(x, source))
+                          .ToArray();
+        var packages = await Task.WhenAll(packageTasks).ConfigureAwait(false);
+
         return new(new()
-        {
-            Name = index.Name,
-            Setup =
+                   {
+                       Name = index.Name,
+                       Setup =
                            new()
                            {
                                Source = source,
                                Version = version,
                                Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                               Packages =
-                               [
-                                   .. index
-                                     .Files.Where(x => x.Env?.Client is not "unsupported")
-                                     .Select(x => ToPackage(x, source))
-                               ]
+                               Packages = [.. packages]
                            }
-        },
+                   },
         [
             .. pack
               .FileNames

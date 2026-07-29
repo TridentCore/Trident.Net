@@ -6,10 +6,12 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
+using TridentCore.Core.Models.CurseForgeApi;
 using TridentCore.Core.Repositories;
 using TridentCore.Pref;
 using ZiggyCreatures.Caching.Fusion;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
+using FileInfo = TridentCore.Core.Models.CurseForgeApi.FileInfo;
 
 namespace TridentCore.Core.Services;
 
@@ -22,6 +24,7 @@ public class RepositoryAgent
     private static readonly string USER_AGENT = $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
 
     private readonly IReadOnlyDictionary<string, IRepository> _repositories;
+    private ICurseForgeClient? _curseForgeClient;
 
     public RepositoryAgent(
         IEnumerable<IRepositoryProviderAccessor> accessors,
@@ -49,17 +52,19 @@ public class RepositoryAgent
             {
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
                     {
-                        var curseforge = new CurseForgeRepository(profile.Label,
-                                                                  RestService.For<ICurseForgeClient>(BuildClient(profile),
-                                                                      new
-                                                                          RefitSettings(new
-                                                                              SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                                 .Web)))
-                                                                      {
-                                                                          UrlParameterFormatter =
+                        var curseForgeClient = RestService.For<ICurseForgeClient>(BuildClient(profile),
                                                                                   new
-                                                                                      LowercaseBoolUrlParameterFormatter()
-                                                                      }));
+                                                                                      RefitSettings(new
+                                                                                                   SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                                                                        .Web)))
+                                                                                      {
+                                                                                          UrlParameterFormatter =
+                                                                                              new
+                                                                                                  LowercaseBoolUrlParameterFormatter()
+                                                                                      });
+                        var curseforge = new CurseForgeRepository(profile.Label,
+                                                                  curseForgeClient);
+                        _curseForgeClient = curseForgeClient;
                         built.Add(profile.Label, curseforge);
                         break;
                     }
@@ -399,6 +404,17 @@ public class RepositoryAgent
 
     public Task<IPaginationHandle<Version>> InspectAsync(ProjectIdentifier id, Filter filter) =>
         Redirect(id.Repository).InspectAsync(id.ToScoped(), filter);
+
+    public async Task<FileInfo?> GetCurseForgeFileAsync(uint fileId)
+    {
+        if (_curseForgeClient is null)
+        {
+            return null;
+        }
+
+        var response = await _curseForgeClient.GetFilesAsync(new([fileId])).ConfigureAwait(false);
+        return response.Data.FirstOrDefault();
+    }
 
     private async Task<T> RetrieveCachedAsync<T>(string key, Func<Task<T>> factory, bool cacheEnabled = true)
     {
