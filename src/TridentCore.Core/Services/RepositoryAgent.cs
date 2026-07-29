@@ -178,6 +178,66 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
+    private const int BATCH_CHUNK_SIZE = 256;
+    private const int BATCH_CONCURRENCY = 4;
+
+    public Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<string> filePaths) =>
+        IdentifyBatchAsync(filePaths.Select(p => new ReadOnlyMemory<byte>(File.ReadAllBytes(p))));
+
+    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    {
+        // 不走缓存
+        // NOTE: the agent owns chunking + concurrency; each repository is a pure single-call lookup.
+        //  Waterfall with per-item elimination: only still-unmatched items advance to the next
+        //  repository, so an identified item is never re-queried downstream.
+        var list = contents.ToList();
+        var results = new Package?[list.Count];
+        var pending = Enumerable.Range(0, list.Count).ToList();
+
+        foreach (var label in Labels)
+        {
+            if (pending.Count == 0)
+                break;
+
+            var repository = _repositories[label];
+            var remaining = new List<int>();
+            var gate = new object();
+
+            await Parallel.ForEachAsync(
+                pending.Chunk(BATCH_CHUNK_SIZE),
+                new ParallelOptions { MaxDegreeOfParallelism = BATCH_CONCURRENCY },
+                async (chunk, _) =>
+                {
+                    IReadOnlyList<Package?> stage;
+                    try
+                    {
+                        stage = await repository.IdentifyBatchAsync(chunk.Select(i => list[i]))
+                                               .ConfigureAwait(false);
+                    }
+                    catch (NotSupportedException)
+                    {
+                        lock (gate) remaining.AddRange(chunk);
+                        return;
+                    }
+
+                    lock (gate)
+                    {
+                        for (var s = 0; s < stage.Count; s++)
+                        {
+                            if (stage[s] is { } package)
+                                results[chunk[s]] = package;
+                            else
+                                remaining.Add(chunk[s]);
+                        }
+                    }
+                }).ConfigureAwait(false);
+
+            pending = remaining;
+        }
+
+        return results;
+    }
+
     public async Task<BatchResolveResult<PackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<PackageIdentifier> batch,
         Filter filter)

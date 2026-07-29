@@ -107,6 +107,43 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
     }
 
+    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    {
+        var list = contents.ToList();
+        var results = new Package?[list.Count];
+
+        var items = Enumerable.Range(0, list.Count)
+                              .Select(i => (index: i, hash: Convert.ToHexString(SHA1.HashData(list[i].Span))))
+                              .ToArray();
+        if (items.Length == 0)
+            return results;
+
+        var resp = await client
+            .GetVersionsFromHashesAsync(new(items.Select(x => x.hash).ToArray()))
+            .ConfigureAwait(false);
+
+        if (resp.Count == 0)
+            return results;
+
+        var projects = (await client
+                             .GetMultipleProjectsAsync(ArrayParameterConstructor(resp.Values.Select(x => x.ProjectId).Distinct()))
+                             .ConfigureAwait(false))
+                       .ToDictionary(p => p.Id);
+        var members = await PrefetchMembersAsync(projects.Values).ConfigureAwait(false);
+
+        foreach (var (index, hash) in items)
+        {
+            if (!resp.TryGetValue(hash, out var version))
+                continue;
+            if (!projects.TryGetValue(version.ProjectId, out var project))
+                continue;
+            members.Successful.TryGetValue(project.Id, out var member);
+            results[index] = ModrinthHelper.ToPackage(label, project, version, member);
+        }
+
+        return results;
+    }
+
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         if (!uri.Host.EndsWith("modrinth.com", StringComparison.OrdinalIgnoreCase))

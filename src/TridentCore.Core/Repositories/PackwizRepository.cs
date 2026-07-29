@@ -109,6 +109,9 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     public Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content) =>
         throw new NotSupportedException("packwiz repositories cannot identify files");
 
+    public Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents) =>
+        throw new NotSupportedException("packwiz repositories cannot identify files");
+
     public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
         var owner = RequireOwner(id.Namespace);

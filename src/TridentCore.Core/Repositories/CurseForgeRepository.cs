@@ -8,6 +8,7 @@ using TridentCore.Core.Clients;
 using TridentCore.Core.Utilities;
 using TridentCore.Pref;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
+using FileInfo = TridentCore.Core.Models.CurseForgeApi.FileInfo;
 
 namespace TridentCore.Core.Repositories;
 
@@ -95,6 +96,45 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         }
 
         throw new ResourceNotFoundException($"No file matched the fingerprint {hash}");
+    }
+
+    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    {
+        var list = contents.ToList();
+        var results = new Package?[list.Count];
+
+        var items = Enumerable.Range(0, list.Count)
+                              .Select(i => (index: i, fingerprint: (long)CurseForgeHelper.ComputeFingerprint(list[i])))
+                              .ToArray();
+        if (items.Length == 0)
+            return results;
+
+        var resp = await client
+            .GetFingerprintMatchesByGameId(new(items.Select(x => (int)x.fingerprint).ToArray()))
+            .ConfigureAwait(false);
+        var byFingerprint = resp.Data.ExactMatches
+                                .ToDictionary(match => (long)match.File.FileFingerprint,
+                                              match => (match.Id, match.File));
+
+        if (byFingerprint.Count == 0)
+            return results;
+
+        var mods = (await client
+                         .GetModsAsync(new(byFingerprint.Values.Select(x => x.Id).Distinct().ToArray()))
+                         .ConfigureAwait(false))
+                   .Data
+                   .ToDictionary(m => m.Id);
+
+        foreach (var (index, fingerprint) in items)
+        {
+            if (!byFingerprint.TryGetValue(fingerprint, out var match))
+                continue;
+            if (!mods.TryGetValue(match.Id, out var mod))
+                continue;
+            results[index] = CurseForgeHelper.ToPackage(label, mod, match.File);
+        }
+
+        return results;
     }
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
