@@ -107,8 +107,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
     }
 
-    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(
+        IEnumerable<ReadOnlyMemory<byte>> contents,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var list = contents.ToList();
         var results = new Package?[list.Count];
 

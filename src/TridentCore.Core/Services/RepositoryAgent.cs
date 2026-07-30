@@ -181,23 +181,53 @@ public class RepositoryAgent
     private const int BATCH_CHUNK_SIZE = 256;
     private const int BATCH_CONCURRENCY = 4;
 
-    public Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<string> filePaths) =>
-        IdentifyBatchAsync(filePaths.Select(p => new ReadOnlyMemory<byte>(File.ReadAllBytes(p))));
+    // NOTE: bounds how many source files are held in memory at once during identification.
+    //  Peak RSS is roughly this × average file size; the window exists so a multi-GB mod batch
+    //  never materializes all at once. Tune down for memory-constrained hosts.
+    private const int IDENTIFY_READ_WINDOW = 32;
 
-    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    // Keyed by file path so callers correlate results without positional alignment. Files are read
+    // in IDENTIFY_READ_WINDOW-sized windows before each window flows through the waterfall below,
+    // keeping peak memory bounded regardless of total batch size.
+    public async Task<IReadOnlyDictionary<string, Package?>> IdentifyBatchAsync(
+        IEnumerable<string> filePaths,
+        CancellationToken cancellationToken = default)
     {
-        // 不走缓存
-        // NOTE: the agent owns chunking + concurrency; each repository is a pure single-call lookup.
-        //  Waterfall with per-item elimination: only still-unmatched items advance to the next
-        //  repository, so an identified item is never re-queried downstream.
-        var list = contents.ToList();
-        var results = new Package?[list.Count];
-        var pending = Enumerable.Range(0, list.Count).ToList();
+        var results = new Dictionary<string, Package?>(StringComparer.Ordinal);
+        foreach (var window in filePaths.Chunk(IDENTIFY_READ_WINDOW))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var loaded = window
+                .Select(p => (path: p, data: (ReadOnlyMemory<byte>)File.ReadAllBytes(p)))
+                .ToArray();
+            var stage = await IdentifyBatchCoreAsync(loaded.Select(x => x.data).ToArray(), cancellationToken)
+                                .ConfigureAwait(false);
+            for (var i = 0; i < loaded.Length; i++)
+            {
+                results[loaded[i].path] = stage[i];
+            }
+        }
+
+        return results;
+    }
+
+    // Waterfall with per-item elimination: only still-unmatched items advance to the next
+    // repository, so an identified item is never re-queried downstream. Position-aligned with the
+    // input order; the agent owns chunking + concurrency, each repository is a pure single-call
+    // lookup.
+    private async Task<IReadOnlyList<Package?>> IdentifyBatchCoreAsync(
+        IReadOnlyList<ReadOnlyMemory<byte>> contents,
+        CancellationToken cancellationToken)
+    {
+        var results = new Package?[contents.Count];
+        var pending = Enumerable.Range(0, contents.Count).ToList();
 
         foreach (var label in Labels)
         {
             if (pending.Count == 0)
+            {
                 break;
+            }
 
             var repository = _repositories[label];
             var remaining = new List<int>();
@@ -205,13 +235,17 @@ public class RepositoryAgent
 
             await Parallel.ForEachAsync(
                 pending.Chunk(BATCH_CHUNK_SIZE),
-                new ParallelOptions { MaxDegreeOfParallelism = BATCH_CONCURRENCY },
-                async (chunk, _) =>
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = BATCH_CONCURRENCY,
+                    CancellationToken = cancellationToken
+                },
+                async (chunk, ct) =>
                 {
                     IReadOnlyList<Package?> stage;
                     try
                     {
-                        stage = await repository.IdentifyBatchAsync(chunk.Select(i => list[i]))
+                        stage = await repository.IdentifyBatchAsync(chunk.Select(i => contents[i]), ct)
                                                .ConfigureAwait(false);
                     }
                     catch (NotSupportedException)
@@ -225,9 +259,13 @@ public class RepositoryAgent
                         for (var s = 0; s < stage.Count; s++)
                         {
                             if (stage[s] is { } package)
+                            {
                                 results[chunk[s]] = package;
+                            }
                             else
+                            {
                                 remaining.Add(chunk[s]);
+                            }
                         }
                     }
                 }).ConfigureAwait(false);

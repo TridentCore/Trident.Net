@@ -13,7 +13,7 @@ public interface ILauncherAdapter
 
     // Coarse scan: enumerate instances under rootDir and parse their metadata (name, version,
     // loader) plus file-layout pointers. Reads metadata files only — no file hashing, no network.
-    // Corrupt instances are returned too, flagged via LauncherInstance.IsCorrupt, so the UI can
+    // Corrupt instances are returned too, flagged via LauncherInstance.CorruptReason, so the UI can
     // surface them with the offending directory name and reason instead of silently dropping them.
     Task<IReadOnlyList<LauncherInstance>> ScanAsync(string rootDir, CancellationToken cancellationToken = default);
 }

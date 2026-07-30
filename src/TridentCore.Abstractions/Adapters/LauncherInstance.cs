@@ -7,8 +7,8 @@ public record LauncherInstance
     // The instance's directory name under the launcher root; a candidate for the Trident instance key.
     public required string Key { get; init; }
 
-    // Absolute path of the instance root (where the launcher's metadata files live).
-    public required string Directory { get; init; }
+    // Absolute path of the instance home (where the launcher's metadata files live).
+    public required string HomeDirectory { get; init; }
 
     public string? Name { get; init; }
     public string? MinecraftVersion { get; init; }
@@ -16,8 +16,8 @@ public record LauncherInstance
     // Loader as a Trident lurl, or null for vanilla.
     public string? Loader { get; init; }
 
-    public bool IsCorrupt { get; init; }
-    public string? CorruptReason { get; init; }
+    // Non-null when the instance metadata could not be fully parsed; the value is the failure reason.
+    public CorruptReason? CorruptReason { get; init; }
 
     // Absolute path of the runtime directory (.minecraft equivalent) — the copy source for build/.
     public required string RuntimeDirectory { get; init; }

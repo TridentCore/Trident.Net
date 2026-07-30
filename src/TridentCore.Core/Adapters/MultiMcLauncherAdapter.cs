@@ -1,10 +1,5 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions.Adapters;
 using TridentCore.Abstractions.Utilities;
@@ -59,7 +54,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         var key = Path.GetFileName(instanceDir);
 
         MmcPack? pack = null;
-        string? corruptReason = null;
+        CorruptReason? corruptReason = null;
         var packFile = Path.Combine(instanceDir, MultiMcHelper.PACK_INDEX_FILE_NAME);
         if (File.Exists(packFile))
         {
@@ -71,17 +66,22 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
                             .ConfigureAwait(false);
                 if (pack is null)
                 {
-                    corruptReason = $"{MultiMcHelper.PACK_INDEX_FILE_NAME} deserialized to null";
+                    corruptReason = CorruptReason.PackFileMalformed;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                corruptReason = ex.Message;
+                logger?.LogWarning(ex, "Failed to parse {Pack} for {Key}", MultiMcHelper.PACK_INDEX_FILE_NAME, key);
+                corruptReason = CorruptReason.PackFileMalformed;
             }
         }
         else
         {
-            corruptReason = $"{MultiMcHelper.PACK_INDEX_FILE_NAME} not found";
+            corruptReason = CorruptReason.PackFileMissing;
         }
 
         var cfg = await ReadInstanceCfgAsync(instanceDir, cancellationToken).ConfigureAwait(false);
@@ -94,7 +94,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
             version = pack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
             if (version is null)
             {
-                corruptReason ??= $"{MultiMcHelper.PACK_INDEX_FILE_NAME} has no {MultiMcHelper.UID_MINECRAFT} component";
+                corruptReason ??= CorruptReason.MinecraftComponentMissing;
             }
 
             foreach (var component in pack.Components)
@@ -113,17 +113,15 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
             logger?.LogWarning("Runtime directory not found for {Key}: {Path}", key, runtimeDir);
         }
 
-        var isCorrupt = version is null;
         return new LauncherInstance
         {
             Kind = LauncherKind.MultiMc,
             Key = key,
-            Directory = instanceDir,
+            HomeDirectory = instanceDir,
             Name = string.IsNullOrEmpty(name) ? key : name,
             MinecraftVersion = version,
             Loader = loader,
-            IsCorrupt = isCorrupt,
-            CorruptReason = isCorrupt ? corruptReason : null,
+            CorruptReason = corruptReason,
             RuntimeDirectory = runtimeDir,
             IdentifiableSubdirs = IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d))).ToArray()
         };
@@ -151,6 +149,10 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
                     cfg[line[..eq]] = line[(eq + 1)..];
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {

@@ -98,8 +98,11 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new ResourceNotFoundException($"No file matched the fingerprint {hash}");
     }
 
-    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents)
+    public async Task<IReadOnlyList<Package?>> IdentifyBatchAsync(
+        IEnumerable<ReadOnlyMemory<byte>> contents,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var list = contents.ToList();
         var results = new Package?[list.Count];
 
@@ -110,7 +113,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             return results;
 
         var resp = await client
-            .GetFingerprintMatchesByGameId(new(items.Select(x => x.fingerprint).ToArray()))
+            .GetFingerprintMatchesByGameId(new([.. items.Select(x => x.fingerprint)]))
             .ConfigureAwait(false);
         var byFingerprint = resp.Data.ExactMatches
                                 .ToDictionary(match => (uint)match.File.FileFingerprint,
@@ -120,7 +123,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             return results;
 
         var mods = (await client
-                         .GetModsAsync(new(byFingerprint.Values.Select(x => x.Id).Distinct().ToArray()))
+                         .GetModsAsync(new([.. byFingerprint.Values.Select(x => x.Id).Distinct()]))
                          .ConfigureAwait(false))
                    .Data
                    .ToDictionary(m => m.Id);

@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Adapters;
@@ -53,9 +47,6 @@ public class MigratorAgent(
 
         progress?.Report(new MigrateProgress { CurrentPhase = MigrateProgress.Phase.Identifying });
 
-        // Gather every identifiable file across all selected instances first, then batch-identify once
-        // so RepositoryAgent's internal chunking/concurrency is fully exploited — per-instance requests
-        // would squander that for instances holding only a handful of mods.
         var identifiable = GatherIdentifiableFiles(list, cancellationToken);
         var hitFiles = new HashSet<string>(StringComparer.Ordinal);
         var packagesByInstance = new Dictionary<LauncherInstance, List<Package>>();
@@ -63,32 +54,30 @@ public class MigratorAgent(
         if (identifiable.Count > 0)
         {
             var results = await repository
-                                .IdentifyBatchAsync(identifiable.Select(x => x.File))
+                                .IdentifyBatchAsync(identifiable.Select(x => x.File), cancellationToken)
                                 .ConfigureAwait(false);
 
-            for (var i = 0; i < identifiable.Count && i < results.Count; i++)
+            foreach (var (instance, file) in identifiable)
             {
-                if (results[i] is not { } pkg)
+                if (results.TryGetValue(file, out var pkg) && pkg is not null)
                 {
-                    continue;
-                }
+                    hitFiles.Add(file);
+                    if (!packagesByInstance.TryGetValue(instance, out var bucket))
+                    {
+                        bucket = [];
+                        packagesByInstance[instance] = bucket;
+                    }
 
-                var (instance, file) = identifiable[i];
-                hitFiles.Add(file);
-                if (!packagesByInstance.TryGetValue(instance, out var bucket))
-                {
-                    bucket = [];
-                    packagesByInstance[instance] = bucket;
+                    bucket.Add(pkg);
                 }
-
-                bucket.Add(pkg);
             }
         }
 
         for (var i = 0; i < list.Count; i++)
         {
-            // Cancellation honours the instance boundary: the in-flight instance finishes its file copy,
-            // and migration stops before starting the next one. Already-completed instances are kept.
+            // NOTE: cancellation honours the instance boundary — the in-flight instance finishes its file
+            //  copy and migration stops before the next one, so a started instance always lands whole or
+            //  not at all. Already-completed instances are kept.
             if (cancellationToken.IsCancellationRequested)
             {
                 break;
@@ -98,9 +87,9 @@ public class MigratorAgent(
             var displayName = instance.Name ?? instance.Key;
             try
             {
-                if (instance.MinecraftVersion is null)
+                if (instance.CorruptReason is not null)
                 {
-                    throw new InvalidOperationException("Instance has no resolvable Minecraft version");
+                    throw new InvalidOperationException($"Instance is corrupt: {instance.CorruptReason}");
                 }
 
                 progress?.Report(new MigrateProgress
@@ -112,23 +101,35 @@ public class MigratorAgent(
                     Percent = 0
                 });
 
+                // NOTE: files land in build/ first and the profile is registered only after a full
+                //  transfer, so a failed copy leaves no profile behind. On failure the reserved key is
+                //  released and the partial build directory removed so retries start clean.
                 var reservedKey = profiles.RequestKey(instance.Key);
-                var finalKey = reservedKey.Key;
-                packagesByInstance.TryGetValue(instance, out var instancePackages);
-                profiles.Add(reservedKey, BuildProfile(instance, instancePackages));
-
-                var buildDir = PathDef.Default.DirectoryOfBuild(finalKey);
-                await TransferFilesAsync(instance.RuntimeDirectory,
-                                         buildDir,
-                                         hitFiles,
-                                         displayName,
-                                         i + 1,
-                                         list.Count,
-                                         progress,
-                                         cancellationToken).ConfigureAwait(false);
-
-                entries.Add(new MigrateResult.Entry(displayName, true));
-                logger.LogInformation("Migrated {Name} as {Key}", displayName, finalKey);
+                var registered = false;
+                try
+                {
+                    var buildDir = PathDef.Default.DirectoryOfBuild(reservedKey.Key);
+                    packagesByInstance.TryGetValue(instance, out var instancePackages);
+                    await TransferFilesAsync(instance.RuntimeDirectory,
+                                             buildDir,
+                                             hitFiles,
+                                             displayName,
+                                             i + 1,
+                                             list.Count,
+                                             progress).ConfigureAwait(false);
+                    profiles.Add(reservedKey, BuildProfile(instance, instancePackages));
+                    registered = true;
+                    entries.Add(new MigrateResult.Entry(displayName, true));
+                    logger.LogInformation("Migrated {Name} as {Key}", displayName, reservedKey.Key);
+                }
+                finally
+                {
+                    if (!registered)
+                    {
+                        reservedKey.Dispose();
+                        BestEffortDelete(PathDef.Default.DirectoryOfBuild(reservedKey.Key));
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -208,8 +209,6 @@ public class MigratorAgent(
     }
 
     // Copies the whole runtime tree into build/, skipping files that were turned into package refs.
-    // Cancellation is NOT checked per-file — interruption honours the instance boundary in MigrateAsync
-    // so a started instance always lands complete or not at all, never half-copied.
     private static async Task TransferFilesAsync(
         string sourceDir,
         string targetDir,
@@ -217,8 +216,7 @@ public class MigratorAgent(
         string displayName,
         int instanceIndex,
         int instanceTotal,
-        IProgress<MigrateProgress>? progress,
-        CancellationToken cancellationToken)
+        IProgress<MigrateProgress>? progress)
     {
         if (!Directory.Exists(sourceDir))
         {
@@ -243,7 +241,11 @@ public class MigratorAgent(
                 Directory.CreateDirectory(targetParent);
             }
 
-            File.Copy(file, target, overwrite: true);
+            await using var source = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read,
+                                                    bufferSize: 81920, useAsync: true);
+            await using var dest = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None,
+                                                  bufferSize: 81920, useAsync: true);
+            await source.CopyToAsync(dest);
 
             var percent = (int)Math.Round((double)(i + 1) / files.Count * 100);
             if (percent != lastReportedPercent || i == files.Count - 1)
@@ -258,6 +260,21 @@ public class MigratorAgent(
                     Percent = percent / 100.0
                 });
             }
+        }
+    }
+
+    private static void BestEffortDelete(string dir)
+    {
+        try
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+        catch
+        {
+            // best-effort cleanup; the failure that triggered this is the one reported
         }
     }
 }
