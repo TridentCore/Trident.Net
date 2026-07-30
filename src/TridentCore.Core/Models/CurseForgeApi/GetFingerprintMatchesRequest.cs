@@ -1,3 +1,3 @@
 namespace TridentCore.Core.Models.CurseForgeApi;
 
-public record GetFingerprintMatchesRequest(IReadOnlyList<int> Fingerprints);
+public record GetFingerprintMatchesRequest(IReadOnlyList<uint> Fingerprints);

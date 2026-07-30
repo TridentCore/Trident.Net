@@ -87,7 +87,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
     {
         var hash = CurseForgeHelper.ComputeFingerprint(content);
-        var rv = await client.GetFingerprintMatchesByGameId(new([hash])).ConfigureAwait(false);
+        var rv = await client.GetFingerprintMatchesByGameId(new([(uint)hash])).ConfigureAwait(false);
         var match = rv.Data.ExactMatches.FirstOrDefault();
         if (match != null)
         {
@@ -104,16 +104,16 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         var results = new Package?[list.Count];
 
         var items = Enumerable.Range(0, list.Count)
-                              .Select(i => (index: i, fingerprint: (long)CurseForgeHelper.ComputeFingerprint(list[i])))
+                              .Select(i => (index: i, fingerprint: (uint)CurseForgeHelper.ComputeFingerprint(list[i])))
                               .ToArray();
         if (items.Length == 0)
             return results;
 
         var resp = await client
-            .GetFingerprintMatchesByGameId(new(items.Select(x => (int)x.fingerprint).ToArray()))
+            .GetFingerprintMatchesByGameId(new(items.Select(x => x.fingerprint).ToArray()))
             .ConfigureAwait(false);
         var byFingerprint = resp.Data.ExactMatches
-                                .ToDictionary(match => (long)match.File.FileFingerprint,
+                                .ToDictionary(match => (uint)match.File.FileFingerprint,
                                               match => (match.Id, match.File));
 
         if (byFingerprint.Count == 0)

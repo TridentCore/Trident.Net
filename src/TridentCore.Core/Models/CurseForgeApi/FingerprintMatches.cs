@@ -3,10 +3,10 @@ namespace TridentCore.Core.Models.CurseForgeApi;
 public record FingerprintMatches(
     bool IsCacheBuilt,
     IReadOnlyList<FingerprintMatches.FingerprintMatch> ExactMatches,
-    IReadOnlyList<int> ExactFingerprints,
+    IReadOnlyList<uint> ExactFingerprints,
     IReadOnlyList<FingerprintMatches.FingerprintMatch> PartialMatches,
-    IReadOnlyList<int> InstalledFingerprints,
-    IReadOnlyList<int> UnmatchedFingerprints)
+    IReadOnlyList<uint> InstalledFingerprints,
+    IReadOnlyList<uint> UnmatchedFingerprints)
 {
     #region Nested type: FingerprintMatch
 
