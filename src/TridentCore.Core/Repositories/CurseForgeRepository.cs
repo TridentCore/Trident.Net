@@ -225,7 +225,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         {
             try
             {
-                var mods = await client.GetModsAsync(new(parsed.Select(x => x.ModId).ToList())).ConfigureAwait(false);
+                var mods = await client.GetModsAsync(new([.. parsed.Select(x => x.ModId)])).ConfigureAwait(false);
                 var modById = mods.Data.ToDictionary(x => x.Id);
                 foreach (var (key, modId) in parsed)
                 {

@@ -75,7 +75,7 @@ public sealed class CliContext
                                      mcp,
                                      Console.IsInputRedirected,
                                      Console.IsOutputRedirected);
-        return new(remaining.ToArray(), context);
+        return new([.. remaining], context);
     }
 }
 

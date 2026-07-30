@@ -6,7 +6,9 @@ namespace TridentCore.Cli.Operations;
 internal static class AccountOperation
 {
     public static IReadOnlyList<AccountDto> List(AccountStore accounts) =>
-        accounts.Load().Select(AccountDtos.FromStored).ToArray();
+    [
+        .. accounts.Load().Select(AccountDtos.FromStored)
+    ];
 
     public static AccountDto AddOffline(AccountStore accounts, string username, string? uuid)
     {

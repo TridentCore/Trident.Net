@@ -12,7 +12,7 @@ internal static class RepositoryOperation
         CliRepositoryProviderAccessor combined)
     {
         var userLabels = userRepositories.Load().Select(x => x.Label).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return combined.Build().Select(x => RepositoryDtos.FromProvider(x, userLabels.Contains(x.Label))).ToArray();
+        return [.. combined.Build().Select(x => RepositoryDtos.FromProvider(x, userLabels.Contains(x.Label)))];
     }
 
     public static async Task<IReadOnlyList<RepositoryStatusItem>> Status(RepositoryAgent repositories, string? label)

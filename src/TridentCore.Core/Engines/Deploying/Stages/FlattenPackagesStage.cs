@@ -64,10 +64,9 @@ public class FlattenPackagesStage : StageBase
             if (ranked.Count(x => x.Rank.CompareTo(topRank) == 0) > 1)
             {
                 throw new PackageConflictException(subjectOf(group.Key, ranked[0].Pkg),
-                                                   ranked
-                                                      .Where(x => x.Rank.CompareTo(topRank) == 0)
-                                                      .Select(x => x.Pkg)
-                                                      .ToList());
+                [
+                    .. ranked.Where(x => x.Rank.CompareTo(topRank) == 0).Select(x => x.Pkg)
+                ]);
             }
 
             var winner = ranked[0].Pkg;

@@ -38,9 +38,9 @@ public class ProcessLoaderStage(
                     ?? throw new InvalidOperationException("Artifact missing before loader processing");
         var working = new WorkingArtifact
         {
-            Libraries = artifact.Libraries.ToList(),
-            GameArguments = artifact.GameArguments.ToList(),
-            JavaArguments = artifact.JavaArguments.ToList(),
+            Libraries = [.. artifact.Libraries],
+            GameArguments = [.. artifact.GameArguments],
+            JavaArguments = [.. artifact.JavaArguments],
             MainClass = artifact.MainClass
         };
 

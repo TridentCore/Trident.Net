@@ -24,11 +24,12 @@ public static class InstanceHelper
     }
 
     public static string[] PickScreenshotsNewest(string key, int count) =>
-        AssetHelper
-           .ScanNonSymlinkFiles(key, "*.png", ["screenshots"])
-           .Where(x => x.Length != 0)
-           .OrderByDescending(x => x.CreationTimeUtc)
-           .Take(count)
-           .Select(x => x.FullName)
-           .ToArray();
+    [
+        .. AssetHelper
+          .ScanNonSymlinkFiles(key, "*.png", ["screenshots"])
+          .Where(x => x.Length != 0)
+          .OrderByDescending(x => x.CreationTimeUtc)
+          .Take(count)
+          .Select(x => x.FullName)
+    ];
 }

@@ -97,17 +97,18 @@ public class TridentImporter : IProfileImporter
         }
 
         var container = new ImportedProfileContainer(index,
-                                                     pack
-                                                        .FileNames
-                                                        .Where(x => x.StartsWith(OverridesDirectoryName)
-                                                                 && x != OverridesDirectoryName
-                                                                 && x.Length > OverridesDirectoryName.Length + 1)
-                                                        .Select(x => (x, x[(OverridesDirectoryName.Length + 1)..]))
-                                                        .Where(x => !x.Item2.EndsWith('/')
-                                                                 && !x.Item2.EndsWith('\\')
-                                                                 && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
-                                                        .ToList(),
-                                                     home.Select(x => (x, x)).ToList(),
+                                                     [
+                                                         .. pack
+                                                           .FileNames
+                                                           .Where(x => x.StartsWith(OverridesDirectoryName)
+                                                                    && x != OverridesDirectoryName
+                                                                    && x.Length > OverridesDirectoryName.Length + 1)
+                                                           .Select(x => (x, x[(OverridesDirectoryName.Length + 1)..]))
+                                                           .Where(x => !x.Item2.EndsWith('/')
+                                                                    && !x.Item2.EndsWith('\\')
+                                                                    && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                                                     ],
+                                                     [.. home.Select(x => (x, x))],
                                                      null);
 
         return container;

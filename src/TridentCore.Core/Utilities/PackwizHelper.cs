@@ -141,7 +141,7 @@ public static class PackwizHelper
                    date,
                    date,
                    0,
-                   Array.Empty<Project.Screenshot>());
+                   []);
     }
 
     public static Package ToPackage(
@@ -171,8 +171,8 @@ public static class PackwizHelper
                    0,
                    $"{repo}-{sha}.zip",
                    null,
-                   new(Array.Empty<string>(), Array.Empty<string>()),
-                   Array.Empty<Dependency>());
+                   new([], []),
+                   []);
     }
 
     public static Version ToVersion(string label, string owner, string repo, CommitObject commit, string? versionId)
@@ -186,8 +186,8 @@ public static class PackwizHelper
                    ReleaseType.Release,
                    commit.Commit?.Committer?.Date ?? DateTimeOffset.MinValue,
                    0,
-                   new(Array.Empty<string>(), Array.Empty<string>()),
-                   Array.Empty<Dependency>());
+                   new([], []),
+                   []);
     }
 
     #endregion

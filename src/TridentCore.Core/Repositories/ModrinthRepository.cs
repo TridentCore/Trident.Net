@@ -48,7 +48,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                             .Where(x => x != null)
                             .Select(x => x!.Value)
                             .ToList();
-        return new(supportedLoaders, versions.ToList(), supportedKinds);
+        return new(supportedLoaders, [.. versions], supportedKinds);
     }
 
     public async Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter)
@@ -122,7 +122,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             return results;
 
         var resp = await client
-            .GetVersionsFromHashesAsync(new(items.Select(x => x.hash).ToArray()))
+            .GetVersionsFromHashesAsync(new([.. items.Select(x => x.hash)]))
             .ConfigureAwait(false);
 
         if (resp.Count == 0)
@@ -383,9 +383,10 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         List<VersionInfo> versions;
         try
         {
-            versions = (await client.GetMultipleVersionsAsync(ArrayParameterConstructor(versionIds))
-                                    .ConfigureAwait(false))
-                       .ToList();
+            versions =
+            [
+                .. await client.GetMultipleVersionsAsync(ArrayParameterConstructor(versionIds)).ConfigureAwait(false)
+            ];
         }
         catch (OperationCanceledException)
         {

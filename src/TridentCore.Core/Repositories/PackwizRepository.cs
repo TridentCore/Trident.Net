@@ -100,7 +100,7 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                                  LoaderHelper.LOADERID_NEOFORGE,
                                                  LoaderHelper.LOADERID_QUILT
                                              ],
-                                             Array.Empty<string>(),
+                                             [],
                                              [ResourceKind.Modpack]));
 
     public Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter) =>
@@ -127,7 +127,7 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                        head,
                                        manifest,
                                        info.Description ?? string.Empty,
-                                       info.Topics ?? Array.Empty<string>());
+                                       info.Topics ?? []);
     }
 
     public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
@@ -215,13 +215,14 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                                                     PAGE_SIZE,
                                                                     pageIndex + 1)
                                                                .ConfigureAwait(false);
-                                                 return page
-                                                       .Select(c => PackwizHelper.ToVersion(label,
-                                                                   owner,
-                                                                   id.Identity,
-                                                                   c,
-                                                                   TagOf(tagMap, c.Sha)))
-                                                       .ToList();
+                                                 return
+                                                 [
+                                                     .. page.Select(c => PackwizHelper.ToVersion(label,
+                                                                        owner,
+                                                                        id.Identity,
+                                                                        c,
+                                                                        TagOf(tagMap, c.Sha)))
+                                                 ];
                                              });
     }
 

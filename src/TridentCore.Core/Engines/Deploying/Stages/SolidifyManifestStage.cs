@@ -371,7 +371,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
             ProgressStream.OnNext((++processed, total));
         }
 
-        SymlinkPhotos.Apply(buildDirectory, entities.ToArray());
+        SymlinkPhotos.Apply(buildDirectory, [.. entities]);
 
         // 生成 allowed_symlinks.txt
         if (!Path.Exists(buildDirectory))

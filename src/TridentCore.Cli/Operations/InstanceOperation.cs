@@ -15,16 +15,17 @@ namespace TridentCore.Cli.Operations;
 internal static class InstanceOperation
 {
     public static IReadOnlyList<InstanceSummary> List(ProfileManager profileManager) =>
-        profileManager
-           .Profiles.Select(x => new InstanceSummary(x.Item1,
-                                                     x.Item2.Name,
-                                                     x.Item2.Setup.Version,
-                                                     x.Item2.Setup.Loader,
-                                                     x.Item2.Setup.Source,
-                                                     x.Item2.Setup.Packages.Count,
-                                                     PathDef.Default.DirectoryOfHome(x.Item1)))
-           .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-           .ToArray();
+    [
+        .. profileManager
+          .Profiles.Select(x => new InstanceSummary(x.Item1,
+                                                    x.Item2.Name,
+                                                    x.Item2.Setup.Version,
+                                                    x.Item2.Setup.Loader,
+                                                    x.Item2.Setup.Source,
+                                                    x.Item2.Setup.Packages.Count,
+                                                    PathDef.Default.DirectoryOfHome(x.Item1)))
+          .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+    ];
 
     public static async Task<InstanceDetail> Inspect(
         InstanceContextResolver resolver,

@@ -13,7 +13,7 @@ public class Builder : IBuilder<string>
 
     #region IBuilder<string> Members
 
-    public string Build() => Build(Repository, Namespace, Identity, Version, Filters.ToArray().AsSpan());
+    public string Build() => Build(Repository, Namespace, Identity, Version, [.. Filters]);
 
     #endregion
 

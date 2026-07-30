@@ -3,5 +3,8 @@ namespace TridentCore.Abstractions.Adapters;
 public enum LauncherKind
 {
     MultiMc,
-    PrismLauncher
+    PrismLauncher,
+    CurseForgeApp,
+    AtLauncher,
+    ModrinthApp
 }

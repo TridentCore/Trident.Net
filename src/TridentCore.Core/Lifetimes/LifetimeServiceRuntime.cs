@@ -11,7 +11,7 @@ public sealed class LifetimeServiceRuntime
 
     public LifetimeServiceRuntime(IEnumerable<ILifetimeService> services)
     {
-        _services = services.ToArray();
+        _services = [.. services];
         _started = new bool[_services.Length];
     }
 

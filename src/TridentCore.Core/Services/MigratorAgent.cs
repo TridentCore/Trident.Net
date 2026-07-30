@@ -15,7 +15,7 @@ public class MigratorAgent(
 {
     private readonly Dictionary<LauncherKind, ILauncherAdapter> _adapters = BuildKindIndex(adapters);
 
-    public LauncherKind[] SupportedKinds => _adapters.Keys.ToArray();
+    public LauncherKind[] SupportedKinds => [.. _adapters.Keys];
 
     public string? DefaultDataDirectory(LauncherKind kind) =>
         _adapters.TryGetValue(kind, out var adapter) ? adapter.DefaultDataDirectory(kind) : null;
@@ -42,10 +42,10 @@ public class MigratorAgent(
         var entries = new List<MigrateResult.Entry>();
         if (list.Count == 0)
         {
-            return new MigrateResult(entries);
+            return new(entries);
         }
 
-        progress?.Report(new MigrateProgress { CurrentPhase = MigrateProgress.Phase.Identifying });
+        progress?.Report(new() { CurrentPhase = MigrateProgress.Phase.Identifying });
 
         var identifiable = GatherIdentifiableFiles(list, cancellationToken);
         var hitFiles = new HashSet<string>(StringComparer.Ordinal);
@@ -92,7 +92,7 @@ public class MigratorAgent(
                     throw new InvalidOperationException($"Instance is corrupt: {instance.CorruptReason}");
                 }
 
-                progress?.Report(new MigrateProgress
+                progress?.Report(new()
                 {
                     CurrentPhase = MigrateProgress.Phase.Transferring,
                     InstanceName = displayName,
@@ -119,7 +119,7 @@ public class MigratorAgent(
                                              progress).ConfigureAwait(false);
                     profiles.Add(reservedKey, BuildProfile(instance, instancePackages));
                     registered = true;
-                    entries.Add(new MigrateResult.Entry(displayName, true));
+                    entries.Add(new(displayName, true));
                     logger.LogInformation("Migrated {Name} as {Key}", displayName, reservedKey.Key);
                 }
                 finally
@@ -133,12 +133,12 @@ public class MigratorAgent(
             }
             catch (Exception ex)
             {
-                entries.Add(new MigrateResult.Entry(displayName, false, ex.Message));
+                entries.Add(new(displayName, false, ex.Message));
                 logger.LogError(ex, "Failed to migrate {Name}", displayName);
             }
         }
 
-        return new MigrateResult(entries);
+        return new(entries);
     }
 
     private static Dictionary<LauncherKind, ILauncherAdapter> BuildKindIndex(IEnumerable<ILauncherAdapter> adapters)
@@ -197,15 +197,15 @@ public class MigratorAgent(
         {
             Version = instance.MinecraftVersion!,
             Loader = instance.Loader,
-            Packages = (packages ?? [])
-                       .Select(p => new Profile.Rice.Entry
-                       {
-                           Pref = PackageHelper.ToPref(p),
-                           Enabled = true
-                       })
-                       .ToList()
+            Packages =
+            [
+                .. (packages ?? []).Select(p => new Profile.Rice.Entry
+                {
+                    Pref = PackageHelper.ToPref(p), Enabled = true
+                })
+            ]
         };
-        return new Profile { Name = instance.Name ?? instance.Key, Setup = setup };
+        return new() { Name = instance.Name ?? instance.Key, Setup = setup };
     }
 
     // Copies the whole runtime tree into build/, skipping files that were turned into package refs.
@@ -251,7 +251,7 @@ public class MigratorAgent(
             if (percent != lastReportedPercent || i == files.Count - 1)
             {
                 lastReportedPercent = percent;
-                progress?.Report(new MigrateProgress
+                progress?.Report(new()
                 {
                     CurrentPhase = MigrateProgress.Phase.Transferring,
                     InstanceName = displayName,

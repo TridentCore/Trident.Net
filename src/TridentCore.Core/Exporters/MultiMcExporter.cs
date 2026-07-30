@@ -72,8 +72,8 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         var planner = serviceProvider.GetRequiredService<PackagePlanner>();
         var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
         var plans = await planner
-                         .PlanAsync(setup.Packages.Where(x => x.Enabled).ToList(),
-                                    new(setup.Rules.Where(x => x.Enabled).ToList(), Filter.FromSetup(setup)))
+                         .PlanAsync([.. setup.Packages.Where(x => x.Enabled)],
+                                    new([.. setup.Rules.Where(x => x.Enabled)], Filter.FromSetup(setup)))
                          .ToListAsync()
                          .ConfigureAwait(false);
         var bag = new ConcurrentBag<(string, string)>();

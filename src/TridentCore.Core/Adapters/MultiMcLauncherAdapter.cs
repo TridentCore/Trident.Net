@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions.Adapters;
@@ -20,8 +19,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
 
     public string? DefaultDataDirectory(LauncherKind kind) => kind switch
     {
-        LauncherKind.MultiMc => LocateDefault(["MultiMC", "PolyMC"]),
-        LauncherKind.PrismLauncher => LocateDefault(["PrismLauncher"]),
+        LauncherKind.MultiMc => LauncherDataDirHelper.LocateUnderConventional("MultiMC", "PolyMC"),
+        LauncherKind.PrismLauncher => LauncherDataDirHelper.LocateUnderConventional("PrismLauncher"),
         _ => null
     };
 
@@ -113,7 +112,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
             logger?.LogWarning("Runtime directory not found for {Key}: {Path}", key, runtimeDir);
         }
 
-        return new LauncherInstance
+        return new()
         {
             Kind = LauncherKind.MultiMc,
             Key = key,
@@ -123,7 +122,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
             Loader = loader,
             CorruptReason = corruptReason,
             RuntimeDirectory = runtimeDir,
-            IdentifiableSubdirs = IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d))).ToArray()
+            IdentifiableSubdirs = [.. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d)))]
         };
     }
 
@@ -182,32 +181,5 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         }
 
         return Path.Combine(instanceDir, DEFAULT_RUNTIME_CANDIDATES[0]);
-    }
-
-    private static string? LocateDefault(string[] candidates)
-    {
-        var baseDir = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                           "Library",
-                           "Application Support")
-            : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
-
-        if (string.IsNullOrEmpty(baseDir))
-        {
-            return null;
-        }
-
-        foreach (var name in candidates)
-        {
-            var dir = Path.Combine(baseDir, name);
-            if (Directory.Exists(dir))
-            {
-                return dir;
-            }
-        }
-
-        return null;
     }
 }

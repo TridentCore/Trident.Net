@@ -31,7 +31,7 @@ public class StdinValueReader(CliContext context)
         try
         {
             using var document = JsonDocument.Parse(input);
-            return ReadElement(document.RootElement).ToArray();
+            return [.. ReadElement(document.RootElement)];
         }
         catch (JsonException ex)
         {

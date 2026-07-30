@@ -11,7 +11,7 @@ namespace TridentCore.Cli.Commands.Package;
 internal static class PackageDtos
 {
     public static LocalPackageDto FromEntry(Profile.Rice.Entry entry) =>
-        new(entry.Pref, entry.Enabled, entry.Source, entry.Tags.ToArray());
+        new(entry.Pref, entry.Enabled, entry.Source, [.. entry.Tags]);
 
     public static async Task<IReadOnlyList<ResolvedLocalPackageDto>> ResolveEntriesAsync(
         IEnumerable<Profile.Rice.Entry> entries,
@@ -41,21 +41,22 @@ internal static class PackageDtos
                                              p => p.Value,
                                              StringComparer.OrdinalIgnoreCase);
 
-        return entryList
-              .Select(e =>
-               {
-                   var key = PackageHelper.ExtractProjectIdentityIfValid(e.Pref);
-                   var project = projectLookup.GetValueOrDefault(key);
-                   return new ResolvedLocalPackageDto(e.Pref,
-                                                      e.Enabled,
-                                                      e.Source,
-                                                      e.Tags.ToArray(),
-                                                      project?.ProjectName,
-                                                      project?.Author,
-                                                      project?.Summary,
-                                                      project?.Kind);
-               })
-              .ToList();
+        return
+        [
+            .. entryList.Select(e =>
+            {
+                var key = PackageHelper.ExtractProjectIdentityIfValid(e.Pref);
+                var project = projectLookup.GetValueOrDefault(key);
+                return new ResolvedLocalPackageDto(e.Pref,
+                                                   e.Enabled,
+                                                   e.Source,
+                                                   [.. e.Tags],
+                                                   project?.ProjectName,
+                                                   project?.Author,
+                                                   project?.Summary,
+                                                   project?.Kind);
+            })
+        ];
     }
 
     public static ExhibitDto FromExhibit(Exhibit exhibit) =>
@@ -89,7 +90,7 @@ internal static class PackageDtos
             package.Size,
             package.FileName,
             package.Hash?.Value,
-            package.Dependencies.Select(FromDependency).ToArray());
+            [.. package.Dependencies.Select(FromDependency)]);
 
     public static VersionDto FromVersion(Abstractions.Repositories.Resources.Version version) =>
         new(PackageHelper.ToPref(version.Label, version.Namespace, version.ProjectId, version.VersionId),
@@ -101,7 +102,7 @@ internal static class PackageDtos
             version.ReleaseType,
             version.PublishedAt,
             version.DownloadCount,
-            version.Dependencies.Select(FromDependency).ToArray());
+            [.. version.Dependencies.Select(FromDependency)]);
 
     public static DependencyDto FromDependency(Abstractions.Repositories.Resources.Dependency dependency) =>
         new(PackageHelper.ToPref(dependency.Label, dependency.Namespace, dependency.ProjectId, dependency.VersionId),

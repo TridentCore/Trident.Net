@@ -6,13 +6,13 @@ namespace TridentCore.Abstractions.Utilities;
 public static class RuleHelper
 {
     public static IReadOnlyList<Result> Evaluate(IReadOnlyList<Input> input, IReadOnlyList<Profile.Rice.Rule> rules) =>
-        input
-           .Select(x =>
-            {
-                var passedRules = rules.Where(y => Evaluate(x, y.Selector)).ToList();
-                return new Result(x, passedRules, passedRules.LastOrDefault());
-            })
-           .ToList();
+    [
+        .. input.Select(x =>
+        {
+            var passedRules = rules.Where(y => Evaluate(x, y.Selector)).ToList();
+            return new Result(x, passedRules, passedRules.LastOrDefault());
+        })
+    ];
 
     public static Result Evaluate(Input input, IReadOnlyList<Profile.Rice.Rule> rules)
     {

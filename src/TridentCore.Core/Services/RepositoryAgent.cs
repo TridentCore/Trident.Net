@@ -32,7 +32,7 @@ public class RepositoryAgent
         _logger = logger;
         _cache = cache;
         _clientFactory = clientFactory;
-        _repositories = BuildRepositories(accessors.ToList()).AsReadOnly();
+        _repositories = BuildRepositories([.. accessors]).AsReadOnly();
     }
 
     public int Count => _repositories.Count;
@@ -200,7 +200,7 @@ public class RepositoryAgent
             var loaded = window
                 .Select(p => (path: p, data: (ReadOnlyMemory<byte>)File.ReadAllBytes(p)))
                 .ToArray();
-            var stage = await IdentifyBatchCoreAsync(loaded.Select(x => x.data).ToArray(), cancellationToken)
+            var stage = await IdentifyBatchCoreAsync([.. loaded.Select(x => x.data)], cancellationToken)
                                 .ConfigureAwait(false);
             for (var i = 0; i < loaded.Length; i++)
             {
@@ -441,10 +441,12 @@ public class RepositoryAgent
                          .ToList();
         await Task.WhenAll(cachedTasks).ConfigureAwait(false);
 
-        return cachedTasks
+        return
+        [
+            .. cachedTasks
               .Where(x => x.IsCompletedSuccessfully && x.Result.Cached != null)
               .Select(x => (x.Result.Item, x.Result.Cached!))
-              .ToList();
+        ];
     }
 
     private async Task CacheObjectAsync<T>(string key, T value)

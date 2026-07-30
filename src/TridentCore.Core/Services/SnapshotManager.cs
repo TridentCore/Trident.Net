@@ -140,7 +140,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
             processed?.Report(totalProcessed);
         }
 
-        return (snapshot, bag.ToArray());
+        return (snapshot, [.. bag]);
     }
 
     public Task CommitAsync(
