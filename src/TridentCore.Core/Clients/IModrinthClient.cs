@@ -34,11 +34,8 @@ public interface IModrinthClient
     [Get("/v3/versions")]
     Task<IReadOnlyList<VersionInfo>> GetMultipleVersionsAsync(string ids);
 
-    [Get("/v3/team/{teamId}/members")]
-    Task<IReadOnlyList<MemberInfo>> GetTeamMembersAsync(string teamId);
-
-    [Get("/v3/organization/{organizationId}/members")]
-    Task<IReadOnlyList<MemberInfo>> GetOrganizationMembersAsync(string organizationId);
+    [Get("/v3/project/{projectId}/members")]
+    Task<IReadOnlyList<MemberInfo>> GetProjectMembersAsync(string projectId);
 
     [Get("/v3/project/{projectId}/version")]
     Task<IReadOnlyList<VersionInfo>> GetProjectVersionsAsync(

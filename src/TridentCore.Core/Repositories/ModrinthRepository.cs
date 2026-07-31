@@ -93,7 +93,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         {
             var info = await client.GetVersionFromHashAsync(hash).ConfigureAwait(false);
             var project = await client.GetProjectAsync(info.ProjectId).ConfigureAwait(false);
-            var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+            var members = await client.GetProjectMembersAsync(project.Id).ConfigureAwait(false);
             return ModrinthHelper.ToPackage(label, project, info, members.FirstOrDefault());
         }
         catch (ApiException ex)
@@ -279,7 +279,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
     {
         var project = await client.GetProjectAsync(id.Identity).ConfigureAwait(false);
-        var members = await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+        var members = await client.GetProjectMembersAsync(project.Id).ConfigureAwait(false);
         return ModrinthHelper.ToProject(label, project, members.FirstOrDefault());
     }
 
@@ -336,7 +336,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             if (id.Version != null)
             {
                 var (versionTask, membersTask) = (client.GetVersionAsync(id.Version).ConfigureAwait(false),
-                                                  client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false));
+                                                  client.GetProjectMembersAsync(project.Id).ConfigureAwait(false));
                 var (version, members) = (await versionTask, await membersTask);
                 return ModrinthHelper.ToPackage(label, project, version, members.FirstOrDefault());
             }
@@ -354,7 +354,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                                                            filter.Version)),
                                                                            limit: 1)
                                                   .ConfigureAwait(false),
-                                                   client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false));
+                                                   client.GetProjectMembersAsync(project.Id).ConfigureAwait(false));
                 var (versions, members) = (await versionsTask, await membersTask);
                 var found = versions.OrderByDescending(x => x.DatePublished).FirstOrDefault();
                 if (found == null)
@@ -428,12 +428,9 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return RepositoryHelper.ResolveAsync(byId.Keys, async projectId =>
         {
             var project = byId[projectId];
-            var memberInfos = project.Organization != null
-                                  ? await client.GetOrganizationMembersAsync(project.Organization).ConfigureAwait(false)
-                                  : await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
-            var member = memberInfos.FirstOrDefault()
-                      ?? throw new
-                             ResourceNotFoundException($"{project.Name} ({label}:{project.Id}) has no team member in the repository");
+            var member = (await client.GetProjectMembersAsync(project.Id).ConfigureAwait(false)).FirstOrDefault()
+                      ?? throw new ResourceNotFoundException(
+                             $"{project.Name} ({label}:{project.Id}) has no member in the repository");
             return member;
         });
     }
