@@ -428,9 +428,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return RepositoryHelper.ResolveAsync(byId.Keys, async projectId =>
         {
             var project = byId[projectId];
-            var member = (await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false)).FirstOrDefault()
-                      ?? throw new ResourceNotFoundException(
-                             $"{project.Name} ({label}:{project.Id}) has no team member in the repository");
+            var memberInfos = project.Organization != null
+                                  ? await client.GetOrganizationMembersAsync(project.Organization).ConfigureAwait(false)
+                                  : await client.GetTeamMembersAsync(project.TeamId).ConfigureAwait(false);
+            var member = memberInfos.FirstOrDefault()
+                      ?? throw new
+                             ResourceNotFoundException($"{project.Name} ({label}:{project.Id}) has no team member in the repository");
             return member;
         });
     }
