@@ -86,6 +86,9 @@ public static class PackageHelper
     public static string ToPref(Package package) =>
         ToPref(package.Label, package.Namespace, package.ProjectId, package.VersionId);
 
+    public static string ToPref(PackageIdentifier id) =>
+        ToPref(id.Repository, id.Namespace, id.Identity, id.Version);
+
     // Normalize a legacy Purl-format string into the new pref:// format when it parses;
     // otherwise return it unchanged so a load never throws on an unrecognized value. Always
     // returns a non-null string (empty input yields an empty string).

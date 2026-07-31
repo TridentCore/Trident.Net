@@ -142,17 +142,34 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
+        if (uri.Host.EndsWith("forgecdn.net", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!TryExtractFileId(uri, out var fileId))
+            {
+                throw new ResourceNotFoundException($"{uri} is not a forgecdn file URL");
+            }
+
+            var file = (await client.GetFilesAsync(new([fileId])).ConfigureAwait(false)).Data.FirstOrDefault();
+            if (file is null)
+            {
+                throw new ResourceNotFoundException($"CurseForge file {fileId} not found");
+            }
+
+            return new(label, null, file.ModId.ToString(), fileId.ToString());
+        }
+
         if (!uri.Host.EndsWith("curseforge.com", StringComparison.OrdinalIgnoreCase))
         {
             throw new ResourceNotFoundException($"{uri} is not a curseforge URL");
         }
 
-        var (slug, fileId) = ExtractReference(uri);
+        var (slug, fileIdStr) = ExtractReference(uri);
         if (string.IsNullOrEmpty(slug))
         {
             throw new ResourceNotFoundException($"{uri} has no project slug");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var resp = await client.SearchModsAsync(null, null, null, null, slug: slug).ConfigureAwait(false);
         var mod = resp.Data.FirstOrDefault();
         if (mod is null)
@@ -160,7 +177,143 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             throw new ResourceNotFoundException($"{slug} not found in the repository");
         }
 
-        return new(label, null, mod.Id.ToString(), fileId);
+        return new(label, null, mod.Id.ToString(), fileIdStr);
+    }
+
+    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+    {
+        var result = new RepositoryHelper.BatchResult<Uri, PackageIdentifier>();
+        var byFileId = new Dictionary<uint, List<Uri>>();
+        var slugUris = new List<(Uri Uri, string Slug)>();
+
+        foreach (var uri in uris)
+        {
+            if (uri.Host.EndsWith("forgecdn.net", StringComparison.OrdinalIgnoreCase))
+            {
+                if (TryExtractFileId(uri, out var fileId))
+                {
+                    if (!byFileId.TryGetValue(fileId, out var list))
+                    {
+                        byFileId[fileId] = list = [];
+                    }
+
+                    list.Add(uri);
+                }
+                else
+                {
+                    result.Fail(uri, new ResourceNotFoundException($"{uri} is not a forgecdn file URL"));
+                }
+            }
+            else if (uri.Host.EndsWith("curseforge.com", StringComparison.OrdinalIgnoreCase))
+            {
+                var (slug, _) = ExtractReference(uri);
+                if (string.IsNullOrEmpty(slug))
+                {
+                    result.Fail(uri, new ResourceNotFoundException($"{uri} has no project slug"));
+                }
+                else
+                {
+                    slugUris.Add((uri, slug));
+                }
+            }
+            else
+            {
+                result.Fail(uri, new ResourceNotFoundException($"{uri} is not a curseforge URL"));
+            }
+        }
+
+        // One GetFilesAsync covers every forgecdn uri in the batch, deduped by file id.
+        if (byFileId.Count > 0)
+        {
+            Dictionary<uint, FileInfo> fileById;
+            try
+            {
+                var files = (await client.GetFilesAsync(new([.. byFileId.Keys])).ConfigureAwait(false)).Data;
+                fileById = files.ToDictionary(x => x.Id);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                foreach (var list in byFileId.Values)
+                {
+                    foreach (var uri in list)
+                    {
+                        result.Fail(uri, ex);
+                    }
+                }
+
+                fileById = [];
+            }
+
+            foreach (var (fileId, list) in byFileId)
+            {
+                if (fileById.TryGetValue(fileId, out var info))
+                {
+                    var id = new PackageIdentifier(label, null, info.ModId.ToString(), fileId.ToString());
+                    foreach (var uri in list)
+                    {
+                        result.Succeed(uri, id);
+                    }
+                }
+                else
+                {
+                    foreach (var uri in list)
+                    {
+                        result.Fail(uri, new ResourceNotFoundException($"CurseForge file {fileId} not found"));
+                    }
+                }
+            }
+        }
+
+        // curseforge.com slug URLs resolve one SearchModsAsync each; slugs are rare in pack imports.
+        foreach (var (uri, slug) in slugUris)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var resp = await client.SearchModsAsync(null, null, null, null, slug: slug).ConfigureAwait(false);
+                var mod = resp.Data.FirstOrDefault();
+                if (mod is null)
+                {
+                    result.Fail(uri, new ResourceNotFoundException($"{slug} not found in the repository"));
+                }
+                else
+                {
+                    var (_, fileId) = ExtractReference(uri);
+                    result.Succeed(uri, new PackageIdentifier(label, null, mod.Id.ToString(), fileId));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                result.Fail(uri, ex);
+            }
+        }
+
+        return result.ToResolveResult();
+    }
+
+    // edge.forgecdn.net/files/{high}/{low}/filename.jar ⇒ fileId = high * 1000 + low
+    private static bool TryExtractFileId(Uri uri, out uint fileId)
+    {
+        fileId = 0;
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments is ["files", var high, var low, ..]
+            && uint.TryParse(high, out var h)
+            && uint.TryParse(low, out var l))
+        {
+            fileId = h * 1000 + l;
+            return true;
+        }
+
+        return false;
     }
 
     // curseforge.com/minecraft/{class}/{slug} and .../{slug}/files/{fileId}

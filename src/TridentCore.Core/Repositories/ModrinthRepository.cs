@@ -149,6 +149,17 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
+        // CDN direct link: project/version ids are in the path, no API call needed.
+        if (uri.Host.EndsWith("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!TryExtractCdnReference(uri, out var pid, out var vid))
+            {
+                throw new ResourceNotFoundException($"{uri} is not a modrinth CDN file URL");
+            }
+
+            return new(label, null, pid!, vid);
+        }
+
         if (!uri.Host.EndsWith("modrinth.com", StringComparison.OrdinalIgnoreCase))
         {
             throw new ResourceNotFoundException($"{uri} is not a modrinth URL");
@@ -160,6 +171,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             throw new ResourceNotFoundException($"{uri} has no project slug");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var project = await client.GetProjectAsync(slug).ConfigureAwait(false);
@@ -169,6 +181,84 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         {
             throw new ResourceNotFoundException($"{slug} not found in the repository");
         }
+    }
+
+    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+    {
+        var result = new RepositoryHelper.BatchResult<Uri, PackageIdentifier>();
+        var slugUris = new List<(Uri Uri, string Slug, string? Version)>();
+
+        foreach (var uri in uris)
+        {
+            if (uri.Host.EndsWith("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
+            {
+                if (TryExtractCdnReference(uri, out var pid, out var vid))
+                {
+                    result.Succeed(uri, new PackageIdentifier(label, null, pid!, vid));
+                }
+                else
+                {
+                    result.Fail(uri, new ResourceNotFoundException($"{uri} is not a modrinth CDN file URL"));
+                }
+            }
+            else if (uri.Host.EndsWith("modrinth.com", StringComparison.OrdinalIgnoreCase))
+            {
+                var (slug, version) = ExtractReference(uri);
+                if (string.IsNullOrEmpty(slug))
+                {
+                    result.Fail(uri, new ResourceNotFoundException($"{uri} has no project slug"));
+                }
+                else
+                {
+                    slugUris.Add((uri, slug, version));
+                }
+            }
+            else
+            {
+                result.Fail(uri, new ResourceNotFoundException($"{uri} is not a modrinth URL"));
+            }
+        }
+
+        foreach (var (uri, slug, version) in slugUris)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var project = await client.GetProjectAsync(slug).ConfigureAwait(false);
+                result.Succeed(uri, new PackageIdentifier(label, null, project.Id, version));
+            }
+            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                result.Fail(uri, new ResourceNotFoundException($"{slug} not found in the repository"));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                result.Fail(uri, ex);
+            }
+        }
+
+        return result.ToResolveResult();
+    }
+
+    // cdn.modrinth.com/data/{projectId}/versions/{versionId}/filename.jar
+    private static bool TryExtractCdnReference(Uri uri, out string? projectId, out string? versionId)
+    {
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments is ["data", var pid, "versions", var vid, ..])
+        {
+            projectId = pid;
+            versionId = vid;
+            return true;
+        }
+
+        projectId = null;
+        versionId = null;
+        return false;
     }
 
     // modrinth.com/{type}/{slug} and modrinth.com/{type}/{slug}/version/{versionId}

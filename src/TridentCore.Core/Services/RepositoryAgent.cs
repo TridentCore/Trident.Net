@@ -143,7 +143,7 @@ public class RepositoryAgent
         return IdentifyAsync(new ReadOnlyMemory<byte>(content));
     }
 
-    public async Task<PackageIdentifier> RecognizeAsync(Uri uri)
+    public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         // NOTE: deliberately not cached, mirroring IdentifyAsync. Recognition is a cheap
         //  try-all-repos probe, and frequent misses (ResourceNotFoundException) while the user
@@ -152,13 +152,73 @@ public class RepositoryAgent
         {
             try
             {
-                return await _repositories[label].RecognizeAsync(uri).ConfigureAwait(false);
+                return await _repositories[label].RecognizeAsync(uri, cancellationToken).ConfigureAwait(false);
             }
             catch (NotSupportedException) { }
             catch (ResourceNotFoundException) { }
         }
 
         throw new ResourceNotFoundException($"No repository can recognize {uri}");
+    }
+
+    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+    {
+        // Waterfall with per-uri elimination: a repository's ResourceNotFoundException failures
+        //  are "not my territory" signals that stay pending for the next repository; any other
+        //  failure is terminal. After every repository has been probed, whatever remains pending is
+        //  bottom-lined as ResourceNotFoundException. The result is total — every input uri lands
+        //  in Successful or Failed.
+        var pending = uris.Distinct().ToList();
+        var successful = new Dictionary<Uri, PackageIdentifier>();
+        var failed = new Dictionary<Uri, Exception>();
+
+        foreach (var label in Labels)
+        {
+            if (pending.Count == 0)
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            BatchResolveResult<Uri, PackageIdentifier> stage;
+            try
+            {
+                stage = await _repositories[label].RecognizeBatchAsync(pending, cancellationToken)
+                                      .ConfigureAwait(false);
+            }
+            catch (NotSupportedException)
+            {
+                continue;
+            }
+
+            var stillPending = new List<Uri>();
+            foreach (var uri in pending)
+            {
+                if (stage.Successful.TryGetValue(uri, out var id))
+                {
+                    successful[uri] = id;
+                }
+                else if (stage.Failed.TryGetValue(uri, out var error) && error is not ResourceNotFoundException)
+                {
+                    failed[uri] = error;
+                }
+                else
+                {
+                    stillPending.Add(uri);
+                }
+            }
+
+            pending = stillPending;
+        }
+
+        foreach (var uri in pending)
+        {
+            failed[uri] = new ResourceNotFoundException($"No repository can recognize {uri}");
+        }
+
+        return new(successful, failed);
     }
 
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)

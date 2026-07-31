@@ -2,13 +2,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
+using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.ModrinthPack;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
+using TridentCore.Pref;
 
 namespace TridentCore.Core.Importers;
 
-public class ModrinthImporter : IProfileImporter
+public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
 {
     private static readonly Dictionary<string, string> LOADER_MAPPINGS = new()
     {
@@ -47,34 +50,6 @@ public class ModrinthImporter : IProfileImporter
         return false;
     }
 
-    private Profile.Rice.Entry ToPackage(PackIndex.IndexFile file, string? source)
-    {
-        // FIX: 需要兼容 bbsmc
-        //  bbsmc 用的第三方包，其中部分使用 mrpack，而 mrpack 使用多个源，其中就有 forgecdn
-        //  也就是 mrpack 可以包含多个托管站
-        // FIX: 有些 %版本% 写的是文件名
-        var download = file.Downloads.FirstOrDefault(x => x.Host == "cdn.modrinth.com");
-        // https://cdn.modrinth.com/data/88888888/versions/88888888/filename.jar
-        if (download != null)
-        {
-            var path = download.AbsolutePath;
-            if (path.Length > 32)
-            {
-                var projectId = path[6..14];
-                var versionId = path[24..32];
-                return new()
-                {
-                    Pref = PackageHelper.ToPref(ModrinthHelper.LABEL, null, projectId, versionId),
-                    Enabled = true,
-                    Source = source
-                };
-            }
-        }
-
-        // or dead end
-        throw new NotSupportedException($"{file.Path} can not be recognized as an attachment");
-    }
-
     #region IProfileImporter Members
 
     public bool CanHandle(CompressedProfilePack pack) =>
@@ -94,22 +69,62 @@ public class ModrinthImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
+
+        // Flatten every file's downloads into one recognition batch so the repository layer can
+        //  collapse same-host URLs into its native batch endpoints (e.g. one CurseForge GetFilesAsync
+        //  for the whole pack's forgecdn links). Per file, the first download the repository recognized
+        //  wins — preserving the pack author's source ordering.
+        var files = index.Files.Where(x => x.Env?.Client is not "unsupported").ToArray();
+        var downloads = files.SelectMany(x => x.Downloads).Distinct().ToArray();
+        var recognized = await repository.RecognizeBatchAsync(downloads).ConfigureAwait(false);
+
+        var packages = new List<Profile.Rice.Entry>();
+        foreach (var file in files)
+        {
+            PackageIdentifier? match = null;
+            foreach (var download in file.Downloads)
+            {
+                if (recognized.Successful.TryGetValue(download, out var id))
+                {
+                    match = id;
+                    break;
+                }
+            }
+
+            if (match is null)
+            {
+                // NOTE: the batch result is total — every download is in Successful or Failed — so when
+                //  nothing matched, Failed holds the underlying cause (e.g. a repository rate-limit);
+                //  surface it instead of a generic "unrecognized".
+                foreach (var download in file.Downloads)
+                {
+                    if (recognized.Failed.TryGetValue(download, out var error))
+                    {
+                        throw error;
+                    }
+                }
+
+                throw new NotSupportedException($"{file.Path} can not be recognized as an attachment");
+            }
+
+            packages.Add(new()
+            {
+                Pref = PackageHelper.ToPref(match.Value),
+                Enabled = true,
+                Source = source
+            });
+        }
+
         return new(new()
         {
             Name = index.Name,
-            Setup =
-                           new()
-                           {
-                               Source = source,
-                               Version = version,
-                               Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
-                               Packages =
-                               [
-                                   .. index
-                                     .Files.Where(x => x.Env?.Client is not "unsupported")
-                                     .Select(x => ToPackage(x, source))
-                               ]
-                           }
+            Setup = new()
+            {
+                Source = source,
+                Version = version,
+                Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
+                Packages = [.. packages]
+            }
         },
         [
             .. pack
