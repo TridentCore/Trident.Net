@@ -6,12 +6,10 @@ using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
-using TridentCore.Core.Models.CurseForgeApi;
 using TridentCore.Core.Repositories;
 using TridentCore.Pref;
 using ZiggyCreatures.Caching.Fusion;
 using Version = TridentCore.Abstractions.Repositories.Resources.Version;
-using FileInfo = TridentCore.Core.Models.CurseForgeApi.FileInfo;
 
 namespace TridentCore.Core.Services;
 
@@ -24,7 +22,6 @@ public class RepositoryAgent
     private static readonly string USER_AGENT = $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
 
     private readonly IReadOnlyDictionary<string, IRepository> _repositories;
-    private ICurseForgeClient? _curseForgeClient;
 
     public RepositoryAgent(
         IEnumerable<IRepositoryProviderAccessor> accessors,
@@ -52,19 +49,17 @@ public class RepositoryAgent
             {
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
                     {
-                        var curseForgeClient = RestService.For<ICurseForgeClient>(BuildClient(profile),
-                                                                                  new
-                                                                                      RefitSettings(new
-                                                                                                   SystemTextJsonContentSerializer(new(JsonSerializerDefaults
-                                                                                                                        .Web)))
-                                                                                      {
-                                                                                          UrlParameterFormatter =
-                                                                                              new
-                                                                                                  LowercaseBoolUrlParameterFormatter()
-                                                                                      });
                         var curseforge = new CurseForgeRepository(profile.Label,
-                                                                  curseForgeClient);
-                        _curseForgeClient = curseForgeClient;
+                                                                  RestService.For<ICurseForgeClient>(BuildClient(profile),
+                                                                      new
+                                                                          RefitSettings(new
+                                                                              SystemTextJsonContentSerializer(new(JsonSerializerDefaults
+                                                                                 .Web)))
+                                                                      {
+                                                                          UrlParameterFormatter =
+                                                                                  new
+                                                                                      LowercaseBoolUrlParameterFormatter()
+                                                                      }));
                         built.Add(profile.Label, curseforge);
                         break;
                     }
@@ -148,7 +143,7 @@ public class RepositoryAgent
         return IdentifyAsync(new ReadOnlyMemory<byte>(content));
     }
 
-    public async Task<PackageIdentifier> RecognizeAsync(Uri uri)
+    public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         // NOTE: deliberately not cached, mirroring IdentifyAsync. Recognition is a cheap
         //  try-all-repos probe, and frequent misses (ResourceNotFoundException) while the user
@@ -157,13 +152,73 @@ public class RepositoryAgent
         {
             try
             {
-                return await _repositories[label].RecognizeAsync(uri).ConfigureAwait(false);
+                return await _repositories[label].RecognizeAsync(uri, cancellationToken).ConfigureAwait(false);
             }
             catch (NotSupportedException) { }
             catch (ResourceNotFoundException) { }
         }
 
         throw new ResourceNotFoundException($"No repository can recognize {uri}");
+    }
+
+    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+    {
+        // Waterfall with per-uri elimination: a repository's ResourceNotFoundException failures
+        //  are "not my territory" signals that stay pending for the next repository; any other
+        //  failure is terminal. After every repository has been probed, whatever remains pending is
+        //  bottom-lined as ResourceNotFoundException. The result is total — every input uri lands
+        //  in Successful or Failed.
+        var pending = uris.Distinct().ToList();
+        var successful = new Dictionary<Uri, PackageIdentifier>();
+        var failed = new Dictionary<Uri, Exception>();
+
+        foreach (var label in Labels)
+        {
+            if (pending.Count == 0)
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            BatchResolveResult<Uri, PackageIdentifier> stage;
+            try
+            {
+                stage = await _repositories[label].RecognizeBatchAsync(pending, cancellationToken)
+                                      .ConfigureAwait(false);
+            }
+            catch (NotSupportedException)
+            {
+                continue;
+            }
+
+            var stillPending = new List<Uri>();
+            foreach (var uri in pending)
+            {
+                if (stage.Successful.TryGetValue(uri, out var id))
+                {
+                    successful[uri] = id;
+                }
+                else if (stage.Failed.TryGetValue(uri, out var error) && error is not ResourceNotFoundException)
+                {
+                    failed[uri] = error;
+                }
+                else
+                {
+                    stillPending.Add(uri);
+                }
+            }
+
+            pending = stillPending;
+        }
+
+        foreach (var uri in pending)
+        {
+            failed[uri] = new ResourceNotFoundException($"No repository can recognize {uri}");
+        }
+
+        return new(successful, failed);
     }
 
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
@@ -404,17 +459,6 @@ public class RepositoryAgent
 
     public Task<IPaginationHandle<Version>> InspectAsync(ProjectIdentifier id, Filter filter) =>
         Redirect(id.Repository).InspectAsync(id.ToScoped(), filter);
-
-    public async Task<FileInfo?> GetCurseForgeFileAsync(uint fileId)
-    {
-        if (_curseForgeClient is null)
-        {
-            return null;
-        }
-
-        var response = await _curseForgeClient.GetFilesAsync(new([fileId])).ConfigureAwait(false);
-        return response.Data.FirstOrDefault();
-    }
 
     private async Task<T> RetrieveCachedAsync<T>(string key, Func<Task<T>> factory, bool cacheEnabled = true)
     {

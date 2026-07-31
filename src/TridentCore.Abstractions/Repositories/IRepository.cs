@@ -34,4 +34,11 @@ public interface IRepository
     Task<IPaginationHandle<Version>> InspectAsync(ScopedProjectIdentifier id, Filter filter);
 
     Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default);
+
+    // NOTE: batch counterpart of RecognizeAsync. The result is total — every input uri lands in
+    //  exactly one of Successful or Failed. A ResourceNotFoundException in Failed is the
+    //  repository's "not my territory" signal that the agent re-probes at the next repository;
+    //  any other exception means the repository claimed the uri but failed to resolve it.
+    Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default);
 }

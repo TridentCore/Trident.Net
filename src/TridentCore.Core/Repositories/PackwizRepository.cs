@@ -20,6 +20,10 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     public Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
+    public Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+        IEnumerable<Uri> uris, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     public bool IsHidden => true;
 
     private async Task<CommitObject> GetHeadCommitAsync(string owner, string repo)
