@@ -61,12 +61,15 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
         var index = await JsonSerializer
                          .DeserializeAsync<PackIndex>(manifestStream, JsonSerializerOptions.Web)
                          .ConfigureAwait(false);
-        if (index is null
-         || !TryExtractLoader(index.Dependencies, out var loader)
-         || !TryExtractVersion(index.Dependencies, out var version))
+        if (index is null || !TryExtractVersion(index.Dependencies, out var version))
         {
             throw new FormatException($"{ModrinthHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
         }
+
+        // Loader is optional — a pack may declare none (vanilla), per the Modrinth format.
+        var loader = TryExtractLoader(index.Dependencies, out var loaderInfo)
+            ? LoaderHelper.ToLurl(loaderInfo.Identity, loaderInfo.Version)
+            : null;
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
 
@@ -122,7 +125,7 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
             {
                 Source = source,
                 Version = version,
-                Loader = LoaderHelper.ToLurl(loader.Identity, loader.Version),
+                Loader = loader,
                 Packages = [.. packages]
             }
         },
