@@ -54,7 +54,9 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
         return null;
     }
 
-    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(string rootDir, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(
+        string rootDir,
+        CancellationToken cancellationToken = default)
     {
         var instancesDir = Path.Combine(rootDir, INSTANCES_FOLDER);
         if (!Directory.Exists(instancesDir))
@@ -134,7 +136,10 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
             MinecraftVersion = version,
             Loader = loader,
             CorruptReason = corruptReason,
-            IdentifiableSubdirs = [.. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(instanceDir, d)))]
+            IdentifiableSubdirs =
+            [
+                .. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(instanceDir, d)))
+            ]
         };
     }
 
@@ -160,9 +165,7 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
         // name is forge-<v>, fabric-<loaderVer>-<mcVer>, quilt-<v>, or neoforge-<v>. For Fabric the
         // loader version is the segment between the first and second dashes; for the rest it is
         // everything after the first dash.
-        var version = identity == LoaderHelper.LOADERID_FABRIC
-            ? ExtractFabricVersion(name, dash)
-            : name[(dash + 1)..];
+        var version = identity == LoaderHelper.LOADERID_FABRIC ? ExtractFabricVersion(name, dash) : name[(dash + 1)..];
 
         return string.IsNullOrEmpty(version) ? null : LoaderHelper.ToLurl(identity, version);
     }

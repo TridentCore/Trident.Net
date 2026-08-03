@@ -59,7 +59,9 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
         return null;
     }
 
-    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(string rootDir, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(
+        string rootDir,
+        CancellationToken cancellationToken = default)
     {
         var instancesDir = Path.Combine(rootDir, INSTANCES_FOLDER);
         if (!Directory.Exists(instancesDir))
@@ -147,19 +149,24 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
             MinecraftVersion = version,
             Loader = loader,
             CorruptReason = corruptReason,
-            IdentifiableSubdirs = [.. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(instanceDir, d)))]
+            IdentifiableSubdirs =
+            [
+                .. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(instanceDir, d)))
+            ]
         };
     }
 
     private static string? ResolveLoader(AtLauncherInstance.LoaderVersion? loaderVersion)
     {
-        if (loaderVersion is null || string.IsNullOrEmpty(loaderVersion.Type) || string.IsNullOrEmpty(loaderVersion.Version))
+        if (loaderVersion is null
+         || string.IsNullOrEmpty(loaderVersion.Type)
+         || string.IsNullOrEmpty(loaderVersion.Version))
         {
             return null;
         }
 
         return LOADER_BY_TYPE.TryGetValue(loaderVersion.Type, out var identity)
-            ? LoaderHelper.ToLurl(identity, loaderVersion.Version)
-            : null;
+                   ? LoaderHelper.ToLurl(identity, loaderVersion.Version)
+                   : null;
     }
 }

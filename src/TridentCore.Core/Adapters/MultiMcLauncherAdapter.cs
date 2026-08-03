@@ -17,14 +17,17 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
     // only the data-directory name differs, resolved per kind below.
     public IReadOnlyList<LauncherKind> SupportedKinds { get; } = [LauncherKind.MultiMc, LauncherKind.PrismLauncher];
 
-    public string? DefaultDataDirectory(LauncherKind kind) => kind switch
-    {
-        LauncherKind.MultiMc => LauncherDataDirHelper.LocateUnderConventional("MultiMC", "PolyMC"),
-        LauncherKind.PrismLauncher => LauncherDataDirHelper.LocateUnderConventional("PrismLauncher"),
-        _ => null
-    };
+    public string? DefaultDataDirectory(LauncherKind kind) =>
+        kind switch
+        {
+            LauncherKind.MultiMc => LauncherDataDirHelper.LocateUnderConventional("MultiMC", "PolyMC"),
+            LauncherKind.PrismLauncher => LauncherDataDirHelper.LocateUnderConventional("PrismLauncher"),
+            _ => null
+        };
 
-    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(string rootDir, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LauncherInstance>> ScanAsync(
+        string rootDir,
+        CancellationToken cancellationToken = default)
     {
         var instancesDir = Path.Combine(rootDir, "instances");
         if (!Directory.Exists(instancesDir))
@@ -48,7 +51,10 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         return results;
     }
 
-    private static async Task<LauncherInstance> ScanInstanceAsync(string instanceDir, ILogger? logger, CancellationToken cancellationToken)
+    private static async Task<LauncherInstance> ScanInstanceAsync(
+        string instanceDir,
+        ILogger? logger,
+        CancellationToken cancellationToken)
     {
         var key = Path.GetFileName(instanceDir);
 
@@ -122,13 +128,18 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
             Loader = loader,
             CorruptReason = corruptReason,
             RuntimeDirectory = runtimeDir,
-            IdentifiableSubdirs = [.. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d)))]
+            IdentifiableSubdirs =
+            [
+                .. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d)))
+            ]
         };
     }
 
     // instance.cfg is an INI-ish key=value file; read every line into a lookup so both the name and a
     // possible InstanceDir override are available without a second pass.
-    private static async Task<Dictionary<string, string>> ReadInstanceCfgAsync(string instanceDir, CancellationToken cancellationToken)
+    private static async Task<Dictionary<string, string>> ReadInstanceCfgAsync(
+        string instanceDir,
+        CancellationToken cancellationToken)
     {
         var cfg = new Dictionary<string, string>();
         var cfgFile = Path.Combine(instanceDir, MultiMcHelper.PACK_INSTANCE_CFG);

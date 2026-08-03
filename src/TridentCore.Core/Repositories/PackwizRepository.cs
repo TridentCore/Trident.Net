@@ -21,7 +21,8 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         throw new NotSupportedException();
 
     public Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
-        IEnumerable<Uri> uris, CancellationToken cancellationToken = default) =>
+        IEnumerable<Uri> uris,
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
     public bool IsHidden => true;
@@ -113,7 +114,9 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     public Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content) =>
         throw new NotSupportedException("packwiz repositories cannot identify files");
 
-    public Task<IReadOnlyList<Package?>> IdentifyBatchAsync(IEnumerable<ReadOnlyMemory<byte>> contents, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Package?>> IdentifyBatchAsync(
+        IEnumerable<ReadOnlyMemory<byte>> contents,
+        CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("packwiz repositories cannot identify files");
 
     public async Task<Project> QueryAsync(ScopedProjectIdentifier id)
@@ -136,10 +139,7 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
 
     public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch) =>
-        (await RepositoryHelper
-                 .ResolveAsync<ScopedProjectIdentifier, Project>(batch, QueryAsync)
-                 .ConfigureAwait(false))
-       .ToResolveResult();
+        (await RepositoryHelper.ResolveAsync(batch, QueryAsync).ConfigureAwait(false)).ToResolveResult();
 
     public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
@@ -165,9 +165,8 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter) =>
         (await RepositoryHelper
-                 .ResolveAsync<ScopedPackageIdentifier, Package>(batch, id => ResolveAsync(id, filter))
-                 .ConfigureAwait(false))
-       .ToResolveResult();
+              .ResolveAsync<ScopedPackageIdentifier, Package>(batch, id => ResolveAsync(id, filter))
+              .ConfigureAwait(false)).ToResolveResult();
 
     public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
     {

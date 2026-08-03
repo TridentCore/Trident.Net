@@ -12,9 +12,10 @@ public static class LauncherDataDirHelper
     // has no equivalent the environment can resolve.
     public static string? ConventionalDataRoot() =>
         RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                           "Library",
-                           "Application Support")
+            ?
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                         "Library",
+                         "Application Support")
             : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");

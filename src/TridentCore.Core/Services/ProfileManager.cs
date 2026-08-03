@@ -10,6 +10,8 @@ namespace TridentCore.Core.Services;
 
 public class ProfileManager : IDisposable
 {
+    internal readonly IList<ReservedKey> ReservedKeys = [];
+
     #region Injected
 
     private readonly ILogger<ProfileManager> _logger;
@@ -17,7 +19,6 @@ public class ProfileManager : IDisposable
     #endregion
 
     private readonly List<ProfileHandle> _profiles = [];
-    internal readonly IList<ReservedKey> ReservedKeys = [];
 
     public ProfileManager(ILogger<ProfileManager> logger)
     {

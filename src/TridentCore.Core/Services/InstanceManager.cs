@@ -598,12 +598,11 @@ public class InstanceManager(
         logger.LogInformation("{key} updated", key);
     }
 
-    private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)>
-        DownloadAndImportPackageAsync(
-            string key,
-            Package package,
-            Subject<double?> progressStream,
-            CancellationToken cancellationToken)
+    private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)> DownloadAndImportPackageAsync(
+        string key,
+        Package package,
+        Subject<double?> progressStream,
+        CancellationToken cancellationToken)
     {
         var size = package.Size;
         logger.LogDebug("Downloading package file {url} sized {size} bytes", package.Download.AbsoluteUri, size);

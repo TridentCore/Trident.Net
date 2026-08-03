@@ -54,8 +54,8 @@ public class MigratorAgent(
         if (identifiable.Count > 0)
         {
             var results = await repository
-                                .IdentifyBatchAsync(identifiable.Select(x => x.File), cancellationToken)
-                                .ConfigureAwait(false);
+                               .IdentifyBatchAsync(identifiable.Select(x => x.File), cancellationToken)
+                               .ConfigureAwait(false);
 
             foreach (var (instance, file) in identifiable)
             {
@@ -116,7 +116,8 @@ public class MigratorAgent(
                                              displayName,
                                              i + 1,
                                              list.Count,
-                                             progress).ConfigureAwait(false);
+                                             progress)
+                       .ConfigureAwait(false);
                     profiles.Add(reservedKey, BuildProfile(instance, instancePackages));
                     registered = true;
                     entries.Add(new(displayName, true));
@@ -180,7 +181,7 @@ public class MigratorAgent(
                 {
                     var ext = Path.GetExtension(file);
                     if (ext.Equals(".jar", StringComparison.OrdinalIgnoreCase)
-                        || ext.Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                     || ext.Equals(".zip", StringComparison.OrdinalIgnoreCase))
                     {
                         collected.Add((instance, file));
                     }
@@ -225,9 +226,10 @@ public class MigratorAgent(
 
         Directory.CreateDirectory(targetDir);
 
-        var files = Directory.EnumerateFiles(sourceDir, "*.*", SearchOption.AllDirectories)
-                             .Where(f => !skip.Contains(f))
-                             .ToList();
+        var files = Directory
+                   .EnumerateFiles(sourceDir, "*.*", SearchOption.AllDirectories)
+                   .Where(f => !skip.Contains(f))
+                   .ToList();
 
         var lastReportedPercent = -1;
         for (var i = 0; i < files.Count; i++)
@@ -241,10 +243,13 @@ public class MigratorAgent(
                 Directory.CreateDirectory(targetParent);
             }
 
-            await using var source = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read,
-                                                    bufferSize: 81920, useAsync: true);
-            await using var dest = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None,
-                                                  bufferSize: 81920, useAsync: true);
+            await using var source = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+            await using var dest = new FileStream(target,
+                                                  FileMode.Create,
+                                                  FileAccess.Write,
+                                                  FileShare.None,
+                                                  81920,
+                                                  true);
             await source.CopyToAsync(dest);
 
             var percent = (int)Math.Round((double)(i + 1) / files.Count * 100);
@@ -269,7 +274,7 @@ public class MigratorAgent(
         {
             if (Directory.Exists(dir))
             {
-                Directory.Delete(dir, recursive: true);
+                Directory.Delete(dir, true);
             }
         }
         catch

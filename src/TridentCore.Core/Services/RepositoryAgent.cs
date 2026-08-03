@@ -17,6 +17,14 @@ public class RepositoryAgent
 {
     public const string CLIENT_NAME = "repository";
 
+    private const int BATCH_CHUNK_SIZE = 256;
+    private const int BATCH_CONCURRENCY = 4;
+
+    // NOTE: bounds how many source files are held in memory at once during identification.
+    //  Peak RSS is roughly this × average file size; the window exists so a multi-GB mod batch
+    //  never materializes all at once. Tune down for memory-constrained hosts.
+    private const int IDENTIFY_READ_WINDOW = 32;
+
     private static readonly TimeSpan EXPIRED_IN = TimeSpan.FromDays(7);
 
     private static readonly string USER_AGENT = $"Trident.Net/{Assembly.GetExecutingAssembly().GetName().Version}";
@@ -162,7 +170,8 @@ public class RepositoryAgent
     }
 
     public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
-        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+        IEnumerable<Uri> uris,
+        CancellationToken cancellationToken = default)
     {
         // Waterfall with per-uri elimination: a repository's ResourceNotFoundException failures
         //  are "not my territory" signals that stay pending for the next repository; any other
@@ -185,8 +194,9 @@ public class RepositoryAgent
             BatchResolveResult<Uri, PackageIdentifier> stage;
             try
             {
-                stage = await _repositories[label].RecognizeBatchAsync(pending, cancellationToken)
-                                      .ConfigureAwait(false);
+                stage = await _repositories[label]
+                             .RecognizeBatchAsync(pending, cancellationToken)
+                             .ConfigureAwait(false);
             }
             catch (NotSupportedException)
             {
@@ -238,14 +248,6 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
-    private const int BATCH_CHUNK_SIZE = 256;
-    private const int BATCH_CONCURRENCY = 4;
-
-    // NOTE: bounds how many source files are held in memory at once during identification.
-    //  Peak RSS is roughly this × average file size; the window exists so a multi-GB mod batch
-    //  never materializes all at once. Tune down for memory-constrained hosts.
-    private const int IDENTIFY_READ_WINDOW = 32;
-
     // Keyed by file path so callers correlate results without positional alignment. Files are read
     // in IDENTIFY_READ_WINDOW-sized windows before each window flows through the waterfall below,
     // keeping peak memory bounded regardless of total batch size.
@@ -257,11 +259,9 @@ public class RepositoryAgent
         foreach (var window in filePaths.Chunk(IDENTIFY_READ_WINDOW))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var loaded = window
-                .Select(p => (path: p, data: (ReadOnlyMemory<byte>)File.ReadAllBytes(p)))
-                .ToArray();
+            var loaded = window.Select(p => (path: p, data: (ReadOnlyMemory<byte>)File.ReadAllBytes(p))).ToArray();
             var stage = await IdentifyBatchCoreAsync([.. loaded.Select(x => x.data)], cancellationToken)
-                                .ConfigureAwait(false);
+                           .ConfigureAwait(false);
             for (var i = 0; i < loaded.Length; i++)
             {
                 results[loaded[i].path] = stage[i];
@@ -293,42 +293,48 @@ public class RepositoryAgent
             var remaining = new List<int>();
             var gate = new object();
 
-            await Parallel.ForEachAsync(
-                pending.Chunk(BATCH_CHUNK_SIZE),
-                new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = BATCH_CONCURRENCY,
-                    CancellationToken = cancellationToken
-                },
-                async (chunk, ct) =>
-                {
-                    IReadOnlyList<Package?> stage;
-                    try
-                    {
-                        stage = await repository.IdentifyBatchAsync(chunk.Select(i => contents[i]), ct)
-                                               .ConfigureAwait(false);
-                    }
-                    catch (NotSupportedException)
-                    {
-                        lock (gate) remaining.AddRange(chunk);
-                        return;
-                    }
+            await Parallel
+                 .ForEachAsync(pending.Chunk(BATCH_CHUNK_SIZE),
+                               new ParallelOptions
+                               {
+                                   MaxDegreeOfParallelism = BATCH_CONCURRENCY,
+                                   CancellationToken = cancellationToken
+                               },
+                               async (chunk, ct) =>
+                               {
+                                   IReadOnlyList<Package?> stage;
+                                   try
+                                   {
+                                       stage = await repository
+                                                    .IdentifyBatchAsync(chunk.Select(i => contents[i]), ct)
+                                                    .ConfigureAwait(false);
+                                   }
+                                   catch (NotSupportedException)
+                                   {
+                                       lock (gate)
+                                       {
+                                           remaining.AddRange(chunk);
+                                       }
 
-                    lock (gate)
-                    {
-                        for (var s = 0; s < stage.Count; s++)
-                        {
-                            if (stage[s] is { } package)
-                            {
-                                results[chunk[s]] = package;
-                            }
-                            else
-                            {
-                                remaining.Add(chunk[s]);
-                            }
-                        }
-                    }
-                }).ConfigureAwait(false);
+                                       return;
+                                   }
+
+                                   lock (gate)
+                                   {
+                                       for (var s = 0; s < stage.Count; s++)
+                                       {
+                                           if (stage[s] is { } package)
+                                           {
+                                               results[chunk[s]] = package;
+                                           }
+                                           else
+                                           {
+                                               remaining.Add(chunk[s]);
+                                           }
+                                       }
+                                   }
+                               })
+                 .ConfigureAwait(false);
 
             pending = remaining;
         }

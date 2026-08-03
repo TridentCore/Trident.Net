@@ -4,9 +4,9 @@ namespace TridentCore.Core.Lifetimes;
 
 public sealed class LifetimeServiceRuntime
 {
-    private readonly object _sync = new();
     private readonly ILifetimeService[] _services;
     private readonly bool[] _started;
+    private readonly object _sync = new();
     private bool _stopping;
 
     public LifetimeServiceRuntime(IEnumerable<ILifetimeService> services)

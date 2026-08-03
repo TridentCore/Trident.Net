@@ -5,7 +5,7 @@ using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines;
 
-public partial class LaunchEngine : IAsyncEnumerable<Scrap>
+public class LaunchEngine : IAsyncEnumerable<Scrap>
 {
     private readonly Process _inner;
 

@@ -106,34 +106,42 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         var list = contents.ToList();
         var results = new Package?[list.Count];
 
-        var items = Enumerable.Range(0, list.Count)
-                              .Select(i => (index: i, fingerprint: (uint)CurseForgeHelper.ComputeFingerprint(list[i])))
-                              .ToArray();
+        var items = Enumerable
+                   .Range(0, list.Count)
+                   .Select(i => (index: i, fingerprint: (uint)CurseForgeHelper.ComputeFingerprint(list[i])))
+                   .ToArray();
         if (items.Length == 0)
+        {
             return results;
+        }
 
         var resp = await client
-            .GetFingerprintMatchesByGameId(new([.. items.Select(x => x.fingerprint)]))
-            .ConfigureAwait(false);
-        var byFingerprint = resp.Data.ExactMatches
-                                .ToDictionary(match => (uint)match.File.FileFingerprint,
-                                              match => (match.Id, match.File));
+                        .GetFingerprintMatchesByGameId(new([.. items.Select(x => x.fingerprint)]))
+                        .ConfigureAwait(false);
+        var byFingerprint = resp.Data.ExactMatches.ToDictionary(match => (uint)match.File.FileFingerprint,
+                                                                match => (match.Id, match.File));
 
         if (byFingerprint.Count == 0)
+        {
             return results;
+        }
 
         var mods = (await client
                          .GetModsAsync(new([.. byFingerprint.Values.Select(x => x.Id).Distinct()]))
-                         .ConfigureAwait(false))
-                   .Data
-                   .ToDictionary(m => m.Id);
+                         .ConfigureAwait(false)).Data.ToDictionary(m => m.Id);
 
         foreach (var (index, fingerprint) in items)
         {
             if (!byFingerprint.TryGetValue(fingerprint, out var match))
+            {
                 continue;
+            }
+
             if (!mods.TryGetValue(match.Id, out var mod))
+            {
                 continue;
+            }
+
             results[index] = CurseForgeHelper.ToPackage(label, mod, match.File);
         }
 
@@ -181,7 +189,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
     }
 
     public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
-        IEnumerable<Uri> uris, CancellationToken cancellationToken = default)
+        IEnumerable<Uri> uris,
+        CancellationToken cancellationToken = default)
     {
         var result = new RepositoryHelper.BatchResult<Uri, PackageIdentifier>();
         var byFileId = new Dictionary<uint, List<Uri>>();
@@ -284,7 +293,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                 else
                 {
                     var (_, fileId) = ExtractReference(uri);
-                    result.Succeed(uri, new PackageIdentifier(label, null, mod.Id.ToString(), fileId));
+                    result.Succeed(uri, new(label, null, mod.Id.ToString(), fileId));
                 }
             }
             catch (OperationCanceledException)
@@ -306,8 +315,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         fileId = 0;
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments is ["files", var high, var low, ..]
-            && uint.TryParse(high, out var h)
-            && uint.TryParse(low, out var l))
+         && uint.TryParse(high, out var h)
+         && uint.TryParse(low, out var l))
         {
             fileId = h * 1000 + l;
             return true;
@@ -485,8 +494,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         if (unknownVids.Length > 0)
         {
             result.Merge(await RepositoryHelper
-                             .ResolveAsync(unknownVids, id => ResolveUnknownVersionAsync(id, filter))
-                             .ConfigureAwait(false));
+                              .ResolveAsync(unknownVids, id => ResolveUnknownVersionAsync(id, filter))
+                              .ConfigureAwait(false));
         }
 
         if (knownVids.Length > 0)
@@ -512,8 +521,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                            0,
                                            1)
                          .ConfigureAwait(false)).Data.FirstOrDefault()
-                ?? throw new ResourceNotFoundException(
-                       $"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
+                ?? throw new
+                       ResourceNotFoundException($"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
         return CurseForgeHelper.ToPackage(label, mod, file);
     }
 
@@ -531,7 +540,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             else
             {
                 result.Fail(id,
-                    new FormatException($"{id.Identity}/{id.Version} is not well formatted into modId/fileId"));
+                            new FormatException($"{id.Identity}/{id.Version} is not well formatted into modId/fileId"));
             }
         }
 
@@ -539,16 +548,11 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         {
             try
             {
-                var modById = (await client
-                                     .GetModsAsync(new([.. parsed.Select(x => x.ModId)]))
-                                     .ConfigureAwait(false))
-                              .Data
-                              .ToDictionary(x => x.Id);
-                var fileById = (await client
-                                      .GetFilesAsync(new([.. parsed.Select(x => x.FileId)]))
-                                      .ConfigureAwait(false))
-                               .Data
-                               .ToDictionary(x => x.Id);
+                var modById = (await client.GetModsAsync(new([.. parsed.Select(x => x.ModId)])).ConfigureAwait(false))
+                             .Data.ToDictionary(x => x.Id);
+                var fileById =
+                    (await client.GetFilesAsync(new([.. parsed.Select(x => x.FileId)])).ConfigureAwait(false)).Data
+                   .ToDictionary(x => x.Id);
 
                 foreach (var (id, modId, fileId) in parsed)
                 {
@@ -561,8 +565,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                     else
                     {
                         result.Fail(id,
-                            new ResourceNotFoundException(
-                                $"{id.Identity}/{id.Version} not found in the repository"));
+                                    new
+                                        ResourceNotFoundException($"{id.Identity}/{id.Version} not found in the repository"));
                     }
                 }
             }

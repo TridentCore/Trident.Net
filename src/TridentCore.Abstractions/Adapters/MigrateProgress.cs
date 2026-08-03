@@ -2,6 +2,8 @@ namespace TridentCore.Abstractions.Adapters;
 
 public record MigrateProgress
 {
+    public enum Phase { Identifying, Transferring }
+
     public required Phase CurrentPhase { get; init; }
 
     // Display name of the instance currently being transferred, null during the identify phase.
@@ -13,10 +15,4 @@ public record MigrateProgress
 
     // Per-instance file-transfer progress in [0,1], or null for indeterminate.
     public double? Percent { get; init; }
-
-    public enum Phase
-    {
-        Identifying,
-        Transferring
-    }
 }

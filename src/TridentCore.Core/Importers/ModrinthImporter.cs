@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
-using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.ModrinthPack;
 using TridentCore.Core.Services;
@@ -68,8 +67,8 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
 
         // Loader is optional — a pack may declare none (vanilla), per the Modrinth format.
         var loader = TryExtractLoader(index.Dependencies, out var loaderInfo)
-            ? LoaderHelper.ToLurl(loaderInfo.Identity, loaderInfo.Version)
-            : null;
+                         ? LoaderHelper.ToLurl(loaderInfo.Identity, loaderInfo.Version)
+                         : null;
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
 
@@ -110,41 +109,31 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
                 throw new NotSupportedException($"{file.Path} can not be recognized as an attachment");
             }
 
-            packages.Add(new()
-            {
-                Pref = PackageHelper.ToPref(match.Value),
-                Enabled = true,
-                Source = source
-            });
+            packages.Add(new() { Pref = PackageHelper.ToPref(match.Value), Enabled = true, Source = source });
         }
 
         return new(new()
         {
             Name = index.Name,
-            Setup = new()
-            {
-                Source = source,
-                Version = version,
-                Loader = loader,
-                Packages = [.. packages]
-            }
+            Setup =
+                           new() { Source = source, Version = version, Loader = loader, Packages = [.. packages] }
         },
-        [
-            .. pack
-              .FileNames
-              .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
-              .Select(x => (x, x[("overrides".Length + 1)..]))
-              .Where(x => !x.Item2.EndsWith('/') && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)),
-            .. pack
-              .FileNames
-              .Where(x => x.StartsWith("client-overrides")
-                       && x != "client-overrides"
-                       && x.Length > "client-overrides".Length + 1)
-              .Select(x => (x, x[("client-overrides".Length + 1)..]))
-              .Where(x => !x.Item2.EndsWith('/')
-                       && !x.Item2.EndsWith('\\')
-                       && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
-        ],
+                   [
+                       .. pack
+                         .FileNames
+                         .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
+                         .Select(x => (x, x[("overrides".Length + 1)..]))
+                         .Where(x => !x.Item2.EndsWith('/') && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)),
+                       .. pack
+                         .FileNames
+                         .Where(x => x.StartsWith("client-overrides")
+                                  && x != "client-overrides"
+                                  && x.Length > "client-overrides".Length + 1)
+                         .Select(x => (x, x[("client-overrides".Length + 1)..]))
+                         .Where(x => !x.Item2.EndsWith('/')
+                                  && !x.Item2.EndsWith('\\')
+                                  && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                   ],
                    [],
                    pack.Reference?.Thumbnail);
     }
