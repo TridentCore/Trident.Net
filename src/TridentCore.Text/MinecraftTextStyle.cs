@@ -22,7 +22,7 @@ public sealed record MinecraftTextStyle
     public MinecraftTextStyle Merge(MinecraftTextStyle? overrider) =>
         overrider is null
             ? this
-            : new MinecraftTextStyle
+            : new()
             {
                 Color = overrider.Color ?? Color,
                 Bold = overrider.Bold ?? Bold,
@@ -34,13 +34,14 @@ public sealed record MinecraftTextStyle
 
     // Resolve inherited nulls to concrete render values: bools default to false;
     // color stays null so the renderer can fall back to its own foreground.
-    public MinecraftTextStyle Resolve() => new()
-    {
-        Color = Color,
-        Bold = Bold ?? false,
-        Italic = Italic ?? false,
-        Underlined = Underlined ?? false,
-        Strikethrough = Strikethrough ?? false,
-        Obfuscated = Obfuscated ?? false
-    };
+    public MinecraftTextStyle Resolve() =>
+        new()
+        {
+            Color = Color,
+            Bold = Bold ?? false,
+            Italic = Italic ?? false,
+            Underlined = Underlined ?? false,
+            Strikethrough = Strikethrough ?? false,
+            Obfuscated = Obfuscated ?? false
+        };
 }

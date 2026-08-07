@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 
@@ -33,7 +32,9 @@ public static class MinecraftTextReader
     public static MinecraftText ParseLegacy(string? text, MinecraftTextStyle baseStyle)
     {
         if (string.IsNullOrEmpty(text))
+        {
             return MinecraftText.Empty;
+        }
 
         var runs = new List<MinecraftTextRun>();
         var buffer = new StringBuilder();
@@ -42,8 +43,11 @@ public static class MinecraftTextReader
         void Flush()
         {
             if (buffer.Length == 0)
+            {
                 return;
-            runs.Add(new MinecraftTextRun(buffer.ToString(), style.Resolve()));
+            }
+
+            runs.Add(new(buffer.ToString(), style.Resolve()));
             buffer.Clear();
         }
 
@@ -67,13 +71,15 @@ public static class MinecraftTextReader
         }
 
         Flush();
-        return new MinecraftText(runs);
+        return new(runs);
     }
 
     public static MinecraftText ParseJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
+        {
             return MinecraftText.Empty;
+        }
 
         JsonDocument document;
         try
@@ -89,7 +95,7 @@ public static class MinecraftTextReader
         {
             var runs = new List<MinecraftTextRun>();
             WalkComponent(document.RootElement, MinecraftTextStyle.Default, runs);
-            return new MinecraftText(runs);
+            return new(runs);
         }
     }
 
@@ -103,7 +109,9 @@ public static class MinecraftTextReader
 
         var index = 0;
         while (index < raw.Length && char.IsWhiteSpace(raw[index]))
+        {
             index++;
+        }
 
         if (index < raw.Length && (raw[index] == '{' || raw[index] == '['))
         {
@@ -129,19 +137,33 @@ public static class MinecraftTextReader
         // precede §l in practice. §r clears both color and styles.
         if (code is >= '0' and <= '9' or >= 'a' and <= 'f')
         {
-            next = new MinecraftTextStyle { Color = LegacyColors[code] };
+            next = new() { Color = LegacyColors[code] };
             return true;
         }
 
         switch (code)
         {
-            case 'k': next = current with { Obfuscated = true }; return true;
-            case 'l': next = current with { Bold = true }; return true;
-            case 'm': next = current with { Strikethrough = true }; return true;
-            case 'n': next = current with { Underlined = true }; return true;
-            case 'o': next = current with { Italic = true }; return true;
-            case 'r': next = MinecraftTextStyle.Default; return true;
-            default: next = current; return false;
+            case 'k':
+                next = current with { Obfuscated = true };
+                return true;
+            case 'l':
+                next = current with { Bold = true };
+                return true;
+            case 'm':
+                next = current with { Strikethrough = true };
+                return true;
+            case 'n':
+                next = current with { Underlined = true };
+                return true;
+            case 'o':
+                next = current with { Italic = true };
+                return true;
+            case 'r':
+                next = MinecraftTextStyle.Default;
+                return true;
+            default:
+                next = current;
+                return false;
         }
     }
 
@@ -157,7 +179,10 @@ public static class MinecraftTextReader
                 break;
             case JsonValueKind.Array:
                 foreach (var child in element.EnumerateArray())
+                {
                     WalkComponent(child, inherited, runs);
+                }
+
                 break;
         }
     }
@@ -168,8 +193,12 @@ public static class MinecraftTextReader
         EmitContent(obj, style, runs);
 
         if (obj.TryGetProperty("extra", out var extra) && extra.ValueKind == JsonValueKind.Array)
+        {
             foreach (var child in extra.EnumerateArray())
+            {
                 WalkComponent(child, style, runs);
+            }
+        }
     }
 
     private static MinecraftTextStyle MergeStyle(JsonElement obj, MinecraftTextStyle inherited)
@@ -177,18 +206,34 @@ public static class MinecraftTextReader
         var style = inherited;
 
         if (obj.TryGetProperty("color", out var colorEl) && colorEl.ValueKind == JsonValueKind.String)
+        {
             style = style with { Color = MinecraftColor.Parse(colorEl.GetString()) };
+        }
 
         if (TryGetBool(obj, "bold", out var bold))
+        {
             style = style with { Bold = bold };
+        }
+
         if (TryGetBool(obj, "italic", out var italic))
+        {
             style = style with { Italic = italic };
+        }
+
         if (TryGetBool(obj, "underlined", out var underlined))
+        {
             style = style with { Underlined = underlined };
+        }
+
         if (TryGetBool(obj, "strikethrough", out var strikethrough))
+        {
             style = style with { Strikethrough = strikethrough };
+        }
+
         if (TryGetBool(obj, "obfuscated", out var obfuscated))
+        {
             style = style with { Obfuscated = obfuscated };
+        }
 
         return style;
     }
@@ -197,7 +242,10 @@ public static class MinecraftTextReader
     {
         value = false;
         if (!obj.TryGetProperty(name, out var el))
+        {
             return false;
+        }
+
         if (el.ValueKind == JsonValueKind.True)
         {
             value = true;
@@ -225,17 +273,25 @@ public static class MinecraftTextReader
         }
 
         if (obj.TryGetProperty("translate", out var translateEl) && translateEl.ValueKind == JsonValueKind.String)
+        {
             Append(runs, translateEl.GetString(), style);
+        }
         else if (obj.TryGetProperty("keybind", out var keybindEl) && keybindEl.ValueKind == JsonValueKind.String)
+        {
             Append(runs, keybindEl.GetString(), style);
+        }
         else if (obj.TryGetProperty("selector", out var selectorEl) && selectorEl.ValueKind == JsonValueKind.String)
+        {
             Append(runs, selectorEl.GetString(), style);
+        }
     }
 
     private static void Append(List<MinecraftTextRun> runs, string? text, MinecraftTextStyle style)
     {
         if (!string.IsNullOrEmpty(text))
-            runs.Add(new MinecraftTextRun(text!, style.Resolve()));
+        {
+            runs.Add(new(text!, style.Resolve()));
+        }
     }
 
     // NOTE: § codes are interpreted even inside JSON text/fallback values, using the
@@ -244,8 +300,13 @@ public static class MinecraftTextReader
     private static void AppendFormatted(List<MinecraftTextRun> runs, string? text, MinecraftTextStyle baseStyle)
     {
         if (string.IsNullOrEmpty(text))
+        {
             return;
+        }
+
         foreach (var run in ParseLegacy(text, baseStyle).Runs)
+        {
             runs.Add(run);
+        }
     }
 }

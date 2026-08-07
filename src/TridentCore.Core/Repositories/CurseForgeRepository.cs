@@ -188,11 +188,11 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return new(label, null, mod.Id.ToString(), fileIdStr);
     }
 
-    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+    public async Task<BatchResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
         IEnumerable<Uri> uris,
         CancellationToken cancellationToken = default)
     {
-        var result = new RepositoryHelper.BatchResult<Uri, PackageIdentifier>();
+        var result = new RepositoryHelper.BatchResultBuilder<Uri, PackageIdentifier>();
         var byFileId = new Dictionary<uint, List<Uri>>();
         var slugUris = new List<(Uri Uri, string Slug)>();
 
@@ -306,7 +306,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        return result.ToResolveResult();
+        return result.ToResult();
     }
 
     // edge.forgecdn.net/files/{high}/{low}/filename.jar ⇒ fileId = high * 1000 + low
@@ -363,7 +363,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new FormatException($"{id.Identity} is not well formatted into modId");
     }
 
-    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+    public async Task<BatchResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch)
     {
         var batchArray = batch.ToArray();
@@ -482,14 +482,14 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         throw new FormatException($"{id.Identity} is not well formatted into modId");
     }
 
-    public async Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
+    public async Task<BatchResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter)
     {
         var ids = batch.ToArray();
         var knownVids = ids.Where(x => x.Version is not null).ToArray();
         var unknownVids = ids.Where(x => x.Version is null).ToArray();
-        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
+        var result = new RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>();
 
         if (unknownVids.Length > 0)
         {
@@ -503,7 +503,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             result.Merge(await ResolveKnownVersionsAsync(knownVids).ConfigureAwait(false));
         }
 
-        return result.ToResolveResult();
+        return result.ToResult();
     }
 
     private async Task<Package> ResolveUnknownVersionAsync(ScopedPackageIdentifier id, Filter filter)
@@ -526,10 +526,10 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return CurseForgeHelper.ToPackage(label, mod, file);
     }
 
-    private async Task<RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>> ResolveKnownVersionsAsync(
+    private async Task<RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>> ResolveKnownVersionsAsync(
         ScopedPackageIdentifier[] knownVids)
     {
-        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
+        var result = new RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>();
         var parsed = new List<(ScopedPackageIdentifier Id, uint ModId, uint FileId)>();
         foreach (var id in knownVids)
         {

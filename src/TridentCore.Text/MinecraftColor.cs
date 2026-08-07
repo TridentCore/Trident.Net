@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace TridentCore.Text;
@@ -30,18 +29,20 @@ public readonly record struct MinecraftColor(byte R, byte G, byte B)
     public static MinecraftColor? Parse(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             return null;
+        }
 
         var span = value.AsSpan().Trim();
         if (span.Length != 0 && span[0] == '#')
         {
             var hex = span[1..];
             return hex.Length == 6
-                   && byte.TryParse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var r)
-                   && byte.TryParse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var g)
-                   && byte.TryParse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var b)
-                ? new MinecraftColor(r, g, b)
-                : null;
+                && byte.TryParse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var r)
+                && byte.TryParse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var g)
+                && byte.TryParse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var b)
+                       ? new MinecraftColor(r, g, b)
+                       : null;
         }
 
         return Named.TryGetValue(span.ToString(), out var named) ? named : null;

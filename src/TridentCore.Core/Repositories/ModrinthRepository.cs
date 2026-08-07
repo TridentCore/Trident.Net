@@ -193,11 +193,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
     }
 
-    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+    public async Task<BatchResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
         IEnumerable<Uri> uris,
         CancellationToken cancellationToken = default)
     {
-        var result = new RepositoryHelper.BatchResult<Uri, PackageIdentifier>();
+        var result = new RepositoryHelper.BatchResultBuilder<Uri, PackageIdentifier>();
         var slugUris = new List<(Uri Uri, string Slug, string? Version)>();
 
         foreach (var uri in uris)
@@ -253,7 +253,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             }
         }
 
-        return result.ToResolveResult();
+        return result.ToResult();
     }
 
     // cdn.modrinth.com/data/{projectId}/versions/{versionId}/filename.jar
@@ -294,11 +294,11 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return ModrinthHelper.ToProject(label, project, members.FirstOrDefault());
     }
 
-    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+    public async Task<BatchResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch)
     {
         var ids = batch.ToArray();
-        var result = new RepositoryHelper.BatchResult<ScopedProjectIdentifier, Project>();
+        var result = new RepositoryHelper.BatchResultBuilder<ScopedProjectIdentifier, Project>();
 
         Dictionary<string, ProjectInfo> projects;
         try
@@ -313,7 +313,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
         catch (Exception ex)
         {
-            return result.FailAll(ids, ex).ToResolveResult();
+            return result.FailAll(ids, ex).ToResult();
         }
 
         var members = await PrefetchMembersAsync(projects.Values).ConfigureAwait(false);
@@ -335,7 +335,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             result.Succeed(id, ModrinthHelper.ToProject(label, project, members.Successful[project.Id]));
         }
 
-        return result.ToResolveResult();
+        return result.ToResult();
     }
 
     public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
@@ -387,14 +387,14 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
     }
 
-    public async Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
+    public async Task<BatchResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter)
     {
         var ids = batch.ToArray();
         var knownVids = ids.Where(x => x.Version is not null).ToArray();
         var unknownVids = ids.Where(x => x.Version is null).ToArray();
-        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
+        var result = new RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>();
 
         Dictionary<string, ProjectInfo> projects;
         try
@@ -409,7 +409,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         }
         catch (Exception ex)
         {
-            return result.FailAll(ids, ex).ToResolveResult();
+            return result.FailAll(ids, ex).ToResult();
         }
 
         var members = await PrefetchMembersAsync(projects.Values).ConfigureAwait(false);
@@ -427,10 +427,10 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
             result.Merge(await ResolveKnownVersionsAsync(knownVids, projects, members).ConfigureAwait(false));
         }
 
-        return result.ToResolveResult();
+        return result.ToResult();
     }
 
-    private Task<RepositoryHelper.BatchResult<string, MemberInfo>> PrefetchMembersAsync(
+    private Task<RepositoryHelper.BatchResultBuilder<string, MemberInfo>> PrefetchMembersAsync(
         IEnumerable<ProjectInfo> projects)
     {
         var byId = projects.ToDictionary(p => p.Id);
@@ -452,7 +452,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         ScopedPackageIdentifier id,
         Filter filter,
         IReadOnlyDictionary<string, ProjectInfo> projects,
-        RepositoryHelper.BatchResult<string, MemberInfo> members)
+        RepositoryHelper.BatchResultBuilder<string, MemberInfo> members)
     {
         var project = projects.GetValueOrDefault(id.Identity)
                    ?? throw new ResourceNotFoundException($"{id.Identity} not found in the repository");
@@ -475,12 +475,12 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return ModrinthHelper.ToPackage(label, project, chosen, members.Successful[project.Id]);
     }
 
-    private async Task<RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>> ResolveKnownVersionsAsync(
+    private async Task<RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>> ResolveKnownVersionsAsync(
         ScopedPackageIdentifier[] knownVids,
         IReadOnlyDictionary<string, ProjectInfo> projects,
-        RepositoryHelper.BatchResult<string, MemberInfo> members)
+        RepositoryHelper.BatchResultBuilder<string, MemberInfo> members)
     {
-        var result = new RepositoryHelper.BatchResult<ScopedPackageIdentifier, Package>();
+        var result = new RepositoryHelper.BatchResultBuilder<ScopedPackageIdentifier, Package>();
         var versionIds = knownVids.Select(x => x.Version!).Distinct().ToArray();
 
         List<VersionInfo> versions;

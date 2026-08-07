@@ -169,7 +169,7 @@ public class RepositoryAgent
         throw new ResourceNotFoundException($"No repository can recognize {uri}");
     }
 
-    public async Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+    public async Task<BatchResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
         IEnumerable<Uri> uris,
         CancellationToken cancellationToken = default)
     {
@@ -191,7 +191,7 @@ public class RepositoryAgent
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            BatchResolveResult<Uri, PackageIdentifier> stage;
+            BatchResult<Uri, PackageIdentifier> stage;
             try
             {
                 stage = await _repositories[label]
@@ -342,7 +342,7 @@ public class RepositoryAgent
         return results;
     }
 
-    public async Task<BatchResolveResult<PackageIdentifier, Package>> ResolveBatchAsync(
+    public async Task<BatchResult<PackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<PackageIdentifier> batch,
         Filter filter)
     {
@@ -372,7 +372,7 @@ public class RepositoryAgent
             }
             catch (Exception ex)
             {
-                return BatchResolveResult<PackageIdentifier, Package>.FromFailures(items, ex);
+                return BatchResult<PackageIdentifier, Package>.FromFailures(items, ex);
             }
         });
 
@@ -401,7 +401,7 @@ public class RepositoryAgent
         RetrieveCachedAsync($"project:{PackageHelper.Identify(id.Repository, id.Namespace, id.Identity, null, null)}",
                             () => Redirect(id.Repository).QueryAsync(id.ToScoped()));
 
-    public async Task<BatchResolveResult<ProjectIdentifier, Project>> QueryBatchAsync(
+    public async Task<BatchResult<ProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ProjectIdentifier> batch)
     {
         var batchArray = batch.ToArray();
@@ -430,7 +430,7 @@ public class RepositoryAgent
             }
             catch (Exception ex)
             {
-                return BatchResolveResult<ProjectIdentifier, Project>.FromFailures(items, ex);
+                return BatchResult<ProjectIdentifier, Project>.FromFailures(items, ex);
             }
         });
 

@@ -20,7 +20,7 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
     public Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
-    public Task<BatchResolveResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
+    public Task<BatchResult<Uri, PackageIdentifier>> RecognizeBatchAsync(
         IEnumerable<Uri> uris,
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
@@ -137,9 +137,9 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                        info.Topics ?? []);
     }
 
-    public async Task<BatchResolveResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
+    public async Task<BatchResult<ScopedProjectIdentifier, Project>> QueryBatchAsync(
         IEnumerable<ScopedProjectIdentifier> batch) =>
-        (await RepositoryHelper.ResolveAsync(batch, QueryAsync).ConfigureAwait(false)).ToResolveResult();
+        (await RepositoryHelper.ResolveAsync(batch, QueryAsync).ConfigureAwait(false)).ToResult();
 
     public async Task<Package> ResolveAsync(ScopedPackageIdentifier id, Filter filter)
     {
@@ -161,12 +161,12 @@ public class PackwizRepository(string label, IGitHubClient github) : IRepository
                                        info.Description ?? string.Empty);
     }
 
-    public async Task<BatchResolveResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
+    public async Task<BatchResult<ScopedPackageIdentifier, Package>> ResolveBatchAsync(
         IEnumerable<ScopedPackageIdentifier> batch,
         Filter filter) =>
         (await RepositoryHelper
               .ResolveAsync<ScopedPackageIdentifier, Package>(batch, id => ResolveAsync(id, filter))
-              .ConfigureAwait(false)).ToResolveResult();
+              .ConfigureAwait(false)).ToResult();
 
     public async Task<string> ReadDescriptionAsync(ScopedProjectIdentifier id)
     {
