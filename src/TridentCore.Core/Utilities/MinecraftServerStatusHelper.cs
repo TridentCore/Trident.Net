@@ -46,7 +46,7 @@ public static class MinecraftServerStatusHelper
                 Port = endpoint.Port,
                 IsReachable = true,
                 LatencyMilliseconds = stopwatch.ElapsedMilliseconds,
-                Description = parsed.Description,
+                RawDescription = parsed.RawDescription,
                 VersionName = parsed.VersionName,
                 ProtocolVersion = parsed.ProtocolVersion,
                 OnlinePlayers = parsed.OnlinePlayers,
@@ -143,10 +143,18 @@ public static class MinecraftServerStatusHelper
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
 
-        string? description = null;
+        string? rawDescription = null;
         if (root.TryGetProperty("description", out var descriptionElement))
         {
-            description = ExtractText(descriptionElement);
+            // NOTE: Preserve the raw text component so a downstream Minecraft-text
+            //  renderer can rebuild color/style instead of receiving a flattened string;
+            //  a plain-string MOTD is returned as-is.
+            rawDescription = descriptionElement.ValueKind switch
+            {
+                JsonValueKind.String => descriptionElement.GetString(),
+                JsonValueKind.Object or JsonValueKind.Array => descriptionElement.GetRawText(),
+                _ => null
+            };
         }
 
         string? versionName = null;
@@ -192,71 +200,13 @@ public static class MinecraftServerStatusHelper
             Address = endpoint.Address,
             Host = endpoint.Host,
             Port = endpoint.Port,
-            Description = description,
+            RawDescription = rawDescription,
             VersionName = versionName,
             ProtocolVersion = protocolVersion,
             OnlinePlayers = onlinePlayers,
             MaxPlayers = maxPlayers,
             FaviconBase64 = faviconBase64
         };
-    }
-
-    private static string? ExtractText(JsonElement element) =>
-        element.ValueKind switch
-        {
-            JsonValueKind.String => element.GetString(),
-            JsonValueKind.Object => ExtractObjectText(element),
-            JsonValueKind.Array => string.Concat(element.EnumerateArray().Select(ExtractText)),
-            _ => null
-        };
-
-    private static string? ExtractObjectText(JsonElement element)
-    {
-        var parts = new List<string>();
-
-        if (element.TryGetProperty("text", out var textElement))
-        {
-            var text = textElement.GetString();
-            if (!string.IsNullOrEmpty(text))
-            {
-                parts.Add(text);
-            }
-        }
-
-        if (element.TryGetProperty("translate", out var translateElement))
-        {
-            var translate = translateElement.GetString();
-            if (!string.IsNullOrEmpty(translate) && parts.Count == 0)
-            {
-                parts.Add(translate);
-            }
-        }
-
-        if (element.TryGetProperty("extra", out var extraElement) && extraElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var child in extraElement.EnumerateArray())
-            {
-                var text = ExtractText(child);
-                if (!string.IsNullOrEmpty(text))
-                {
-                    parts.Add(text);
-                }
-            }
-        }
-
-        if (element.TryGetProperty("with", out var withElement) && withElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var child in withElement.EnumerateArray())
-            {
-                var text = ExtractText(child);
-                if (!string.IsNullOrEmpty(text))
-                {
-                    parts.Add(text);
-                }
-            }
-        }
-
-        return parts.Count == 0 ? null : string.Concat(parts);
     }
 
     private static ServerEndpoint ParseEndpoint(string address)
@@ -391,7 +341,7 @@ public static class MinecraftServerStatusHelper
         public required int Port { get; init; }
         public bool IsReachable { get; init; }
         public long? LatencyMilliseconds { get; init; }
-        public string? Description { get; init; }
+        public string? RawDescription { get; init; }
         public string? VersionName { get; init; }
         public int? ProtocolVersion { get; init; }
         public int? OnlinePlayers { get; init; }
@@ -405,7 +355,7 @@ public static class MinecraftServerStatusHelper
         public required string Address { get; init; }
         public required string Host { get; init; }
         public required int Port { get; init; }
-        public string? Description { get; init; }
+        public string? RawDescription { get; init; }
         public string? VersionName { get; init; }
         public int? ProtocolVersion { get; init; }
         public int? OnlinePlayers { get; init; }
