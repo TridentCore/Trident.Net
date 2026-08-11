@@ -203,9 +203,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                     var home = PathDef.Default.DirectoryOfHome(key);
                     var references = store.GetReferences(snapshotId);
-                    var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
+                    var refByPath = references.ToDictionary(x => x.RelativePath, FileHelper.PathComparer);
                     var processed = 0;
-                    var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var matched = new HashSet<string>(FileHelper.PathComparer);
 
                     // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
                     //  只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。

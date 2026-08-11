@@ -36,8 +36,13 @@ public static class FileHelper
     }
 
     // NOTE: Linux 默认大小写敏感；Windows/macOS 默认大小写不敏感但保留大小写，路径与名称比较随此。
+    private static readonly bool IsPathCaseSensitive = OperatingSystem.IsLinux();
+
+    public static StringComparer PathComparer =>
+        IsPathCaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
     private static StringComparison PathComparison =>
-        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        IsPathCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
     public static string Sanitize(string fileName)
     {
