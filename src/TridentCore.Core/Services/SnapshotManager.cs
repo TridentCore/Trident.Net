@@ -201,125 +201,127 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                  {
                      token.ThrowIfCancellationRequested();
 
-                     var home = PathDef.Default.DirectoryOfHome(key);
-                     var references = store.GetReferences(snapshotId);
-                     var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
-                     var processed = 0;
-                     var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var home = PathDef.Default.DirectoryOfHome(key);
+                    var references = store.GetReferences(snapshotId);
+                    var refByPath = references.ToDictionary(x => x.RelativePath, StringComparer.OrdinalIgnoreCase);
+                    var processed = 0;
+                    var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                     var dirs = new[]
-                         {
-                             PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key)
-                         };
+                    // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
+                    // 只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
+                    // 它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
+                    // 投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。
+                    foreach (var file in EnumerateImportProjection(key))
+                    {
+                        token.ThrowIfCancellationRequested();
 
-                     foreach (var dir in dirs)
-                     {
-                         if (!Directory.Exists(dir))
-                         {
-                             continue;
-                         }
+                        var relative = Path.GetRelativePath(home, file.FullName);
 
-                         var root = new DirectoryInfo(dir);
+                        if (refByPath.TryGetValue(relative, out var reference))
+                        {
+                            matched.Add(reference.RelativePath);
 
-                         foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
-                         {
-                             token.ThrowIfCancellationRequested();
+                            var changed = file.Length != reference.Size;
+                            if (!changed)
+                            {
+                                using var stream = File.OpenRead(file.FullName);
+                                var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                                changed = hash != reference.Hash;
+                            }
 
-                             var relative = Path.GetRelativePath(home, file.FullName);
+                            if (changed)
+                            {
+                                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                                File.Copy(objectPath, file.FullName, true);
+                            }
 
-                             if (refByPath.TryGetValue(relative, out var reference))
-                             {
-                                 matched.Add(reference.RelativePath);
+                            if (file.Attributes != reference.Attributes)
+                            {
+                                file.Attributes = reference.Attributes;
+                            }
 
-                                 var changed = file.Length != reference.Size;
+                            if (file.LastWriteTime != reference.LastModifiedAt)
+                            {
+                                File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                            }
+                        }
+                        else
+                        {
+                            file.Delete();
+                        }
 
-                                 if (!changed)
-                                 {
-                                     using var stream = File.OpenRead(file.FullName);
-                                     var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
-                                     changed = hash != reference.Hash;
-                                 }
+                        processed++;
+                        restored?.Report(processed);
+                    }
 
-                                 if (changed)
-                                 {
-                                     var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                                     File.Copy(objectPath, file.FullName, true);
-                                 }
+                    var dirs = new[]
+                        {
+                            PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key)
+                        };
 
-                                 if (file.Attributes != reference.Attributes)
-                                 {
-                                     file.Attributes = reference.Attributes;
-                                 }
+                    foreach (var dir in dirs)
+                    {
+                        if (!Directory.Exists(dir))
+                        {
+                            continue;
+                        }
 
-                                 if (file.LastWriteTime != reference.LastModifiedAt)
-                                 {
-                                     File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
-                                 }
-                             }
-                             else
-                             {
-                                 file.Delete();
-                             }
+                        var root = new DirectoryInfo(dir);
 
-                             processed++;
-                             restored?.Report(processed);
-                         }
+                        foreach (var file in root.EnumerateFiles("*", SearchOption.AllDirectories))
+                        {
+                            token.ThrowIfCancellationRequested();
 
-                         foreach (var d in root
-                                          .EnumerateDirectories("*", SearchOption.AllDirectories)
-                                          .OrderByDescending(d => d.FullName.Length))
-                         {
-                             if (!d.EnumerateFileSystemInfos().Any())
-                             {
-                                 d.Delete(false);
-                             }
-                         }
-                     }
+                            var relative = Path.GetRelativePath(home, file.FullName);
 
-                     // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets）。
-                     // 上面已把 import 还原到快照状态，以此时的 import 清单枚举 build 受管路径：在引用里则还原、不在则删。
-                     foreach (var file in EnumerateImportProjection(key))
-                     {
-                         token.ThrowIfCancellationRequested();
+                            if (refByPath.TryGetValue(relative, out var reference))
+                            {
+                                matched.Add(reference.RelativePath);
 
-                         var relative = Path.GetRelativePath(home, file.FullName);
+                                var changed = file.Length != reference.Size;
 
-                         if (refByPath.TryGetValue(relative, out var reference))
-                         {
-                             matched.Add(reference.RelativePath);
+                                if (!changed)
+                                {
+                                    using var stream = File.OpenRead(file.FullName);
+                                    var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
+                                    changed = hash != reference.Hash;
+                                }
 
-                             var changed = file.Length != reference.Size;
-                             if (!changed)
-                             {
-                                 using var stream = File.OpenRead(file.FullName);
-                                 var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
-                                 changed = hash != reference.Hash;
-                             }
+                                if (changed)
+                                {
+                                    var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
+                                    File.Copy(objectPath, file.FullName, true);
+                                }
 
-                             if (changed)
-                             {
-                                 var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                                 File.Copy(objectPath, file.FullName, true);
-                             }
+                                if (file.Attributes != reference.Attributes)
+                                {
+                                    file.Attributes = reference.Attributes;
+                                }
 
-                             if (file.Attributes != reference.Attributes)
-                             {
-                                 file.Attributes = reference.Attributes;
-                             }
+                                if (file.LastWriteTime != reference.LastModifiedAt)
+                                {
+                                    File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
+                                }
+                            }
+                            else
+                            {
+                                file.Delete();
+                            }
 
-                             if (file.LastWriteTime != reference.LastModifiedAt)
-                             {
-                                 File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
-                             }
-                         }
-                         else
-                         {
-                             file.Delete();
-                         }
+                            processed++;
+                            restored?.Report(processed);
+                        }
 
-                         processed++;
-                         restored?.Report(processed);
-                     }
+                        foreach (var d in root
+                                         .EnumerateDirectories("*", SearchOption.AllDirectories)
+                                         .OrderByDescending(d => d.FullName.Length))
+                        {
+                            if (!d.EnumerateFileSystemInfos().Any())
+                            {
+                                d.Delete(false);
+                            }
+                        }
+                    }
 
                      foreach (var reference in references)
                      {
