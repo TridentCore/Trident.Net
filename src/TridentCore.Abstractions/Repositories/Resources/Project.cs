@@ -5,6 +5,7 @@ public record Project(
     string? Namespace,
     string ProjectId,
     string ProjectName,
+    string Slug,
     Uri? Thumbnail,
     string Author,
     string Summary,

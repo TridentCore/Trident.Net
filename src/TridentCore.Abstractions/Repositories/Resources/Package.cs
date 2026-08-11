@@ -10,6 +10,7 @@ public record Package(
     string VersionId,
     string ProjectName,
     string VersionName,
+    string Slug,
     Uri? Thumbnail,
     string Author,
     string Summary,
