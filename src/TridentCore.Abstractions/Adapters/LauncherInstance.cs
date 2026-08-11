@@ -4,25 +4,25 @@ public record LauncherInstance
 {
     public required LauncherKind Kind { get; init; }
 
-    // The instance's directory name under the launcher root; a candidate for the Trident instance key.
+    // NOTE: 实例在启动器根下的目录名；Trident 实例 key 的候选。
     public required string Key { get; init; }
 
-    // Absolute path of the instance home (where the launcher's metadata files live).
+    // NOTE: 实例主目录的绝对路径（启动器元数据文件所在）。
     public required string HomeDirectory { get; init; }
 
     public string? Name { get; init; }
     public string? MinecraftVersion { get; init; }
 
-    // Loader as a Trident lurl, or null for vanilla.
+    // NOTE: 以 Trident lurl 表达的 loader；vanilla 为 null。
     public string? Loader { get; init; }
 
-    // Non-null when the instance metadata could not be fully parsed; the value is the failure reason.
+    // NOTE: 元数据未能完整解析时非 null，值为失败原因。
     public CorruptReason? CorruptReason { get; init; }
 
-    // Absolute path of the runtime directory (.minecraft equivalent) — the copy source for build/.
+    // NOTE: 运行目录绝对路径（.minecraft 等价物）——build/ 的拷贝源。
     public required string RuntimeDirectory { get; init; }
 
-    // Subdirectory names under RuntimeDirectory whose files participate in batch identification
-    // (e.g. mods, resourcepacks, shaderpacks). Hit files become package references; the rest are copied.
+    // NOTE: 参与批量识别的运行目录子目录名（mods、resourcepacks、shaderpacks 等）；
+    //  命中的文件成为包引用，其余拷贝。
     public required IReadOnlyList<string> IdentifiableSubdirs { get; init; }
 }

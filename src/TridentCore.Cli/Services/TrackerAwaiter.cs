@@ -119,8 +119,8 @@ public class TrackerAwaiter(CliOutput output)
     }
 
     // NOTE: InstallTracker 只发标量 double?（null=不可量化，num=下载字节比），不带阶段语义。
-    // 安装流程阶段是单调的 解析→下载→解压，所以靠「首次出现 Determinate」和「Determinate 之后的 Indeterminate」
-    // 两次状态跃迁把标量流重写成三阶段，免改 Core 的 Tracker 模型。
+    //  安装流程阶段是单调的 解析→下载→解压，所以靠「首次出现 Determinate」和「Determinate 之后的 Indeterminate」
+    //  两次状态跃迁把标量流重写成三阶段，免改 Core 的 Tracker 模型。
     private static IObservable<(InstallPhase Phase, double? Percent)> MapInstallProgress(
         IObservable<TrackerProgress> source)
     {

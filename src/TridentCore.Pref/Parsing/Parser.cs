@@ -14,13 +14,13 @@ public partial class Parser : IParser<string, PackageDescriptor>
 
     public PackageDescriptor Parse(string input)
     {
-        // New pref:// format: a compliant URL (pref://repository/namespace?/identity@version?filters)
+        // NOTE: 新 pref:// 格式：合规 URL（pref://repository/namespace?/identity@version?filters）
         if (Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme == "pref")
         {
             return ParsePref(uri);
         }
 
-        // Legacy Purl format: label:namespace/identity@version#filter=value
+        // NOTE: 旧 Purl 格式：label:namespace/identity@version#filter=value
         return ParseLegacy(input);
     }
 
@@ -31,7 +31,7 @@ public partial class Parser : IParser<string, PackageDescriptor>
         var repository = uri.Host;
         var path = uri.AbsolutePath.TrimStart('/');
 
-        // '@' is a legal pchar, so @version sits at the tail of the path segment
+        // NOTE: '@' 是合法 pchar，@version 落在路径段尾部。
         string? version = null;
         var at = path.LastIndexOf('@');
         var idPath = at >= 0 ? path[..at] : path;
@@ -40,7 +40,7 @@ public partial class Parser : IParser<string, PackageDescriptor>
             version = path[(at + 1)..];
         }
 
-        // optional namespace/identity split
+        // NOTE: namespace/identity 的可选拆分。
         var slash = idPath.IndexOf('/');
         string? @namespace = null;
         string identity;
@@ -80,8 +80,8 @@ public partial class Parser : IParser<string, PackageDescriptor>
         return builder.ToImmutable();
     }
 
-    // COMPAT: legacy Purl string format, kept so old profile/lock/snapshot data still parses.
-    // Remove once on-disk Purl data is no longer expected.
+    // TODO: 旧 Purl 字符串格式兼容，保留以解析存量 profile/lock/snapshot 数据；
+    //  磁盘 Purl 数据不再需要后移除。
     private PackageDescriptor ParseLegacy(string input)
     {
         var match = LegacyPattern.Match(input);

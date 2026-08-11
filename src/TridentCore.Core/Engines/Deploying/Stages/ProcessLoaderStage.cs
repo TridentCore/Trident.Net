@@ -15,7 +15,7 @@ public class ProcessLoaderStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        // Platform unchanged → the whole artifact (loader included) was migrated by InstallVanilla.
+        // NOTE: 平台未变 → 整个 artifact（含 loader）已被 InstallVanilla 迁移。
         if (Context.BaseLock?.Platform == Context.Lock.Platform)
         {
             logger.LogInformation("Platform unchanged, loader migrated with artifact");
@@ -108,7 +108,7 @@ public class ProcessLoaderStage(
         }
 
         if (index.Tweakers != null)
-        // 不知道如果列表有多个元素该如何添加，估计不会有多个，这是一个大胆的估计！
+        // NOTE: 不确定列表多元素时如何添加——大胆估计不会多个。
         {
             foreach (var tweaker in index.Tweakers)
             {
@@ -140,7 +140,7 @@ public class ProcessLoaderStage(
                       $"-Dforgewrapper.minecraft={PathDef.Default.FileOfLibrary(minecraft.Id.Namespace, minecraft.Id.Name, minecraft.Id.Version, minecraft.Id.Platform, minecraft.Id.Extension)}");
         }
 
-        // 通过拦截的方式给 ForgeWrapper 注入主要参数，即使没找到也不报错，因为报错需要定义一个异常类型，太麻烦
+        // NOTE: 经拦截给 ForgeWrapper 注入主参数；找不到也不报错（报错需新异常类型，不值）。
 
         working.MainClass = index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main";
     }

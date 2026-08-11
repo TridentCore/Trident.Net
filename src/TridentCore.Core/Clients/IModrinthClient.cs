@@ -56,8 +56,8 @@ public interface IModrinthClient
     [Get("/v3/version_file/{hash}")]
     Task<VersionInfo> GetVersionFromHashAsync(string hash, [Query] string algorithm = "sha1");
 
-    // NOTE: batch counterpart of GetVersionFromHashAsync. POST /v3/version_files accepts up to N
-    //  hashes and returns a map keyed by hash. algorithm stays sha1 to match IdentifyAsync's hashing.
+    // NOTE: POST /v3/version_files 接受至多 N 个 hash，返回按 hash 索引的映射；
+    //  algorithm 保持 sha1 以匹配 IdentifyAsync 的哈希方式。
     [Post("/v3/version_files")]
     Task<Dictionary<string, VersionInfo>> GetVersionsFromHashesAsync([Body] VersionFilesRequest request);
 }

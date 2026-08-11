@@ -4,8 +4,7 @@ using SelectorType = TridentCore.Abstractions.FileModels.Profile.Rice.Rule.RuleS
 
 namespace TridentCore.Core.Converters;
 
-// COMPAT: maps the legacy "purl" string to SelectorType.Pref during JSON read. Drop the
-// "purl" branch once on-disk profiles no longer carry it.
+// TODO: JSON 读取时把遗留 "purl" 串映射为 SelectorType.Pref；磁盘 profile 不再携带后删该分支。
 internal sealed class SelectorTypeConverter : JsonConverter<SelectorType>
 {
     public override SelectorType Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -13,7 +12,7 @@ internal sealed class SelectorTypeConverter : JsonConverter<SelectorType>
         if (reader.TokenType == JsonTokenType.String)
         {
             var value = reader.GetString();
-            // COMPAT: legacy "purl" alias; remove this branch once profiles have migrated
+            // TODO: 遗留 "purl" 别名——profile 迁移完成后移除。
             if (value is "purl" or "pref")
             {
                 return SelectorType.Pref;

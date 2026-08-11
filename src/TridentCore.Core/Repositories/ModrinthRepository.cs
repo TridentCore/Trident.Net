@@ -19,8 +19,8 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         JsonSerializer.Serialize(members.Where(x => x is not null).ToArray());
 
-    // v3 把 game_versions 等过滤并进了 loader_fields（JSON 对象 {"game_versions":[...]}），
-    // 没有独立的 game_versions 参数（v2 才有，容易踩坑）
+    // NOTE: v3 把 game_versions 等过滤并入 loader_fields（JSON 对象），无独立 game_versions
+    //  参数（v2 才有，容易踩坑）。
     private static string? BuildLoaderFields(params (string Key, string? Value)[] fields)
     {
         var dict = fields.Where(f => f.Value is not null).ToDictionary(f => f.Key, f => new[] { f.Value });
@@ -159,7 +159,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
-        // CDN direct link: project/version ids are in the path, no API call needed.
+        // NOTE: CDN 直链——project/version id 在路径里，无需 API 调用。
         if (uri.Host.EndsWith("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
         {
             if (!TryExtractCdnReference(uri, out var pid, out var vid))
@@ -256,7 +256,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return result.ToResult();
     }
 
-    // cdn.modrinth.com/data/{projectId}/versions/{versionId}/filename.jar
+    // NOTE: cdn.modrinth.com/data/{projectId}/versions/{versionId}/filename.jar
     private static bool TryExtractCdnReference(Uri uri, out string? projectId, out string? versionId)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -272,7 +272,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return false;
     }
 
-    // modrinth.com/{type}/{slug} and modrinth.com/{type}/{slug}/version/{versionId}
+    // NOTE: modrinth.com/{type}/{slug} 与 modrinth.com/{type}/{slug}/version/{versionId}
     private static (string? Slug, string? Version) ExtractReference(Uri uri)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -564,7 +564,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                   BuildLoaderFields(("game_versions", filter.Version)))
                          .ConfigureAwait(false);
         var all = first.Select(x => ModrinthHelper.ToVersion(label, x)).ToList();
-        // Modrinth 的版本无法分页，只能过滤拉取全部之后本地分页
+        // NOTE: Modrinth 版本无法分页，只能过滤拉取全部后本地分页。
         return new LocalPaginationHandle<Version>(all, PAGE_SIZE);
     }
 

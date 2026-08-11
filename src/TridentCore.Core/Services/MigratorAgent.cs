@@ -209,7 +209,7 @@ public class MigratorAgent(
         return new() { Name = instance.Name ?? instance.Key, Setup = setup };
     }
 
-    // Copies the whole runtime tree into build/, skipping files that were turned into package refs.
+    // NOTE: 把整个运行时树拷入 build/，跳过已转为包引用的文件。
     private static async Task TransferFilesAsync(
         string sourceDir,
         string targetDir,
@@ -279,7 +279,7 @@ public class MigratorAgent(
         }
         catch
         {
-            // best-effort cleanup; the failure that triggered this is the one reported
+            // NOTE: 尽力清理——最终上报的是触发它的那个失败。
         }
     }
 }

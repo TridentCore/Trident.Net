@@ -20,8 +20,7 @@ public class EnsureRuntimeStage(
         var major = Context.Lock.Artifact!.JavaMajorVersion;
         Context.Lock = Context.Lock with { Runtime = Context.Lock.Runtime };
 
-        // Only the bundled runtime (or a not-yet-installed one) is pipeline-managed and eligible
-        // for manifest self-healing. A user-configured JRE is left entirely to the user environment.
+        // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户配置的 JRE 完全交给用户环境。
         bool needManifest;
         try
         {
@@ -54,10 +53,9 @@ public class EnsureRuntimeStage(
         Context.Runtime = new(major, files, links);
     }
 
-    // Resolves the per-major runtime manifest JSON. Returns the cached copy at
-    // runtimes/{major}.json when its sha1 matches the fingerprint recorded in the lock
-    // (offline fast path); otherwise fetches Mojang's runtime index, downloads the manifest,
-    // verifies it against the index sha1, persists it, and records the fingerprint for next time.
+    // NOTE: 解析按主版本的运行时 manifest JSON。runtimes/{major}.json 的 sha1 与锁内指纹匹配时
+    //  返回缓存（离线快路径）；否则拉 Mojang 运行时索引、下载 manifest、按索引 sha1 校验、
+    //  持久化并记录指纹供下次使用。
     private async Task<string?> LoadManifestAsync(uint major, CancellationToken token)
     {
         var path = PathDef.Default.FileOfRuntimeManifest(major);
@@ -160,7 +158,7 @@ public class EnsureRuntimeStage(
                         }
                     case "link":
                         {
-                            // Targets resolve outside the runtime directory and conflict with each other, so links are ignored.
+                            // NOTE: 目标解析到运行时目录之外且互相冲突，忽略链接。
                             break;
                         }
                 }

@@ -90,14 +90,12 @@ public class PrismLauncherService(IPrismLauncherClient client)
             var rv = lib.Rules.All(y =>
             {
                 var pass = true;
-                // name
                 if (y.Os != null && y.Os.TryGetValue("name", out var os))
                 {
                     pass = OS_FULL_STRING == os || OS_NAME_STRING == os;
                 }
 
-                // arch
-                // ignore
+                // NOTE: arch 规则有意忽略（pass 不变）。
                 return y.Action == "allow" ? pass : !pass;
             });
             return rv;
@@ -114,7 +112,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
         {
             if (lib.Url != null)
             {
-                // old fashion
+                // NOTE: 旧式声明——直接带 Url，无需 downloads 表。
                 libraries.AddLibraryPrismFlavor(lib.Name, lib.Url);
             }
             else if (lib.Downloads is { Artifact: { } artifact })

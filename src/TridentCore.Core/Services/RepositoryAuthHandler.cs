@@ -19,11 +19,11 @@ public class RepositoryAuthHandler : DelegatingHandler
                                  var auth = p.AuthorizationHeader!.Value;
                                  var entries = new List<(string Host, (string Key, string Value) Auth)>
                                  {
-                                     // Always include the API endpoint host
+                                     // NOTE: 恒含 API 端点主机。
                                      (new Uri(p.Endpoint).Host, auth)
                                  };
 
-                                 // Include explicitly declared CDN hosts
+                                 // NOTE: 含显式声明的 CDN 主机。
                                  if (p.CdnHosts is { Count: > 0 })
                                  {
                                      foreach (var host in p.CdnHosts)

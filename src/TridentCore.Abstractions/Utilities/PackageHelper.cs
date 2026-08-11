@@ -33,8 +33,8 @@ public static class PackageHelper
         return false;
     }
 
-    // Symmetric to Identify's Filter→pref encoding: decode a descriptor's pref filters
-    // (type/version/loader) back into a runtime Filter so a floating pref keeps its intent.
+    // NOTE: 与 Identify 的 Filter→pref 编码对称：把 descriptor 的 pref 过滤器（type/version/loader）
+    //  解码回运行时 Filter，使 floating pref 保持其意图。
     public static PackageIdentifier ToIdentifier(this PackageDescriptor self) =>
         new(self.Repository, self.Namespace, self.Identity, self.Version);
 
@@ -88,9 +88,8 @@ public static class PackageHelper
 
     public static string ToPref(PackageIdentifier id) => ToPref(id.Repository, id.Namespace, id.Identity, id.Version);
 
-    // Normalize a legacy Purl-format string into the new pref:// format when it parses;
-    // otherwise return it unchanged so a load never throws on an unrecognized value. Always
-    // returns a non-null string (empty input yields an empty string).
+    // NOTE: 旧 Purl 字符串能解析时归一化为新 pref:// 格式，否则原样返回——加载绝不因未识别值
+    //  抛异常。恒返回非 null 字符串（空输入得空串）。
     public static string SafeMigrate(string? value)
     {
         if (string.IsNullOrEmpty(value))
@@ -101,7 +100,7 @@ public static class PackageHelper
         return Parser.Default.TryParse(value, out var parsed) ? parsed.Build() : value;
     }
 
-    // vid 存在则固定为特定版本，vid 不存在且 filter 存在则为浮动版本
+    // NOTE: 有 vid 即固定版本；无 vid 但有 filter 即浮动版本。
     public static string Identify(string label, string? ns, string pid, string? vid, Filter? filter) =>
         Builder.Build(label,
                       ns,

@@ -31,7 +31,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         };
         var setup = pack.Profile.Setup;
 
-        // mmc-pack.json: resolve LWJGL version from Prism Launcher metadata
+        // NOTE: mmc-pack.json——LWJGL 版本取自 Prism Launcher 元数据。
         var mcComponent = await prismLauncherService
                                .GetVersionAsync(MultiMcHelper.UID_MINECRAFT, setup.Version, default)
                                .ConfigureAwait(false);
@@ -59,7 +59,6 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         mmcPackStream.Position = 0;
         container.Attachments.Add(MultiMcHelper.PACK_INDEX_FILE_NAME, mmcPackStream);
 
-        // instance.cfg
         var instanceCfgBuilder = new StringBuilder();
         instanceCfgBuilder.AppendLine($"name={pack.Name}");
         instanceCfgBuilder.AppendLine("InstanceType=OneSix");
@@ -68,7 +67,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         instanceCfgStream.Position = 0;
         container.Attachments.Add(MultiMcHelper.PACK_INSTANCE_CFG, instanceCfgStream);
 
-        // pack all mod files into .minecraft/ (MultiMC format is always offline)
+        // NOTE: 把全部 mod 文件打进 .minecraft/（MultiMC 格式恒离线）。
         var planner = serviceProvider.GetRequiredService<PackagePlanner>();
         var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
         var plans = await planner

@@ -15,9 +15,8 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
 
     private static readonly string[] IDENTIFIABLE_SUBDIRS = ["mods", "resourcepacks", "shaderpacks", "jarmods"];
 
-    // loaderVersion.type (case-insensitive) → loader identity. LegacyFabric maps to Fabric. Paper and
-    // Purpur are server stacks rather than client loaders, so they are left unmapped (null) and such
-    // instances migrate as loader-less rather than with a wrong loader.
+    // NOTE: loaderVersion.type（不区分大小写）→ loader 标识。LegacyFabric 映射 Fabric；Paper/Purpur
+    //  是服务端栈而非客户端 loader，保持未映射（null），此类实例以无 loader 迁移而非错误 loader。
     private static readonly Dictionary<string, string> LOADER_BY_TYPE = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Forge"] = LoaderHelper.LOADERID_FORGE,
@@ -36,10 +35,9 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
             return null;
         }
 
-        // ATLauncher is portable by default — its data directory is wherever the executable lives — so
-        // there is no fixed OS-standard location. Probe the conventional roots (older installs and some
-        // wrappers still use AppData/~/Library/.../ATLauncher) and the Flatpak sandbox path; otherwise
-        // return null and let the user point at it manually.
+        // NOTE: ATLauncher 默认便携——数据目录在可执行文件旁，无固定系统位。
+        //  探测常规根（旧安装/部分包装器仍用 AppData/~/Library/.../ATLauncher）与 Flatpak 沙箱路径，
+        //  否则返回 null 由用户手动指定。
         var conventional = LauncherDataDirHelper.LocateUnderConventional("ATLauncher");
         if (conventional is not null)
         {
@@ -122,7 +120,7 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
         var name = key;
         if (data is not null)
         {
-            // The top-level `id` (inherited from Mojang's MinecraftVersion) is the Minecraft version.
+            // NOTE: 顶层 `id`（继承自 Mojang 的 MinecraftVersion）即 Minecraft 版本。
             version = data.Id;
             if (string.IsNullOrEmpty(version))
             {
@@ -138,7 +136,7 @@ public class AtLauncherAdapter(ILogger<AtLauncherAdapter>? logger = null) : ILau
             loader = ResolveLoader(launcher?.LoaderVersion);
         }
 
-        // ATLauncher deploys directly into the instance folder — no nested .minecraft layer.
+        // NOTE: ATLauncher 直接部署进实例文件夹——无嵌套 .minecraft 层。
         return new()
         {
             Kind = LauncherKind.AtLauncher,

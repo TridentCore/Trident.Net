@@ -14,8 +14,8 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
 
     private static readonly string[] IDENTIFIABLE_SUBDIRS = ["mods", "resourcepacks", "shaderpacks"];
 
-    // baseModLoader.type → loader identity. Cauldron(2) and LiteLoader(3) are legacy and unmapped,
-    // so such instances fall back to no loader rather than a wrong one.
+    // NOTE: baseModLoader.type → loader 标识。Cauldron(2)/LiteLoader(3) 是遗留类型未映射，
+    //  此类实例回退为无 loader 而非错误 loader。
     private static readonly Dictionary<int, string> LOADER_BY_TYPE = new()
     {
         [1] = LoaderHelper.LOADERID_FORGE,
@@ -33,9 +33,8 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
             return null;
         }
 
-        // CurseForge App stores under the user profile rather than AppData: the standalone app under
-        // ~/curseforge, the Overwolf-hosted build under ~/Overwolf/CurseForge, both with a minecraft/
-        // root holding Instances/. Prefill whichever exists.
+        // NOTE: CurseForge App 存于用户目录而非 AppData——独立版在 ~/curseforge，
+        //  Overwolf 托管版在 ~/Overwolf/CurseForge，两者都有含 Instances/ 的 minecraft/ 根。预填存在者。
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (string.IsNullOrEmpty(profile))
         {
@@ -125,7 +124,7 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
             loader = ResolveLoader(data.BaseModLoader);
         }
 
-        // The instance folder IS the game directory for CurseForge — mods/, saves/ etc. sit at its root.
+        // NOTE: 对 CurseForge，实例文件夹即游戏目录——mods/、saves/ 等在根上。
         return new()
         {
             Kind = LauncherKind.CurseForgeApp,
@@ -162,9 +161,8 @@ public class CurseForgeLauncherAdapter(ILogger<CurseForgeLauncherAdapter>? logge
             return null;
         }
 
-        // name is forge-<v>, fabric-<loaderVer>-<mcVer>, quilt-<v>, or neoforge-<v>. For Fabric the
-        // loader version is the segment between the first and second dashes; for the rest it is
-        // everything after the first dash.
+        // NOTE: 名称形如 forge-<v>、fabric-<loaderVer>-<mcVer>、quilt-<v>、neoforge-<v>。
+        //  Fabric 的 loader 版本在首个与第二个连字符之间，其余取首个连字符之后。
         var version = identity == LoaderHelper.LOADERID_FABRIC ? ExtractFabricVersion(name, dash) : name[(dash + 1)..];
 
         return string.IsNullOrEmpty(version) ? null : LoaderHelper.ToLurl(identity, version);

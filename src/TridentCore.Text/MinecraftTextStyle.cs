@@ -17,8 +17,8 @@ public sealed record MinecraftTextStyle
     public static MinecraftTextStyle Default { get; } = new();
 
     // NOTE: `null` on the child means "inherit the parent"; an explicit value
-    // (including `false`) overrides. This is what lets `"italic": false` cancel
-    // an inherited italic on things like custom item names.
+    //  (including `false`) overrides. This is what lets `"italic": false` cancel
+    //  an inherited italic on things like custom item names.
     public MinecraftTextStyle Merge(MinecraftTextStyle? overrider) =>
         overrider is null
             ? this
@@ -32,8 +32,7 @@ public sealed record MinecraftTextStyle
                 Obfuscated = overrider.Obfuscated ?? Obfuscated
             };
 
-    // Resolve inherited nulls to concrete render values: bools default to false;
-    // color stays null so the renderer can fall back to its own foreground.
+    // NOTE: 把继承的 null 解析为具体渲染值——bool 默认 false；color 保持 null 以便渲染器回退自身前景。
     public MinecraftTextStyle Resolve() =>
         new()
         {

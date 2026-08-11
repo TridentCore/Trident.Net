@@ -4,9 +4,8 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Abstractions.FileModels;
 
-// Version-locking source of truth: Platform is the declared intent (from Profile),
-// Artifact is the platform-computed build cache (vanilla + loader), Packages are the
-// resolved-and-locked dependencies. Migratable across machines (no local identifiers).
+// NOTE: Version-locking source of truth——Platform 是声明意图（来自 Profile），Artifact 是平台计算的
+//  构建缓存（vanilla + loader），Packages 是解析并锁定的依赖。可跨机器迁移（无本地标识）。
 public record LockData
 {
     public const int FORMAT = 2;
@@ -20,23 +19,22 @@ public record LockData
 
     #region Nested type: PlatformData
 
-    // Inline value-compared record; LoadLock always supplies it, so stages compare with ==.
+    // NOTE: 内联值比较 record；LoadLock 恒提供它，阶段间用 == 比较。
     public record PlatformData(string Minecraft, string? Loader);
 
     #endregion
 
     #region Nested type: ViabilityData
 
-    // Hash fingerprints governing cache validity. New xxxHash fields go here, not at top level.
+    // NOTE: 控制缓存有效性的 hash 指纹。新增 xxxHash 字段放这里，不要放顶层。
     public record ViabilityData(string OptionsHash, string? PriorityHash = null);
 
     #endregion
 
     #region Nested type: ArtifactData
 
-    // Platform-computed build cache (vanilla + loader args/libs/assets). Lives and dies with
-    // the platform as a whole: migrated atomically when the platform matches, rebuilt in steps
-    // (vanilla then loader) when it does not.
+    // NOTE: 平台计算出的构建缓存（vanilla + loader 参数/库/assets）。随平台整体生灭：
+    //  平台匹配时原子迁移，不匹配时按步骤（先 vanilla 后 loader）重建。
     public record ArtifactData(
         string MainClass,
         uint JavaMajorVersion,
@@ -49,14 +47,11 @@ public record LockData
 
     #region Nested type: LockedPackage
 
-    // A declared pref paired with its resolved-and-locked Package and the rule outcome at lock
-    // time. The pref is the diff key (declared intent, possibly floating); Resolved is the full
-    // resolved Package stored verbatim so rule recompute, manifest generation, and the host UI
-    // all read real data without re-hitting repositories.
+    // NOTE: 声明的 pref 与其解析锁定的 Package、锁定时的规则结果。pref 是 diff 键（声明意图，可能
+    //  floating）；Resolved 原样保存完整解析结果，规则重算、manifest 生成与宿主 UI 都不再命中仓库。
     //
-    // SuppressedBy names the pref that won the target-path arbitration in FlattenPackages; a
-    // suppressed package stays locked so its version survives a later priority reshuffle
-    // without re-resolving (null = effective, will be materialized into the build).
+    //  SuppressedBy 指认 FlattenPackages 中赢得目标路径仲裁的 pref；被抑制的包保持锁定，
+    //  优先级重排后其版本仍在而不必重解析（null = 生效，将物化进 build）。
     public record LockedPackage(
         string Pref,
         string? Source,
@@ -77,8 +72,8 @@ public record LockData
 
     #region Nested type: PackageRule
 
-    // The rule evaluation outcome frozen into the lock. Per-package so a rule tweak only
-    // recomputes the affected packages and never re-resolves (which would drift floating prefs).
+    // NOTE: 锁定时刻冻结的规则评估结果。按包存储，规则微调只重算受影响包、绝不重解析（
+    //  重解析会漂移 floating pref）。
     public record PackageRule(bool Skipping, string? Destination, bool Normalizing);
 
     #endregion
@@ -91,7 +86,7 @@ public record LockData
 
     #region Nested type: Library
 
-    // IsNative 决定是否解压到 Natives 目录，IsPresent 决定是否添加到 ClassPath，两者互不干扰
+    // NOTE: IsNative 决定是否解压到 Natives 目录，IsPresent 决定是否加入 ClassPath，两者互不干扰。
     public record Library(Library.Identity Id, Uri Url, FileHash? Hash, bool IsNative = false, bool IsPresent = true)
     {
         #region Nested type: Identity
@@ -105,10 +100,8 @@ public record LockData
 
     #region Nested type: RuntimeData
 
-    // Fingerprint of the bundled runtime manifest cached at runtimes/{major}.json. Lets
-    // EnsureRuntimeStage reuse the cached manifest offline (sha1 match) instead of re-fetching
-    // Mojang's runtime index every deploy. Travels with the artifact: migrated atomically when
-    // the platform is unchanged (same Java major), rebuilt when it changes.
+    // NOTE: 缓存在 runtimes/{major}.json 的运行时 manifest 指纹。EnsureRuntimeStage 凭 sha1 匹配
+    //  离线复用缓存而非每次部署都拉 Mojang 运行时索引。随 artifact 迁移：平台（Java 大版本）不变则原子迁移，变则重建。
     public record RuntimeData(uint Major, string Sha1);
 
     #endregion

@@ -1,13 +1,12 @@
 namespace TridentCore.Core.Models.AtLauncher;
 
-// Subset of ATLauncher's instance.json. The file is a Mojang MinecraftVersion (top-level id, libraries,
-// downloads, ...) with an ATL-specific `launcher` block bolted on; only the launcher block and the
-// top-level id (the Minecraft version) are needed for migration.
+// NOTE: ATLauncher instance.json 的子集——文件本体是 Mojang MinecraftVersion（顶层 id、libraries、
+//  downloads...）外加 ATL 专属 `launcher` 块；迁移只需要 launcher 块与顶层 id（Minecraft 版本）。
 public record AtLauncherInstance(string? Id, AtLauncherInstance.LauncherData? Launcher)
 {
     public record LauncherData(string? Name, LoaderVersion? LoaderVersion);
 
-    // loaderVersion: null for vanilla. `type` is a case-insensitive loader name (Forge, Fabric,
-    // Quilt, NeoForge, LegacyFabric, Paper, Purpur, ...).
+    // NOTE: loaderVersion：vanilla 为 null。`type` 是不区分大小写的 loader 名
+    //  （Forge、Fabric、Quilt、NeoForge、LegacyFabric、Paper、Purpur...）。
     public record LoaderVersion(string? Version, string? Type);
 }

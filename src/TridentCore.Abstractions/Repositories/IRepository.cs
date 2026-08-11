@@ -6,8 +6,8 @@ namespace TridentCore.Abstractions.Repositories;
 
 public interface IRepository
 {
-    // Hidden repositories stay registered and resolvable by label, but are excluded from
-    // RepositoryAgent.Labels so they never appear in browse/search/marketplace lists.
+    // NOTE: 隐藏仓库仍注册、可按 label 解析，但从 RepositoryAgent.Labels 排除，
+    //  永不现身浏览/搜索/市场列表。
     bool IsHidden => false;
     Task<RepositoryStatus> CheckStatusAsync();
     Task<IPaginationHandle<Exhibit>> SearchAsync(string query, Filter filter);

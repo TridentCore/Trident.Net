@@ -11,9 +11,8 @@ namespace TridentCore.Core.Engines.Deploying;
 
 public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agent)
 {
-    // Standalone planning API consumed by exporters and the host's materialization flows. Resolves
-    // + evaluates rules + materializes a target path into a PackagePlan. The deploy pipeline does
-    // not use this — it uses ResolveAsync / EvaluateRule directly against the lock.
+    // NOTE: 独立规划 API，导出器与宿主物化流程使用。解析 + 评估规则 + 物化目标路径为
+    //  PackagePlan；部署管线不用它——直接对锁用 ResolveAsync/EvaluateRule。
     public async IAsyncEnumerable<PackagePlan> PlanAsync(
         IReadOnlyList<Profile.Rice.Entry> packages,
         PackagePlannerContext context)
@@ -26,7 +25,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         }
     }
 
-    // Network resolve: batch-resolves the supplied entries against the repositories.
+    // NOTE: 网络解析——对仓库批量解析给定条目。
     public async Task<IReadOnlyList<(Profile.Rice.Entry Entry, Package Package)>> ResolveAsync(
         IReadOnlyList<Profile.Rice.Entry> packages,
         Filter filter)
@@ -51,13 +50,13 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
 
         resolved.ThrowIfFailures();
 
-        // Same project+version from distinct sources now coexist (SyncPackages keys on
-        // (project, source)); fan a single resolution out to every entry sharing that key.
+        // NOTE: 同项目同版本现可来自不同源（SyncPackages 以 (project, source) 为键）；
+        //  把一次解析扇出给共享该键的每个条目。
         var byKey = index.ToLookup(x => x.Key, x => x.Origin);
         return [.. resolved.Successful.SelectMany(x => byKey[x.Key].Select(origin => (origin, x.Value)))];
     }
 
-    // Pure rule evaluation for a freshly resolved package.
+    // NOTE: 对新解析的包做纯规则评估。
     public LockData.PackageRule EvaluateRule(
         Profile.Rice.Entry entry,
         Package package,

@@ -232,7 +232,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        // One GetFilesAsync covers every forgecdn uri in the batch, deduped by file id.
+        // NOTE: 一次 GetFilesAsync 覆盖批内全部 forgecdn uri，按 file id 去重。
         if (byFileId.Count > 0)
         {
             Dictionary<uint, FileInfo> fileById;
@@ -278,7 +278,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             }
         }
 
-        // curseforge.com slug URLs resolve one SearchModsAsync each; slugs are rare in pack imports.
+        // NOTE: curseforge.com 的 slug URL 各自消耗一次 SearchModsAsync；slug 在包导入中少见。
         foreach (var (uri, slug) in slugUris)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -309,7 +309,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return result.ToResult();
     }
 
-    // edge.forgecdn.net/files/{high}/{low}/filename.jar ⇒ fileId = high * 1000 + low
+    // NOTE: edge.forgecdn.net/files/{high}/{low}/filename.jar ⇒ fileId = high * 1000 + low
     private static bool TryExtractFileId(Uri uri, out uint fileId)
     {
         fileId = 0;
@@ -325,7 +325,7 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         return false;
     }
 
-    // curseforge.com/minecraft/{class}/{slug} and .../{slug}/files/{fileId}
+    // NOTE: curseforge.com/minecraft/{class}/{slug} 与 .../{slug}/files/{fileId}
     private static (string? Slug, string? FileId) ExtractReference(Uri uri)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -423,8 +423,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
         {
             try
             {
-                // 是否具有 Vid 都应该具有相同次数的 IO Call，以避免其中一个具有更好的性能而受到不公平的待遇
-                // 做不到，LatestFiles 居然并不是最新的，CF 估计有缓存而导致数据迟滞（迟大概三四个月）
+                // NOTE: 无论是否有 Vid 都应保持相同次数的 IO Call，避免某一方因性能更好而受到
+                //  不公平待遇；但做不到——LatestFiles 竟然不是最新的，CF 缓存致数据迟滞约三四个月。
                 var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
                 if (id.Version is not null)
                 {
@@ -440,16 +440,6 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                 }
 
                 {
-                    // var loaderNick = CurseForgeService.LoaderIdToName(filter.Loader);
-                    // // GameVersion 是游戏版本，GameVersionName 是游戏版本或加载器版本
-                    // // 如果加载器过滤无效或不存在、如果非模组都将短路加载器判断
-                    // // LatestFiles 基本上是各个主流版本或加载器的最新版本集合，命中率较高，除了有些会把版本 1.21.1 标记为 1.21 的模组
-                    // var found = mod.LatestFiles.FirstOrDefault(x => x.SortableGameVersions.Any(y => y.GameVersion
-                    //                                                               == filter.Version)
-                    //                                                  && (loaderNick == null
-                    //                                                   || mod.ClassId != CurseForgeService.CLASSID_MOD
-                    //                                                   || x.SortableGameVersions.Any(y => y.GameVersionName
-                    //                                                                == loaderNick)));
                     var file = (await client
                                      .GetModFilesAsync(modId,
                                                        filter.Version,

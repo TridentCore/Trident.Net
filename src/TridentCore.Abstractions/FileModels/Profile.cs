@@ -32,9 +32,8 @@ public class Profile
     {
         public string? Source { get; set; }
 
-        // Source URIs ordered by overlay strength: earlier laid first, later overrides earlier.
-        // The last entry is the topmost layer. Empty = rely on the tier defaults (manual top,
-        // unlisted non-modpack middle, current modpack bottom).
+        // NOTE: 按叠加强度排序的 Source URI——先入先垫底、后者覆盖前者，末项为最顶层；
+        //  空 = 依赖层默认档位（手动顶、未列整合包中、当前整合包底）。
         public IList<string> SourceOrders { get; init; } = [];
 
         public required string Version { get; set; }

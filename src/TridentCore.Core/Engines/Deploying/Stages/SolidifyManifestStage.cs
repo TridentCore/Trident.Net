@@ -159,8 +159,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                     }
                                 case EntityManifest.PersistentFile persistent:
                                     {
-                                        // 如果是虚文件（例如持久化文件功能），则在创建软链接前尝试确保目标文件不存在（最起码不是 Symlink）
-                                        // 不是虚文件时策略更简单，无则复制有则不管
+                                        // NOTE: 虚文件（如持久化功能）在创建软链接前先确保目标不是既有 Symlink；
+                                        //  非虚文件策略更简单——无则复制，有则不管。
                                         if (persistent.IsPhantom)
                                         {
                                             if (persistent.IsDirectory)
@@ -176,7 +176,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                 if (Directory.Exists(persistent.TargetPath)
                                                  && Directory.ResolveLinkTarget(persistent.TargetPath, false) is null)
                                                 {
-                                                    // 目标位置有个目录，先反向同步文件，替换同名（类似下面文件链接的原则），并创建链接
+                                                    // NOTE: 目标位是目录时先反向同步文件、替换同名，再创建链接。
                                                     var dirs = new Queue<string>();
                                                     var toClean = new Stack<string>();
                                                     toClean.Push(persistent.TargetPath);
@@ -209,7 +209,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
                                                     foreach (var dir in toClean)
                                                     {
-                                                        // 关掉递归，以此确认上面的算法没问题
+                                                        // NOTE: 关掉递归，以此确认上述算法无问题。
                                                         Directory.Delete(dir, false);
                                                     }
                                                 }
@@ -218,9 +218,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                             }
                                             else
                                             {
-                                                // 由于 Java 的落后性，有些模组更新文件并不是 Open-Overwrite，而是 Delete-Create
-                                                // 导致软链接被删除而非覆盖
-                                                // 遇到这种落后方式写入文件的会将 build/ 中的文件替换掉 live/ 的实现反向影响
+                                                // NOTE: 部分模组更新是 Delete-Create 而非 Open-Overwrite，
+                                                //  会删掉软链接；如此写入会让 build/ 的反向同步反过来影响 live/。
 
                                                 if (File.Exists(persistent.TargetPath)
                                                  && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
@@ -245,7 +244,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
                                             if (persistent.IsDirectory)
                                             {
-                                                // 收集源目录的文件，按存在原则复制到目标目录
 
                                                 var dirs = new Queue<string>();
                                                 dirs.Enqueue(persistent.SourcePath);
@@ -308,7 +306,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                         }
                         catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
                         {
-                            // 源 Token 或级联 Token 取消触发
+                            // NOTE: 源 Token 或级联 Token 取消触发。
                             throw;
                         }
                         catch (Exception ex)
@@ -348,7 +346,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                         nested && !string.IsNullOrEmpty(rootDir)
                                             ? entry.FullName[(rootDir.Length + 1)..]
                                             : entry.FullName);
-                // Skip the empty file and directory(Length == 0 as well)
+                // NOTE: 跳过空文件与空目录（Length == 0 同理）。
                 if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) < entry.LastWriteTime.UtcDateTime)
                 {
                     var dir = Path.GetDirectoryName(path);
@@ -373,7 +371,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
         SymlinkPhotos.Apply(buildDirectory, [.. entities]);
 
-        // 生成 allowed_symlinks.txt
         if (!Path.Exists(buildDirectory))
         {
             Directory.CreateDirectory(buildDirectory);

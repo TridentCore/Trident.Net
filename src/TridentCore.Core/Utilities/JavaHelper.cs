@@ -128,8 +128,8 @@ public static class JavaHelper
         {
             var dir = PathDef.Default.DirectoryOfRuntime(major);
 
-            // macOS: Mojang ships the runtime inside a .bundle, so the real java
-            // home is <dir>/jre.bundle/Contents/Home rather than <dir> itself.
+            // NOTE: macOS 的运行时在 .bundle 里，真实 java home 是
+            //  <dir>/jre.bundle/Contents/Home 而非 <dir> 本身。
             if (OperatingSystem.IsMacOS())
             {
                 var bundleHome = Path.Combine(dir, "jre.bundle", "Contents", "Home");
@@ -140,7 +140,7 @@ public static class JavaHelper
                 }
             }
 
-            // Windows / Linux: flat layout, <dir>/bin/java(.exe)
+            // NOTE: Windows/Linux 为扁平布局，<dir>/bin/java(.exe)。
             var path = Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java");
             if (File.Exists(path))
             {
@@ -264,7 +264,7 @@ public static class JavaHelper
             }
             catch
             {
-                // Ignore cleanup failures and preserve the original cancellation behavior.
+                // NOTE: 忽略清理失败，保留原始取消行为。
             }
 
             throw;
@@ -282,7 +282,7 @@ public static class JavaHelper
         }
         catch
         {
-            // Best-effort cleanup.
+            // NOTE: 尽力清理。
         }
     }
 
@@ -377,17 +377,16 @@ public static class JavaHelper
 
     public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
 
-    // A located Java home paired with its origin, so the deploy pipeline can treat a
-    // user-configured JRE (left untouched) differently from a bundled one (self-healed).
-    // Returning a bare path would force every caller to guess the origin from the string.
+    // NOTE: 定位到的 Java home 与其来源配对，部署管线据此区分用户配置的 JRE（不动）
+    //  与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
     public record JavaResolution(string Home, JavaResolution.Source Origin)
     {
         public enum Source
         {
-            // Explicitly configured by the user and present on disk — never validated or repaired.
+            // NOTE: 用户显式配置且在盘——不校验、不修复。
             UserConfigured,
 
-            // No usable user configuration; resolved to the pipeline-bundled runtime under runtimes/.
+            // NOTE: 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。
             Bundled
         }
     }

@@ -78,9 +78,8 @@ public static class PackwizHelper
         return new(name, author, minecraft, loader);
     }
 
-    // A mod contributes a pref only when its .pw.toml carries an [update] block; a
-    // [download]-only mod points at a direct URL that no repository tracks, so it is skipped.
-    // modrinth wins over curseforge when both are present.
+    // NOTE: 仅当 .pw.toml 带 [update] 块时 mod 才贡献 pref；纯 [download] 的 mod 指向
+    //  仓库不追踪的直接 URL，跳过。两者并存时 modrinth 优先于 curseforge。
     public static string? TryExtractPref(TomlTable mod)
     {
         if (!TryGetTable(mod, "update", out var update))
@@ -107,7 +106,7 @@ public static class PackwizHelper
 
     public static bool IsServerOnly(TomlTable mod) => GetString(mod, "side") is "server";
 
-    // GitHub Contents API returns the file body base64-encoded with a newline every 76 columns.
+    // NOTE: GitHub Contents API 返回 base64 文件体，每 76 列换行。
     public static string DecodeContent(FileContent file)
     {
         var raw = file.Content?.Replace("\n", string.Empty).Replace("\r", string.Empty) ?? string.Empty;

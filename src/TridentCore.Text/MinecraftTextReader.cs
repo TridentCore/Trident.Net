@@ -28,7 +28,7 @@ public static class MinecraftTextReader
     public static MinecraftText ParseLegacy(string? text) => ParseLegacy(text, MinecraftTextStyle.Default);
 
     // NOTE: baseStyle is the starting point — used when a JSON component feeds its
-    // already-resolved color/style in as the base for the § codes inside its text.
+    //  already-resolved color/style in as the base for the § codes inside its text.
     public static MinecraftText ParseLegacy(string? text, MinecraftTextStyle baseStyle)
     {
         if (string.IsNullOrEmpty(text))
@@ -134,7 +134,7 @@ public static class MinecraftTextReader
     private static bool TryNextLegacyStyle(char code, MinecraftTextStyle current, out MinecraftTextStyle next)
     {
         // NOTE: A color code also clears every style flag — that is why §a must
-        // precede §l in practice. §r clears both color and styles.
+        //  precede §l in practice. §r clears both color and styles.
         if (code is >= '0' and <= '9' or >= 'a' and <= 'f')
         {
             next = new() { Color = LegacyColors[code] };
@@ -264,8 +264,8 @@ public static class MinecraftTextReader
         }
 
         // NOTE: translate/keybind/score/selector/nbt need client language files or
-        // server context the launcher does not have, so degrade to the most
-        // readable literal the component still offers.
+        //  server context the launcher does not have, so degrade to the most
+        //  readable literal the component still offers.
         if (obj.TryGetProperty("fallback", out var fallbackEl) && fallbackEl.ValueKind == JsonValueKind.String)
         {
             AppendFormatted(runs, fallbackEl.GetString(), style);
@@ -295,8 +295,8 @@ public static class MinecraftTextReader
     }
 
     // NOTE: § codes are interpreted even inside JSON text/fallback values, using the
-    // component's resolved style as the base — real-world packs routinely embed §
-    // alongside JSON color/style and expect it to render, not show up literally.
+    //  component's resolved style as the base — real-world packs routinely embed §
+    //  alongside JSON color/style and expect it to render, not show up literally.
     private static void AppendFormatted(List<MinecraftTextRun> runs, string? text, MinecraftTextStyle baseStyle)
     {
         if (string.IsNullOrEmpty(text))

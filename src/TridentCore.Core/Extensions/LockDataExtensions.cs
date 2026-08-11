@@ -36,9 +36,8 @@ public static class LockDataExtensions
         return igniter;
     }
 
-    // The in-build relative target derived from a locked package's frozen rule + resolution.
-    // Centralized so FlattenPackages (conflict grouping) and GenerateManifest (materialization)
-    // never compute it differently.
+    // NOTE: 由锁定包的冻结规则 + 解析结果推导的 build 内相对目标。集中于此，
+    //  FlattenPackages（冲突分组）与 GenerateManifest（物化）不会算出不同值。
     public static string RelativeTarget(this LockData.LockedPackage self) =>
         PackagePathHelper.RelativeTarget(self.Rule.Normalizing,
                                          self.Rule.Destination,
@@ -46,11 +45,11 @@ public static class LockDataExtensions
                                          self.Resolved.FileName,
                                          self.Resolved.Kind);
 
-    // Mutable-list library accumulation with the same dedup rules the platform-computed
-    // artifact needs while being rebuilt (vanilla + loader both add libraries incrementally).
+    // NOTE: 可变列表式库累加，与平台计算 artifact 重建时的去重规则一致
+    //  （vanilla 与 loader 都会增量加库）。
     public static void AddLibrary(this IList<LockData.Library> libs, LockData.Library library)
     {
-        // 允许除 IsNative 不同的同时存在，但不允许除了 IsPresent 不同的同时存在， IsPresent==True的优先
+        // NOTE: 允许仅 IsNative 不同的并存，不允许仅 IsPresent 不同的并存；IsPresent==true 优先。
         var found = libs.FirstOrDefault(x => x.Id.Namespace == library.Id.Namespace
                                           && x.Id.Name == library.Id.Name
                                           && x.Id.Platform == library.Id.Platform
@@ -87,11 +86,11 @@ public static class LockDataExtensions
         bool present = true) =>
         libs.AddLibrary(new(ParseLibraryIdentity(fullname), url, hash, native, present));
 
-    // PATCH: 为了适配奇葩 PrismLauncher Meta 的多态数据
+    // HACK: 适配 PrismLauncher Meta 的奇葩多态数据。
     public static void AddLibraryPrismFlavor(this IList<LockData.Library> libs, string fullname, Uri url)
     {
         var exactUrl = url.AbsoluteUri.EndsWith('/') ? url : new(url.AbsoluteUri + '/');
-        // 当迁移到 TridentCore/launcher-meta 的之后移除该函数
+        // TODO: 迁移到 TridentCore/launcher-meta 后移除该函数。
         var id = ParseLibraryIdentity(fullname);
 
         var fullUrl = new Uri(exactUrl,

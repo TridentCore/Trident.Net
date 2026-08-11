@@ -11,8 +11,8 @@ using Version = TridentCore.Abstractions.Repositories.Resources.Version;
 
 namespace TridentCore.Core.Repositories;
 
-// A hidden repository: an entire GitHub-hosted packwiz repo is exposed as a single Modpack
-// package — never listed in browse/marketplace, but resolvable by label.
+// NOTE: 隐藏仓库——整个 GitHub 托管的 packwiz 仓库暴露为单个 Modpack 包；
+//  不出现在浏览/市场列表，但可按 label 解析。
 public class PackwizRepository(string label, IGitHubClient github) : IRepository
 {
     private const int PAGE_SIZE = 30;

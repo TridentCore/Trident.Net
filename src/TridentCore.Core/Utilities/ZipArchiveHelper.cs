@@ -22,7 +22,6 @@ public static class ZipArchiveHelper
             return false;
         }
 
-        // 获取所有条目的路径
         var entries = archive.Entries.Where(x => !InvalidNames.Contains(x.Name)).Select(e => e.FullName).ToList();
 
         var prefix = entries.FirstOrDefault();

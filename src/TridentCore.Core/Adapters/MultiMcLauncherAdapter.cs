@@ -12,9 +12,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
     private static readonly string[] IDENTIFIABLE_SUBDIRS = ["mods", "resourcepacks", "shaderpacks"];
     private static readonly string[] DEFAULT_RUNTIME_CANDIDATES = [".minecraft", "minecraft"];
 
-    // MultiMC, PolyMC and PrismLauncher share one instance format (mmc-pack.json + instance.cfg +
-    // .minecraft/) since PrismLauncher/PolyMC are forks of MultiMC5. One adapter serves both brands;
-    // only the data-directory name differs, resolved per kind below.
+    // NOTE: MultiMC/PolyMC/PrismLauncher 共享同一实例格式（mmc-pack.json + instance.cfg + .minecraft/），
+    //  一个适配器服务两个品牌，仅数据目录名不同，按下文 kind 解析。
     public IReadOnlyList<LauncherKind> SupportedKinds { get; } = [LauncherKind.MultiMc, LauncherKind.PrismLauncher];
 
     public string? DefaultDataDirectory(LauncherKind kind) =>
@@ -39,7 +38,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         foreach (var instanceDir in Directory.EnumerateDirectories(instancesDir))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            // Skip launcher-internal/hidden directories like .tmp that PrismLauncher creates in instances/.
+            // NOTE: 跳过 .tmp 等启动器内部/隐藏目录（PrismLauncher 会在 instances/ 下创建）。
             if (Path.GetFileName(instanceDir).StartsWith('.'))
             {
                 continue;
@@ -135,8 +134,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         };
     }
 
-    // instance.cfg is an INI-ish key=value file; read every line into a lookup so both the name and a
-    // possible InstanceDir override are available without a second pass.
+    // NOTE: instance.cfg 是 INI 式 key=value 文件；逐行读入查找表，名称与可能的
+    //  InstanceDir 覆盖一次读齐，无需第二遍。
     private static async Task<Dictionary<string, string>> ReadInstanceCfgAsync(
         string instanceDir,
         CancellationToken cancellationToken)
@@ -166,15 +165,14 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         }
         catch
         {
-            // best-effort; caller falls back to defaults
+            // NOTE: 尽力而为；调用方回退默认值。
         }
 
         return cfg;
     }
 
-    // Resolve the runtime directory: honour a per-instance InstanceDir override (relative or absolute),
-    // otherwise probe the conventional names, falling back to .minecraft even when absent so the caller
-    // can report it rather than silently treating the instance as having no files.
+    // NOTE: 解析运行目录——尊重每实例的 InstanceDir 覆盖（相对或绝对），否则探测常规名，
+    //  缺席时也回退 .minecraft，让调用方上报而非静默当作无文件实例。
     private static string ResolveRuntimeDir(string instanceDir, string? instanceDirCfg)
     {
         if (!string.IsNullOrEmpty(instanceDirCfg))

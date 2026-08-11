@@ -21,10 +21,8 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
     {
         var container = new PackedProfileContainer(pack.Key) { OverrideDirectoryName = "import" };
         var overrideKeySet = pack.Options.IncludedOverrides.Where(x => x.Enabled).Select(x => x.Key).ToFrozenSet();
-        // 原来这里有个 Clone()，直接对 Profile 操作是合法的啊，所以给删了
         var exported = pack.Profile;
 
-        // 根据 Options 对 Profile 进行过滤
         foreach (var key in exported.Overrides.Keys)
         {
             if (!overrideKeySet.Contains(key))

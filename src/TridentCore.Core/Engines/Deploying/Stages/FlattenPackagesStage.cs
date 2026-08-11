@@ -5,20 +5,16 @@ using TridentCore.Core.Extensions;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// Two-pass overlay arbitration over Lock.Packages, run after SyncPackages has let every
-// (project, source) survive. Both passes share one routine — find duplicate keys, let source
-// priority pick a single winner, suppress the rest; a same-tier tie is unresolvable and throws
-// PackageConflictException.
+// NOTE: 对 Lock.Packages 的两遍叠加仲裁，在 SyncPackages 让每个 (project, source) 存活后执行。
+//  两遍共用同一例程——找重复键、按 source 优先级选唯一赢家、抑制其余；同层平局不可解，抛
+//  PackageConflictException。
 //
-//   1. Project pass (key = label/ns/pid) — same project from multiple sources resolves by source
-//      priority. Winners are materialized; losers stay locked (SuppressedBy points at the winner)
-//      so their version survives a future reshuffle without re-resolving.
-//   2. Path pass (key = in-build RelativeTarget) — among project survivors, different projects
-//      landing on the same file resolve the same way.
+//  1. Project 遍（键 = label/ns/pid）：同一项目来自多个 source 时按优先级裁决，赢家物化，
+//     输家保持锁定（SuppressedBy 指向赢家），版本在将来重排后仍在而不重解析。
+//  2. Path 遍（键 = build 内 RelativeTarget）：不同项目落到同一文件时同样裁决。
 //
-// Arbitration is internal: it produces a stable Lock.Packages (winners effective, losers marked).
-// The only thing that escapes is PackageConflictException, thrown when a same-tier tie cannot be
-// decided — that faults the deploy for the user to resolve.
+//  仲裁是内部的：产出稳定的 Lock.Packages（赢家生效、输家标记）。唯一逃逸的是
+//  PackageConflictException——同层平局无法裁决时使部署失败，交由用户解决。
 public class FlattenPackagesStage : StageBase
 {
     protected override Task OnProcessAsync(CancellationToken token)
@@ -39,8 +35,7 @@ public class FlattenPackagesStage : StageBase
         return Task.CompletedTask;
     }
 
-    // Dedupe by key: a sole member passes through; multiple are ranked by overlay priority and
-    // the top wins (materialized) while the rest are suppressed; a same-tier tie is unresolvable.
+    // NOTE: 按键去重——单成员直通；多个按叠加优先级排序取顶（物化）、其余抑制；同层平局不可解。
     private static List<LockData.LockedPackage> Arbitrate(
         IEnumerable<LockData.LockedPackage> items,
         Func<LockData.LockedPackage, string> keyOf,
@@ -80,8 +75,8 @@ public class FlattenPackagesStage : StageBase
         return result;
     }
 
-    // (Tier, Index): manual 3 > listed-in-SourceOrders 2 (last is highest) > unlisted non-modpack
-    // 1 > current modpack (Setup.Source) 0. Listing a source declares it an explicit overlay layer.
+    // NOTE: (Tier, Index)：手动 3 > SourceOrders 列出的 2（末位最高）> 未列出的非整合包 1 >
+    //  当前整合包（Setup.Source）0。列进 SourceOrders 即声明显式叠加层。
     private static (int Tier, int Index) RankOf(LockData.LockedPackage p, Profile.Rice setup)
     {
         if (p.Source == null)

@@ -9,7 +9,7 @@ public class PathDef
     private static readonly string EFFECTIVE_HOME = LocateEffectiveHome();
 
     // NOTE: 启动瞬间冻结——有显式 override，或当时已存在遗留 ~/.trident，则整个进程统一用 EFFECTIVE_HOME 作单一根目录。
-    // 不再用每次调用都现查的 Directory.Exists，否则运行中 ~/.trident 一旦被创建会令根目录在多根/单根之间漂移。
+    //  不再用每次调用都现查的 Directory.Exists，否则运行中 ~/.trident 一旦被创建会令根目录在多根/单根之间漂移。
     private static readonly bool USE_HOME_AS_ROOT = EFFECTIVE_HOME != FallbackHome || Directory.Exists(FallbackHome);
 
     public static readonly PathDef Default = new();
@@ -50,7 +50,6 @@ public class PathDef
 
     private string ResolveWithSuffix(string suffix, Func<string> systemPath)
     {
-        // NOTE: 根目录决策在进程首次访问时冻结，运行中即使 ~/.trident 被创建或删除也不再翻转
         if (USE_HOME_AS_ROOT)
         {
             return Path.Combine(EFFECTIVE_HOME, suffix);

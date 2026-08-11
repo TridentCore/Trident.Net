@@ -1,6 +1,5 @@
 namespace TridentCore.Abstractions.FileModels;
 
-// 打包器配置
 public class PackData
 {
     public bool OfflineMode { get; set; }

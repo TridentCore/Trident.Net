@@ -3,7 +3,7 @@ using TridentCore.Abstractions;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// The single write-back point: serializes the assembled Lock to data.lock.json.
+// NOTE: 唯一回写点——把组装好的 Lock 序列化到 data.lock.json。
 public class PersistLockStage : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)

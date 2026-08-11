@@ -20,7 +20,7 @@ public class TridentImporter : IProfileImporter
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        // https://d3ara1n.atlassian.net/jira/software/projects/POLY/boards/1?selectedIssue=POLY-39
+        // NOTE: 相关修复见 POLY-39（https://d3ara1n.atlassian.net/browse/POLY-39）。
 
         await using var indexStream = pack.Open(IndexFileName);
         await using var optionsStream = pack.Open(OptionsFileName);
@@ -40,8 +40,7 @@ public class TridentImporter : IProfileImporter
             throw new FormatException($"{OptionsFileName} is not a valid manifest");
         }
 
-        // 导入时还是要对 index 用 options 进行一遍处理
-        // 对于缺失的导出 Override 这里忽略，但是对于明确不导出的 Override 项需要移除
+        // NOTE: 导入时对 index 应用 options——缺失的导出 Override 忽略，明确不导出的 Override 移除。
         var overrideKeySet = options.IncludedOverrides.Where(x => !x.Enabled).Select(x => x.Key).ToFrozenSet();
         foreach (var key in index.Overrides.Keys)
         {
@@ -51,7 +50,6 @@ public class TridentImporter : IProfileImporter
             }
         }
 
-        // 如果要求移除 Source，那么就移除
         if (!options.IncludingSource)
         {
             index.Setup.Source = null;
@@ -61,7 +59,6 @@ public class TridentImporter : IProfileImporter
             }
         }
 
-        // 如果要求移除 Tags，那么就移除
         if (!options.IncludingTags)
         {
             foreach (var entry in index.Setup.Packages)

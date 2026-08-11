@@ -34,7 +34,7 @@ public class InstanceManager(
     IServiceProvider provider,
     IHttpClientFactory clientFactory)
 {
-    // 主要是在 UI 线程中增删改查，实际不需要保证线程同步
+    // NOTE: 主要在 UI 线程增删改查，实际无需线程同步。
     private readonly Dictionary<string, TrackerBase> _trackers = new();
     public event EventHandler<InstallTracker>? InstanceInstalling;
     public event EventHandler<UpdateTracker>? InstanceUpdating;
@@ -472,7 +472,7 @@ public class InstanceManager(
 
     public InstallTracker Install(string key, string label, string? ns, string pid, string? vid)
     {
-        // 只有在线安装会有 Tracker，离线导入因为不需要等待，全在前端进行
+        // NOTE: 仅在线安装有 Tracker——离线导入无需等待，全在前端进行。
 
         var reserved = profileManager.RequestKey(key);
         var tracker = new InstallTracker(reserved.Key,
@@ -566,7 +566,7 @@ public class InstanceManager(
         }
 
         // NOTE: import 是 build 里的实体（有则不管），更新时若不清除旧投影，重新部署不会覆盖/删除，更新就传不进去。
-        // 只删 import 拥有的实体，软链接（persist/package 赢下的路径）不动。
+        //  只删 import 拥有的实体，软链接（persist/package 赢下的路径）不动。
         foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
         {
             var rel = Path.GetRelativePath(importDir, file);

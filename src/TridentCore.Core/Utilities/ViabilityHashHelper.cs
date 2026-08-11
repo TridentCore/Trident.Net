@@ -4,9 +4,8 @@ using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Utilities;
 
-// Fingerprint of the source-overlay priority (modpack Source + SourceOrders). Kept separate
-// from OptionsHash so reordering layers invalidates the FastMode gate (Verify) without falsely
-// signaling an options change that would trigger floating re-resolution in SyncPackages.
+// NOTE: 源叠加优先级（整合包 Source + SourceOrders）的指纹。与 OptionsHash 分离，
+//  使层重排只失效 FastMode 门（Verify），不误报 options 变化而触发 SyncPackages 的 floating 重解析。
 public static class ViabilityHashHelper
 {
     public static string PriorityOf(Profile.Rice setup) =>

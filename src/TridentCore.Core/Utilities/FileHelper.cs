@@ -35,8 +35,7 @@ public static class FileHelper
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }
 
-    // Linux defaults to case-sensitive filesystems; Windows and macOS default to
-    // case-insensitive-but-case-preserving, so path and name comparisons follow suit.
+    // NOTE: Linux 默认大小写敏感；Windows/macOS 默认大小写不敏感但保留大小写，路径与名称比较随此。
     private static StringComparison PathComparison =>
         OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
@@ -64,9 +63,8 @@ public static class FileHelper
             var path = Path.Combine(home, candidate);
             if (File.Exists(path))
             {
-                // On case-insensitive but case-preserving volumes the candidate string may not
-                // match the on-disk casing, so resolve the real path to keep downstream string
-                // comparisons consistent.
+                // NOTE: 大小写不敏感但保留大小写的卷上，候选串可能不匹配磁盘实际大小写，
+                //  故解析真实路径以保持下游字符串比较一致。
                 var dir = Path.GetDirectoryName(path);
                 var name = Path.GetFileName(path);
                 if (dir is not null && name is not null)
@@ -198,7 +196,6 @@ public static class FileHelper
                 var mtime = File.GetLastWriteTimeUtc(path);
                 if (mtime == modifiedTime)
                 {
-                    // 没被修改，直接通过
                     return true;
                 }
             }
@@ -209,21 +206,20 @@ public static class FileHelper
                 var computed = ComputeHash(reader, hash.Algorithm);
                 if (hash.Value.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    // 文件没变，写回修改时间避免下次重复检查
+                    // NOTE: 文件未变，写回修改时间避免下次重复检查。
                     if (modifiedTime.HasValue)
                     {
                         File.SetLastWriteTimeUtc(path, modifiedTime.Value.UtcDateTime);
                     }
 
-                    // 文件相同直接通过
                     return true;
                 }
 
-                // 提供了 hash 但是没通过，算判定失败
+                // NOTE: 提供了 hash 但未通过，判定失败。
                 return false;
             }
 
-            // 修改了，但是没有提供 hash，判定为存在性检验，直接通过
+            // NOTE: 文件已修改但未提供 hash，退化为存在性检验，直接通过。
             return true;
         }
 
@@ -280,8 +276,7 @@ public static class FileHelper
                     return reader.GetString();
                 default:
                     {
-                        // Use JsonElement as fallback.
-                        // Newtonsoft uses JArray or JObject.
+                        // NOTE: JsonElement 兜底——Newtonsoft 用 JArray/JObject。
                         using var document = JsonDocument.ParseValue(ref reader);
                         return document.RootElement.Clone();
                     }

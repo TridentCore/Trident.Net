@@ -13,8 +13,8 @@ public class InstallVanillaStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        // Cache hit: platform unchanged and a whole artifact exists → migrate it atomically.
-        // vanilla and loader are coupled (Forge rewrites args/mainClass), so they travel together.
+        // NOTE: 缓存命中（平台未变且存在完整 artifact）→ 原子迁移。vanilla 与 loader 耦合
+        //  （Forge 重写 args/mainClass），必须一起走。
         if (Context.BaseLock?.Platform == Context.Lock.Platform && Context.BaseLock.Artifact is { } cached)
         {
             Context.Lock = Context.Lock with { Artifact = cached };
@@ -37,13 +37,12 @@ public class InstallVanillaStage(
                            .ConfigureAwait(false);
         logger.LogInformation("Got version index {version}({uid})", version.Version, version.Uid);
 
-        // Libraries
         var patched = await prismLauncherService.GetPatchedLibraries(version, token).ConfigureAwait(false);
         PrismLauncherService.AddValidatedLibrariesToArtifact(libraries, patched);
 
         logger.LogInformation("Libraries added, refer to artifact file for details");
 
-        // Main Jar as a Library as well
+        // NOTE: Main Jar 也作为 Library 加入。
         if (version.MainJar is { Name: { } name, Downloads.Artifact: { } artifact })
         {
             libraries.AddLibrary(name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
@@ -54,7 +53,6 @@ public class InstallVanillaStage(
             throw new FormatException("{minecraft_version}/mainJar.downloads.artifact");
         }
 
-        // Game Arguments
         var arguments = version.MinecraftArguments?.Split(' ') ?? Enumerable.Empty<string>();
         foreach (var arg in arguments)
         {
@@ -63,7 +61,6 @@ public class InstallVanillaStage(
 
         logger.LogInformation("Game arguments added, refer to artifact file for details");
 
-        // Jvm Arguments
         if (OperatingSystem.IsMacOS())
         {
             javaArguments.Add("-XstartOnFirstThread");
@@ -76,7 +73,7 @@ public class InstallVanillaStage(
         }
 
         javaArguments.AddRange([
-            // 由于版本文件不再提供，这里手动生成，还有个 logging，这里就不加了
+            // NOTE: 版本文件不再提供，这里手动生成；logging 段省略。
             "-Djava.library.path=${natives_directory}",
             "-DlibraryDirectory=${library_directory}",
             "-Djna.tmpdir=${natives_directory}",
@@ -84,7 +81,6 @@ public class InstallVanillaStage(
             "-Dio.netty.native.workdir=${natives_directory}",
             "-Dminecraft.launcher.brand=${launcher_name}",
             "-Dminecraft.launcher.version=${launcher_version}",
-            // 最大内存
             "-Xmx${jvm_max_memory}",
             "-cp",
             "${classpath}"
@@ -92,7 +88,6 @@ public class InstallVanillaStage(
 
         logger.LogInformation("Jvm arguments generated, refer to artifact file for details");
 
-        // Java Major Version
         var firstJreVersion = version.CompatibleJavaMajors?.FirstOrDefault() ?? 8u;
         if (firstJreVersion.Equals(0))
         {
@@ -101,7 +96,6 @@ public class InstallVanillaStage(
 
         logger.LogInformation("Set java major version compatibility to {major}", firstJreVersion);
 
-        // AssetIndex
         LockData.AssetData assetIndex;
         if (version.AssetIndex is { } index)
         {
@@ -113,11 +107,10 @@ public class InstallVanillaStage(
             throw new FormatException("{minecraft_version}/assetIndex");
         }
 
-        // Main Class Path
         var mainClass = version.MainClass ?? "net.minecraft.client.main.Main";
         logger.LogInformation("Set main class path to {mainClass}", mainClass);
 
-        // authlib-injector (always present on disk, only activated via -javaagent at launch)
+        // NOTE: authlib-injector 常驻磁盘，仅启动时经 -javaagent 激活。
         var aiArtifact = await authlibInjectorService.GetLatestAsync(token).ConfigureAwait(false);
         var aiLibraryId = AuthlibInjectorService.LibraryIdentity(aiArtifact.Version);
         libraries.AddLibrary(new(aiLibraryId, aiArtifact.DownloadUrl, aiArtifact.Hash, false, false));

@@ -62,8 +62,7 @@ public class LaunchEngine : IAsyncEnumerable<Scrap>
             _inner.ErrorDataReceived -= ProcessOnErrorDataReceived;
             _inner.Exited -= ProcessOnExited;
 
-            // inner.Close()
-            // it throws exception for some reason
+            // NOTE: 这里不调 inner.Close()——它会抛异常（原因未知）。
             return ValueTask.CompletedTask;
         }
 

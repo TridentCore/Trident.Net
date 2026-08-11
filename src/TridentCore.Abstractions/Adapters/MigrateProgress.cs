@@ -6,13 +6,13 @@ public record MigrateProgress
 
     public required Phase CurrentPhase { get; init; }
 
-    // Display name of the instance currently being transferred, null during the identify phase.
+    // NOTE: 当前迁移实例的显示名；identify 阶段为 null。
     public string? InstanceName { get; init; }
 
-    // 1-based index of the current instance within the batch, null during the identify phase.
+    // NOTE: 批内当前实例的 1 基索引；identify 阶段为 null。
     public int? InstanceIndex { get; init; }
     public int? InstanceTotal { get; init; }
 
-    // Per-instance file-transfer progress in [0,1], or null for indeterminate.
+    // NOTE: 单实例文件迁移进度 [0,1]；不可量化时为 null。
     public double? Percent { get; init; }
 }

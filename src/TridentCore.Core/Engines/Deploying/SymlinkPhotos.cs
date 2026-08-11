@@ -73,7 +73,7 @@ public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
             }
             else
             {
-                // 不该出现的多余的软链接
+                // NOTE: 不该出现的多余软链接。
                 if (exist.IsDirectory)
                 {
                     Directory.Delete(exist.Path, false);
@@ -93,7 +93,7 @@ public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
                 Directory.CreateDirectory(dir);
             }
 
-            // 被普通文件或目录占用了
+            // NOTE: 目标被普通文件或目录占用。
             if ((File.Exists(remain.Path) && File.ResolveLinkTarget(remain.Path, false) is null)
              || (Directory.Exists(remain.Path) && Directory.ResolveLinkTarget(remain.Path, false) is null))
             {

@@ -8,9 +8,8 @@ using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Engines;
 
-// Fixed linear pipeline: every stage runs in order and decides internally (against BaseLock)
-// whether to migrate, rebuild, or no-op. There is no state-machine branching — DecideNext is
-// gone, replaced by a static yield sequence.
+// NOTE: 固定线性管线——各阶段按序执行并自行（对照 BaseLock）决定迁移/重建/no-op。
+//  无状态机分支：DecideNext 已移除，改为静态 yield 序列。
 public class DeployEngine(
     string key,
     Profile.Rice setup,
@@ -74,7 +73,7 @@ public class DeployEngine(
 
         public void Dispose()
         {
-            // 中断导致没有 MoveNext
+            // NOTE: 中断导致没有 MoveNext。
             if (Current is IDisposableLifetime disposable)
             {
                 disposable.Dispose();

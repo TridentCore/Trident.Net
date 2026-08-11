@@ -145,8 +145,7 @@ public class RepositoryAgent
 
     public Task<Package> IdentifyAsync(string filePath)
     {
-        // 如果文件不存在会返回 IOException
-        // 如果文件过大导致 IO 异常或内存占用异常导致闪退是预期内事件
+        // NOTE: 文件不存在抛 IOException；文件过大致 IO/内存异常而闪退是预期内事件。
         var content = File.ReadAllBytes(filePath);
         return IdentifyAsync(new ReadOnlyMemory<byte>(content));
     }
@@ -173,11 +172,9 @@ public class RepositoryAgent
         IEnumerable<Uri> uris,
         CancellationToken cancellationToken = default)
     {
-        // Waterfall with per-uri elimination: a repository's ResourceNotFoundException failures
-        //  are "not my territory" signals that stay pending for the next repository; any other
-        //  failure is terminal. After every repository has been probed, whatever remains pending is
-        //  bottom-lined as ResourceNotFoundException. The result is total — every input uri lands
-        //  in Successful or Failed.
+        // NOTE: 逐 uri 消除的瀑布流——仓库的 ResourceNotFoundException 是「非我领地」信号，
+        //  留给下一仓库；其余失败为终结性。全部仓库探测完毕后仍悬空的统一记为
+        //  ResourceNotFoundException。结果是完备的——每个输入 uri 落入 Successful 或 Failed。
         var pending = uris.Distinct().ToList();
         var successful = new Dictionary<Uri, PackageIdentifier>();
         var failed = new Dictionary<Uri, Exception>();
@@ -233,7 +230,7 @@ public class RepositoryAgent
 
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
     {
-        // 不走缓存
+        // NOTE: 不走缓存。
         foreach (var label in Labels)
         {
             try
@@ -248,9 +245,8 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
-    // Keyed by file path so callers correlate results without positional alignment. Files are read
-    // in IDENTIFY_READ_WINDOW-sized windows before each window flows through the waterfall below,
-    // keeping peak memory bounded regardless of total batch size.
+    // NOTE: 按文件路径为键，调用方无需位置对齐即可关联结果。文件按 IDENTIFY_READ_WINDOW 窗口
+    //  读取，每窗流入下方瀑布流，峰值内存与总批量大小无关。
     public async Task<IReadOnlyDictionary<string, Package?>> IdentifyBatchAsync(
         IEnumerable<string> filePaths,
         CancellationToken cancellationToken = default)
@@ -271,10 +267,8 @@ public class RepositoryAgent
         return results;
     }
 
-    // Waterfall with per-item elimination: only still-unmatched items advance to the next
-    // repository, so an identified item is never re-queried downstream. Position-aligned with the
-    // input order; the agent owns chunking + concurrency, each repository is a pure single-call
-    // lookup.
+    // NOTE: 逐项消除的瀑布流——只有仍未匹配的项进入下一仓库，已识别的项绝不被下游重复查询。
+    //  与输入序位置对齐；分块与并发归 agent，每个仓库是纯单次调用查找。
     private async Task<IReadOnlyList<Package?>> IdentifyBatchCoreAsync(
         IReadOnlyList<ReadOnlyMemory<byte>> contents,
         CancellationToken cancellationToken)

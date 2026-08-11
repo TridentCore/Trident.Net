@@ -62,7 +62,7 @@ public class PackageMaterializer(ILogger<PackageMaterializer> logger, IHttpClien
                         }
                         catch (OperationCanceledException)
                         {
-                            // no log
+                            // NOTE: 不打日志。
                             throw;
                         }
                         catch (Exception ex)

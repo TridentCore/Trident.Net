@@ -2,7 +2,7 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying;
 
-// PrismLauncher 里的下下来压缩包内部包了一层，因此叫 Nested
+// NOTE: PrismLauncher 下载的压缩包内部还包了一层，因此叫 Nested。
 public record BundledRuntime(
     uint Major,
     IReadOnlyList<BundledRuntime.File> Files,

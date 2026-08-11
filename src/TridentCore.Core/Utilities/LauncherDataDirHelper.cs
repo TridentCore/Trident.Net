@@ -2,14 +2,12 @@ using System.Runtime.InteropServices;
 
 namespace TridentCore.Core.Utilities;
 
-// Resolves the conventional per-user data directories that third-party launchers install under.
-// Each launcher stores at a brand-named folder beneath one of these roots; the adapter supplies the
-// brand names and this helper supplies the platform-correct root.
+// NOTE: 解析第三方启动器按用户目录约定的安装位置——各启动器存于某根目录下的品牌名文件夹，
+//  适配器提供品牌名，本助手提供平台正确的根。
 public static class LauncherDataDirHelper
 {
-    // The conventional application-data root for the current platform — AppData\Roaming on Windows,
-    // ~/Library/Application Support on macOS, ~/.local/share on Linux. Returns null when the platform
-    // has no equivalent the environment can resolve.
+    // NOTE: 当前平台约定的应用数据根——Windows AppData\Roaming，macOS ~/Library/Application Support，
+    //  Linux ~/.local/share；平台无等价位置时返回 null。
     public static string? ConventionalDataRoot() =>
         RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
             ?
@@ -20,8 +18,7 @@ public static class LauncherDataDirHelper
                 ? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
 
-    // Returns the first existing candidate folder under the conventional data root, or null when none
-    // of the candidates are present. Adapters use this to prefill the directory picker.
+    // NOTE: 返回约定数据根下第一个存在的候选目录，全无则 null——适配器用它预填目录选择器。
     public static string? LocateUnderConventional(params string[] candidates)
     {
         var root = ConventionalDataRoot();

@@ -208,9 +208,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                     var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
-                    // 只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
-                    // 它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
-                    // 投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。
+                    //  只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
+                    //  它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
+                    //  投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。
                     foreach (var file in EnumerateImportProjection(key))
                     {
                         token.ThrowIfCancellationRequested();

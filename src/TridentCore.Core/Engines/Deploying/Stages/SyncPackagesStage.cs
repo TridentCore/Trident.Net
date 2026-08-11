@@ -6,10 +6,9 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// Synchronizes packages between BaseLock (truth) and Lock (product) by pref, never re-resolving
-// a package whose vid is already locked. Rule changes are recomputed offline against the cached
-// resolution; only floating prefs whose platform/options fingerprint changed (or brand-new prefs)
-// hit the repositories — so a rule tweak can never drift the locked versions.
+// NOTE: 按 pref 在 BaseLock（真源）与 Lock（产物）之间同步包，绝不重解析已锁 vid 的包。
+//  规则变更对缓存解析结果离线重算；仅 fingerprint 变化的 floating pref（或全新 pref）才
+//  命中仓库——规则微调永远漂移不了已锁版本。
 public class SyncPackagesStage(PackagePlanner planner) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
@@ -21,10 +20,9 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
         var filter = Filter.FromSetup(setup);
 
-        // Step 1: diff view keyed by (project, source) identity. vid is intentionally ignored
-        // so a fixed→floating flip still matches and inherits the locked resolution; source is
-        // included so the same project from distinct layers (modpack + manual + recipe) each
-        // survives to FlattenPackages, which resolves same-target collisions by overlay priority.
+        // NOTE: Step 1——按 (project, source) 身份做 diff。vid 有意忽略，fixed→floating 翻转仍能匹配
+        //  并继承已锁解析；含 source 使同项目来自不同层（整合包/手动/recipe）各自存活到
+        //  FlattenPackages，由它按叠加优先级裁决同目标冲突。
         var setupByKey = new Dictionary<Key, Profile.Rice.Entry>();
         foreach (var entry in enabled)
         {
@@ -40,7 +38,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             }
         }
 
-        // Removed桶 (in BaseLock, not in Setup) are simply not migrated — nothing to do.
+        // NOTE: Removed 桶（BaseLock 有、Setup 无）不迁移——无事可做。
 
         // NOTE: floating 解析的 filter 只依赖 platform(Version/Loader)，不依赖 deploy options——
         //  options 变更走 Verify(重部署门)，不在这里触发 floating 重解析。
@@ -49,7 +47,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         var result = new List<LockData.LockedPackage>();
         var toResolve = new List<Profile.Rice.Entry>();
 
-        // Steps 2 & 3: per-package resolved validity + offline rule recompute for matched.
+        // NOTE: Steps 2 & 3——逐包判定已解析有效性 + 对匹配项离线重算规则。
         var matchedKeys = setupByKey.Keys.Intersect(baseByKey.Keys).ToList();
         foreach (var key in matchedKeys)
         {
@@ -58,9 +56,8 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
             var parsed = PackageHelper.Parse(entry.Pref);
             var floating = parsed.Version == null;
-            // Floating prefs invalidate when the platform/options fingerprint changed (the
-            // resolution was filter-dependent). Fixed prefs keep their vid unless the user
-            // explicitly repinned it (vid differs from the locked one) — honoring intent.
+            // NOTE: floating pref 在 platform/options fingerprint 变化时失效（解析依赖 filter）；
+            //  fixed pref 保持 vid，除非用户显式重钉（vid 与锁定不同）——尊重意图。
             var resolvedInvalid = floating
                                       ? platformChanged
                                       : !string.Equals(parsed.Version,
@@ -68,25 +65,25 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
                                                        StringComparison.InvariantCulture);
             if (resolvedInvalid)
             {
-                // filter/策略变了，或用户重定了固定版本 → 重新解析
+                // NOTE: filter/策略变化或用户重定固定版本 → 重新解析。
                 toResolve.Add(entry);
             }
             else
             {
                 var rule = planner.EvaluateRule(entry, locked.Resolved, rules);
-                // Only FlattenPackages arbitrates SuppressedBy; reset on match so a loser that
-                // later becomes the sole occupant is reactivated without a stale winner pointer.
+                // NOTE: SuppressedBy 只由 FlattenPackages 仲裁；此处匹配时重置，
+                //  使后来成为唯一占位的输家被重新激活，不留过期赢家指针。
                 result.Add(locked with { Pref = entry.Pref, Source = entry.Source, Rule = rule, SuppressedBy = null });
             }
         }
 
-        // Added桶: Setup 有、BaseLock 无 → 解析
+        // NOTE: Added 桶——Setup 有、BaseLock 无 → 解析。
         foreach (var key in setupByKey.Keys.Except(baseByKey.Keys))
         {
             toResolve.Add(setupByKey[key]);
         }
 
-        // Step 4: resolve (network) the invalid + added entries, then assemble.
+        // NOTE: Step 4——解析（网络）无效项与新增项，然后组装。
         if (toResolve.Count > 0)
         {
             var resolved = await planner.ResolveAsync(toResolve, filter).ConfigureAwait(false);

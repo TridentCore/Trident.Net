@@ -229,7 +229,7 @@ public static class CurseForgeHelper
 
     public static int ComputeFingerprint(ReadOnlyMemory<byte> content)
     {
-        // 使用 MurmurHash2，基于种子 1，忽略空白字符
+        // NOTE: 用 MurmurHash2（种子 1），忽略空白字符。
 
         var span = content.Span;
 

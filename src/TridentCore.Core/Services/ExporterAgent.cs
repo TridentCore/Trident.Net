@@ -21,7 +21,7 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         {
             if (profileManager.TryGetImmutable(key, out var profile))
             {
-                // Exporter 会直接对 Profile 进行修改，所以必须 clone 避免影响原始数据。
+                // NOTE: Exporter 会直接改 Profile，必须 clone 以免影响原始数据。
                 profile = profile.Clone();
 
                 if (options.ExcludedTags.Count > 0)
@@ -46,8 +46,7 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
 
     public async Task PackCompressedAsync(Stream writer, PackedProfileContainer container)
     {
-        // 如果 import 内有同名的会选择替换掉 Files 列表的项目
-        // Attachments > import > Files
+        // NOTE: 优先级 Attachments > import > Files——import 内同名项替换 Files 列表项目。
 
         var added = new HashSet<string>();
         await using var zip = new ZipArchive(writer, ZipArchiveMode.Create, true);
@@ -97,13 +96,13 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             var relative = rel.Replace('\\', '/');
             if (added.Contains(relative))
             {
-                // 被 import 内的项目替代
+                // NOTE: 被 import 内的项目替代。
                 continue;
             }
 
             if (!File.Exists(abs))
             {
-                // 文件不存在直接报错
+                // NOTE: 文件不存在直接报错。
                 throw new FileNotFoundException(abs);
             }
 
