@@ -13,4 +13,8 @@ public record Exhibit(
     IReadOnlyList<string> Tags,
     Uri Reference,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Exhibit.CompatibilityData Compatibility)
+{
+    public record CompatibilityData(IReadOnlyList<string> Loaders, IReadOnlyList<string> Versions);
+}

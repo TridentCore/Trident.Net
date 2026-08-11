@@ -172,7 +172,22 @@ public static class CurseForgeHelper
             mod.Links.WebsiteUrl
          ?? new Uri(PROJECT_URL.Replace("{0}", ResourceKindToUrlKind(ClassIdToResourceKind(mod.ClassId)))),
             mod.DateCreated,
-            mod.DateModified);
+            mod.DateModified,
+            new(LoadersOf(mod), VersionsOf(mod)));
+
+    // NOTE: CF 的 GameVersions 把加载器名和游戏版本混在一个数组里，与 ToRequirement 同一套分流逻辑。
+    //  LatestFiles 只覆盖最近文件，版本概要是近似值，非全历史并集；且 CF 的 "Latest" 名不副实——
+    //  其缓存可滞后数月（见 CurseForgeRepository.ResolveAsync 注释），LatestFiles 顺序亦不保证。
+    private static IReadOnlyList<string> LoadersOf(ModInfo mod) =>
+        [.. mod.LatestFiles.SelectMany(x => x.GameVersions)
+                           .Where(x => LoaderMappings.ContainsKey(x) && x != "Any")
+                           .Select(x => LoaderMappings[x])
+                           .Distinct()];
+
+    private static IReadOnlyList<string> VersionsOf(ModInfo mod) =>
+        [.. mod.LatestFiles.SelectMany(x => x.GameVersions)
+                           .Where(x => x != "Client" && x != "Server" && !LoaderMappings.ContainsKey(x))
+                           .Distinct()];
 
     public static Package ToPackage(string label, ModInfo mod, FileInfo file) =>
         new(label,

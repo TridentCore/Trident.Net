@@ -117,7 +117,13 @@ public static class ModrinthHelper
             hit.Categories,
             new(OFFICIAL_PROJECT_URL.Replace("{0}", hit.ProjectType).Replace("{1}", hit.Slug)),
             hit.DateCreated,
-            hit.DateModified);
+            hit.DateModified,
+            new(hit.Categories.Select(x => ModloaderMappings.GetValueOrDefault(x))
+                          .Where(x => x != null)
+                          .Select(x => x!)
+                          .Distinct()
+                          .ToArray(),
+                [.. hit.Versions]));
 
     public static Version ToVersion(string label, VersionInfo version) =>
         new(label,
