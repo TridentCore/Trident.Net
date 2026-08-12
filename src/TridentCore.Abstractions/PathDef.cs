@@ -18,15 +18,13 @@ public class PathDef
 
     public static readonly PlatformNames TridentNames = new("trident", "Trident", "dev.dearain.trident");
 
-    private static PlatformNames? _brandNames;
-
     public static PlatformNames BrandNames
     {
         get =>
-            _brandNames
+            field
          ?? throw new
                 InvalidOperationException("PathDef.BrandNames has not been configured. Set it at application startup.");
-        set => _brandNames = value;
+        set;
     }
 
     private static string BrandFolder => BrandNames.Current;
@@ -132,7 +130,7 @@ public class PathDef
 
     #endregion
 
-    #region System paths
+    #region System Paths
 
     private static string SystemDataPath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), TridentNames.Current);
@@ -169,7 +167,7 @@ public class PathDef
 
     #endregion
 
-    #region Home locator
+    #region Home Locator
 
     private static string FallbackHome => Path.Combine(USER_PROFILE, ".trident");
 
