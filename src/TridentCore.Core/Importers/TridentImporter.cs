@@ -12,6 +12,9 @@ public class TridentImporter : IProfileImporter
     private static string IndexFileName => "trident.index.json";
     private static string OptionsFileName => "trident.options.json";
     private static string OverridesDirectoryName => "import";
+    // NOTE: 整合包注入这两个 key 即可执行任意程序或劫持 Java 运行时，导入时无条件剔除。
+    private static readonly FrozenSet<string> UNSAFE_OVERRIDE_KEYS =
+        new[] { Profile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER, Profile.OVERRIDE_JAVA_HOME }.ToFrozenSet();
 
     #region IProfileImporter Members
 
@@ -40,11 +43,11 @@ public class TridentImporter : IProfileImporter
             throw new FormatException($"{OptionsFileName} is not a valid manifest");
         }
 
-        // NOTE: 导入时对 index 应用 options——缺失的导出 Override 忽略，明确不导出的 Override 移除。
-        var overrideKeySet = options.IncludedOverrides.Where(x => !x.Enabled).Select(x => x.Key).ToFrozenSet();
+        // 导入是不可信输入，只接受导出端明确启用的 Override。
+        var included = options.IncludedOverrides.Where(x => x.Enabled).Select(x => x.Key).ToFrozenSet();
         foreach (var key in index.Overrides.Keys)
         {
-            if (!overrideKeySet.Contains(key))
+            if (!included.Contains(key) || UNSAFE_OVERRIDE_KEYS.Contains(key))
             {
                 index.RemoveOverride(key);
             }
