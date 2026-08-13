@@ -16,8 +16,18 @@ public static class PackagePathHelper
         var actual = normalizing
                          ? string.Concat(FileHelper.Sanitize(projectName), Path.GetExtension(fileName))
                          : fileName;
-        return destination is not null
-                   ? Path.Combine(destination, actual)
-                   : Path.Combine(FileHelper.GetAssetFolderName(kind), actual);
+        if (destination is null)
+        {
+            return Path.Combine(FileHelper.GetAssetFolderName(kind), actual);
+        }
+
+        // NOTE: destination 来自整合包规则，必须相对且不含父目录引用，否则可在 build 外放置文件。
+        if (Path.IsPathRooted(destination)
+            || destination.Split('/', '\\').Any(x => x is ".." or "."))
+        {
+            throw new InvalidOperationException($"Unsafe package destination '{destination}'.");
+        }
+
+        return Path.Combine(destination, actual);
     }
 }

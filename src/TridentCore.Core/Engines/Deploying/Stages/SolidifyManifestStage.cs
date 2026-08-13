@@ -40,7 +40,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
             }
             else
             {
-                files.Add(fragile);
+                throw new InvalidOperationException(
+                    $"Package target '{fragile.TargetPath}' escapes the build directory.");
             }
         }
 
@@ -346,6 +347,11 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                         nested && !string.IsNullOrEmpty(rootDir)
                                             ? entry.FullName[(rootDir.Length + 1)..]
                                             : entry.FullName);
+                if (!FileHelper.IsInDirectory(path, explosive.TargetDirectory))
+                {
+                    throw new InvalidDataException(
+                        $"Native archive entry '{entry.FullName}' escapes the extraction root.");
+                }
                 // NOTE: 跳过空文件与空目录（Length == 0 同理）。
                 if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) < entry.LastWriteTime.UtcDateTime)
                 {

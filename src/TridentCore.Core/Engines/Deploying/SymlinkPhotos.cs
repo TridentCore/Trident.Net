@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using TridentCore.Core.Exceptions;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying;
 
@@ -87,6 +88,10 @@ public class SymlinkPhotos : Collection<SymlinkPhotos.Entity>
 
         foreach (var remain in entities)
         {
+            if (!FileHelper.IsInDirectory(remain.Path, directory))
+            {
+                throw new InvalidOperationException($"Refusing to create a link outside {directory}: {remain.Path}");
+            }
             var dir = Path.GetDirectoryName(remain.Path);
             if (dir != null && !Directory.Exists(dir))
             {
