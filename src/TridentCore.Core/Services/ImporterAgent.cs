@@ -1,5 +1,6 @@
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Importers;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Services;
 
@@ -29,6 +30,14 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
         IReadOnlyList<(string Source, string Target)> files,
         CompressedProfilePack pack)
     {
+        foreach (var (_, target) in files)
+        {
+            if (!FileHelper.IsInDirectory(Path.Combine(baseDir, target), baseDir))
+            {
+                throw new InvalidDataException($"Archive entry '{target}' escapes the extraction root.");
+            }
+        }
+
         foreach (var (source, target) in files)
         {
             var to = Path.Combine(baseDir, target);

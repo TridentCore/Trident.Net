@@ -57,6 +57,11 @@ public static class FileHelper
         {
             sanitized = sanitized.Replace("__", "_");
         }
+        // NOTE: `.`/`..` 作为完整文件名会被解析为当前/父目录，拼路径时构成穿越，归一化为占位。
+        if (sanitized is "." or "..")
+        {
+            sanitized = "_";
+        }
 
         return sanitized;
     }
