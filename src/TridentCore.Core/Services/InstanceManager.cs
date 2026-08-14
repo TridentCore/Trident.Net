@@ -559,11 +559,14 @@ public class InstanceManager(
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
         var importDir = PathDef.Default.DirectoryOfImport(key);
-        var buildDir = PathDef.Default.DirectoryOfBuild(key);
-        if (!Directory.Exists(importDir) || !Directory.Exists(buildDir))
+        // NOTE: 只要求 import/ 存在——build/ 是 deploy 的产物，未启动过的实例没有它，
+        //  Phase 2 对缺失的 build 逐文件 File.Exists 跳过，天然 no-op。
+        if (!Directory.Exists(importDir))
         {
+            logger.LogWarning("Update of {key} skipped: the instance has no import directory", key);
             return;
         }
+        var buildDir = PathDef.Default.DirectoryOfBuild(key);
 
         var token = tracker.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
