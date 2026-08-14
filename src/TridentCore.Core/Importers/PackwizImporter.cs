@@ -59,10 +59,9 @@ public class PackwizImporter : IProfileImporter
                          .FileNames.Where(x => x.StartsWith(prefix, StringComparison.Ordinal))
                          .Select(x => (Source: x, Target: x[prefix.Length..]))
                          .Where(p => !string.IsNullOrEmpty(p.Target))
-                         .Where(p => !p.Target.EndsWith('/') && !p.Target.EndsWith('\\'))
                          .Where(p => p.Source != indexFullName && p.Source != indexTomlName)
                          .Where(p => !p.Target.EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase))
-                         .Where(p => !ZipArchiveHelper.InvalidNames.Contains(p.Target))
+                         .Where(p => ZipArchiveHelper.IsExtractableEntry(p.Target))
                          .Select(p => (p.Source, p.Target))
                          .ToList();
 

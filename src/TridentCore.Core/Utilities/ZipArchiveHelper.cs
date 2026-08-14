@@ -7,6 +7,9 @@ public static class ZipArchiveHelper
 {
     public static readonly string[] InvalidNames = ["", ".", ".."];
 
+    public static bool IsExtractableEntry(string name) =>
+        !name.EndsWith('/') && !name.EndsWith('\\') && !InvalidNames.Contains(name);
+
     /// <summary>
     ///     检查压缩包是否只有一个共同目录
     /// </summary>

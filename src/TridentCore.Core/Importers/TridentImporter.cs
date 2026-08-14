@@ -70,32 +70,6 @@ public class TridentImporter : IProfileImporter
             }
         }
 
-        var home = new List<string>();
-        if (pack.FileNames.Contains("README.md"))
-        {
-            home.Add("README.md");
-        }
-
-        if (pack.FileNames.Contains("CHANGELOG.md"))
-        {
-            home.Add("CHANGELOG.md");
-        }
-
-        if (pack.FileNames.Contains("LICENSE.txt"))
-        {
-            home.Add("LICENSE.txt");
-        }
-
-        foreach (var ext in FileHelper.SupportedBitmapExtensions)
-        {
-            var name = $"icon.{ext}";
-            if (pack.FileNames.Contains(name))
-            {
-                home.Add(name);
-                break;
-            }
-        }
-
         var container = new ImportedProfileContainer(index,
                                                      [
                                                          .. pack
@@ -104,11 +78,14 @@ public class TridentImporter : IProfileImporter
                                                                     && x != OverridesDirectoryName
                                                                     && x.Length > OverridesDirectoryName.Length + 1)
                                                            .Select(x => (x, x[(OverridesDirectoryName.Length + 1)..]))
-                                                           .Where(x => !x.Item2.EndsWith('/')
-                                                                    && !x.Item2.EndsWith('\\')
-                                                                    && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                                                           .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                                                      ],
-                                                     [.. home.Select(x => (x, x))],
+                                                     [
+                                                         ("README.md", "README.md"),
+                                                         ("CHANGELOG.md", "CHANGELOG.md"),
+                                                         ("LICENSE.txt", "LICENSE.txt"),
+                                                         .. FileHelper.SupportedBitmapExtensions.Select(ext => ($"icon.{ext}", $"icon.{ext}"))
+                                                     ],
                                                      null);
 
         return container;

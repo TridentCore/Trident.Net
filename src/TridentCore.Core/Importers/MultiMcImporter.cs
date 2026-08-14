@@ -61,9 +61,7 @@ public class MultiMcImporter : IProfileImporter
                                       && x != MultiMcHelper.PACK_MINECRAFT_DIR
                                       && x.Length > MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)
                              .Select(x => (x, x[(MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)..]))
-                             .Where(x => !x.Item2.EndsWith('/')
-                                      && !x.Item2.EndsWith('\\')
-                                      && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                             .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                              .ToList();
 
         return new(new()
@@ -72,7 +70,7 @@ public class MultiMcImporter : IProfileImporter
             Setup = new() { Version = mcVersion, Loader = loaderLurl, Packages = [] }
         },
                    importFileNames,
-                   [],
+                   [("pack.png", "icon.png")],
                    null);
     }
 

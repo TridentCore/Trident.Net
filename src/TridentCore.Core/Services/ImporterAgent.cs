@@ -19,18 +19,23 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 
     public async Task ExtractFilesAsync(string key, ImportedProfileContainer container, CompressedProfilePack pack)
     {
-        var importDir = PathDef.Default.DirectoryOfImport(key);
-        await ExtractFilesAsync(importDir, container.ImportFileNames, pack).ConfigureAwait(false);
-        var homeDir = PathDef.Default.DirectoryOfHome(key);
-        await ExtractFilesAsync(homeDir, container.HomeFileNames, pack).ConfigureAwait(false);
+        await ExtractToAsync(PathDef.Default.DirectoryOfImport(key), container.ImportFileNames, pack, CancellationToken.None)
+            .ConfigureAwait(false);
+        await ExtractToAsync(PathDef.Default.DirectoryOfHome(key), container.HomeFileNames, pack, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
-    private async Task ExtractFilesAsync(
+    // NOTE: importer 负责声明（包里应有什么、映射到哪），agent 负责现实（条目缺失就跳过），
+    //  这样声明可以无条件跟随格式规范书写，不必逐个检查存在性。
+    public async Task ExtractToAsync(
         string baseDir,
         IReadOnlyList<(string Source, string Target)> files,
-        CompressedProfilePack pack)
+        CompressedProfilePack pack,
+        CancellationToken token)
     {
-        foreach (var (_, target) in files)
+        var present = files.Where(f => pack.LengthOf(f.Source) is not null).ToList();
+
+        foreach (var (_, target) in present)
         {
             if (!FileHelper.IsInDirectory(Path.Combine(baseDir, target), baseDir))
             {
@@ -38,8 +43,9 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
             }
         }
 
-        foreach (var (source, target) in files)
+        foreach (var (source, target) in present)
         {
+            token.ThrowIfCancellationRequested();
             var to = Path.Combine(baseDir, target);
             var dir = Path.GetDirectoryName(to);
             if (dir != null && !Directory.Exists(dir))
@@ -49,8 +55,8 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 
             await using var fromStream = pack.Open(source);
             await using var file = new FileStream(to, FileMode.Create);
-            await fromStream.CopyToAsync(file).ConfigureAwait(false);
-            await file.FlushAsync().ConfigureAwait(false);
+            await fromStream.CopyToAsync(file, token).ConfigureAwait(false);
+            await file.FlushAsync(token).ConfigureAwait(false);
         }
     }
 }

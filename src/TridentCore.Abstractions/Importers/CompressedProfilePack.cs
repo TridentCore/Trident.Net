@@ -56,4 +56,6 @@ public class CompressedProfilePack : IDisposable
     public Stream Open(string fileName) =>
         _archive.GetEntry(fileName)?.Open()
      ?? throw new FileNotFoundException($"Entry '{fileName}' not found in the profile pack.");
+
+    public long? LengthOf(string fileName) => _archive.GetEntry(fileName)?.Length;
 }

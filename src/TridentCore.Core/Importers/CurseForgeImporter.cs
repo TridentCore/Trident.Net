@@ -87,9 +87,7 @@ public class CurseForgeImporter : IProfileImporter
                                   && x != manifest.Overrides
                                   && x.Length > manifest.Overrides.Length + 1)
                          .Select(x => (x, x[(manifest.Overrides.Length + 1)..]))
-                         .Where(x => !x.Item2.EndsWith('/')
-                                  && !x.Item2.EndsWith('\\')
-                                  && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                         .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                    ],
                    [],
                    pack.Reference?.Thumbnail);

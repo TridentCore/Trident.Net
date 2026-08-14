@@ -565,24 +565,87 @@ public class InstanceManager(
             return;
         }
 
-        // NOTE: import 是 build 里的实体（有则不管），更新时若不清除旧投影，重新部署不会覆盖/删除，更新就传不进去。
-        //  只删 import 拥有的实体，软链接（persist/package 赢下的路径）不动。
-        foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
+        var token = tracker.Token;
+        var homeDir = PathDef.Default.DirectoryOfHome(key);
+        var stagingDir = Path.Combine(homeDir, ".import.staging");
+        var liveBackupDir = Path.Combine(homeDir, ".live.backup");
+        var oldImportDir = Path.Combine(homeDir, ".import.old");
+        // Declared home files may be absent (Trident lists every icon extension); filter to those
+        // present so staging, validation, promotion, and rollback all share one consistent set.
+        var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
+
+        try
         {
-            var rel = Path.GetRelativePath(importDir, file);
-            var target = Path.Combine(buildDir, rel);
-            if (File.Exists(target) && File.ResolveLinkTarget(target, false) is null)
+            // Phase 1 — stage new import + home .tmp into disposable dirs, then validate lengths.
+            //  Cancel/fail here only touches staging; the live instance is untouched.
+            TryCleanup(stagingDir);
+            TryCleanup(liveBackupDir);
+            TryCleanup(oldImportDir);
+
+            var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
+            await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
+            await importers.ExtractToAsync(homeDir, homeTmp, pack, token).ConfigureAwait(false);
+            ValidateStaged(stagingDir, container.ImportFileNames, pack);
+            ValidateStaged(homeDir, homeTmp, pack);
+
+            // Phase 2 — back up old live (build projections of old import) before replacing anything.
+            // NOTE: deploy 只补缺失、不覆盖现存（保留玩家改动），所以旧 import 的 build 投影必须由 update 显式清，
+            //  不能丢给 deploy；备份是为了失败时把这些带玩家痕迹的 live 副本原样还原。
+            foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
             {
-                File.Delete(target);
+                token.ThrowIfCancellationRequested();
+                var rel = Path.GetRelativePath(importDir, file);
+                var live = Path.Combine(buildDir, rel);
+                if (!File.Exists(live) || File.ResolveLinkTarget(live, false) is not null)
+                {
+                    continue;
+                }
+
+                var backup = Path.Combine(liveBackupDir, rel);
+                Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                File.Move(live, backup);
+            }
+
+            // Phase 3 — commit: atomic dir swap + per-file .tmp promotion. Synchronous renames,
+            //  no cancellation window between them; a hard crash here is an accepted edge case.
+            Directory.Move(importDir, oldImportDir);
+            Directory.Move(stagingDir, importDir);
+            foreach (var (_, target) in presentHomeFiles)
+            {
+                File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
             }
         }
-
-        if (Directory.Exists(importDir))
+        catch
         {
-            Directory.Delete(importDir, true);
+            // best-effort rollback to the pre-update state; never let cleanup mask the original failure.
+            try
+            {
+                RestoreLive(liveBackupDir, buildDir);
+                if (Directory.Exists(oldImportDir))
+                {
+                    if (Directory.Exists(importDir))
+                    {
+                        Directory.Delete(importDir, true);
+                    }
+                    Directory.Move(oldImportDir, importDir);
+                }
+                foreach (var (_, target) in presentHomeFiles)
+                {
+                    File.Delete(Path.Combine(homeDir, target + ".tmp"));
+                }
+            }
+            catch (Exception rollbackEx)
+            {
+                logger.LogWarning(rollbackEx, "Update rollback for {key} left residual files", key);
+            }
+            TryCleanup(stagingDir);
+            TryCleanup(liveBackupDir);
+            throw;
         }
 
-        await importers.ExtractFilesAsync(key, container, pack).ConfigureAwait(false);
+        // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.
+        TryCleanup(liveBackupDir);
+        TryCleanup(oldImportDir);
 
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;
@@ -596,6 +659,64 @@ public class InstanceManager(
                               container.Profile.Overrides);
 
         logger.LogInformation("{key} updated", key);
+
+        void TryCleanup(string dir)
+        {
+            try
+            {
+                if (Directory.Exists(dir))
+                {
+                    Directory.Delete(dir, true);
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+
+        static void ValidateStaged(string baseDir, IReadOnlyList<(string Source, string Target)> files, CompressedProfilePack pack)
+        {
+            foreach (var (source, target) in files)
+            {
+                if (pack.LengthOf(source) is not { } expected)
+                {
+                    continue;
+                }
+
+                var staged = Path.Combine(baseDir, target);
+                if (!File.Exists(staged) || new FileInfo(staged).Length != expected)
+                {
+                    throw new InvalidDataException($"Staged file '{target}' is missing or truncated.");
+                }
+            }
+        }
+
+        static void RestoreLive(string backupDir, string buildDir)
+        {
+            if (!Directory.Exists(backupDir))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(backupDir, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    var rel = Path.GetRelativePath(backupDir, file);
+                    var live = Path.Combine(buildDir, rel);
+                    if (!File.Exists(live))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(live)!);
+                        File.Move(file, live);
+                    }
+                }
+                catch
+                {
+                    // best-effort: keep restoring the rest
+                }
+            }
+        }
     }
 
     private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)> DownloadAndImportPackageAsync(
@@ -620,7 +741,10 @@ public class InstanceManager(
         CompressedProfilePack pack = new(memory) { Reference = package };
         var container = await importers.ImportAsync(pack).ConfigureAwait(false);
 
-        if (container.IconUrl is not null)
+        // NOTE: 首次安装时实例目录尚未创建，EnumerateFiles 对缺失目录会抛异常。
+        var homeDir = PathDef.Default.DirectoryOfHome(key);
+        if (container.IconUrl is not null
+            && (!Directory.Exists(homeDir) || !Directory.EnumerateFiles(homeDir, "icon.*").Any()))
         {
             await ExtractIconFileAsync(key, container, client).ConfigureAwait(false);
         }

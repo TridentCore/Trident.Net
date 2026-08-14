@@ -122,20 +122,16 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
                          .FileNames
                          .Where(x => x.StartsWith("overrides") && x != "overrides" && x.Length > "overrides".Length + 1)
                          .Select(x => (x, x[("overrides".Length + 1)..]))
-                         .Where(x => !x.Item2.EndsWith('/')
-                                  && !x.Item2.EndsWith('\\')
-                                  && !ZipArchiveHelper.InvalidNames.Contains(x.Item2)),
+                         .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2)),
                        .. pack
                          .FileNames
                          .Where(x => x.StartsWith("client-overrides")
                                   && x != "client-overrides"
                                   && x.Length > "client-overrides".Length + 1)
                          .Select(x => (x, x[("client-overrides".Length + 1)..]))
-                         .Where(x => !x.Item2.EndsWith('/')
-                                  && !x.Item2.EndsWith('\\')
-                                  && !ZipArchiveHelper.InvalidNames.Contains(x.Item2))
+                         .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                    ],
-                   [],
+                   [("pack.png", "icon.png")],
                    pack.Reference?.Thumbnail);
     }
 
