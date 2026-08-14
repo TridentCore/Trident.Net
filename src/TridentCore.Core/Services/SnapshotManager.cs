@@ -45,7 +45,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                                 continue;
                                             }
 
-                                            foreach (var file in directory.EnumerateFiles("*.*",
+                                            foreach (var file in directory.EnumerateFiles("*",
                                                          SearchOption.AllDirectories))
                                             {
                                                 await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
@@ -202,6 +202,10 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                      token.ThrowIfCancellationRequested();
 
                     var home = PathDef.Default.DirectoryOfHome(key);
+                    // NOTE: GetReferences 对不存在的快照返回空表而非抛错；不先校验，空表会让「未引用→删除」的
+                    //  还原语义静默清空 import/persist。
+                    _ = store.GetSnapshot(snapshotId)
+                        ?? throw new InvalidOperationException($"Snapshot {snapshotId} not found");
                     var references = store.GetReferences(snapshotId);
                     var refByPath = references.ToDictionary(x => x.RelativePath, FileHelper.PathComparer);
                     var processed = 0;
