@@ -1,0 +1,8 @@
+<Project>
+
+    <!-- Match Polymerium's Release spec: no pdbs in release output -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+
+</Project>
