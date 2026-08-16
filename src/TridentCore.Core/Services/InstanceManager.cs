@@ -212,7 +212,6 @@ public class InstanceManager(
                                       new()
                                       {
                                           FastMode = options.FastMode,
-                                          ResolveDependency = options.ResolveDependency,
                                           FullCheckMode = options.FullCheckMode
                                       },
                                       HashHelper.ComputeObjectHash(options),

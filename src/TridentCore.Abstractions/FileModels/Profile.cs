@@ -14,7 +14,6 @@ public class Profile
     public const string OVERRIDE_WINDOW_TITLE = "window.title";
     public const string OVERRIDE_BEHAVIOR_DEPLOY_METHOD = "behavior.deploy.method";
     public const string OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE = "behavior.deploy.fastmode";
-    public const string OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY = "behavior.resolve.dependency";
     public const string OVERRIDE_BEHAVIOR_CONNECT_SERVER = "behavior.connect.address";
     public const string OVERRIDE_BEHAVIOR_COMMAND_WRAPPER = "behavior.command.wrapper";
     public const string OVERRIDE_MODPACK_NAME = "modpack.name";

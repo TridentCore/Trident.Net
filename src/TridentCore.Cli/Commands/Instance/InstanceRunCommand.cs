@@ -72,10 +72,6 @@ public class InstanceRunCommand(
                            ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
                                                   configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
                                                                     false)),
-                              settings.ResolveDependency
-                           ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
-                                                  configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_RESOLVE_DEPENDENCY,
-                                                                    false)),
                               settings.FullCheck);
 
         var locator = JavaHelper.MakeLocator(_ => settings.JavaHome
@@ -376,9 +372,6 @@ public class InstanceRunCommand(
 
         [CommandOption("--fast")]
         public bool? FastMode { get; set; }
-
-        [CommandOption("--resolve-dependency")]
-        public bool? ResolveDependency { get; set; }
 
         [CommandOption("--full-check")]
         public bool? FullCheck { get; set; }

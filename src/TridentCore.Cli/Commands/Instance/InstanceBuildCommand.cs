@@ -17,7 +17,6 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
                                 instance.Key,
                                 settings.Profile,
                                 settings.FastMode ?? false,
-                                settings.ResolveDependency ?? false,
                                 settings.FullCheck ?? false,
                                 settings.JavaHome)
                     .GetAwaiter()
@@ -40,9 +39,6 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
     {
         [CommandOption("--fast")]
         public bool? FastMode { get; set; }
-
-        [CommandOption("--resolve-dependency")]
-        public bool? ResolveDependency { get; set; }
 
         [CommandOption("--full-check")]
         public bool? FullCheck { get; set; }
