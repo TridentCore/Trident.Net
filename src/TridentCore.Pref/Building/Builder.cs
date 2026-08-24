@@ -5,6 +5,8 @@ namespace TridentCore.Pref.Building;
 
 public class Builder : IBuilder<string>
 {
+    public const string Scheme = "pref";
+
     public required string Repository { get; set; }
     public required string Identity { get; set; }
     public string? Namespace { get; set; }
@@ -25,7 +27,7 @@ public class Builder : IBuilder<string>
         ReadOnlySpan<(string, string?)> filters = default)
     {
         var builder = new StringBuilder();
-        builder.Append("pref://").Append(repository);
+        builder.Append(Scheme).Append("://").Append(repository);
         builder.Append(@namespace != null ? $"/{@namespace}/{identity}" : $"/{identity}");
         if (version != null)
         {

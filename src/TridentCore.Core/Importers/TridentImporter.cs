@@ -53,15 +53,6 @@ public class TridentImporter : IProfileImporter
             }
         }
 
-        if (!options.IncludingSource)
-        {
-            index.Setup.Source = null;
-            foreach (var entry in index.Setup.Packages)
-            {
-                entry.Source = null;
-            }
-        }
-
         if (!options.IncludingTags)
         {
             foreach (var entry in index.Setup.Packages)

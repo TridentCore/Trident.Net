@@ -55,7 +55,10 @@ public class CurseForgeImporter : IProfileImporter
             throw new FormatException($"{CurseForgeHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
         }
 
+        // NOTE: 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
+        //  包级改用整合包名 collection 分组，便于用户管理区分来源。
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
+        var packageSource = source ?? CollectionHelper.ToUri(manifest.Name);
         return new(new()
         {
             Name = manifest.Name,
@@ -75,7 +78,7 @@ public class CurseForgeImporter : IProfileImporter
                                                             null,
                                                             x.ProjectID.ToString(),
                                                             x.FileID.ToString()),
-                                   Source = source
+                                   Source = packageSource
                                })
                            ]
             }

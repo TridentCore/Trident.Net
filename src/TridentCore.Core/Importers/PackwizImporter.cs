@@ -25,6 +25,10 @@ public class PackwizImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
+        // NOTE: 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
+        //  包级改用整合包名 collection 分组，便于用户管理区分来源。
+        var packName = string.IsNullOrEmpty(manifest.Name) ? "Imported packwiz modpack" : manifest.Name;
+        var packageSource = source ?? CollectionHelper.ToUri(packName);
         var loader = manifest.Loader is { } l ? LoaderHelper.ToLurl(l.Identity, l.Version) : null;
 
         var packages = new List<Profile.Rice.Entry>();
@@ -50,7 +54,7 @@ public class PackwizImporter : IProfileImporter
                 continue;
             }
 
-            packages.Add(new() { Pref = pref, Enabled = true, Source = source });
+            packages.Add(new() { Pref = pref, Enabled = true, Source = packageSource });
         }
 
         var indexFullName = prefix + PackwizHelper.INDEX_FILE_NAME;
@@ -67,7 +71,7 @@ public class PackwizImporter : IProfileImporter
 
         return new(new()
         {
-            Name = string.IsNullOrEmpty(manifest.Name) ? "Imported packwiz modpack" : manifest.Name,
+            Name = packName,
             Setup = new()
             {
                 Source = source,

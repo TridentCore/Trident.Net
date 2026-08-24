@@ -15,7 +15,7 @@ public partial class Parser : IParser<string, PackageDescriptor>
     public PackageDescriptor Parse(string input)
     {
         // NOTE: 新 pref:// 格式：合规 URL（pref://repository/namespace?/identity@version?filters）
-        if (Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme == "pref")
+        if (Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme == Building.Builder.Scheme)
         {
             return ParsePref(uri);
         }

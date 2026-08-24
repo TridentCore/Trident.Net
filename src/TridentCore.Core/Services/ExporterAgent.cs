@@ -14,7 +14,8 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         string key,
         string name,
         string author,
-        string version)
+        string version,
+        Action<Profile>? purify = null)
     {
         var exporter = exporters.FirstOrDefault(x => x.Label == label);
         if (exporter is not null)
@@ -23,6 +24,10 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             {
                 // NOTE: Exporter 会直接改 Profile，必须 clone 以免影响原始数据。
                 profile = profile.Clone();
+
+                // NOTE: 给上层一个净化机会——宿主私有概念（如 recipe 分组）在进入导出前
+                //  转换为通用表示，消费者侧无需也无法解析。
+                purify?.Invoke(profile);
 
                 if (options.ExcludedTags.Count > 0)
                 {

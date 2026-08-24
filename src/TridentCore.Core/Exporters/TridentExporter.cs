@@ -6,8 +6,11 @@ using TridentCore.Abstractions;
 using TridentCore.Abstractions.Exporters;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.Repositories;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Engines.Deploying;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
+using TridentCore.Pref.Building;
 
 namespace TridentCore.Core.Exporters;
 
@@ -33,10 +36,37 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
 
         if (!pack.Options.IncludingSource)
         {
+            // NOTE: IncludingSource 语义是「不关联原始整合包」——只针对整合包型（pref://）来源：
+            //  剔除 setup 级引用；包级 pref 来源连同 SourceOrders 确定性映射为 collection，
+            //  使覆盖层叠（(Pref, Source) 身份 + 叠加优先级）在消费者侧原样存活。
             exported.Setup.Source = null;
+            var profileManager = serviceProvider.GetRequiredService<ProfileManager>();
+            var namesBySource = profileManager
+                               .Profiles.Select(x => (x.Item2.Setup.Source, x.Item2.Name))
+                               .Where(x => x.Source is not null)
+                               .DistinctBy(x => x.Source)
+                               .ToDictionary(x => x.Source!, x => x.Name);
+            string Sever(string? source)
+            {
+                // NOTE: 非 pref 戳（collection 等）不是整合包来源，原样保留。
+                if (source is null || !InternalUriHelper.IsKind(source, Builder.Scheme))
+                {
+                    return source!;
+                }
+
+                var fallback = PackageHelper.TryParse(source, out var id) ? id.Identity : source;
+                return CollectionHelper.ToUri(namesBySource.TryGetValue(source, out var name) ? name : fallback);
+            }
+
             foreach (var entry in exported.Setup.Packages)
             {
-                entry.Source = null;
+                entry.Source = Sever(entry.Source);
+            }
+
+            var orders = exported.Setup.SourceOrders;
+            for (var i = 0; i < orders.Count; i++)
+            {
+                orders[i] = Sever(orders[i]);
             }
         }
 
