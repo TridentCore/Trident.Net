@@ -55,7 +55,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
                 }
 
                 var fallback = PackageHelper.TryParse(source, out var id) ? id.Identity : source;
-                return CollectionHelper.ToUri(namesBySource.TryGetValue(source, out var name) ? name : fallback);
+                return CollectionHelper.ToUri(namesBySource.GetValueOrDefault(source, fallback));
             }
 
             foreach (var entry in exported.Setup.Packages)
