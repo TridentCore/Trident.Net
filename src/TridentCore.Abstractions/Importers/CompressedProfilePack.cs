@@ -7,7 +7,6 @@ public class CompressedProfilePack : IDisposable
 {
     private readonly ZipArchive _archive;
 
-    // NOTE: 实践中 input 应为 MemoryStream。
     public CompressedProfilePack(Stream input)
     {
         _archive = new(input, ZipArchiveMode.Read, false);
@@ -15,8 +14,8 @@ public class CompressedProfilePack : IDisposable
         RootPrefix = DetectRootPrefix(FileNames);
     }
 
-    // NOTE: null = 扁平归档；非 null = 单个顶层包装目录（如 codeload 的 "repo-sha/"），恒带尾斜杠。
-    //  原样暴露，由各导入器显式决定是否剥离。
+    // null = 扁平归档；非 null = 单个顶层包装目录（如 codeload 的 "repo-sha/"），恒带尾斜杠。
+    // 原样暴露，由各导入器显式决定是否剥离。
     public string? RootPrefix { get; }
 
     public IReadOnlyList<string> FileNames { get; }

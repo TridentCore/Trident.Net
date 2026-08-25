@@ -108,7 +108,7 @@ public class ProcessLoaderStage(
         }
 
         if (index.Tweakers != null)
-        // NOTE: 不确定列表多元素时如何添加——大胆估计不会多个。
+        // 不确定列表多元素时如何添加——大胆估计不会多个。
         {
             foreach (var tweaker in index.Tweakers)
             {
@@ -140,7 +140,7 @@ public class ProcessLoaderStage(
                       $"-Dforgewrapper.minecraft={PathDef.Default.FileOfLibrary(minecraft.Id.Namespace, minecraft.Id.Name, minecraft.Id.Version, minecraft.Id.Platform, minecraft.Id.Extension)}");
         }
 
-        // NOTE: 经拦截给 ForgeWrapper 注入主参数；找不到也不报错（报错需新异常类型，不值）。
+        // 经拦截给 ForgeWrapper 注入主参数；找不到也不报错（报错需新异常类型，不值）。
 
         working.MainClass = index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main";
     }

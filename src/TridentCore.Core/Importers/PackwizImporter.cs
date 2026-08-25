@@ -25,8 +25,8 @@ public class PackwizImporter : IProfileImporter
         }
 
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
-        // NOTE: 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
-        //  包级改用整合包名 collection 分组，便于用户管理区分来源。
+        // 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
+        // 包级改用整合包名 collection 分组，便于用户管理区分来源。
         var packName = string.IsNullOrEmpty(manifest.Name) ? "Imported packwiz modpack" : manifest.Name;
         var packageSource = source ?? CollectionHelper.ToUri(packName);
         var loader = manifest.Loader is { } l ? LoaderHelper.ToLurl(l.Identity, l.Version) : null;

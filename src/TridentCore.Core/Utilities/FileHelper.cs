@@ -35,7 +35,7 @@ public static class FileHelper
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }
 
-    // NOTE: Linux 默认大小写敏感；Windows/macOS 默认大小写不敏感但保留大小写，路径与名称比较随此。
+    // Linux 默认大小写敏感；Windows/macOS 默认大小写不敏感但保留大小写，路径与名称比较随此。
     private static readonly bool IsPathCaseSensitive = OperatingSystem.IsLinux();
 
     public static StringComparer PathComparer =>
@@ -57,7 +57,7 @@ public static class FileHelper
         {
             sanitized = sanitized.Replace("__", "_");
         }
-        // NOTE: `.`/`..` 作为完整文件名会被解析为当前/父目录，拼路径时构成穿越，归一化为占位。
+        // WARNING: `.`/`..` 作为完整文件名会被解析为当前/父目录，拼路径时构成穿越，归一化为占位。
         if (sanitized is "." or "..")
         {
             sanitized = "_";
@@ -111,7 +111,7 @@ public static class FileHelper
         INSPECTOR.Inspect(stream).ByFileExtension().OrderBy(x => -x.Points).Select(x => x.Extension).FirstOrDefault()
      ?? fallback;
 
-    // NOTE: Normalization below is lexical only. Path.GetFullPath neither resolves
+    // WARNING: Normalization below is lexical only. Path.GetFullPath neither resolves
     //  symbolic links nor knows about per-volume case sensitivity, and relative inputs
     //  resolve against the process working directory, so callers must supply absolute,
     //  already-resolved paths whenever those distinctions matter. Applies to the
@@ -216,7 +216,7 @@ public static class FileHelper
                 var computed = ComputeHash(reader, hash.Algorithm);
                 if (hash.Value.Equals(computed, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    // NOTE: 文件未变，写回修改时间避免下次重复检查。
+                    // 文件未变，写回修改时间避免下次重复检查。
                     if (modifiedTime.HasValue)
                     {
                         File.SetLastWriteTimeUtc(path, modifiedTime.Value.UtcDateTime);
@@ -225,11 +225,9 @@ public static class FileHelper
                     return true;
                 }
 
-                // NOTE: 提供了 hash 但未通过，判定失败。
                 return false;
             }
 
-            // NOTE: 文件已修改但未提供 hash，退化为存在性检验，直接通过。
             return true;
         }
 
@@ -286,7 +284,7 @@ public static class FileHelper
                     return reader.GetString();
                 default:
                     {
-                        // NOTE: JsonElement 兜底——Newtonsoft 用 JArray/JObject。
+                        // JsonElement 兜底——Newtonsoft 用 JArray/JObject。
                         using var document = JsonDocument.ParseValue(ref reader);
                         return document.RootElement.Clone();
                     }

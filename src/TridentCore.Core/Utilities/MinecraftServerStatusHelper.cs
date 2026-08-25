@@ -146,7 +146,7 @@ public static class MinecraftServerStatusHelper
         string? rawDescription = null;
         if (root.TryGetProperty("description", out var descriptionElement))
         {
-            // NOTE: Preserve the raw text component so a downstream Minecraft-text
+            // WARNING: Preserve the raw text component so a downstream Minecraft-text
             //  renderer can rebuild color/style instead of receiving a flattened string;
             //  a plain-string MOTD is returned as-is.
             rawDescription = descriptionElement.ValueKind switch

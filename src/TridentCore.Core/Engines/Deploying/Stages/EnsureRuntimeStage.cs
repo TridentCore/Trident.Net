@@ -53,9 +53,9 @@ public class EnsureRuntimeStage(
         Context.Runtime = new(major, files, links);
     }
 
-    // NOTE: 解析按主版本的运行时 manifest JSON。runtimes/{major}.json 的 sha1 与锁内指纹匹配时
-    //  返回缓存（离线快路径）；否则拉 Mojang 运行时索引、下载 manifest、按索引 sha1 校验、
-    //  持久化并记录指纹供下次使用。
+    // 解析按主版本的运行时 manifest JSON。runtimes/{major}.json 的 sha1 与锁内指纹匹配时
+    // 返回缓存（离线快路径）；否则拉 Mojang 运行时索引、下载 manifest、按索引 sha1 校验、
+    // 持久化并记录指纹供下次使用。
     private async Task<string?> LoadManifestAsync(uint major, CancellationToken token)
     {
         var path = PathDef.Default.FileOfRuntimeManifest(major);
@@ -158,7 +158,7 @@ public class EnsureRuntimeStage(
                         }
                     case "link":
                         {
-                            // NOTE: 目标解析到运行时目录之外且互相冲突，忽略链接。
+                            // 目标解析到运行时目录之外且互相冲突，忽略链接。
                             break;
                         }
                 }

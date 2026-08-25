@@ -22,11 +22,11 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
         {
             if (profileManager.TryGetImmutable(key, out var profile))
             {
-                // NOTE: Exporter 会直接改 Profile，必须 clone 以免影响原始数据。
+                // WARNING: Exporter 会直接改 Profile，必须 clone 以免影响原始数据。
                 profile = profile.Clone();
 
-                // NOTE: 给上层一个净化机会——宿主私有概念（如 recipe 分组）在进入导出前
-                //  转换为通用表示，消费者侧无需也无法解析。
+                // 给上层一个净化机会——宿主私有概念（如 recipe 分组）在进入导出前
+                // 转换为通用表示，消费者侧无需也无法解析。
                 purify?.Invoke(profile);
 
                 if (options.ExcludedTags.Count > 0)
@@ -51,7 +51,7 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
 
     public async Task PackCompressedAsync(Stream writer, PackedProfileContainer container)
     {
-        // NOTE: 优先级 Attachments > import > Files——import 内同名项替换 Files 列表项目。
+        // WARNING: 优先级 Attachments > import > Files——import 内同名项替换 Files 列表项目。
 
         var added = new HashSet<string>();
         await using var zip = new ZipArchive(writer, ZipArchiveMode.Create, true);
@@ -101,13 +101,11 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
             var relative = rel.Replace('\\', '/');
             if (added.Contains(relative))
             {
-                // NOTE: 被 import 内的项目替代。
                 continue;
             }
 
             if (!File.Exists(abs))
             {
-                // NOTE: 文件不存在直接报错。
                 throw new FileNotFoundException(abs);
             }
 

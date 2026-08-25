@@ -95,7 +95,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
                     pass = OS_FULL_STRING == os || OS_NAME_STRING == os;
                 }
 
-                // NOTE: arch 规则有意忽略（pass 不变）。
+                // arch 规则有意忽略（pass 不变）。
                 return y.Action == "allow" ? pass : !pass;
             });
             return rv;
@@ -112,7 +112,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
         {
             if (lib.Url != null)
             {
-                // NOTE: 旧式声明——直接带 Url，无需 downloads 表。
+                // 旧式声明——直接带 Url，无需 downloads 表。
                 libraries.AddLibraryPrismFlavor(lib.Name, lib.Url);
             }
             else if (lib.Downloads is { Artifact: { } artifact })
@@ -138,7 +138,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
             if (native is var (classifier, downloads))
             {
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
-                // NOTE: 假设 native 库本身没有 platform 字段，这是个大胆的假设！
+                // 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
                     libraries.AddLibrary($"{lib.Name}:{classifier}",
                                          download.Url,

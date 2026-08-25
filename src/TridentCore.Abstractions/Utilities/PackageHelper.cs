@@ -88,7 +88,7 @@ public static class PackageHelper
 
     public static string ToPref(PackageIdentifier id) => ToPref(id.Repository, id.Namespace, id.Identity, id.Version);
 
-    // NOTE: 旧 Purl 字符串能解析时归一化为新 pref:// 格式，否则原样返回——加载绝不因未识别值
+    // WARNING: 旧 Purl 字符串能解析时归一化为新 pref:// 格式，否则原样返回——加载绝不因未识别值
     //  抛异常。恒返回非 null 字符串（空输入得空串）。
     public static string SafeMigrate(string? value)
     {

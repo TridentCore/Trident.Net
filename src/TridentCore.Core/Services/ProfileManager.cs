@@ -124,14 +124,14 @@ public class ProfileManager : IDisposable
     public void Remove(string key)
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
-        // NOTE: 幂等语义。重复触发（连点删除）、并发移除、导航过期状态下 key 可能已不在，
+        // WARNING: 幂等语义。重复触发（连点删除）、并发移除、导航过期状态下 key 可能已不在，
         //  抛异常会冒泡到全局 Dispatcher handler 导致崩溃（POLYMERIUM-23）。删除一个不存在的东西视为已删除。
         if (handle is null)
         {
             return;
         }
 
-        // NOTE: 废掉 handle，避免外部仍握着的 ProfileGuard 在 Dispose/Notify 时写回 profile 或再发 ProfileUpdated。
+        // WARNING: 废掉 handle，避免外部仍握着的 ProfileGuard 在 Dispose/Notify 时写回 profile 或再发 ProfileUpdated。
         handle.IsActive = false;
         _profiles.Remove(handle);
 

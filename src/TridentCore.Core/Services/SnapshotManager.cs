@@ -202,7 +202,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                      token.ThrowIfCancellationRequested();
 
                     var home = PathDef.Default.DirectoryOfHome(key);
-                    // NOTE: GetReferences 对不存在的快照返回空表而非抛错；不先校验，空表会让「未引用→删除」的
+                    // WARNING: GetReferences 对不存在的快照返回空表而非抛错；不先校验，空表会让「未引用→删除」的
                     //  还原语义静默清空 import/persist。
                     _ = store.GetSnapshot(snapshotId)
                         ?? throw new InvalidOperationException($"Snapshot {snapshotId} not found");
@@ -211,7 +211,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                     var processed = 0;
                     var matched = new HashSet<string>(FileHelper.PathComparer);
 
-                    // NOTE: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
+                    // WARNING: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
                     //  只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
                     //  它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
                     //  投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。

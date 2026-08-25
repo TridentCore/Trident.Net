@@ -4,9 +4,9 @@ namespace TridentCore.Core.Engines.Deploying;
 
 public class EntityManifest
 {
-    // NOTE: 文件分类——Fragile：TargetPath+Url+Hash，下载到 Path 后软连到 TargetPath；
-    //  Persistent：Path+TargetPath，复制 Path 到 TargetPath，IsPhantom 只建软连接；
-    //  Present：Path+Url+Hash，下载到 Path；Explosive：解压到目标目录，IsDestructive 清空其余文件。
+    // 文件分类——Fragile：TargetPath+Url+Hash，下载到 Path 后软连到 TargetPath；
+    // Persistent：Path+TargetPath，复制 Path 到 TargetPath，IsPhantom 只建软连接；
+    // Present：Path+Url+Hash，下载到 Path；Explosive：解压到目标目录，IsDestructive 清空其余文件。
 
     public IList<FragileFile> FragileFiles { get; } = new List<FragileFile>();
     public IList<PersistentFile> PersistentFiles { get; } = new List<PersistentFile>();

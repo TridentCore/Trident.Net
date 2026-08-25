@@ -12,7 +12,7 @@ public class TridentImporter : IProfileImporter
     private static string IndexFileName => "trident.index.json";
     private static string OptionsFileName => "trident.options.json";
     private static string OverridesDirectoryName => "import";
-    // NOTE: 整合包注入这两个 key 即可执行任意程序或劫持 Java 运行时，导入时无条件剔除。
+    // WARNING: 整合包注入这两个 key 即可执行任意程序或劫持 Java 运行时，导入时无条件剔除。
     private static readonly FrozenSet<string> UNSAFE_OVERRIDE_KEYS =
         new[] { Profile.OVERRIDE_BEHAVIOR_COMMAND_WRAPPER, Profile.OVERRIDE_JAVA_HOME }.ToFrozenSet();
 
@@ -23,7 +23,7 @@ public class TridentImporter : IProfileImporter
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        // NOTE: 相关修复见 POLY-39（https://d3ara1n.atlassian.net/browse/POLY-39）。
+        // 相关修复见 POLY-39（https://d3ara1n.atlassian.net/browse/POLY-39）。
 
         await using var indexStream = pack.Open(IndexFileName);
         await using var optionsStream = pack.Open(OptionsFileName);

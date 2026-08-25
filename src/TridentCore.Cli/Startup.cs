@@ -76,9 +76,9 @@ public static class Startup
         services.AddDistributedMemoryCache();
         services.AddFusionCache().WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromDays(7));
 
-        // NOTE: AddAccountConfigurers depends on AddMicrosoft, AddXboxLive, AddMinecraft,
-        //       AddYggdrasil, and AddAuthlibInjector being registered first.
-        //       Do not reorder this chain without consulting the dependency graph.
+        // WARNING: AddAccountConfigurers depends on AddMicrosoft, AddXboxLive, AddMinecraft,
+        //  AddYggdrasil, and AddAuthlibInjector being registered first.
+        //  Do not reorder this chain without consulting the dependency graph.
         services
            .AddLifetimeRuntime()
            .AddPrismLauncher()

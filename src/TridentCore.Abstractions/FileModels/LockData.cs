@@ -4,8 +4,8 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Abstractions.FileModels;
 
-// NOTE: Version-locking source of truth——Platform 是声明意图（来自 Profile），Artifact 是平台计算的
-//  构建缓存（vanilla + loader），Packages 是解析并锁定的依赖。可跨机器迁移（无本地标识）。
+// Version-locking source of truth——Platform 是声明意图（来自 Profile），Artifact 是平台计算的
+// 构建缓存（vanilla + loader），Packages 是解析并锁定的依赖。可跨机器迁移（无本地标识）。
 public record LockData
 {
     public const int FORMAT = 2;
@@ -33,8 +33,8 @@ public record LockData
 
     #region Nested type: ArtifactData
 
-    // NOTE: 平台计算出的构建缓存（vanilla + loader 参数/库/assets）。随平台整体生灭：
-    //  平台匹配时原子迁移，不匹配时按步骤（先 vanilla 后 loader）重建。
+    // 平台计算出的构建缓存（vanilla + loader 参数/库/assets）。随平台整体生灭：
+    // 平台匹配时原子迁移，不匹配时按步骤（先 vanilla 后 loader）重建。
     public record ArtifactData(
         string MainClass,
         uint JavaMajorVersion,
@@ -72,7 +72,7 @@ public record LockData
 
     #region Nested type: PackageRule
 
-    // NOTE: 锁定时刻冻结的规则评估结果。按包存储，规则微调只重算受影响包、绝不重解析（
+    // WARNING: 锁定时刻冻结的规则评估结果。按包存储，规则微调只重算受影响包、绝不重解析（
     //  重解析会漂移 floating pref）。
     public record PackageRule(bool Skipping, string? Destination, bool Normalizing);
 
@@ -100,8 +100,8 @@ public record LockData
 
     #region Nested type: RuntimeData
 
-    // NOTE: 缓存在 runtimes/{major}.json 的运行时 manifest 指纹。EnsureRuntimeStage 凭 sha1 匹配
-    //  离线复用缓存而非每次部署都拉 Mojang 运行时索引。随 artifact 迁移：平台（Java 大版本）不变则原子迁移，变则重建。
+    // 缓存在 runtimes/{major}.json 的运行时 manifest 指纹。EnsureRuntimeStage 凭 sha1 匹配
+    // 离线复用缓存而非每次部署都拉 Mojang 运行时索引。随 artifact 迁移：平台（Java 大版本）不变则原子迁移，变则重建。
     public record RuntimeData(uint Major, string Sha1);
 
     #endregion

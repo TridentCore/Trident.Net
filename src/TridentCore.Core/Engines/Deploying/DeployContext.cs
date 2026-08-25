@@ -12,8 +12,8 @@ public class DeployContext(
     string priorityHash,
     JavaHomeLocatorDelegate javaHomeLocator)
 {
-    // NOTE: BaseLock 是磁盘锁的只读快照（缺失或旧 FORMAT=1 时为 null）；Lock 是本周期的产物。
-    //  阶段对照 BaseLock 判有效性并迁移/重建进 Lock。
+    // BaseLock 是磁盘锁的只读快照（缺失或旧 FORMAT=1 时为 null）；Lock 是本周期的产物。
+    // 阶段对照 BaseLock 判有效性并迁移/重建进 Lock。
     internal LockData? BaseLock;
     internal LockData Lock = null!;
     internal EntityManifest? Manifest;

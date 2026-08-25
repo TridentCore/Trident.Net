@@ -65,19 +65,19 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
             throw new FormatException($"{ModrinthHelper.PACK_INDEX_FILE_NAME} is not a valid manifest");
         }
 
-        // NOTE: loader 可选——整合包可不声明（vanilla），符合 Modrinth 格式。
+        // loader 可选——整合包可不声明（vanilla），符合 Modrinth 格式。
         var loader = TryExtractLoader(index.Dependencies, out var loaderInfo)
                          ? LoaderHelper.ToLurl(loaderInfo.Identity, loaderInfo.Version)
                          : null;
 
-        // NOTE: 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
-        //  包级改用整合包名 collection 分组，便于用户管理区分来源。
+        // 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
+        // 包级改用整合包名 collection 分组，便于用户管理区分来源。
         var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
         var packageSource = source ?? CollectionHelper.ToUri(index.Name);
 
-        // NOTE: 把所有文件的 downloads 展平成一次识别批，仓库层得以把同宿主 URL 折叠进
-        //  原生批端点（如整包 forgecdn 链接一次 GetFilesAsync）。每文件取仓库识别的首个
-        //  下载——保留作者源序。
+        // 把所有文件的 downloads 展平成一次识别批，仓库层得以把同宿主 URL 折叠进
+        // 原生批端点（如整包 forgecdn 链接一次 GetFilesAsync）。每文件取仓库识别的首个
+        // 下载——保留作者源序。
         var files = index.Files.Where(x => x.Env?.Client is not "unsupported").ToArray();
         var downloads = files.SelectMany(x => x.Downloads).Distinct().ToArray();
         var recognized = await repository.RecognizeBatchAsync(downloads).ConfigureAwait(false);

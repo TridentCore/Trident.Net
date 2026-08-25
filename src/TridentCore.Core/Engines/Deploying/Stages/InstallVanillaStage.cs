@@ -13,7 +13,7 @@ public class InstallVanillaStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        // NOTE: 缓存命中（平台未变且存在完整 artifact）→ 原子迁移。vanilla 与 loader 耦合
+        // WARNING: 缓存命中（平台未变且存在完整 artifact）→ 原子迁移。vanilla 与 loader 耦合
         //  （Forge 重写 args/mainClass），必须一起走。
         if (Context.BaseLock?.Platform == Context.Lock.Platform && Context.BaseLock.Artifact is { } cached)
         {
@@ -42,7 +42,6 @@ public class InstallVanillaStage(
 
         logger.LogInformation("Libraries added, refer to artifact file for details");
 
-        // NOTE: Main Jar 也作为 Library 加入。
         if (version.MainJar is { Name: { } name, Downloads.Artifact: { } artifact })
         {
             libraries.AddLibrary(name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
@@ -73,7 +72,7 @@ public class InstallVanillaStage(
         }
 
         javaArguments.AddRange([
-            // NOTE: 版本文件不再提供，这里手动生成；logging 段省略。
+            // 版本文件不再提供，这里手动生成；logging 段省略。
             "-Djava.library.path=${natives_directory}",
             "-DlibraryDirectory=${library_directory}",
             "-Djna.tmpdir=${natives_directory}",
@@ -110,7 +109,7 @@ public class InstallVanillaStage(
         var mainClass = version.MainClass ?? "net.minecraft.client.main.Main";
         logger.LogInformation("Set main class path to {mainClass}", mainClass);
 
-        // NOTE: authlib-injector 常驻磁盘，仅启动时经 -javaagent 激活。
+        // authlib-injector 常驻磁盘，仅启动时经 -javaagent 激活。
         var aiArtifact = await authlibInjectorService.GetLatestAsync(token).ConfigureAwait(false);
         var aiLibraryId = AuthlibInjectorService.LibraryIdentity(aiArtifact.Version);
         libraries.AddLibrary(new(aiLibraryId, aiArtifact.DownloadUrl, aiArtifact.Hash, false, false));

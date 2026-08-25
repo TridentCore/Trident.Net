@@ -25,8 +25,8 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
             .ConfigureAwait(false);
     }
 
-    // NOTE: importer 负责声明（包里应有什么、映射到哪），agent 负责现实（条目缺失就跳过），
-    //  这样声明可以无条件跟随格式规范书写，不必逐个检查存在性。
+    // importer 负责声明（包里应有什么、映射到哪），agent 负责现实（条目缺失就跳过），
+    // 这样声明可以无条件跟随格式规范书写，不必逐个检查存在性。
     public async Task ExtractToAsync(
         string baseDir,
         IReadOnlyList<(string Source, string Target)> files,

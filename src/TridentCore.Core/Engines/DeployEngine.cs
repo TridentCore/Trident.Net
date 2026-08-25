@@ -8,8 +8,8 @@ using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Engines;
 
-// NOTE: 固定线性管线——各阶段按序执行并自行（对照 BaseLock）决定迁移/重建/no-op。
-//  无状态机分支：DecideNext 已移除，改为静态 yield 序列。
+// 固定线性管线——各阶段按序执行并自行（对照 BaseLock）决定迁移/重建/no-op。
+// 无状态机分支：DecideNext 已移除，改为静态 yield 序列。
 public class DeployEngine(
     string key,
     Profile.Rice setup,
@@ -73,7 +73,7 @@ public class DeployEngine(
 
         public void Dispose()
         {
-            // NOTE: 中断导致没有 MoveNext。
+            // WARNING: 中断导致没有 MoveNext。
             if (Current is IDisposableLifetime disposable)
             {
                 disposable.Dispose();

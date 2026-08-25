@@ -20,9 +20,9 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
         var filter = Filter.FromSetup(setup);
 
-        // NOTE: Step 1——按 (project, source) 身份做 diff。vid 有意忽略，fixed→floating 翻转仍能匹配
-        //  并继承已锁解析；含 source 使同项目来自不同层（整合包/手动/recipe）各自存活到
-        //  FlattenPackages，由它按叠加优先级裁决同目标冲突。
+        // Step 1——按 (project, source) 身份做 diff。vid 有意忽略，fixed→floating 翻转仍能匹配
+        // 并继承已锁解析；含 source 使同项目来自不同层（整合包/手动/recipe）各自存活到
+        // FlattenPackages，由它按叠加优先级裁决同目标冲突。
         var setupByKey = new Dictionary<Key, Profile.Rice.Entry>();
         foreach (var entry in enabled)
         {
@@ -38,7 +38,6 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             }
         }
 
-        // NOTE: Removed 桶（BaseLock 有、Setup 无）不迁移——无事可做。
 
         // NOTE: floating 解析的 filter 只依赖 platform(Version/Loader)，不依赖 deploy options——
         //  options 变更走 Verify(重部署门)，不在这里触发 floating 重解析。
@@ -47,7 +46,6 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
         var result = new List<LockData.LockedPackage>();
         var toResolve = new List<Profile.Rice.Entry>();
 
-        // NOTE: Steps 2 & 3——逐包判定已解析有效性 + 对匹配项离线重算规则。
         var matchedKeys = setupByKey.Keys.Intersect(baseByKey.Keys).ToList();
         foreach (var key in matchedKeys)
         {
@@ -65,7 +63,6 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
                                                        StringComparison.InvariantCulture);
             if (resolvedInvalid)
             {
-                // NOTE: filter/策略变化或用户重定固定版本 → 重新解析。
                 toResolve.Add(entry);
             }
             else
@@ -77,13 +74,11 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             }
         }
 
-        // NOTE: Added 桶——Setup 有、BaseLock 无 → 解析。
         foreach (var key in setupByKey.Keys.Except(baseByKey.Keys))
         {
             toResolve.Add(setupByKey[key]);
         }
 
-        // NOTE: Step 4——解析（网络）无效项与新增项，然后组装。
         if (toResolve.Count > 0)
         {
             var resolved = await planner.ResolveAsync(toResolve, filter).ConfigureAwait(false);

@@ -160,8 +160,8 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                     }
                                 case EntityManifest.PersistentFile persistent:
                                     {
-                                        // NOTE: 虚文件（如持久化功能）在创建软链接前先确保目标不是既有 Symlink；
-                                        //  非虚文件策略更简单——无则复制，有则不管。
+                                        // 虚文件（如持久化功能）在创建软链接前先确保目标不是既有 Symlink；
+                                        // 非虚文件策略更简单——无则复制，有则不管。
                                         if (persistent.IsPhantom)
                                         {
                                             if (persistent.IsDirectory)
@@ -177,7 +177,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                 if (Directory.Exists(persistent.TargetPath)
                                                  && Directory.ResolveLinkTarget(persistent.TargetPath, false) is null)
                                                 {
-                                                    // NOTE: 目标位是目录时先反向同步文件、替换同名，再创建链接。
+                                                    // WARNING: 目标位是目录时先反向同步文件、替换同名，再创建链接。
                                                     var dirs = new Queue<string>();
                                                     var toClean = new Stack<string>();
                                                     toClean.Push(persistent.TargetPath);
@@ -210,7 +210,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
 
                                                     foreach (var dir in toClean)
                                                     {
-                                                        // NOTE: 关掉递归，以此确认上述算法无问题。
+                                                        // WARNING: 关掉递归，以此确认上述算法无问题。
                                                         Directory.Delete(dir, false);
                                                     }
                                                 }
@@ -219,7 +219,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                             }
                                             else
                                             {
-                                                // NOTE: 部分模组更新是 Delete-Create 而非 Open-Overwrite，
+                                                // WARNING: 部分模组更新是 Delete-Create 而非 Open-Overwrite，
                                                 //  会删掉软链接；如此写入会让 build/ 的反向同步反过来影响 live/。
 
                                                 if (File.Exists(persistent.TargetPath)
@@ -307,7 +307,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                         }
                         catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
                         {
-                            // NOTE: 源 Token 或级联 Token 取消触发。
                             throw;
                         }
                         catch (Exception ex)
@@ -352,7 +351,6 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                     throw new InvalidDataException(
                         $"Native archive entry '{entry.FullName}' escapes the extraction root.");
                 }
-                // NOTE: 跳过空文件与空目录（Length == 0 同理）。
                 if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) < entry.LastWriteTime.UtcDateTime)
                 {
                     var dir = Path.GetDirectoryName(path);

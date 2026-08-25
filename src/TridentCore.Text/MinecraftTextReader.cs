@@ -27,8 +27,8 @@ public static class MinecraftTextReader
 
     public static MinecraftText ParseLegacy(string? text) => ParseLegacy(text, MinecraftTextStyle.Default);
 
-    // NOTE: baseStyle is the starting point — used when a JSON component feeds its
-    //  already-resolved color/style in as the base for the § codes inside its text.
+    // baseStyle is the starting point — used when a JSON component feeds its
+    // already-resolved color/style in as the base for the § codes inside its text.
     public static MinecraftText ParseLegacy(string? text, MinecraftTextStyle baseStyle)
     {
         if (string.IsNullOrEmpty(text))
@@ -263,9 +263,9 @@ public static class MinecraftTextReader
             return;
         }
 
-        // NOTE: translate/keybind/score/selector/nbt need client language files or
-        //  server context the launcher does not have, so degrade to the most
-        //  readable literal the component still offers.
+        // translate/keybind/score/selector/nbt need client language files or
+        // server context the launcher does not have, so degrade to the most
+        // readable literal the component still offers.
         if (obj.TryGetProperty("fallback", out var fallbackEl) && fallbackEl.ValueKind == JsonValueKind.String)
         {
             AppendFormatted(runs, fallbackEl.GetString(), style);

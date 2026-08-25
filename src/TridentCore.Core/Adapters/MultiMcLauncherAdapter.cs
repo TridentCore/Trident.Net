@@ -12,8 +12,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
     private static readonly string[] IDENTIFIABLE_SUBDIRS = ["mods", "resourcepacks", "shaderpacks"];
     private static readonly string[] DEFAULT_RUNTIME_CANDIDATES = [".minecraft", "minecraft"];
 
-    // NOTE: MultiMC/PolyMC/PrismLauncher 共享同一实例格式（mmc-pack.json + instance.cfg + .minecraft/），
-    //  一个适配器服务两个品牌，仅数据目录名不同，按下文 kind 解析。
+    // MultiMC/PolyMC/PrismLauncher 共享同一实例格式（mmc-pack.json + instance.cfg + .minecraft/），
+    // 一个适配器服务两个品牌，仅数据目录名不同，按下文 kind 解析。
     public IReadOnlyList<LauncherKind> SupportedKinds { get; } = [LauncherKind.MultiMc, LauncherKind.PrismLauncher];
 
     public string? DefaultDataDirectory(LauncherKind kind) =>
@@ -38,7 +38,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         foreach (var instanceDir in Directory.EnumerateDirectories(instancesDir))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            // NOTE: 跳过 .tmp 等启动器内部/隐藏目录（PrismLauncher 会在 instances/ 下创建）。
+            // 跳过 .tmp 等启动器内部/隐藏目录（PrismLauncher 会在 instances/ 下创建）。
             if (Path.GetFileName(instanceDir).StartsWith('.'))
             {
                 continue;
@@ -134,8 +134,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         };
     }
 
-    // NOTE: instance.cfg 是 INI 式 key=value 文件；逐行读入查找表，名称与可能的
-    //  InstanceDir 覆盖一次读齐，无需第二遍。
+    // instance.cfg 是 INI 式 key=value 文件；逐行读入查找表，名称与可能的
+    // InstanceDir 覆盖一次读齐，无需第二遍。
     private static async Task<Dictionary<string, string>> ReadInstanceCfgAsync(
         string instanceDir,
         CancellationToken cancellationToken)
@@ -165,7 +165,6 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         }
         catch
         {
-            // NOTE: 尽力而为；调用方回退默认值。
         }
 
         return cfg;

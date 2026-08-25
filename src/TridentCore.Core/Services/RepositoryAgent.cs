@@ -20,9 +20,9 @@ public class RepositoryAgent
     private const int BATCH_CHUNK_SIZE = 256;
     private const int BATCH_CONCURRENCY = 4;
 
-    // NOTE: bounds how many source files are held in memory at once during identification.
-    //  Peak RSS is roughly this × average file size; the window exists so a multi-GB mod batch
-    //  never materializes all at once. Tune down for memory-constrained hosts.
+    // bounds how many source files are held in memory at once during identification.
+    // Peak RSS is roughly this × average file size; the window exists so a multi-GB mod batch
+    // never materializes all at once. Tune down for memory-constrained hosts.
     private const int IDENTIFY_READ_WINDOW = 32;
 
     private static readonly TimeSpan EXPIRED_IN = TimeSpan.FromDays(7);
@@ -145,16 +145,16 @@ public class RepositoryAgent
 
     public Task<Package> IdentifyAsync(string filePath)
     {
-        // NOTE: 文件不存在抛 IOException；文件过大致 IO/内存异常而闪退是预期内事件。
+        // 文件不存在抛 IOException；文件过大致 IO/内存异常而闪退是预期内事件。
         var content = File.ReadAllBytes(filePath);
         return IdentifyAsync(new ReadOnlyMemory<byte>(content));
     }
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
-        // NOTE: deliberately not cached, mirroring IdentifyAsync. Recognition is a cheap
-        //  try-all-repos probe, and frequent misses (ResourceNotFoundException) while the user
-        //  is still typing must not be cached or logged as errors.
+        // deliberately not cached, mirroring IdentifyAsync. Recognition is a cheap
+        // try-all-repos probe, and frequent misses (ResourceNotFoundException) while the user
+        // is still typing must not be cached or logged as errors.
         foreach (var label in Labels)
         {
             try
@@ -230,7 +230,6 @@ public class RepositoryAgent
 
     public async Task<Package> IdentifyAsync(ReadOnlyMemory<byte> content)
     {
-        // NOTE: 不走缓存。
         foreach (var label in Labels)
         {
             try
@@ -245,7 +244,7 @@ public class RepositoryAgent
         throw new ResourceNotFoundException("No repository can identify the file");
     }
 
-    // NOTE: 按文件路径为键，调用方无需位置对齐即可关联结果。文件按 IDENTIFY_READ_WINDOW 窗口
+    // 按文件路径为键，调用方无需位置对齐即可关联结果。文件按 IDENTIFY_READ_WINDOW 窗口
     //  读取，每窗流入下方瀑布流，峰值内存与总批量大小无关。
     public async Task<IReadOnlyDictionary<string, Package?>> IdentifyBatchAsync(
         IEnumerable<string> filePaths,

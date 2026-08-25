@@ -106,7 +106,7 @@ public static class PackwizHelper
 
     public static bool IsServerOnly(TomlTable mod) => GetString(mod, "side") is "server";
 
-    // NOTE: GitHub Contents API 返回 base64 文件体，每 76 列换行。
+    // GitHub Contents API 返回 base64 文件体，每 76 列换行。
     public static string DecodeContent(FileContent file)
     {
         var raw = file.Content?.Replace("\n", string.Empty).Replace("\r", string.Empty) ?? string.Empty;

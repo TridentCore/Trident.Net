@@ -15,7 +15,7 @@ public class ReservedKey : IDisposable
     #region IDisposable Members
 
     public void Dispose() =>
-        // NOTE: 存在临界竞态可能，但概率很低。
+        // 存在临界竞态可能，但概率很低。
         _root.ReservedKeys.Remove(this);
 
     #endregion

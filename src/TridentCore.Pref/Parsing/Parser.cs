@@ -14,13 +14,11 @@ public partial class Parser : IParser<string, PackageDescriptor>
 
     public PackageDescriptor Parse(string input)
     {
-        // NOTE: 新 pref:// 格式：合规 URL（pref://repository/namespace?/identity@version?filters）
         if (Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme == Building.Builder.Scheme)
         {
             return ParsePref(uri);
         }
 
-        // NOTE: 旧 Purl 格式：label:namespace/identity@version#filter=value
         return ParseLegacy(input);
     }
 
@@ -40,7 +38,6 @@ public partial class Parser : IParser<string, PackageDescriptor>
             version = path[(at + 1)..];
         }
 
-        // NOTE: namespace/identity 的可选拆分。
         var slash = idPath.IndexOf('/');
         string? @namespace = null;
         string identity;

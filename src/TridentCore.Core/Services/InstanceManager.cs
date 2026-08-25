@@ -34,7 +34,7 @@ public class InstanceManager(
     IServiceProvider provider,
     IHttpClientFactory clientFactory)
 {
-    // NOTE: 主要在 UI 线程增删改查，实际无需线程同步。
+    // 主要在 UI 线程增删改查，实际无需线程同步。
     private readonly Dictionary<string, TrackerBase> _trackers = new();
     public event EventHandler<InstallTracker>? InstanceInstalling;
     public event EventHandler<UpdateTracker>? InstanceUpdating;
@@ -471,7 +471,7 @@ public class InstanceManager(
 
     public InstallTracker Install(string key, string label, string? ns, string pid, string? vid)
     {
-        // NOTE: 仅在线安装有 Tracker——离线导入无需等待，全在前端进行。
+        // 仅在线安装有 Tracker——离线导入无需等待，全在前端进行。
 
         var reserved = profileManager.RequestKey(key);
         var tracker = new InstallTracker(reserved.Key,
@@ -558,8 +558,8 @@ public class InstanceManager(
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
         var importDir = PathDef.Default.DirectoryOfImport(key);
-        // NOTE: 只要求 import/ 存在——build/ 是 deploy 的产物，未启动过的实例没有它，
-        //  Phase 2 对缺失的 build 逐文件 File.Exists 跳过，天然 no-op。
+        // 只要求 import/ 存在——build/ 是 deploy 的产物，未启动过的实例没有它，
+        // Phase 2 对缺失的 build 逐文件 File.Exists 跳过，天然 no-op。
         if (!Directory.Exists(importDir))
         {
             logger.LogWarning("Update of {key} skipped: the instance has no import directory", key);
@@ -743,7 +743,7 @@ public class InstanceManager(
         CompressedProfilePack pack = new(memory) { Reference = package };
         var container = await importers.ImportAsync(pack).ConfigureAwait(false);
 
-        // NOTE: 首次安装时实例目录尚未创建，EnumerateFiles 对缺失目录会抛异常。
+        // WARNING: 首次安装时实例目录尚未创建，EnumerateFiles 对缺失目录会抛异常。
         var homeDir = PathDef.Default.DirectoryOfHome(key);
         if (container.IconUrl is not null
             && (!Directory.Exists(homeDir) || !Directory.EnumerateFiles(homeDir, "icon.*").Any()))

@@ -27,7 +27,7 @@ public sealed class LifetimeServiceRuntime
                 skip = _started[i];
             }
 
-            // NOTE: _stopping is a one-way latch. Once shutdown has been requested the runtime
+            // WARNING: _stopping is a one-way latch. Once shutdown has been requested the runtime
             //  will not start any further services, so a slow Start can never block a Stop.
             if (abort)
             {

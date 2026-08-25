@@ -45,8 +45,8 @@ public static class LockDataExtensions
                                          self.Resolved.FileName,
                                          self.Resolved.Kind);
 
-    // NOTE: 可变列表式库累加，与平台计算 artifact 重建时的去重规则一致
-    //  （vanilla 与 loader 都会增量加库）。
+    // 可变列表式库累加，与平台计算 artifact 重建时的去重规则一致
+    // （vanilla 与 loader 都会增量加库）。
     public static void AddLibrary(this IList<LockData.Library> libs, LockData.Library library)
     {
         // NOTE: 允许仅 IsNative 不同的并存，不允许仅 IsPresent 不同的并存；IsPresent==true 优先。

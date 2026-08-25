@@ -5,16 +5,16 @@ using TridentCore.Core.Extensions;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// NOTE: 对 Lock.Packages 的两遍叠加仲裁，在 SyncPackages 让每个 (project, source) 存活后执行。
-//  两遍共用同一例程——找重复键、按 source 优先级选唯一赢家、抑制其余；同层平局不可解，抛
-//  PackageConflictException。
+// 对 Lock.Packages 的两遍叠加仲裁，在 SyncPackages 让每个 (project, source) 存活后执行。
+// 两遍共用同一例程——找重复键、按 source 优先级选唯一赢家、抑制其余；同层平局不可解，抛
+// PackageConflictException。
 //
-//  1. Project 遍（键 = label/ns/pid）：同一项目来自多个 source 时按优先级裁决，赢家物化，
-//     输家保持锁定（SuppressedBy 指向赢家），版本在将来重排后仍在而不重解析。
-//  2. Path 遍（键 = build 内 RelativeTarget）：不同项目落到同一文件时同样裁决。
+// 1. Project 遍（键 = label/ns/pid）：同一项目来自多个 source 时按优先级裁决，赢家物化，
+//    输家保持锁定（SuppressedBy 指向赢家），版本在将来重排后仍在而不重解析。
+// 2. Path 遍（键 = build 内 RelativeTarget）：不同项目落到同一文件时同样裁决。
 //
-//  仲裁是内部的：产出稳定的 Lock.Packages（赢家生效、输家标记）。唯一逃逸的是
-//  PackageConflictException——同层平局无法裁决时使部署失败，交由用户解决。
+// 仲裁是内部的：产出稳定的 Lock.Packages（赢家生效、输家标记）。唯一逃逸的是
+// PackageConflictException——同层平局无法裁决时使部署失败，交由用户解决。
 public class FlattenPackagesStage : StageBase
 {
     protected override Task OnProcessAsync(CancellationToken token)
@@ -35,7 +35,7 @@ public class FlattenPackagesStage : StageBase
         return Task.CompletedTask;
     }
 
-    // NOTE: 按键去重——单成员直通；多个按叠加优先级排序取顶（物化）、其余抑制；同层平局不可解。
+    // 按键去重——单成员直通；多个按叠加优先级排序取顶（物化）、其余抑制；同层平局不可解。
     private static List<LockData.LockedPackage> Arbitrate(
         IEnumerable<LockData.LockedPackage> items,
         Func<LockData.LockedPackage, string> keyOf,

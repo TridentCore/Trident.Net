@@ -3,8 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace TridentCore.Abstractions.Utilities;
 
-// NOTE: collection 是不依赖任何外部资源的就地分组——身份即集合名本身，by-name 段后是 URL 编码的名字，
-//  解码即用户可见组名。同名即同组（会合并），改名须重写组内所有 Entry 的 Source。
+// collection 是不依赖任何外部资源的就地分组——身份即集合名本身，by-name 段后是 URL 编码的名字，
+// 解码即用户可见组名。同名即同组（会合并），改名须重写组内所有 Entry 的 Source。
 public static class CollectionHelper
 {
     public const string SCHEME = "collection";

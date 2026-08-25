@@ -128,7 +128,7 @@ public static class JavaHelper
         {
             var dir = PathDef.Default.DirectoryOfRuntime(major);
 
-            // NOTE: macOS 的运行时在 .bundle 里，真实 java home 是
+            // WARNING: macOS 的运行时在 .bundle 里，真实 java home 是
             //  <dir>/jre.bundle/Contents/Home 而非 <dir> 本身。
             if (OperatingSystem.IsMacOS())
             {
@@ -140,7 +140,7 @@ public static class JavaHelper
                 }
             }
 
-            // NOTE: Windows/Linux 为扁平布局，<dir>/bin/java(.exe)。
+            // Windows/Linux 为扁平布局，<dir>/bin/java(.exe)。
             var path = Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java");
             if (File.Exists(path))
             {
@@ -264,7 +264,6 @@ public static class JavaHelper
             }
             catch
             {
-                // NOTE: 忽略清理失败，保留原始取消行为。
             }
 
             throw;
@@ -282,7 +281,6 @@ public static class JavaHelper
         }
         catch
         {
-            // NOTE: 尽力清理。
         }
     }
 
@@ -377,16 +375,16 @@ public static class JavaHelper
 
     public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
 
-    // NOTE: 定位到的 Java home 与其来源配对，部署管线据此区分用户配置的 JRE（不动）
-    //  与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
+    // 定位到的 Java home 与其来源配对，部署管线据此区分用户配置的 JRE（不动）
+    // 与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
     public record JavaResolution(string Home, JavaResolution.Source Origin)
     {
         public enum Source
         {
-            // NOTE: 用户显式配置且在盘——不校验、不修复。
+            // 用户显式配置且在盘——不校验、不修复。
             UserConfigured,
 
-            // NOTE: 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。
+            // 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。
             Bundled
         }
     }

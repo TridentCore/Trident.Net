@@ -50,14 +50,14 @@ public interface IModrinthClient
         uint? limit = null,
         uint? offset = null);
 
-    // NOTE: pinned to sha1 — the only call site (IdentifyAsync) hashes with SHA1. The API
+    // WARNING: pinned to sha1 — the only call site (IdentifyAsync) hashes with SHA1. The API
     //  auto-detects by hash length when omitted, but Refit always sends this default, so a
     //  sha512 hash would 404. Change the hashing call site before passing anything else.
     [Get("/v3/version_file/{hash}")]
     Task<VersionInfo> GetVersionFromHashAsync(string hash, [Query] string algorithm = "sha1");
 
-    // NOTE: POST /v3/version_files 接受至多 N 个 hash，返回按 hash 索引的映射；
-    //  algorithm 保持 sha1 以匹配 IdentifyAsync 的哈希方式。
+    // POST /v3/version_files 接受至多 N 个 hash，返回按 hash 索引的映射；
+    // algorithm 保持 sha1 以匹配 IdentifyAsync 的哈希方式。
     [Post("/v3/version_files")]
     Task<Dictionary<string, VersionInfo>> GetVersionsFromHashesAsync([Body] VersionFilesRequest request);
 }

@@ -19,7 +19,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
     private static string ArrayParameterConstructor(IEnumerable<string?> members) =>
         JsonSerializer.Serialize(members.Where(x => x is not null).ToArray());
 
-    // NOTE: v3 把 game_versions 等过滤并入 loader_fields（JSON 对象），无独立 game_versions
+    // WARNING: v3 把 game_versions 等过滤并入 loader_fields（JSON 对象），无独立 game_versions
     //  参数（v2 才有，容易踩坑）。
     private static string? BuildLoaderFields(params (string Key, string? Value)[] fields)
     {
@@ -159,7 +159,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
 
     public async Task<PackageIdentifier> RecognizeAsync(Uri uri, CancellationToken cancellationToken = default)
     {
-        // NOTE: CDN 直链——project/version id 在路径里，无需 API 调用。
+        // CDN 直链——project/version id 在路径里，无需 API 调用。
         if (uri.Host.EndsWith("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
         {
             if (!TryExtractCdnReference(uri, out var pid, out var vid))
@@ -256,7 +256,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return result.ToResult();
     }
 
-    // NOTE: cdn.modrinth.com/data/{projectId}/versions/{versionId}/filename.jar
     private static bool TryExtractCdnReference(Uri uri, out string? projectId, out string? versionId)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -272,7 +271,6 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         return false;
     }
 
-    // NOTE: modrinth.com/{type}/{slug} 与 modrinth.com/{type}/{slug}/version/{versionId}
     private static (string? Slug, string? Version) ExtractReference(Uri uri)
     {
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -564,7 +562,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                                                   BuildLoaderFields(("game_versions", filter.Version)))
                          .ConfigureAwait(false);
         var all = first.Select(x => ModrinthHelper.ToVersion(label, x)).ToList();
-        // NOTE: Modrinth 版本无法分页，只能过滤拉取全部后本地分页。
+        // Modrinth 版本无法分页，只能过滤拉取全部后本地分页。
         return new LocalPaginationHandle<Version>(all, PAGE_SIZE);
     }
 
