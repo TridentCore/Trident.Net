@@ -55,7 +55,15 @@ public class Profile
             }
 
             public required bool Enabled { get; set; }
-            public string? Source { get; set; }
+
+            // TODO (POLY-161): 临时消毒——CSV 清单往返曾把 null 洗成空串落盘，源头已在导入侧修复；
+            //  待存量 profile 经数个版本的加载-保存自行净化后，移除归一化恢复自动属性。
+            public string? Source
+            {
+                get;
+                set => field = string.IsNullOrEmpty(value) ? null : value;
+            }
+
             public IList<string> Tags { get; init; } = [];
         }
 
