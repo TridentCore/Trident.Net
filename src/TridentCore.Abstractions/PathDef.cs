@@ -69,12 +69,14 @@ public class PathDef
         Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
 
     public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
+    public string FileOfLaunchPlan(string key) => Path.Combine(InstanceDirectory, key, "launch", "data.plan.json");
     public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
     public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
     public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
     public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
+    public string DirectoryOfLaunch(string key) => Path.Combine(InstanceDirectory, key, "launch");
     public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
     public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");
@@ -108,13 +110,14 @@ public class PathDef
     public string FileOfLibrary(string ns, string name, string version, string? platform, string extension)
     {
         var nsDir = string.Join(Path.DirectorySeparatorChar, ns.Split('.'));
-        return Path.Combine(CacheLibraryDirectory,
-                            nsDir,
-                            name,
-                            version,
-                            platform != null
-                                ? $"{name}-{version}-{platform}.{extension}"
-                                : $"{name}-{version}.{extension}");
+        var path = Path.Combine(CacheLibraryDirectory,
+                                nsDir,
+                                name,
+                                version,
+                                platform != null
+                                    ? $"{name}-{version}-{platform}.{extension}"
+                                    : $"{name}-{version}.{extension}");
+        return EnsureInDirectory(path, CacheLibraryDirectory);
     }
 
     public string FileOfPackageObject(string label, string? ns, string pid, string vid, string extension) =>
@@ -122,11 +125,25 @@ public class PathDef
             ? Path.Combine(CachePackageDirectory, label, ns, pid, $"{vid}{extension}")
             : Path.Combine(CachePackageDirectory, label, pid, $"{vid}{extension}");
 
-    public string FileOfAssetIndex(string index) => Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json");
+    public string FileOfAssetIndex(string index) =>
+        EnsureInDirectory(Path.Combine(CacheAssetDirectory, "indexes", $"{index}.json"), CacheAssetDirectory);
 
     public string FileOfAssetObject(string hash) => Path.Combine(CacheAssetDirectory, "objects", hash[..2], hash);
 
     public string FileOfIconObject(string hash) => Path.Combine(CacheIconDirectory, hash[..2], hash);
+
+    private static string EnsureInDirectory(string path, string directory)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var fullDirectory = Path.GetFullPath(directory);
+        var relative = Path.GetRelativePath(fullDirectory, fullPath);
+        if (relative == ".." || relative.StartsWith($"..{Path.DirectorySeparatorChar}"))
+        {
+            throw new InvalidDataException($"Path '{path}' escapes its managed directory");
+        }
+
+        return fullPath;
+    }
 
     #endregion
 

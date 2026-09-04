@@ -6,7 +6,7 @@ using TridentCore.Abstractions.FileModels;
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
 // 加载磁盘锁作为只读 BaseLock，并以当前 platform + options 指纹种出新的 Lock。
-// 不判有效性——各下游阶段自行与 BaseLock 比较。文件缺失或旧格式（FORMAT<2）时
+// 不判有效性——各下游阶段自行与 BaseLock 比较。文件缺失或无法解析时
 // BaseLock = null，即一切重建（数据不丢：Profile 才是真源）。
 public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
 {
@@ -31,8 +31,7 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
             }
             catch (JsonException e)
             {
-                // 旧 FORMAT=1（或损坏）文件——与新结构不兼容。
-                logger.LogWarning("Lock unreadable (likely legacy format), rebuilding: {message}", e.Message);
+                logger.LogWarning("Lock unreadable, rebuilding: {message}", e.Message);
             }
             catch (Exception e)
             {
@@ -47,7 +46,7 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
         Context.Lock = new()
         {
             Platform = new(Context.Setup.Version, Context.Setup.Loader),
-            Viability = new(Context.OptionsHash, Context.PriorityHash)
+            Viability = new(Context.OptionsHash, Context.PriorityHash, Context.LaunchPlanHash)
         };
     }
 }

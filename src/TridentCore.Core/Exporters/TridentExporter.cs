@@ -134,6 +134,16 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
             container.Attachments.Add(Path.GetFileName(iconFile), icon);
         }
 
+        var launchDir = PathDef.Default.DirectoryOfLaunch(pack.Key);
+        if (Directory.Exists(launchDir))
+        {
+            foreach (var file in Directory.EnumerateFiles(launchDir, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(launchDir, file);
+                container.Files[Path.Combine("launch", relative)] = file;
+            }
+        }
+
         var index = new MemoryStream();
         await JsonSerializer.SerializeAsync(index, exported, FileHelper.SerializerOptions).ConfigureAwait(false);
         index.Position = 0;

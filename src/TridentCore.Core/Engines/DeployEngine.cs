@@ -5,6 +5,7 @@ using TridentCore.Abstractions.Reactive;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Engines.Deploying.Stages;
 using TridentCore.Core.Services.Instances;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines;
 
@@ -17,6 +18,7 @@ public class DeployEngine(
     DeployEngineOptions options,
     string optionsHash,
     string priorityHash,
+    LaunchPlanSnapshot? launchPlanSnapshot,
     JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
 {
     #region Nested type: DeployEngineEnumerator
@@ -26,8 +28,10 @@ public class DeployEngine(
         private static readonly Type[] SEQUENCE =
         [
             typeof(LoadLockStage),
+            typeof(LoadLaunchPlanStage),
             typeof(InstallVanillaStage),
             typeof(ProcessLoaderStage),
+            typeof(ResolveLaunchPlanStage),
             typeof(SyncPackagesStage),
             typeof(FlattenPackagesStage),
             typeof(EnsureRuntimeStage),
@@ -88,7 +92,7 @@ public class DeployEngine(
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, optionsHash, priorityHash, javaHomeLocator));
+        new DeployEngineEnumerator(new(key, setup, provider, options, optionsHash, priorityHash, launchPlanSnapshot, javaHomeLocator));
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

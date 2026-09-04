@@ -93,7 +93,8 @@ public class CurseForgeImporter : IProfileImporter
                          .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                    ],
                    [],
-                   pack.Reference?.Thumbnail);
+                   pack.Reference?.Thumbnail,
+                   []);
     }
 
     #endregion

@@ -68,9 +68,11 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 ├── instances/
 │   └── {key}/
 │       ├── profile.json     # declarative instance metadata
-│       ├── data.lock.json   # deployment lock data
+│       ├── data.lock.json   # disposable deployment snapshot
 │       ├── data.pack.json   # pack data
-│       ├── build/           # projected .minecraft output; also holds runtime mutations to imported content
+│       ├── launch/           # optional durable launch-plan overlays
+│       │   └── data.plan.json
+│       ├── build/            # projected .minecraft output; also holds runtime mutations to imported content
 │       ├── import/          # imported layer, usually from modpacks or exportable files
 │       └── persist/         # user-persistent data such as saves, screenshots, options.txt
 └── .trident.cli/
@@ -83,8 +85,10 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 
 - Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and
   runtime overrides.
-- Deploy: combines the profile, remote metadata, cached files, and local layers into `build/`, then writes
-  `data.lock.json`.
+- Launch plan: an optional durable startup overlay under `launch/data.plan.json`, applied after platform metadata and
+  loader processing.
+- Deploy: combines the profile, launch plan, remote metadata, cached files, and local layers into `build/`, then writes
+  the disposable `data.lock.json` snapshot.
 - Layer: `import/` stores modpack or exportable files (projected as real files into `build/` so the game reads them
   directly), and `persist/` stores user data (symlinked into `build/`). Runtime mutations to imported content land in
   `build/`.

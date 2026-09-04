@@ -100,14 +100,16 @@ public class InstanceManager(
 
         var path = PathDef.Default.FileOfLockData(key);
         var profile = profileManager.GetImmutable(key);
+        var launchPlanSnapshot = LaunchPlanSnapshot.LoadOrNull(key);
         if (deploy.FastMode && File.Exists(path))
         {
             var existing = JsonSerializer.Deserialize<LockData>(File.ReadAllText(path), JsonSerializerOptions.Web);
 
-            if (existing is { Artifact: not null }
+            if (existing is { LaunchPlan: not null }
              && existing.Verify(profile.Setup,
                                 ViabilityHashHelper.OptionsOf(deploy),
-                                ViabilityHashHelper.PriorityOf(profile.Setup)))
+                                ViabilityHashHelper.PriorityOf(profile.Setup),
+                                launchPlanSnapshot?.Hash))
             {
                 Launch(key, launch, javaHomeLocator);
                 return;
@@ -115,7 +117,7 @@ public class InstanceManager(
         }
 
         var tracker = new DeployTracker(key,
-                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
+                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator, launchPlanSnapshot)
                                                       .ConfigureAwait(false),
                                         t =>
                                         {
@@ -201,7 +203,8 @@ public class InstanceManager(
     private async Task DeployCoreAsync(
         DeployTracker tracker,
         DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator)
+        JavaHomeLocatorDelegate javaHomeLocator,
+        LaunchPlanSnapshot? launchPlanSnapshot = null)
     {
         logger.LogInformation("Begin deploy {}", tracker.Key);
 
@@ -216,6 +219,7 @@ public class InstanceManager(
                                       },
                                       HashHelper.ComputeObjectHash(options),
                                       ViabilityHashHelper.PriorityOf(profile.Setup),
+                                      launchPlanSnapshot ?? LaunchPlanSnapshot.LoadOrNull(tracker.Key),
                                       javaHomeLocator);
 
         var watch = Stopwatch.StartNew();
@@ -232,6 +236,10 @@ public class InstanceManager(
                     tracker.StageStream.OnNext(DeployStage.LoadLock);
                     tracker.CurrentStage = DeployStage.LoadLock;
                     break;
+                case LoadLaunchPlanStage:
+                    tracker.StageStream.OnNext(DeployStage.LoadLaunchPlan);
+                    tracker.CurrentStage = DeployStage.LoadLaunchPlan;
+                    break;
                 case InstallVanillaStage:
                     tracker.StageStream.OnNext(DeployStage.InstallVanilla);
                     tracker.CurrentStage = DeployStage.InstallVanilla;
@@ -239,6 +247,10 @@ public class InstanceManager(
                 case ProcessLoaderStage:
                     tracker.StageStream.OnNext(DeployStage.ProcessLoader);
                     tracker.CurrentStage = DeployStage.ProcessLoader;
+                    break;
+                case ResolveLaunchPlanStage:
+                    tracker.StageStream.OnNext(DeployStage.ResolveLaunchPlan);
+                    tracker.CurrentStage = DeployStage.ResolveLaunchPlan;
                     break;
                 case SyncPackagesStage:
                     tracker.StageStream.OnNext(DeployStage.SyncPackages);
@@ -316,32 +328,30 @@ public class InstanceManager(
 
         var profile = profileManager.GetImmutable(tracker.Key);
 
-        var artifactPath = PathDef.Default.FileOfLockData(tracker.Key);
-        var found = File.Exists(artifactPath);
+        var lockPath = PathDef.Default.FileOfLockData(tracker.Key);
+        var found = File.Exists(lockPath);
         if (found)
         {
-            var lockData =
-                JsonSerializer.Deserialize<LockData>(await File
-                                                          .ReadAllTextAsync(artifactPath, tracker.Token)
-                                                          .ConfigureAwait(false),
-                                                     JsonSerializerOptions.Web);
-
-            if (lockData?.Artifact is not { } artifactData)
+            if (JsonSerializer.Deserialize<LockData>(await File
+                                                           .ReadAllTextAsync(lockPath, tracker.Token)
+                                                           .ConfigureAwait(false),
+                                                      JsonSerializerOptions.Web)
+                  ?.LaunchPlan is not { } plan)
             {
-                throw new InvalidOperationException("Lock is not valid or has no artifact");
+                throw new InvalidOperationException("Lock is not valid or has no launch plan");
             }
 
             try
             {
-                var javaHome = javaHomeLocator(artifactData.JavaMajorVersion).Home;
+                var javaHome = javaHomeLocator(plan.JavaMajorVersion).Home;
                 var workingDir = PathDef.Default.DirectoryOfBuild(tracker.Key);
                 var libraryDir = PathDef.Default.CacheLibraryDirectory;
                 var assetDir = PathDef.Default.CacheAssetDirectory;
                 var nativeDir = PathDef.Default.DirectoryOfNatives(tracker.Key);
-                var igniter = artifactData.MakeIgniter();
+                var igniter = plan.MakeIgniter();
 
                 tracker.JavaHome = javaHome;
-                tracker.JavaVersion = artifactData.JavaMajorVersion;
+                tracker.JavaVersion = plan.JavaMajorVersion;
 
                 igniter
                    .SetJavaHome(javaHome)
@@ -373,7 +383,7 @@ public class InstanceManager(
                     igniter.AddJvmArgument(additional);
                 }
 
-                var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, lockData);
+                var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, plan);
                 await accountConfigurer
                      .ConfigureLaunchAsync(options.Account, launchContext, tracker.Token)
                      .ConfigureAwait(false);
@@ -447,7 +457,7 @@ public class InstanceManager(
         }
         else
         {
-            throw new LockUnavailableException(tracker.Key, artifactPath, found);
+            throw new LockUnavailableException(tracker.Key, lockPath, found);
         }
     }
 
@@ -570,24 +580,32 @@ public class InstanceManager(
         var token = tracker.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
         var stagingDir = Path.Combine(homeDir, ".import.staging");
+        var launchDir = PathDef.Default.DirectoryOfLaunch(key);
+        var launchStagingDir = Path.Combine(homeDir, ".launch.staging");
         var liveBackupDir = Path.Combine(homeDir, ".live.backup");
         var oldImportDir = Path.Combine(homeDir, ".import.old");
+        var oldLaunchDir = Path.Combine(homeDir, ".launch.old");
         // Declared home files may be absent (Trident lists every icon extension); filter to those
         // present so staging, validation, promotion, and rollback all share one consistent set.
         var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
+        var launchReplaced = false;
 
         try
         {
             // Phase 1 — stage new import + home .tmp into disposable dirs, then validate lengths.
             //  Cancel/fail here only touches staging; the live instance is untouched.
             TryCleanup(stagingDir);
+            TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
             TryCleanup(oldImportDir);
+            TryCleanup(oldLaunchDir);
 
             var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
             await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
+            await importers.ExtractToAsync(launchStagingDir, container.LaunchFileNames, pack, token).ConfigureAwait(false);
             await importers.ExtractToAsync(homeDir, homeTmp, pack, token).ConfigureAwait(false);
             ValidateStaged(stagingDir, container.ImportFileNames, pack);
+            ValidateStaged(launchStagingDir, container.LaunchFileNames, pack);
             ValidateStaged(homeDir, homeTmp, pack);
 
             // Phase 2 — back up old live (build projections of old import) before replacing anything.
@@ -612,6 +630,17 @@ public class InstanceManager(
             //  no cancellation window between them; a hard crash here is an accepted edge case.
             Directory.Move(importDir, oldImportDir);
             Directory.Move(stagingDir, importDir);
+            if (Directory.Exists(launchDir))
+            {
+                Directory.Move(launchDir, oldLaunchDir);
+            }
+
+            if (Directory.Exists(launchStagingDir))
+            {
+                Directory.Move(launchStagingDir, launchDir);
+            }
+
+            launchReplaced = true;
             foreach (var (_, target) in presentHomeFiles)
             {
                 File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
@@ -631,6 +660,20 @@ public class InstanceManager(
                     }
                     Directory.Move(oldImportDir, importDir);
                 }
+
+                if (Directory.Exists(oldLaunchDir))
+                {
+                    if (Directory.Exists(launchDir))
+                    {
+                        Directory.Delete(launchDir, true);
+                    }
+                    Directory.Move(oldLaunchDir, launchDir);
+                }
+                else if (launchReplaced && Directory.Exists(launchDir))
+                {
+                    Directory.Delete(launchDir, true);
+                }
+
                 foreach (var (_, target) in presentHomeFiles)
                 {
                     File.Delete(Path.Combine(homeDir, target + ".tmp"));
@@ -641,13 +684,17 @@ public class InstanceManager(
                 logger.LogWarning(rollbackEx, "Update rollback for {key} left residual files", key);
             }
             TryCleanup(stagingDir);
+            TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
+            TryCleanup(oldLaunchDir);
             throw;
         }
 
         // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.
         TryCleanup(liveBackupDir);
         TryCleanup(oldImportDir);
+        TryCleanup(launchStagingDir);
+        TryCleanup(oldLaunchDir);
 
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;

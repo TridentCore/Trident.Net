@@ -48,14 +48,14 @@ public class AccountConfigurerAgent
 
     public class LaunchContext
     {
-        public LaunchContext(Igniter igniter, LockData @lock)
+        public LaunchContext(Igniter igniter, LaunchPlanResult launchPlan)
         {
             Igniter = igniter;
-            Lock = @lock;
+            LaunchPlan = launchPlan;
         }
 
         public Igniter Igniter { get; }
-        public LockData Lock { get; }
+        public LaunchPlanResult LaunchPlan { get; }
 
         public string GetLibraryPath(LockData.Library library) =>
             PathDef.Default.FileOfLibrary(library.Id.Namespace,

@@ -23,6 +23,8 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
             .ConfigureAwait(false);
         await ExtractToAsync(PathDef.Default.DirectoryOfHome(key), container.HomeFileNames, pack, CancellationToken.None)
             .ConfigureAwait(false);
+        await ExtractToAsync(PathDef.Default.DirectoryOfLaunch(key), container.LaunchFileNames, pack, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     // importer 负责声明（包里应有什么、映射到哪），agent 负责现实（条目缺失就跳过），

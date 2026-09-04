@@ -71,7 +71,8 @@ public class MultiMcImporter : IProfileImporter
         },
                    importFileNames,
                    [("pack.png", "icon.png")],
-                   null);
+                   null,
+                   []);
     }
 
     #endregion

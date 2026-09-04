@@ -1,7 +1,6 @@
-using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.LaunchPlans;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
-using TridentCore.Core.Extensions;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
@@ -104,8 +103,8 @@ public class PrismLauncherService(IPrismLauncherClient client)
         return true;
     }
 
-    public static void AddValidatedLibrariesToArtifact(
-        IList<LockData.Library> libraries,
+    public static void AddValidatedLibraries(
+        LaunchPlan plan,
         IEnumerable<Component.Library> sources)
     {
         foreach (var lib in sources.Where(ValidateLibraryRule))
@@ -113,11 +112,17 @@ public class PrismLauncherService(IPrismLauncherClient client)
             if (lib.Url != null)
             {
                 // 旧式声明——直接带 Url，无需 downloads 表。
-                libraries.AddLibraryPrismFlavor(lib.Name, lib.Url);
+                var id = LibraryHelper.ParseIdentity(lib.Name);
+                var exactUrl = lib.Url.AbsoluteUri.EndsWith('/') ? lib.Url : new(lib.Url.AbsoluteUri + '/');
+                var fullUrl = new Uri(exactUrl,
+                                      $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}");
+                plan.AddLibrary(new(id, fullUrl, null));
             }
             else if (lib.Downloads is { Artifact: { } artifact })
             {
-                libraries.AddLibrary(lib.Name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
+                plan.AddLibrary(new(LibraryHelper.ParseIdentity(lib.Name),
+                                    artifact.Url,
+                                    FileHash.FromSha1(artifact.Sha1)));
             }
 
             (string, Component.Library.DownloadsEntry)? native = null;
@@ -140,11 +145,11 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                 // 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
-                    libraries.AddLibrary($"{lib.Name}:{classifier}",
-                                         download.Url,
-                                         FileHash.FromSha1(download.Sha1),
-                                         true,
-                                         false);
+                    plan.AddLibrary(new(LibraryHelper.ParseIdentity($"{lib.Name}:{classifier}"),
+                                        download.Url,
+                                        FileHash.FromSha1(download.Sha1),
+                                        true,
+                                        false));
                 }
             }
         }

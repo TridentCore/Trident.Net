@@ -135,7 +135,8 @@ public class ModrinthImporter(RepositoryAgent repository) : IProfileImporter
                          .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                    ],
                    [("pack.png", "icon.png")],
-                   pack.Reference?.Thumbnail);
+                   pack.Reference?.Thumbnail,
+                   []);
     }
 
     #endregion

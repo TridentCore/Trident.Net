@@ -82,7 +82,8 @@ public class PackwizImporter : IProfileImporter
         },
                    importFiles,
                    [],
-                   pack.Reference?.Thumbnail);
+                   pack.Reference?.Thumbnail,
+                   []);
     }
 
     #endregion

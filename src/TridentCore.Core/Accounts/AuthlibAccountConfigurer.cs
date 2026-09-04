@@ -20,7 +20,7 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
     {
         var ai = (AuthlibAccount)account;
 
-        var aiLib = context.Lock.Artifact!.Libraries.FirstOrDefault(x => x.Id is
+        var aiLib = context.LaunchPlan.Libraries.FirstOrDefault(x => x.Id is
         {
             Namespace: AuthlibInjectorService
                .LIBRARY_NAMESPACE,
@@ -31,7 +31,7 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
         if (aiLib is null)
         {
             throw new
-                AccountConfigurationException($"Authlib-injector library not found in artifact for account {ai.Username}. "
+                AccountConfigurationException($"Authlib-injector library not found in launch plan for account {ai.Username}. "
                                             + "The deployment may be incomplete.");
         }
 

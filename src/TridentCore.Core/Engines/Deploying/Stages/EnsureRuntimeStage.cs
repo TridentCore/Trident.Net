@@ -17,8 +17,12 @@ public class EnsureRuntimeStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var major = Context.Lock.Artifact!.JavaMajorVersion;
-        Context.Lock = Context.Lock with { Runtime = Context.Lock.Runtime };
+        var major = Context.Lock.LaunchPlan!.JavaMajorVersion;
+        var runtime = Context.BaseLock?.Runtime is { Major: var recordedMajor } recordedRuntime
+                   && recordedMajor == major
+                           ? recordedRuntime
+                           : null;
+        Context.Lock = Context.Lock with { Runtime = runtime };
 
         // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户配置的 JRE 完全交给用户环境。
         bool needManifest;

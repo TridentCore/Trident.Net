@@ -15,11 +15,11 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
     {
         var manifest = new EntityManifest();
 
-        var artifact = Context.Lock.Artifact!;
+        var plan = Context.Lock.LaunchPlan!;
 
-        var indexPath = PathDef.Default.FileOfAssetIndex(artifact.AssetIndex.Id);
-        manifest.PresentFiles.Add(new(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Hash));
-        var index = await GetAssetIndexAsync(indexPath, artifact.AssetIndex.Url, artifact.AssetIndex.Hash)
+        var indexPath = PathDef.Default.FileOfAssetIndex(plan.AssetIndex.Id);
+        manifest.PresentFiles.Add(new(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash));
+        var index = await GetAssetIndexAsync(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash)
                        .ConfigureAwait(false)
                  ?? throw new
                         InvalidOperationException("Asset index file is broken or not matched with builtin models");
@@ -50,7 +50,7 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         var nativesDir = PathDef.Default.DirectoryOfNatives(Context.Key);
-        foreach (var lib in artifact.Libraries)
+        foreach (var lib in plan.Libraries)
         {
             var path = PathDef.Default.FileOfLibrary(lib.Id.Namespace,
                                                      lib.Id.Name,

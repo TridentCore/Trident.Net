@@ -61,6 +61,16 @@ public class TridentImporter : IProfileImporter
             }
         }
 
+        // Launch plans can execute pack-supplied JVM bytecode but cannot replace the Java executable or command wrapper,
+        // so they remain inside the same trust boundary as imported mods while host-process overrides stay blocked.
+        var launchFiles = pack
+                         .FileNames
+                         .Where(x => x.StartsWith("launch/", StringComparison.Ordinal)
+                                  && x.Length > "launch/".Length)
+                         .Select(x => (x, x["launch/".Length..]))
+                         .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
+                         .ToList();
+
         var container = new ImportedProfileContainer(index,
                                                      [
                                                          .. pack
@@ -77,7 +87,8 @@ public class TridentImporter : IProfileImporter
                                                          ("LICENSE.txt", "LICENSE.txt"),
                                                          .. FileHelper.SupportedBitmapExtensions.Select(ext => ($"icon.{ext}", $"icon.{ext}"))
                                                      ],
-                                                     null);
+                                                     null,
+                                                     launchFiles);
 
         return container;
     }
