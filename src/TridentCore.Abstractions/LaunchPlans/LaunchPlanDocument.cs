@@ -14,6 +14,7 @@ public sealed class LaunchPlanDocument
     [JsonDerivedType(typeof(SetJavaMajorVersionOperation), "set-java-major-version")]
     [JsonDerivedType(typeof(SetAssetIndexOperation), "set-asset-index")]
     [JsonDerivedType(typeof(ClearGameArgumentsOperation), "clear-game-arguments")]
+    [JsonDerivedType(typeof(SetGameArgumentsOperation), "set-game-arguments")]
     [JsonDerivedType(typeof(AppendGameArgumentOperation), "append-game-argument")]
     [JsonDerivedType(typeof(ClearJavaArgumentsOperation), "clear-java-arguments")]
     [JsonDerivedType(typeof(AppendJavaArgumentOperation), "append-java-argument")]
@@ -28,6 +29,9 @@ public sealed class LaunchPlanDocument
     public sealed record SetAssetIndexOperation(LockData.AssetData Value) : Operation;
 
     public sealed record ClearGameArgumentsOperation : Operation;
+
+    [PublicAPI]
+    public sealed record SetGameArgumentsOperation(IReadOnlyList<string> Values) : Operation;
 
     public sealed record AppendGameArgumentOperation(string Value) : Operation;
 

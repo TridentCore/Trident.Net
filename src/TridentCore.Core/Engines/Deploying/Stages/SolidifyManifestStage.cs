@@ -133,16 +133,29 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                                                 Directory.CreateDirectory(dir);
                                             }
 
-                                            using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(present.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(present.Path,
-                                                                                        FileMode.Create,
-                                                                                        FileAccess.Write,
-                                                                                        FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            if (present.Url.IsFile)
+                                            {
+                                                File.Copy(present.Url.LocalPath, present.Path, true);
+                                            }
+                                            else
+                                            {
+                                                using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
+                                                await using var reader = await client
+                                                                              .GetStreamAsync(present.Url, cancel.Token)
+                                                                              .ConfigureAwait(false);
+                                                await using var writer = new FileStream(present.Path,
+                                                                                            FileMode.Create,
+                                                                                            FileAccess.Write,
+                                                                                            FileShare.Write);
+                                                await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                                                await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                                            }
+
+                                            if (!FileHelper.VerifyModified(present.Path, null, present.Hash))
+                                            {
+                                                throw new InvalidDataException($"Solidified file '{present.Path}' does not match its expected hash.");
+                                            }
+
                                             if (present.IsExecutable
                                              && !OperatingSystem.IsWindows()
                                              && File.Exists(present.Path))

@@ -141,6 +141,14 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
     private async ValueTask<MinecraftAssetIndex?> GetAssetIndexAsync(string indexFile, Uri url, FileHash? hash)
     {
+        if (url.IsFile)
+        {
+            await using var reader = File.OpenRead(url.LocalPath);
+            return await JsonSerializer
+                        .DeserializeAsync<MinecraftAssetIndex>(reader, JsonSerializerOptions.Web)
+                        .ConfigureAwait(false);
+        }
+
         if (File.Exists(indexFile) && hash is not null)
         {
             if (FileHelper.VerifyModified(indexFile, null, hash))

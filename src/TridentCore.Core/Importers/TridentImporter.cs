@@ -65,10 +65,12 @@ public class TridentImporter : IProfileImporter
         // so they remain inside the same trust boundary as imported mods while host-process overrides stay blocked.
         var launchFiles = pack
                          .FileNames
-                         .Where(x => x.StartsWith("launch/", StringComparison.Ordinal)
-                                  && x.Length > "launch/".Length)
+                         .Where(x => x.StartsWith("launch/source/", StringComparison.Ordinal)
+                                  && x.Length > "launch/source/".Length)
                          .Select(x => (x, x["launch/".Length..]))
                          .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
+                         .Where(x => !LaunchPlanFileHelper.IsPlanFile(x.Item2)
+                                  || LaunchPlanFileHelper.IsEnabledPlanFile(x.Item2))
                          .ToList();
 
         var container = new ImportedProfileContainer(index,
@@ -88,7 +90,10 @@ public class TridentImporter : IProfileImporter
                                                          .. FileHelper.SupportedBitmapExtensions.Select(ext => ($"icon.{ext}", $"icon.{ext}"))
                                                      ],
                                                      null,
-                                                     launchFiles);
+                                                     launchFiles,
+                                                     null,
+                                                     null,
+                                                     true);
 
         return container;
     }

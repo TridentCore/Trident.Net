@@ -134,13 +134,14 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
             container.Attachments.Add(Path.GetFileName(iconFile), icon);
         }
 
-        var launchDir = PathDef.Default.DirectoryOfLaunch(pack.Key);
-        if (Directory.Exists(launchDir))
+        var sourceDir = PathDef.Default.DirectoryOfLaunchSource(pack.Key);
+        if (Directory.Exists(sourceDir))
         {
-            foreach (var file in Directory.EnumerateFiles(launchDir, "*", SearchOption.AllDirectories))
+            foreach (var file in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories)
+                                                 .Where(x => !LaunchPlanFileHelper.IsPlanFile(x) || LaunchPlanFileHelper.IsEnabledPlanFile(x)))
             {
-                var relative = Path.GetRelativePath(launchDir, file);
-                container.Files[Path.Combine("launch", relative)] = file;
+                var relative = Path.GetRelativePath(sourceDir, file);
+                container.Files[Path.Combine("launch", "source", relative)] = file;
             }
         }
 

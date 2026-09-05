@@ -580,11 +580,11 @@ public class InstanceManager(
         var token = tracker.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
         var stagingDir = Path.Combine(homeDir, ".import.staging");
-        var launchDir = PathDef.Default.DirectoryOfLaunch(key);
+        var launchSourceDir = PathDef.Default.DirectoryOfLaunchSource(key);
         var launchStagingDir = Path.Combine(homeDir, ".launch.staging");
         var liveBackupDir = Path.Combine(homeDir, ".live.backup");
         var oldImportDir = Path.Combine(homeDir, ".import.old");
-        var oldLaunchDir = Path.Combine(homeDir, ".launch.old");
+        var oldLaunchSourceDir = Path.Combine(homeDir, ".launch.source.old");
         // Declared home files may be absent (Trident lists every icon extension); filter to those
         // present so staging, validation, promotion, and rollback all share one consistent set.
         var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
@@ -598,11 +598,15 @@ public class InstanceManager(
             TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
             TryCleanup(oldImportDir);
-            TryCleanup(oldLaunchDir);
+            TryCleanup(oldLaunchSourceDir);
 
             var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
             await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
             await importers.ExtractToAsync(launchStagingDir, container.LaunchFileNames, pack, token).ConfigureAwait(false);
+            await importers.WriteGeneratedToAsync(launchStagingDir,
+                                                  container.GeneratedLaunchFiles,
+                                                  token)
+                         .ConfigureAwait(false);
             await importers.ExtractToAsync(homeDir, homeTmp, pack, token).ConfigureAwait(false);
             ValidateStaged(stagingDir, container.ImportFileNames, pack);
             ValidateStaged(launchStagingDir, container.LaunchFileNames, pack);
@@ -630,17 +634,22 @@ public class InstanceManager(
             //  no cancellation window between them; a hard crash here is an accepted edge case.
             Directory.Move(importDir, oldImportDir);
             Directory.Move(stagingDir, importDir);
-            if (Directory.Exists(launchDir))
+            if (container.ReplacesManagedLaunchSource)
             {
-                Directory.Move(launchDir, oldLaunchDir);
-            }
+                if (Directory.Exists(launchSourceDir))
+                {
+                    Directory.Move(launchSourceDir, oldLaunchSourceDir);
+                }
 
-            if (Directory.Exists(launchStagingDir))
-            {
-                Directory.Move(launchStagingDir, launchDir);
-            }
+                var stagedSourceDir = Path.Combine(launchStagingDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME);
+                if (Directory.Exists(stagedSourceDir))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(launchSourceDir)!);
+                    Directory.Move(stagedSourceDir, launchSourceDir);
+                }
 
-            launchReplaced = true;
+                launchReplaced = true;
+            }
             foreach (var (_, target) in presentHomeFiles)
             {
                 File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
@@ -661,17 +670,17 @@ public class InstanceManager(
                     Directory.Move(oldImportDir, importDir);
                 }
 
-                if (Directory.Exists(oldLaunchDir))
+                if (container.ReplacesManagedLaunchSource && Directory.Exists(oldLaunchSourceDir))
                 {
-                    if (Directory.Exists(launchDir))
+                    if (Directory.Exists(launchSourceDir))
                     {
-                        Directory.Delete(launchDir, true);
+                        Directory.Delete(launchSourceDir, true);
                     }
-                    Directory.Move(oldLaunchDir, launchDir);
+                    Directory.Move(oldLaunchSourceDir, launchSourceDir);
                 }
-                else if (launchReplaced && Directory.Exists(launchDir))
+                else if (container.ReplacesManagedLaunchSource && launchReplaced && Directory.Exists(launchSourceDir))
                 {
-                    Directory.Delete(launchDir, true);
+                    Directory.Delete(launchSourceDir, true);
                 }
 
                 foreach (var (_, target) in presentHomeFiles)
@@ -686,7 +695,7 @@ public class InstanceManager(
             TryCleanup(stagingDir);
             TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
-            TryCleanup(oldLaunchDir);
+            TryCleanup(oldLaunchSourceDir);
             throw;
         }
 
@@ -694,7 +703,7 @@ public class InstanceManager(
         TryCleanup(liveBackupDir);
         TryCleanup(oldImportDir);
         TryCleanup(launchStagingDir);
-        TryCleanup(oldLaunchDir);
+        TryCleanup(oldLaunchSourceDir);
 
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;

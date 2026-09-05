@@ -69,7 +69,7 @@ public class PathDef
         Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
 
     public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
-    public string FileOfLaunchPlan(string key) => Path.Combine(InstanceDirectory, key, "launch", "data.plan.json");
+    public string DirectoryOfLaunchSource(string key) => Path.Combine(DirectoryOfLaunch(key), "source");
     public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
     public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
     public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");

@@ -25,6 +25,28 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
             .ConfigureAwait(false);
         await ExtractToAsync(PathDef.Default.DirectoryOfLaunch(key), container.LaunchFileNames, pack, CancellationToken.None)
             .ConfigureAwait(false);
+        await WriteGeneratedToAsync(PathDef.Default.DirectoryOfLaunch(key),
+                                    container.GeneratedLaunchFiles,
+                                    CancellationToken.None)
+            .ConfigureAwait(false);
+    }
+
+    public async Task WriteGeneratedToAsync(
+        string baseDir,
+        IReadOnlyList<(string Target, byte[] Content)>? files,
+        CancellationToken token)
+    {
+        foreach (var (target, content) in files ?? [])
+        {
+            token.ThrowIfCancellationRequested();
+            var to = Path.Combine(baseDir, target);
+            if (!FileHelper.IsInDirectory(to, baseDir))
+            {
+                throw new InvalidDataException($"Generated file '{target}' escapes the extraction root.");
+            }
+
+            await FileHelper.TryWriteToFileAsync(to, content).ConfigureAwait(false);
+        }
     }
 
     // importer 负责声明（包里应有什么、映射到哪），agent 负责现实（条目缺失就跳过），
@@ -39,9 +61,16 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
 
         foreach (var (_, target) in present)
         {
-            if (!FileHelper.IsInDirectory(Path.Combine(baseDir, target), baseDir))
+            var destination = Path.Combine(baseDir, target);
+            if (!FileHelper.IsInDirectory(destination, baseDir))
             {
                 throw new InvalidDataException($"Archive entry '{target}' escapes the extraction root.");
+            }
+
+            if (target.StartsWith("source/", StringComparison.Ordinal)
+             && !FileHelper.IsInDirectory(destination, Path.Combine(baseDir, "source")))
+            {
+                throw new InvalidDataException($"Archive entry '{target}' escapes the managed launch source.");
             }
         }
 

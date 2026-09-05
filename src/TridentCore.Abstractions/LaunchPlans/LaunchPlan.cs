@@ -51,6 +51,13 @@ public sealed class LaunchPlan
         return this;
     }
 
+    [PublicAPI]
+    public LaunchPlan SetGameArguments(IEnumerable<string> values)
+    {
+        _operations.Add(new LaunchPlanDocument.SetGameArgumentsOperation(values.ToArray()));
+        return this;
+    }
+
     public LaunchPlan AppendGameArgument(string value)
     {
         value = value.Trim();
@@ -118,6 +125,9 @@ public sealed class LaunchPlan
                 case LaunchPlanDocument.ClearGameArgumentsOperation:
                     gameArguments.Clear();
                     break;
+                case LaunchPlanDocument.SetGameArgumentsOperation set:
+                    gameArguments = [.. set.Values];
+                    break;
                 case LaunchPlanDocument.AppendGameArgumentOperation append:
                     gameArguments.Add(append.Value);
                     break;
@@ -158,6 +168,10 @@ public sealed class LaunchPlan
                 throw new FormatException($"Launch plan operation {index} has an invalid asset index");
             case LaunchPlanDocument.SetJavaMajorVersionOperation set when set.Value == 0:
                 throw new FormatException($"Launch plan operation {index} has an invalid Java major version");
+            case LaunchPlanDocument.SetGameArgumentsOperation set when set.Values is null:
+                throw new FormatException($"Launch plan operation {index} has null game arguments");
+            case LaunchPlanDocument.SetGameArgumentsOperation set when set.Values.Any(string.IsNullOrWhiteSpace):
+                throw new FormatException($"Launch plan operation {index} has an empty game argument");
             case LaunchPlanDocument.AppendGameArgumentOperation append when string.IsNullOrWhiteSpace(append.Value):
                 throw new FormatException($"Launch plan operation {index} has an empty game argument");
             case LaunchPlanDocument.AppendJavaArgumentOperation append when string.IsNullOrWhiteSpace(append.Value):

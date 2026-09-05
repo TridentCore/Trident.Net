@@ -12,7 +12,7 @@ public class LoadLaunchPlanStage(ILogger<LoadLaunchPlanStage> logger) : StageBas
         if (Context.LaunchPlanSnapshot is { } snapshot)
         {
             Context.LaunchPlanDocument = snapshot.Document;
-            logger.LogInformation("Loaded external launch plan from {path}", PathDef.Default.FileOfLaunchPlan(Context.Key));
+            logger.LogInformation("Loaded {count} external launch plan documents", snapshot.Entries.Count);
         }
         else
         {
