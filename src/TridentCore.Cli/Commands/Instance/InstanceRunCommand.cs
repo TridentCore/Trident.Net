@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -21,7 +23,7 @@ public class InstanceRunCommand(
     InstanceContextResolver resolver,
     InstanceManager instanceManager,
     AccountStore accountStore,
-    TrackerAwaiter trackerAwaiter,
+    ActivityAwaiter activityAwaiter,
     CliConfigurationStore configuration,
     CliOutput output) : InstanceCommandBase<InstanceRunCommand.Arguments>(resolver)
 {
@@ -82,49 +84,45 @@ public class InstanceRunCommand(
                                       ("Account", account.Username));
         }
 
-        var deployTracker = instanceManager.Deploy(instance.Key, deployOptions, locator);
-        await trackerAwaiter.AwaitDeployAsync(deployTracker, cancellationToken).ConfigureAwait(false);
+        var deployActivities = instanceManager.Deploy(instance.Key, deployOptions, locator);
+        await activityAwaiter.AwaitDeployAsync(deployActivities, cancellationToken).ConfigureAwait(false);
 
-        var tracker = instanceManager.Launch(instance.Key, launchOptions, locator);
+        var activities = instanceManager.Launch(instance.Key, launchOptions, locator);
 
         if (launchOptions.Mode == LaunchMode.Managed)
         {
-            await AwaitLaunchAsync(tracker, cancellationToken).ConfigureAwait(false);
+            await AwaitLaunchAsync(instance.Key, activities, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await AwaitFireAndForgetAsync(tracker, cancellationToken).ConfigureAwait(false);
+            await AwaitFireAndForgetAsync(instance.Key, activities, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task AwaitLaunchAsync(LaunchTracker tracker, CancellationToken cancellationToken)
+    private async Task AwaitLaunchAsync(
+        string key,
+        IObservable<InstanceActivity> activities,
+        CancellationToken cancellationToken)
     {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, tracker.Token);
-
-        var scrapDisposable = tracker.ScrapStream.Subscribe(scrap =>
-        {
-            WriteScrap(scrap);
-        });
-
-        using var _ = scrapDisposable;
+        using var _ = instanceManager.Scraps.Where(x => x.Key == key).Subscribe(x => WriteScrap(x.Scrap));
 
         if (output.CanUseRichOutput)
         {
-            await AwaitLaunchStartAsync(tracker, cancellationToken).ConfigureAwait(false);
+            var started = await AwaitLaunchStartAsync(key, activities, cancellationToken).ConfigureAwait(false);
 
-            if (tracker.State != TrackerState.Faulted)
+            if (started.State is not ActivityState.Faulted)
             {
-                output.WriteSuccess($"Game process started for {tracker.Key}.");
+                output.WriteSuccess($"Game process started for {key}.");
             }
         }
 
         try
         {
-            await TrackerAwaiter.AwaitCompletionAsync(tracker, cts.Token).ConfigureAwait(false);
+            var final = await ActivityAwaiter.AwaitCompletionAsync(activities, cancellationToken).ConfigureAwait(false);
 
-            if (tracker.State == TrackerState.Faulted)
+            if (final.State is ActivityState.Faulted)
             {
-                var ex = tracker.FailureReason;
+                var ex = final.FailureReason;
                 if (ex is ProcessFaultedException pfe)
                 {
                     output.WriteError($"Game exited with code {pfe.ExitCode}.");
@@ -143,28 +141,31 @@ public class InstanceRunCommand(
 
             if (output.CanUseRichOutput)
             {
-                output.WriteSuccess($"Instance {tracker.Key} exited.");
+                output.WriteSuccess($"Instance {key} exited.");
             }
         }
         finally
         {
-            if (cts.IsCancellationRequested && tracker.State == TrackerState.Running)
+            if (cancellationToken.IsCancellationRequested)
             {
-                tracker.Abort();
+                instanceManager.Abort(key);
             }
         }
     }
 
-    private async Task AwaitFireAndForgetAsync(LaunchTracker tracker, CancellationToken cancellationToken)
+    private async Task AwaitFireAndForgetAsync(
+        string key,
+        IObservable<InstanceActivity> activities,
+        CancellationToken cancellationToken)
     {
-        await output
-             .StatusAsync($"Launching instance {tracker.Key}...",
-                          () => TrackerAwaiter.AwaitCompletionAsync(tracker, cancellationToken))
-             .ConfigureAwait(false);
+        var final = await output
+                         .StatusAsync($"Launching instance {key}...",
+                                      () => ActivityAwaiter.AwaitCompletionAsync(activities, cancellationToken))
+                         .ConfigureAwait(false);
 
-        if (tracker.State == TrackerState.Faulted)
+        if (final.State is ActivityState.Faulted)
         {
-            var ex = tracker.FailureReason;
+            var ex = final.FailureReason;
             var message = ex?.Message ?? "Launch failed.";
             output.WriteError(message);
             if (ex != null)
@@ -177,55 +178,43 @@ public class InstanceRunCommand(
 
         if (output.UseStructuredOutput)
         {
-            output.WriteData(new { action = "run", key = tracker.Key, mode = "fire-and-forget", state = "launched" });
+            output.WriteData(new { action = "run", key, mode = "fire-and-forget", state = "launched" });
         }
         else
         {
-            output.WriteSuccess($"Instance {tracker.Key} launched (fire-and-forget).");
+            output.WriteSuccess($"Instance {key} launched (fire-and-forget).");
         }
     }
 
-    private async Task AwaitLaunchStartAsync(LaunchTracker tracker, CancellationToken cancellationToken)
+    private async Task<InstanceActivity> AwaitLaunchStartAsync(
+        string key,
+        IObservable<InstanceActivity> activities,
+        CancellationToken cancellationToken)
     {
         if (!output.IsInteractive || output.UseStructuredOutput)
         {
-            await AwaitLaunchStartCoreAsync(tracker, cancellationToken).ConfigureAwait(false);
-            return;
+            return await AwaitLaunchStartCoreAsync(activities, cancellationToken).ConfigureAwait(false);
         }
 
-        await AnsiConsole
-             .Status()
-             .Spinner(Spinner.Known.Star)
-             .SpinnerStyle(Style.Parse("green"))
-             .StartAsync($"[green]Starting game[/] [cyan]{Markup.Escape(tracker.Key)}[/]...",
-                         async _ => await AwaitLaunchStartCoreAsync(tracker, cancellationToken).ConfigureAwait(false))
-             .ConfigureAwait(false);
+        return await AnsiConsole
+                    .Status()
+                    .Spinner(Spinner.Known.Star)
+                    .SpinnerStyle(Style.Parse("green"))
+                    .StartAsync($"[green]Starting game[/] [cyan]{Markup.Escape(key)}[/]...",
+                                async _ => await AwaitLaunchStartCoreAsync(activities, cancellationToken)
+                                              .ConfigureAwait(false))
+                    .ConfigureAwait(false);
     }
 
-    private static async Task AwaitLaunchStartCoreAsync(LaunchTracker tracker, CancellationToken cancellationToken)
-    {
-        using var cancelReg = cancellationToken.Register(() =>
-        {
-            tracker.Abort();
-        });
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            if (tracker.State is TrackerState.Finished or TrackerState.Faulted)
-            {
-                return;
-            }
-
-            if (TryGetStartedProcessId(tracker.Process, out _))
-            {
-                return;
-            }
-
-            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-    }
+    // 启动完成 = 拿到进程句柄，或活动已终结（启动失败/非托管模式）。
+    private static Task<InstanceActivity> AwaitLaunchStartCoreAsync(
+        IObservable<InstanceActivity> activities,
+        CancellationToken cancellationToken) =>
+        activities
+           .FirstAsync(x => x.IsCompleted
+                         || (x is InstanceActivity.Running running
+                          && TryGetStartedProcessId(running.Process, out _)))
+           .ToTask(cancellationToken);
 
     private static bool TryGetStartedProcessId(Process? process, out int processId)
     {

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Subjects;
@@ -34,18 +35,64 @@ public class InstanceManager(
     IServiceProvider provider,
     IHttpClientFactory clientFactory)
 {
-    // 主要在 UI 线程增删改查，实际无需线程同步。
-    private readonly Dictionary<string, TrackerBase> _trackers = new();
-    public event EventHandler<InstallTracker>? InstanceInstalling;
-    public event EventHandler<UpdateTracker>? InstanceUpdating;
-    public event EventHandler<DeployTracker>? InstanceDeploying;
-    public event EventHandler<LaunchTracker>? InstanceLaunching;
+    // 一个 key 同时只能有一个活动。登记在调用方线程（通常 UI）发生，摧除在工作线程，故需并发安全容器。
+    private readonly ConcurrentDictionary<string, ActivityRun> _runs = new();
+
+    private readonly Subject<InstanceActivity> _activities = new();
+    private readonly Subject<InstanceScrap> _scraps = new();
+
+    /// <summary>全部实例活动的值流。活动开始、每次进度变化、终态各发一个快照。</summary>
+    public IObservable<InstanceActivity> Activities => _activities;
+
+    /// <summary>
+    ///     游戏进程输出。生命周期属于 manager 而非单次活动，消费方无需随活动开始/结束反复订阅。
+    /// </summary>
+    public IObservable<InstanceScrap> Scraps => _scraps;
+
     public event EventHandler<IAccount>? AccountUpdated;
 
-    private void TrackerOnCompleted(TrackerBase tracker)
+    /// <summary>登记一次新活动并接入全局流。key 已占用时抛错。</summary>
+    private ActivityRun Register(InstanceActivity seed)
     {
-        tracker.Dispose();
-        _trackers.Remove(tracker.Key);
+        var run = new ActivityRun(seed);
+        if (!_runs.TryAdd(seed.Key, run))
+        {
+            throw new InvalidOperationException($"Instance {seed.Key} is operated in progress");
+        }
+
+        // WARNING: 只转发 OnNext。直接把 _activities 当观察者接上会让单个活动的 OnCompleted
+        //  终结整个全局流，此后所有实例的状态都不再发出。
+        //  ReplaySubject(1) 会在订阅时重放最近值，活动开始自然随之广播。
+        run.Stream.Subscribe(x => _activities.OnNext(x));
+        return run;
+    }
+
+    /// <summary>执行一次活动并落终态。异常全部收枕为终态，不向外抛。</summary>
+    private async Task<InstanceActivity> ExecuteAsync(ActivityRun run, Func<ActivityRun, Task> handler)
+    {
+        ActivityState state;
+        Exception? reason = null;
+        try
+        {
+            await handler(run).ConfigureAwait(false);
+            state = run.Token.IsCancellationRequested ? ActivityState.Cancelled : ActivityState.Finished;
+        }
+        catch (OperationCanceledException) when (run.Token.IsCancellationRequested)
+        {
+            state = ActivityState.Cancelled;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Activity {kind} of {key} faulted", run.Current.Kind, run.Key);
+            state = ActivityState.Faulted;
+            reason = ex;
+        }
+
+        // NOTE: 先摧除再落终态——消费方收到终态值时 IsInUse 必须已为 false，否则串联的下一段
+        //  （部署完接着启动）会被占用检查挡住。
+        _runs.TryRemove(run.Key, out _);
+        run.Complete(state, reason);
+        return run.Current;
     }
 
     private static string FormatCommandLine(ProcessStartInfo startInfo)
@@ -73,45 +120,94 @@ public class InstanceManager(
                    : argument;
     }
 
-    public bool IsTracking(string key, [MaybeNullWhen(false)] out TrackerBase tracker)
-    {
-        if (_trackers.TryGetValue(key, out var value))
-        {
-            tracker = value;
-            return true;
-        }
+    /// <summary>当前活动快照；空闲时为 null。</summary>
+    public InstanceActivity? ActivityOf(string key) => _runs.TryGetValue(key, out var run) ? run.Current : null;
 
-        tracker = null;
-        return false;
+    public bool IsInUse(string key) => _runs.ContainsKey(key);
+
+    /// <summary>中止当前活动。无活动则无操作。</summary>
+    public void Abort(string key)
+    {
+        if (_runs.TryGetValue(key, out var run))
+        {
+            run.Abort();
+        }
     }
 
-    public bool IsInUse(string key) => _trackers.ContainsKey(key);
+    /// <summary>请求分离：中止时不杀进程，让游戏脱离启动器继续运行。</summary>
+    public void Detach(string key)
+    {
+        if (_runs.TryGetValue(key, out var run) && run.Current is InstanceActivity.Running)
+        {
+            run.Mutate<InstanceActivity.Running>(x => x with { IsDetaching = true });
+            run.Abort();
+        }
+    }
 
-    public void DeployAndLaunch(
+    /// <summary>
+    ///     部署成功后接着启动。两段是先后两次活动，各自有独立的 Id。
+    /// </summary>
+    /// <remarks>
+    ///     WARNING: 衔接必须在异步方法内完成。历史上它写在完成回调里，启动阶段抛出的异常
+    ///     无人接手，直接终止进程。
+    /// </remarks>
+    public IObservable<InstanceActivity> DeployAndLaunch(
         string key,
         DeployOptions deploy,
         LaunchOptions launch,
         JavaHomeLocatorDelegate javaHomeLocator)
     {
-        if (IsInUse(key))
-        {
-            throw new InvalidOperationException($"Instance {key} is operated in progress");
-        }
+        var relay = new ReplaySubject<InstanceActivity>(1);
+        var deployRun = Register(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() });
+        _ = OrchestrateAsync();
+        return relay;
 
-        var tracker = new DeployTracker(key,
-                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
-                                                      .ConfigureAwait(false),
-                                        t =>
-                                        {
-                                            TrackerOnCompleted(t);
-                                            if (t is { State: TrackerState.Finished })
-                                            {
-                                                Launch(key, launch, javaHomeLocator);
-                                            }
-                                        });
-        _trackers.Add(key, tracker);
-        InstanceDeploying?.Invoke(this, tracker);
-        tracker.Start();
+        async Task OrchestrateAsync()
+        {
+            using (deployRun.Stream.Subscribe(relay.OnNext))
+            {
+                var deployed = await ExecuteAsync(deployRun, r => DeployCoreAsync(r, deploy, javaHomeLocator))
+                                  .ConfigureAwait(false);
+                if (deployed.State is not ActivityState.Finished)
+                {
+                    relay.OnCompleted();
+                    return;
+                }
+            }
+
+            try
+            {
+                var launchRun = Register(new InstanceActivity.Running
+                {
+                    Key = key,
+                    Id = Guid.NewGuid(),
+                    Options = launch,
+                    Progress = new ActivityProgress.Indeterminate("Launching")
+                });
+                using (launchRun.Stream.Subscribe(relay.OnNext))
+                {
+                    await ExecuteAsync(launchRun, r => LaunchCoreAsync(r, launch, javaHomeLocator))
+                       .ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 启动阶段未能开始（如 key 被占）——发一个已终结的失败活动，让它走常规通知路径。
+                logger.LogError(ex, "Launch phase of {key} could not start", key);
+                var failed = new InstanceActivity.Running
+                {
+                    Key = key,
+                    Id = Guid.NewGuid(),
+                    Options = launch,
+                    State = ActivityState.Faulted,
+                    FailureReason = ex
+                };
+                _activities.OnNext(failed);
+                relay.OnNext(failed);
+            }
+
+            relay.OnCompleted();
+        }
     }
 
     #region Common
@@ -119,7 +215,7 @@ public class InstanceManager(
     private static async Task<MemoryStream> DownloadFileAsync(
         Uri download,
         ulong size,
-        Subject<double?>? reporter,
+        Action<double>? reporter,
         HttpClient client,
         CancellationToken token)
     {
@@ -134,7 +230,7 @@ public class InstanceManager(
             await memory.WriteAsync(buffer.AsMemory(0, read), token).ConfigureAwait(false);
             totalRead += read;
             var progress = (double)totalRead / size;
-            reporter?.OnNext(progress);
+            reporter?.Invoke(progress);
         } while (!token.IsCancellationRequested && read > 0);
 
         memory.Position = 0;
@@ -165,146 +261,127 @@ public class InstanceManager(
 
     #region Deploy
 
-    public DeployTracker Deploy(string key, DeployOptions options, JavaHomeLocatorDelegate javaHomeLocator)
-    {
-        if (IsInUse(key))
-        {
-            throw new InvalidOperationException($"Instance {key} is operated in progress");
-        }
-
-        var tracker = new DeployTracker(key,
-                                        async t => await DeployCoreAsync((DeployTracker)t, options, javaHomeLocator)
-                                                      .ConfigureAwait(false),
-                                        TrackerOnCompleted);
-        _trackers.Add(key, tracker);
-        InstanceDeploying?.Invoke(this, tracker);
-        tracker.Start();
-        return tracker;
-    }
-
-    private async Task DeployCoreAsync(
-        DeployTracker tracker,
+    public IObservable<InstanceActivity> Deploy(
+        string key,
         DeployOptions options,
         JavaHomeLocatorDelegate javaHomeLocator)
     {
-        logger.LogInformation("Begin deploy {}", tracker.Key);
+        var run = Register(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() });
+        _ = ExecuteAsync(run, r => DeployCoreAsync(r, options, javaHomeLocator));
+        return run.Stream;
+    }
 
-        var profile = profileManager.GetImmutable(tracker.Key);
-        var engine = new DeployEngine(tracker.Key,
+    private async Task DeployCoreAsync(
+        ActivityRun run,
+        DeployOptions options,
+        JavaHomeLocatorDelegate javaHomeLocator)
+    {
+        logger.LogInformation("Begin deploy {}", run.Key);
+
+        var profile = profileManager.GetImmutable(run.Key);
+        var engine = new DeployEngine(run.Key,
                                       profile.Setup,
                                       provider,
                                       new() { FullCheckMode = options.FullCheckMode },
-                                      LaunchPlanSnapshot.LoadOrNull(tracker.Key),
+                                      LaunchPlanSnapshot.LoadOrNull(run.Key),
                                       javaHomeLocator);
 
         var watch = Stopwatch.StartNew();
         foreach (var stage in engine)
         {
-            if (tracker.Token.IsCancellationRequested)
+            if (run.Token.IsCancellationRequested)
             {
                 break;
             }
 
-            switch (stage)
+            var current = StageOf(stage);
+            run.Mutate<InstanceActivity.Deploying>(x => x with
             {
-                case LoadLockStage:
-                    tracker.StageStream.OnNext(DeployStage.LoadLock);
-                    tracker.CurrentStage = DeployStage.LoadLock;
-                    break;
-                case InstallVanillaStage:
-                    tracker.StageStream.OnNext(DeployStage.InstallVanilla);
-                    tracker.CurrentStage = DeployStage.InstallVanilla;
-                    break;
-                case ProcessLoaderStage:
-                    tracker.StageStream.OnNext(DeployStage.ProcessLoader);
-                    tracker.CurrentStage = DeployStage.ProcessLoader;
-                    break;
-                case ResolveLaunchPlanStage:
-                    tracker.StageStream.OnNext(DeployStage.ResolveLaunchPlan);
-                    tracker.CurrentStage = DeployStage.ResolveLaunchPlan;
-                    break;
-                case SyncPackagesStage:
-                    tracker.StageStream.OnNext(DeployStage.SyncPackages);
-                    tracker.CurrentStage = DeployStage.SyncPackages;
-                    break;
-                case FlattenPackagesStage:
-                    tracker.StageStream.OnNext(DeployStage.FlattenPackages);
-                    tracker.CurrentStage = DeployStage.FlattenPackages;
-                    break;
-                case PersistLockStage:
-                    tracker.StageStream.OnNext(DeployStage.PersistLock);
-                    tracker.CurrentStage = DeployStage.PersistLock;
-                    break;
-                case EnsureRuntimeStage:
-                    tracker.StageStream.OnNext(DeployStage.EnsureRuntime);
-                    tracker.CurrentStage = DeployStage.EnsureRuntime;
-                    break;
-                case GenerateManifestStage:
-                    tracker.StageStream.OnNext(DeployStage.GenerateManifest);
-                    tracker.CurrentStage = DeployStage.GenerateManifest;
-                    break;
-                case SolidifyManifestStage solidifyManifestStage:
-                    tracker.StageStream.OnNext(DeployStage.SolidifyManifest);
-                    tracker.CurrentStage = DeployStage.SolidifyManifest;
-                    solidifyManifestStage
-                       .ProgressStream.Subscribe(tracker.ProgressStream)
-                       .DisposeWith(solidifyManifestStage);
-                    break;
+                CurrentStage = current,
+                FileCount = null,
+                Progress = new ActivityProgress.Indeterminate(current.ToString())
+            });
+
+            // 只有固实阶段能报出文件计数，其余阶段保持脉冲。
+            if (stage is SolidifyManifestStage solidify)
+            {
+                solidify
+                   .ProgressStream.Subscribe(x => run.Mutate<InstanceActivity.Deploying>(a => a with
+                    {
+                        FileCount = x,
+                        Progress = new ActivityProgress.Determinate(current.ToString(),
+                                                                    x.Total == 0 ? 0d : (double)x.Current / x.Total)
+                    }))
+                   .DisposeWith(solidify);
             }
 
             logger.LogInformation("Enter stage {name}", stage.GetType().Name);
-            await stage.ProcessAsync(tracker.Token).ConfigureAwait(false);
+            await stage.ProcessAsync(run.Token).ConfigureAwait(false);
             await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
         }
 
         watch.Stop();
-        logger.LogInformation("{key} deployed in {ms}ms", tracker.Key, watch.ElapsedMilliseconds);
+        logger.LogInformation("{key} deployed in {ms}ms", run.Key, watch.ElapsedMilliseconds);
     }
+
+    private static DeployStage StageOf(StageBase stage) =>
+        stage switch
+        {
+            LoadLockStage => DeployStage.LoadLock,
+            InstallVanillaStage => DeployStage.InstallVanilla,
+            ProcessLoaderStage => DeployStage.ProcessLoader,
+            ResolveLaunchPlanStage => DeployStage.ResolveLaunchPlan,
+            SyncPackagesStage => DeployStage.SyncPackages,
+            FlattenPackagesStage => DeployStage.FlattenPackages,
+            PersistLockStage => DeployStage.PersistLock,
+            EnsureRuntimeStage => DeployStage.EnsureRuntime,
+            GenerateManifestStage => DeployStage.GenerateManifest,
+            SolidifyManifestStage => DeployStage.SolidifyManifest,
+            _ => throw new NotSupportedException($"Unrecognized deploy stage {stage.GetType().Name}")
+        };
 
     #endregion
 
     #region Launch
 
-    public LaunchTracker Launch(string key, LaunchOptions options, JavaHomeLocatorDelegate javaHomeLocator)
-    {
-        if (IsInUse(key))
-        {
-            throw new InvalidOperationException($"Instance {key} is operated in progress");
-        }
-
-        var tracker = new LaunchTracker(key,
-                                        options,
-                                        async t => await LaunchCoreAsync((LaunchTracker)t, options, javaHomeLocator)
-                                                      .ConfigureAwait(false),
-                                        TrackerOnCompleted);
-        _trackers.Add(key, tracker);
-        InstanceLaunching?.Invoke(this, tracker);
-        tracker.Start();
-        return tracker;
-    }
-
-    private async Task LaunchCoreAsync(
-        LaunchTracker tracker,
+    public IObservable<InstanceActivity> Launch(
+        string key,
         LaunchOptions options,
         JavaHomeLocatorDelegate javaHomeLocator)
     {
-        logger.LogInformation("Begin launch {}", tracker.Key);
+        var run = Register(new InstanceActivity.Running
+        {
+            Key = key,
+            Id = Guid.NewGuid(),
+            Options = options,
+            Progress = new ActivityProgress.Indeterminate("Launching")
+        });
+        _ = ExecuteAsync(run, r => LaunchCoreAsync(r, options, javaHomeLocator));
+        return run.Stream;
+    }
+
+    private async Task LaunchCoreAsync(
+        ActivityRun run,
+        LaunchOptions options,
+        JavaHomeLocatorDelegate javaHomeLocator)
+    {
+        logger.LogInformation("Begin launch {}", run.Key);
 
         if (options.Account == null)
         {
             throw new InvalidOperationException("Account is not provided");
         }
 
-        await ValidateAndRefreshAccountAsync(options, tracker.Token).ConfigureAwait(false);
+        await ValidateAndRefreshAccountAsync(options, run.Token).ConfigureAwait(false);
 
-        var profile = profileManager.GetImmutable(tracker.Key);
+        var profile = profileManager.GetImmutable(run.Key);
 
-        var lockPath = PathDef.Default.FileOfLockData(tracker.Key);
+        var lockPath = PathDef.Default.FileOfLockData(run.Key);
         var found = File.Exists(lockPath);
         if (found)
         {
             if (JsonSerializer.Deserialize<LockData>(await File
-                                                           .ReadAllTextAsync(lockPath, tracker.Token)
+                                                           .ReadAllTextAsync(lockPath, run.Token)
                                                            .ConfigureAwait(false),
                                                       JsonSerializerOptions.Web)
                   ?.LaunchPlan is not { } plan)
@@ -315,14 +392,17 @@ public class InstanceManager(
             try
             {
                 var javaHome = javaHomeLocator(plan.JavaMajorVersion).Home;
-                var workingDir = PathDef.Default.DirectoryOfBuild(tracker.Key);
+                var workingDir = PathDef.Default.DirectoryOfBuild(run.Key);
                 var libraryDir = PathDef.Default.CacheLibraryDirectory;
                 var assetDir = PathDef.Default.CacheAssetDirectory;
-                var nativeDir = PathDef.Default.DirectoryOfNatives(tracker.Key);
+                var nativeDir = PathDef.Default.DirectoryOfNatives(run.Key);
                 var igniter = plan.MakeIgniter();
 
-                tracker.JavaHome = javaHome;
-                tracker.JavaVersion = plan.JavaMajorVersion;
+                run.Mutate<InstanceActivity.Running>(x => x with
+                {
+                    JavaHome = javaHome,
+                    JavaVersion = plan.JavaMajorVersion
+                });
 
                 igniter
                    .SetJavaHome(javaHome)
@@ -356,7 +436,7 @@ public class InstanceManager(
 
                 var launchContext = new AccountConfigurerAgent.LaunchContext(igniter, plan);
                 await accountConfigurer
-                     .ConfigureLaunchAsync(options.Account, launchContext, tracker.Token)
+                     .ConfigureLaunchAsync(options.Account, launchContext, run.Token)
                      .ConfigureAwait(false);
 
                 if (options.Mode == LaunchMode.Debug)
@@ -365,13 +445,14 @@ public class InstanceManager(
                 }
 
                 var process = igniter.Build();
-                var build = PathDef.Default.DirectoryOfBuild(tracker.Key);
+                var build = PathDef.Default.DirectoryOfBuild(run.Key);
                 if (!Directory.Exists(build))
                 {
                     Directory.CreateDirectory(build);
                 }
 
-                tracker.CommandLine = FormatCommandLine(process.StartInfo);
+                var commandLine = FormatCommandLine(process.StartInfo);
+                run.Mutate<InstanceActivity.Running>(x => x with { CommandLine = commandLine });
 
                 if (options.Mode == LaunchMode.Debug)
                 {
@@ -383,26 +464,31 @@ public class InstanceManager(
 
                 if (options.Mode == LaunchMode.Managed)
                 {
-                    tracker.Process = process;
-                    var launcher = new LaunchEngine(process);
-                    await foreach (var scrap in launcher.WithCancellation(tracker.Token).ConfigureAwait(false))
+                    // 进程已起：运行中无「朝终点推进」的进度概念，改为运行指示。
+                    run.Mutate<InstanceActivity.Running>(x => x with
                     {
-                        tracker.ScrapStream.OnNext(scrap);
+                        Process = process,
+                        Progress = new ActivityProgress.None()
+                    });
+                    var launcher = new LaunchEngine(process);
+                    await foreach (var scrap in launcher.WithCancellation(run.Token).ConfigureAwait(false))
+                    {
+                        _scraps.OnNext(new(run.Key, scrap));
                     }
 
-                    tracker.ScrapStream.OnCompleted();
-                    tracker.Process = null;
+                    var detaching = run.Current is InstanceActivity.Running { IsDetaching: true };
+                    run.Mutate<InstanceActivity.Running>(x => x with { Process = null });
 
-                    if (tracker.Token.IsCancellationRequested)
+                    if (run.Token.IsCancellationRequested)
                     {
-                        if (!tracker.IsDetaching)
+                        if (!detaching)
                         {
                             process.Kill();
                         }
                     }
                     else
                     {
-                        await process.WaitForExitAsync(tracker.Token).ConfigureAwait(false);
+                        await process.WaitForExitAsync(run.Token).ConfigureAwait(false);
 
                         if (process.ExitCode != 0)
                         {
@@ -428,7 +514,7 @@ public class InstanceManager(
         }
         else
         {
-            throw new LockUnavailableException(tracker.Key, lockPath, found);
+            throw new LockUnavailableException(run.Key, lockPath, found);
         }
     }
 
@@ -450,28 +536,18 @@ public class InstanceManager(
 
     #region Install
 
-    public InstallTracker Install(string key, string label, string? ns, string pid, string? vid)
+    public IObservable<InstanceActivity> Install(string key, string label, string? ns, string pid, string? vid)
     {
-        // 仅在线安装有 Tracker——离线导入无需等待，全在前端进行。
+        // 仅在线安装有活动——离线导入无需等待，全在前端进行。
 
         var reserved = profileManager.RequestKey(key);
-        var tracker = new InstallTracker(reserved.Key,
-                                         async t => await InstallCoreAsync((InstallTracker)t,
-                                                                           reserved,
-                                                                           label,
-                                                                           ns,
-                                                                           pid,
-                                                                           vid)
-                                                       .ConfigureAwait(false),
-                                         TrackerOnCompleted);
-        _trackers.Add(reserved.Key, tracker);
-        InstanceInstalling?.Invoke(this, tracker);
-        tracker.Start();
-        return tracker;
+        var run = Register(new InstanceActivity.Installing { Key = reserved.Key, Id = Guid.NewGuid() });
+        _ = ExecuteAsync(run, r => InstallCoreAsync(r, reserved, label, ns, pid, vid));
+        return run.Stream;
     }
 
     private async Task InstallCoreAsync(
-        InstallTracker tracker,
+        ActivityRun run,
         ReservedKey key,
         string label,
         string? ns,
@@ -481,19 +557,18 @@ public class InstanceManager(
         logger.LogInformation("Begin install package {pref} as {key}",
                               PackageHelper.ToPref(label, ns, pid, vid),
                               key.Key);
-        tracker.ProgressStream.OnNext(null);
         var package = await repositories
                            .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
                            .ConfigureAwait(false);
         var (pack, container) =
-            await DownloadAndImportPackageAsync(key.Key, package, tracker.ProgressStream, tracker.Token)
-               .ConfigureAwait(false);
+            await DownloadAndImportPackageAsync(key.Key, package, run, run.Token).ConfigureAwait(false);
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
         await importers.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
 
-        tracker.Reference = container.Profile.Setup.Source;
+        var reference = container.Profile.Setup.Source;
+        run.Mutate<InstanceActivity.Installing>(x => x with { Reference = reference });
 
         profileManager.Add(key, container.Profile);
 
@@ -504,25 +579,15 @@ public class InstanceManager(
 
     #region Update
 
-    public UpdateTracker Update(string key, string label, string? ns, string pid, string vid)
+    public IObservable<InstanceActivity> Update(string key, string label, string? ns, string pid, string vid)
     {
-        if (IsInUse(key))
-        {
-            throw new InvalidOperationException($"Instance {key} is operated in progress");
-        }
-
-        var tracker = new UpdateTracker(key,
-                                        async t => await UpdateCoreAsync((UpdateTracker)t, key, label, ns, pid, vid)
-                                                      .ConfigureAwait(false),
-                                        TrackerOnCompleted);
-        _trackers.Add(key, tracker);
-        InstanceUpdating?.Invoke(this, tracker);
-        tracker.Start();
-        return tracker;
+        var run = Register(new InstanceActivity.Updating { Key = key, Id = Guid.NewGuid() });
+        _ = ExecuteAsync(run, r => UpdateCoreAsync(r, key, label, ns, pid, vid));
+        return run.Stream;
     }
 
     private async Task UpdateCoreAsync(
-        UpdateTracker tracker,
+        ActivityRun run,
         string key,
         string label,
         string? ns,
@@ -533,7 +598,7 @@ public class InstanceManager(
         var package = await repositories
                            .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
                            .ConfigureAwait(false);
-        var (pack, container) = await DownloadAndImportPackageAsync(key, package, tracker.ProgressStream, tracker.Token)
+        var (pack, container) = await DownloadAndImportPackageAsync(key, package, run, run.Token)
                                    .ConfigureAwait(false);
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
@@ -548,7 +613,7 @@ public class InstanceManager(
         }
         var buildDir = PathDef.Default.DirectoryOfBuild(key);
 
-        var token = tracker.Token;
+        var token = run.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
         var stagingDir = Path.Combine(homeDir, ".import.staging");
         var launchStagingDir = Path.Combine(homeDir, ".launch.staging");
@@ -665,8 +730,9 @@ public class InstanceManager(
             TryCleanup(swap.Backup);
         }
 
-        tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
-        tracker.NewSource = container.Profile.Setup.Source;
+        var oldSource = profileManager.GetImmutable(key).Setup.Source;
+        var newSource = container.Profile.Setup.Source;
+        run.Mutate<InstanceActivity.Updating>(x => x with { OldSource = oldSource, NewSource = newSource });
 
         profileManager.Update(key,
                               container.Profile.Setup.Source,
@@ -780,22 +846,27 @@ public class InstanceManager(
     private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)> DownloadAndImportPackageAsync(
         string key,
         Package package,
-        Subject<double?> progressStream,
+        ActivityRun run,
         CancellationToken cancellationToken)
     {
         var size = package.Size;
         logger.LogDebug("Downloading package file {url} sized {size} bytes", package.Download.AbsoluteUri, size);
         using var client = clientFactory.CreateClient();
 
-        var memory = await DownloadFileAsync(package.Download, size, progressStream, client, cancellationToken)
+        var memory = await DownloadFileAsync(package.Download,
+                                            size,
+                                            p => run.Report(new ActivityProgress.Determinate(null, p)),
+                                            client,
+                                            cancellationToken)
                         .ConfigureAwait(false);
 
         logger.LogDebug("Downloaded {length} bytes", memory.Length);
 
-        progressStream.OnNext(1d);
+        run.Report(new ActivityProgress.Determinate(null, 1d));
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
 
-        progressStream.OnNext(null);
+        // 解压与导入无法量化，进度回到脉冲。
+        run.Report(new ActivityProgress.Indeterminate(null));
         CompressedProfilePack pack = new(memory) { Reference = package };
         var container = await importers.ImportAsync(pack).ConfigureAwait(false);
 
