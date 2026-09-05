@@ -9,13 +9,11 @@ public class PackwizImporter : IProfileImporter
 {
     #region IProfileImporter Members
 
-    public bool CanHandle(CompressedProfilePack pack) =>
-        pack.FileNames.Contains((pack.RootPrefix ?? string.Empty) + PackwizHelper.INDEX_FILE_NAME);
+    public bool CanHandle(CompressedProfilePack pack) => pack.FileNames.Contains(PackwizHelper.INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
-        var prefix = pack.RootPrefix ?? string.Empty;
-        await using var manifestStream = pack.Open(prefix + PackwizHelper.INDEX_FILE_NAME);
+        await using var manifestStream = pack.Open(PackwizHelper.INDEX_FILE_NAME);
         using var manifestReader = new StreamReader(manifestStream);
         var manifest = PackwizHelper.ParsePackManifest(await manifestReader.ReadToEndAsync().ConfigureAwait(false));
 
@@ -57,16 +55,13 @@ public class PackwizImporter : IProfileImporter
             packages.Add(new() { Pref = pref, Enabled = true, Source = packageSource });
         }
 
-        var indexFullName = prefix + PackwizHelper.INDEX_FILE_NAME;
-        var indexTomlName = prefix + "index.toml";
+        // packwiz 的整个包内容就是实例目录，无 overrides 层：除清单与包声明外原样带入。
         var importFiles = pack
-                         .FileNames.Where(x => x.StartsWith(prefix, StringComparison.Ordinal))
-                         .Select(x => (Source: x, Target: x[prefix.Length..]))
-                         .Where(p => !string.IsNullOrEmpty(p.Target))
-                         .Where(p => p.Source != indexFullName && p.Source != indexTomlName)
-                         .Where(p => !p.Target.EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase))
-                         .Where(p => ZipArchiveHelper.IsExtractableEntry(p.Target))
-                         .Select(p => (p.Source, p.Target))
+                         .FileNames
+                         .Where(x => x != PackwizHelper.INDEX_FILE_NAME && x != "index.toml")
+                         .Where(x => !x.EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase))
+                         .Where(ZipArchiveHelper.IsExtractableEntry)
+                         .Select(x => (Source: x, Target: x))
                          .ToList();
 
         return new(new()
