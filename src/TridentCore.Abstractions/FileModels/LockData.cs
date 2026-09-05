@@ -24,7 +24,7 @@ public record LockData
     #region Nested type: ViabilityData
 
     // NOTE: 控制缓存有效性的 hash 指纹。新增 xxxHash 字段放这里，不要放顶层。
-    public record ViabilityData(string OptionsHash, string? PriorityHash = null, string? LaunchPlanHash = null);
+    public record ViabilityData(string? LaunchPlanHash = null);
 
     #endregion
 

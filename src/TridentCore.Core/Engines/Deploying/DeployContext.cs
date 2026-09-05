@@ -10,8 +10,6 @@ public class DeployContext(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    string optionsHash,
-    string priorityHash,
     LaunchPlanSnapshot? launchPlanSnapshot,
     JavaHomeLocatorDelegate javaHomeLocator)
 {
@@ -29,8 +27,6 @@ public class DeployContext(
     public Profile.Rice Setup => setup;
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
-    public string OptionsHash => optionsHash;
-    public string PriorityHash => priorityHash;
     public LaunchPlanSnapshot? LaunchPlanSnapshot => launchPlanSnapshot;
     public string? LaunchPlanHash => launchPlanSnapshot?.Hash;
     public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;

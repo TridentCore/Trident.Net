@@ -16,7 +16,6 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
                                 instanceManager,
                                 instance.Key,
                                 settings.Profile,
-                                settings.FastMode ?? false,
                                 settings.FullCheck ?? false,
                                 settings.JavaHome)
                     .GetAwaiter()
@@ -37,9 +36,6 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
 
     public class Arguments : InstanceArgumentsBase
     {
-        [CommandOption("--fast")]
-        public bool? FastMode { get; set; }
-
         [CommandOption("--full-check")]
         public bool? FullCheck { get; set; }
 

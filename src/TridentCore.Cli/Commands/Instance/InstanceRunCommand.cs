@@ -67,12 +67,7 @@ public class InstanceRunCommand(
                                                                              .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER,
                                                                           configuration.Get<string>(TridentProfile
                                                                              .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)));
-        var deployOptions =
-            new DeployOptions(settings.FastMode
-                           ?? profile.GetOverride(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
-                                                  configuration.Get(TridentProfile.OVERRIDE_BEHAVIOR_DEPLOY_FASTMODE,
-                                                                    false)),
-                              settings.FullCheck);
+        var deployOptions = new DeployOptions(settings.FullCheck);
 
         var locator = JavaHelper.MakeLocator(_ => settings.JavaHome
                                                ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_HOME,
@@ -84,8 +79,7 @@ public class InstanceRunCommand(
             output.WriteKeyValueTable("Run plan",
                                       ("Instance", instance.Key),
                                       ("Mode", launchOptions.Mode.ToString()),
-                                      ("Account", account.Username),
-                                      ("Deploy", deployOptions.FastMode ? "fast" : "full"));
+                                      ("Account", account.Username));
         }
 
         var deployTracker = instanceManager.Deploy(instance.Key, deployOptions, locator);
@@ -369,9 +363,6 @@ public class InstanceRunCommand(
 
         [CommandOption("--command-wrapper <TEMPLATE>")]
         public string? CommandWrapper { get; set; }
-
-        [CommandOption("--fast")]
-        public bool? FastMode { get; set; }
 
         [CommandOption("--full-check")]
         public bool? FullCheck { get; set; }

@@ -131,12 +131,11 @@ internal static class InstanceOperation
         InstanceManager instanceManager,
         string instance,
         string? profile,
-        bool fastMode,
         bool fullCheck,
         string? javaHome)
     {
         var ctx = resolver.Resolve(instance, profile);
-        var options = new DeployOptions(fastMode, fullCheck);
+        var options = new DeployOptions(fullCheck);
         var locator = JavaHelper.MakeLocator(_ => javaHome);
         var tracker = instanceManager.Deploy(ctx.Key, options, locator);
         await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None).ConfigureAwait(false);

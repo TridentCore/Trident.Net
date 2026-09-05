@@ -98,26 +98,8 @@ public class InstanceManager(
             throw new InvalidOperationException($"Instance {key} is operated in progress");
         }
 
-        var path = PathDef.Default.FileOfLockData(key);
-        var profile = profileManager.GetImmutable(key);
-        var launchPlanSnapshot = LaunchPlanSnapshot.LoadOrNull(key);
-        if (deploy.FastMode && File.Exists(path))
-        {
-            var existing = JsonSerializer.Deserialize<LockData>(File.ReadAllText(path), JsonSerializerOptions.Web);
-
-            if (existing is { LaunchPlan: not null }
-             && existing.Verify(profile.Setup,
-                                ViabilityHashHelper.OptionsOf(deploy),
-                                ViabilityHashHelper.PriorityOf(profile.Setup),
-                                launchPlanSnapshot?.Hash))
-            {
-                Launch(key, launch, javaHomeLocator);
-                return;
-            }
-        }
-
         var tracker = new DeployTracker(key,
-                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator, launchPlanSnapshot)
+                                        async t => await DeployCoreAsync((DeployTracker)t, deploy, javaHomeLocator)
                                                       .ConfigureAwait(false),
                                         t =>
                                         {
@@ -203,8 +185,7 @@ public class InstanceManager(
     private async Task DeployCoreAsync(
         DeployTracker tracker,
         DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator,
-        LaunchPlanSnapshot? launchPlanSnapshot = null)
+        JavaHomeLocatorDelegate javaHomeLocator)
     {
         logger.LogInformation("Begin deploy {}", tracker.Key);
 
@@ -212,14 +193,8 @@ public class InstanceManager(
         var engine = new DeployEngine(tracker.Key,
                                       profile.Setup,
                                       provider,
-                                      new()
-                                      {
-                                          FastMode = options.FastMode,
-                                          FullCheckMode = options.FullCheckMode
-                                      },
-                                      HashHelper.ComputeObjectHash(options),
-                                      ViabilityHashHelper.PriorityOf(profile.Setup),
-                                      launchPlanSnapshot ?? LaunchPlanSnapshot.LoadOrNull(tracker.Key),
+                                      new() { FullCheckMode = options.FullCheckMode },
+                                      LaunchPlanSnapshot.LoadOrNull(tracker.Key),
                                       javaHomeLocator);
 
         var watch = Stopwatch.StartNew();

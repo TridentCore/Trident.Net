@@ -46,7 +46,7 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
         Context.Lock = new()
         {
             Platform = new(Context.Setup.Version, Context.Setup.Loader),
-            Viability = new(Context.OptionsHash, Context.PriorityHash, Context.LaunchPlanHash)
+            Viability = new(Context.LaunchPlanHash)
         };
     }
 }
