@@ -154,14 +154,18 @@ public class MultiMcImporter : IProfileImporter
 
         static string UidOf(string path) => path["patches/".Length..^".json".Length];
 
+        // 引用解析必须走 TryResolveLibrary——它是「这个库指向哪里」的唯一判定点，
+        // 相对结果即包内文件。mavenFiles 同样会转成层，它的本地引用也要一起带出。
         static IEnumerable<string> ReferencedFiles(MmcPatch patch)
         {
-            foreach (var library in (patch.Libraries ?? []).Concat(patch.AdditionalLibraries ?? []))
+            foreach (var library in (patch.Libraries ?? [])
+                                   .Concat(patch.AdditionalLibraries ?? [])
+                                   .Concat(patch.MavenFiles ?? []))
             {
-                var url = library.Url ?? library.Downloads?.Artifact?.Url;
-                if (url is { IsAbsoluteUri: false })
+                if (MultiMcPatchConverter.TryResolveLibrary(library, out var resolved, out _)
+                 && !resolved.Url.IsAbsoluteUri)
                 {
-                    yield return url.OriginalString.Replace('\\', '/');
+                    yield return resolved.Url.OriginalString.Replace('\\', '/');
                 }
             }
 

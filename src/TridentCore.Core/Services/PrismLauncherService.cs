@@ -103,8 +103,8 @@ public class PrismLauncherService(IPrismLauncherClient client)
         return true;
     }
 
-    // HACK: 适配 PrismLauncher Meta 的奇葭多态数据——旧式声明直接带 Url（需自行拼接
-    //  maven 路径），新式走 downloads.artifact。
+    // HACK: 适配 PrismLauncher Meta 的奇葭多态数据——旧式声明只给 maven 仓库根（需自行拼坐标
+    //  路径），新式走 downloads.artifact 给完整地址。
     // TODO: 迁移到 TridentCore/launcher-meta 后可去掉 Url 分支。
     public static void AddValidatedLibraries(
         ICollection<LaunchPlanDocument.Operation> operations,
@@ -115,10 +115,9 @@ public class PrismLauncherService(IPrismLauncherClient client)
             if (lib.Url != null)
             {
                 var id = LibraryHelper.ParseIdentity(lib.Name);
-                var exactUrl = lib.Url.AbsoluteUri.EndsWith('/') ? lib.Url : new(lib.Url.AbsoluteUri + '/');
-                var fullUrl = new Uri(exactUrl,
-                                      $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}");
-                operations.Add(new LaunchPlanDocument.AddLibraryOperation(new(id, fullUrl, null)));
+                operations
+                   .Add(new LaunchPlanDocument
+                            .AddLibraryOperation(new(id, LibraryHelper.ResolveAgainstRepository(lib.Url, id), null)));
             }
             else if (lib.Downloads is { Artifact: { } artifact })
             {

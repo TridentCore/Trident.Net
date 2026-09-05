@@ -41,7 +41,27 @@ public sealed record MmcPatch
     public sealed record MmcLibrary
     {
         public string Name { get; init; } = "";
-        public Uri? Url { get; init; }
+
+        // WARNING: MMC 的 "url" 是 maven 仓库根，不是文件地址——消费时必须接上坐标路径。
+        //  完整地址只出现在下面的 MMC-absoluteUrl 私有扩展键里。
+        [JsonPropertyName("url")]
+        public Uri? RepositoryUrl { get; init; }
+
+        [JsonPropertyName("MMC-absoluteUrl")]
+        public Uri? AbsoluteUrl { get; init; }
+
+        // MultiMC 早期版本的拼写错误，Prism 至今仍兼容读取。
+        [JsonPropertyName("MMC-absulute_url")]
+        public Uri? LegacyAbsoluteUrl { get; init; }
+
+        // 上游只识别 "local"（文件已在实例 libraries/ 内，不下载）与 "always-stale"（忽略缓存重下）。
+        [JsonPropertyName("MMC-hint")]
+        public string? Hint { get; init; }
+
+        // 显式覆写由坐标推导出的文件名。
+        [JsonPropertyName("MMC-filename")]
+        public string? FileName { get; init; }
+
         public MmcDownloads? Downloads { get; init; }
         public MmcNatives? Natives { get; init; }
 

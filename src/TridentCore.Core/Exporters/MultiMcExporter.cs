@@ -206,8 +206,6 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         string planPath,
         PackedProfileContainer container)
     {
-        var url = AddLocalFile(library.Url, planPath, container);
-
         var identity = library.Id.Namespace + ":" + library.Id.Name + ":" + library.Id.Version;
         if (library.Id.Platform is not null)
         {
@@ -219,20 +217,59 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
             identity += "@" + library.Id.Extension;
         }
 
+        // 本地库在 MMC 里由 MMC-hint 表达：文件随包携带，消费端只按文件名在实例 libraries/ 内寻址。
+        // WARNING: 这类库绝不能写 downloads.artifact——带 url 的声明会让消费端联网抓取，而整合包
+        //  自带的补丁 jar 在任何公共仓库都不存在，必定 404。
+        if (!library.Url.IsAbsoluteUri || library.Url.IsFile)
+        {
+            AddLocalLibrary(library.Url, LibraryHelper.FileNameOf(library.Id), planPath, container);
+            return new JsonObject
+            {
+                ["name"] = identity,
+                ["MMC-hint"] = MultiMcHelper.LIBRARY_HINT_LOCAL
+            };
+        }
+
+        // WARNING: 只写 downloads.artifact.url——MMC 的顶层 "url" 是 maven 仓库根，消费端会在其后
+        //  再接一遍坐标路径。把完整地址写进去会得到 base+coordinate 的错误拼接。
         return new JsonObject
         {
             ["name"] = identity,
-            ["url"] = url,
             ["downloads"] = new JsonObject
             {
                 ["artifact"] = new JsonObject
                 {
                     ["sha1"] = library.Hash?.Value,
                     ["size"] = 0,
-                    ["url"] = url
+                    ["url"] = library.Url.ToString()
                 }
             }
         };
+    }
+
+    // 把本地库文件平铺进包根的 libraries/，与 MMC-hint:local 的寻址方式一致。
+    private static void AddLocalLibrary(
+        Uri uri,
+        string fileName,
+        string planPath,
+        PackedProfileContainer container)
+    {
+        var source = uri.IsAbsoluteUri && uri.IsFile
+                         ? uri.LocalPath
+                         : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(planPath)!, uri.OriginalString));
+        if (!File.Exists(source))
+        {
+            container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
+                                          $"MMC export could not include local library file '{fileName}'.",
+                                          planPath));
+            return;
+        }
+
+        var attachment = $"{MultiMcHelper.PACK_LIBRARIES_DIR}/{fileName}";
+        if (!container.Attachments.ContainsKey(attachment))
+        {
+            container.Attachments.Add(attachment, new MemoryStream(File.ReadAllBytes(source)));
+        }
     }
 
     private static string AddLocalFile(Uri uri, string planPath, PackedProfileContainer container)

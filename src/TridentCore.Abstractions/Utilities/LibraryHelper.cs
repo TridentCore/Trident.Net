@@ -34,6 +34,25 @@ public static partial class LibraryHelper
         return identity;
     }
 
+    // Maven 坐标到构件文件名的唯一规则。
+    // WARNING: platform 必须进文件名，native 库的 classifier 正落在这个位置；漏掉会让每个
+    //  native 库都指向不存在的路径。
+    public static string FileNameOf(LockData.Library.Identity identity) =>
+        identity.Platform is null
+            ? $"{identity.Name}-{identity.Version}.{identity.Extension}"
+            : $"{identity.Name}-{identity.Version}-{identity.Platform}.{identity.Extension}";
+
+    // Maven 坐标到仓库内相对路径的唯一布局规则：ns 的点变斜杠，末段是构件文件名。
+    public static string RelativePathOf(LockData.Library.Identity identity) =>
+        $"{identity.Namespace.Replace('.', '/')}/{identity.Name}/{identity.Version}/{FileNameOf(identity)}";
+
+    // 把 maven 仓库根解析成完整下载地址。仓库根未以 / 结尾时补上，否则 Uri 会吃掉最后一段。
+    public static Uri ResolveAgainstRepository(Uri repository, LockData.Library.Identity identity)
+    {
+        var basedir = repository.AbsoluteUri.EndsWith('/') ? repository : new Uri(repository.AbsoluteUri + '/');
+        return new(basedir, RelativePathOf(identity));
+    }
+
     public static void ValidateIdentity(LockData.Library.Identity identity)
     {
         if (!IsSafeIdentifier(identity.Namespace)

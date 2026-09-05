@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using TridentCore.Abstractions.FileModels;
@@ -7,8 +8,13 @@ using TridentCore.Core.Models.MultiMcPack;
 
 namespace TridentCore.Core.Utilities;
 
+// MMC patch 到原生 operation 的转换。这里是外部约定的终点：MMC 的 url 多态（仓库根 /
+// 私有绝对地址 / hint 本地文件 / 缺省）在此全部规范为原生 add-library 的唯一含义。
 public static class MultiMcPatchConverter
 {
+    // MMC/Prism 在 library 既无 downloads 也无 url 时回落到的隐式仓库。
+    private static readonly Uri DEFAULT_LIBRARY_REPOSITORY = new("https://libraries.minecraft.net/");
+
     public static ConversionResult Convert(string uid, MmcPatch patch)
     {
         var operations = new List<LaunchPlanDocument.Operation>();
@@ -101,13 +107,16 @@ public static class MultiMcPatchConverter
     public static byte[] Serialize(LaunchPlanDocument document) =>
         Encoding.UTF8.GetBytes(JsonSerializer.Serialize(document, FileHelper.SerializerOptions));
 
-    private static bool TryConvertLibrary(
+    // 将 MMC 的多种 url 约定规范化为原生计划的唯一含义：可直接抓取的完整地址，或指向层内文件的相对引用。
+    // 优先链与上游一致：MMC-hint:local > downloads.artifact > MMC-absoluteUrl > url（仓库根）> 官方默认仓库。
+    // WARNING: 导入端的引用收集与 operation 转换必须共用本函数。各自再写一遍优先链，两边对
+    //  “哪些库指向包内文件”的结论会逐步漂移，表现为计划引用了一个未被解压的文件。
+    public static bool TryResolveLibrary(
         MmcPatch.MmcLibrary library,
-        bool mavenOnly,
-        out LockData.Library? converted,
+        [NotNullWhen(true)] out ResolvedLibrary? resolved,
         out string? diagnostic)
     {
-        converted = null;
+        resolved = null;
         diagnostic = null;
         LockData.Library.Identity identity;
         try
@@ -120,19 +129,56 @@ public static class MultiMcPatchConverter
             return false;
         }
 
-        var artifact = library.Downloads?.Artifact;
-        var url = library.Url ?? artifact?.Url;
-        if (url is null)
+        // hint 是显式意图声明，背景是“文件已随包携带”，优先于顺带写下的 downloads 元数据。
+        // WARNING: 上游的本地库目录是扁平的（只按构件文件名寻址），不是 maven 目录结构；
+        //  用 RelativePathOf 会拼出包里不存在的多层路径。
+        if (library.Hint is MultiMcHelper.LIBRARY_HINT_LOCAL)
         {
-            diagnostic = $"MMC library '{library.Name}' has no download URL.";
+            var fileName = library.FileName ?? LibraryHelper.FileNameOf(identity);
+            resolved = new(identity,
+                           new($"{MultiMcHelper.PACK_LIBRARIES_DIR}/{fileName}", UriKind.Relative),
+                           null);
+            return true;
+        }
+
+        if (library.Downloads?.Artifact is { } artifact)
+        {
+            resolved = new(identity, artifact.Url, FileHash.FromSha1(artifact.Sha1));
+            return true;
+        }
+
+        if ((library.AbsoluteUrl ?? library.LegacyAbsoluteUrl) is { } absolute)
+        {
+            resolved = new(identity, absolute, null);
+            return true;
+        }
+
+        resolved = new(identity,
+                       LibraryHelper.ResolveAgainstRepository(library.RepositoryUrl ?? DEFAULT_LIBRARY_REPOSITORY,
+                                                              identity),
+                       null);
+        return true;
+    }
+
+    // WARNING: 转换必须在导入边界完成。把 maven 仓库根原样写进原生计划会让下载抽到目录
+    //  列表页，而该声明无 sha1、hash 校验形同虚设，坏文件会静默进共享缓存。
+    private static bool TryConvertLibrary(
+        MmcPatch.MmcLibrary library,
+        bool mavenOnly,
+        out LockData.Library? converted,
+        out string? diagnostic)
+    {
+        converted = null;
+        if (!TryResolveLibrary(library, out var resolved, out diagnostic))
+        {
             return false;
         }
 
-        converted = new(identity,
-                         url,
-                         artifact is null ? null : FileHash.FromSha1(artifact.Sha1),
-                         library.Natives is not null,
-                         !mavenOnly);
+        converted = new(resolved.Identity,
+                        resolved.Url,
+                        resolved.Hash,
+                        library.Natives is not null,
+                        !mavenOnly);
         return true;
     }
 
@@ -203,4 +249,7 @@ public static class MultiMcPatchConverter
     }
 
     public sealed record ConversionResult(LaunchPlanDocument Document, IReadOnlyList<LaunchPlanDiagnostic> Diagnostics);
+
+    // Url 可能是完整下载地址，也可能是相对引用（指向随包携带、将被解压到计划层内的文件）。
+    public sealed record ResolvedLibrary(LockData.Library.Identity Identity, Uri Url, FileHash? Hash);
 }
