@@ -126,7 +126,7 @@ public class MultiMcImporter : IProfileImporter
             var converted = MultiMcPatchConverter.Convert(uid, patch);
             diagnostics.AddRange(converted.Diagnostics.Select(x => x with { Path = source }));
             var order = index.ToString($"D{width}");
-            generatedFiles.Add(($"source/{order}-{fileUid}{LaunchPlanFileHelper.PLAN_SUFFIX}",
+            generatedFiles.Add(($"{LaunchPlanFileHelper.SOURCE_PREFIX}{order}-{fileUid}{LaunchPlanFileHelper.PLAN_SUFFIX}",
                                 MultiMcPatchConverter.Serialize(converted.Document)));
             foreach (var relative in ReferencedFiles(patch))
             {
@@ -146,7 +146,7 @@ public class MultiMcImporter : IProfileImporter
                     continue;
                 }
 
-                launchFiles.Add((archivePath, $"source/{relative}"));
+                launchFiles.Add((archivePath, $"{LaunchPlanFileHelper.SOURCE_PREFIX}{relative}"));
             }
         }
 

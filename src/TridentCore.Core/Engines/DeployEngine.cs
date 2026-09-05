@@ -26,7 +26,6 @@ public class DeployEngine(
         private static readonly Type[] SEQUENCE =
         [
             typeof(LoadLockStage),
-            typeof(LoadLaunchPlanStage),
             typeof(InstallVanillaStage),
             typeof(ProcessLoaderStage),
             typeof(ResolveLaunchPlanStage),

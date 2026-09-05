@@ -9,6 +9,11 @@ public static class LaunchPlanFileHelper
     public const string PLAN_SUFFIX = ".plan.json";
     public const string USER_UID_PREFIX = "trident.plan.";
 
+    // 包内/提取目标的相对前缀。归档条目恒用 '/'，不随平台分隔符变化。
+    public const string SOURCE_PREFIX = SOURCE_DIRECTORY_NAME + "/";
+    public const string LAUNCH_DIRECTORY_NAME = "launch";
+    public const string LAUNCH_SOURCE_PREFIX = LAUNCH_DIRECTORY_NAME + "/" + SOURCE_PREFIX;
+
     public static bool IsEnabledPlanFile(string path) =>
         IsPlanFile(path) && !Path.GetFileName(path).StartsWith(".", StringComparison.Ordinal);
 

@@ -57,10 +57,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         var sourceOrderUids = new List<string>();
         if (snapshot is not null)
         {
-            foreach (var entry in snapshot.Entries.Where(x => x.RelativePath.StartsWith(
-                                                                  LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME
-                                                                + Path.DirectorySeparatorChar,
-                                                                  StringComparison.Ordinal)))
+            foreach (var entry in snapshot.Entries.Where(x => x.Origin == LaunchLayer.Origin.Managed))
             {
                 var candidate = LaunchPlanFileHelper.SourceUid(Path.GetFileName(entry.Path));
                 var uid = patchUids.Contains(candidate)
@@ -68,7 +65,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
                               : candidate;
                 patchUids.Add(uid);
                 sourceOrderUids.Add(uid);
-                var patch = ConvertDocument(entry.SourceDocument,
+                var patch = ConvertDocument(entry.RawOperations,
                                             uid,
                                             entry.Path,
                                             container);
@@ -117,7 +114,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
     #endregion
 
     private static JsonObject ConvertDocument(
-        LaunchPlanDocument document,
+        IReadOnlyList<LaunchPlanDocument.Operation> operations,
         string uid,
         string planPath,
         PackedProfileContainer container)
@@ -132,7 +129,7 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         var gameArguments = new List<string>();
         var jvmArguments = new List<string>();
         var libraries = new JsonArray();
-        foreach (var operation in document.Operations)
+        foreach (var operation in operations)
         {
             switch (operation)
             {
@@ -161,23 +158,27 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
                 case LaunchPlanDocument.AddLibraryOperation add:
                     libraries.Add(SerializeLibrary(add.Value, planPath, container));
                     break;
+                // minecraftArguments 的 MMC 语义就是整体替换，累积后一次写出即与 clear+append 等价。
                 case LaunchPlanDocument.ClearGameArgumentsOperation:
                     gameArguments.Clear();
-                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                                  "MMC export cannot preserve clear-game-arguments exactly."));
                     break;
+
+                // +jvmArgs 只能追加，无法表达清空；消费端会看到未被清除的上游参数。
                 case LaunchPlanDocument.ClearJavaArgumentsOperation:
                     jvmArguments.Clear();
-                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                                  "MMC export cannot preserve clear-java-arguments exactly."));
+                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Error,
+                                                  "MMC export cannot express clearing JVM arguments; the exported instance keeps them.",
+                                                  planPath));
                     break;
                 case LaunchPlanDocument.RemoveLibrariesOperation:
-                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                                  "MMC export cannot preserve remove-libraries exactly."));
+                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Error,
+                                                  "MMC export cannot express removing libraries; the exported instance keeps them.",
+                                                  planPath));
                     break;
-                case LaunchPlanDocument.SetJavaMajorVersionOperation:
-                    container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                                  "MMC export cannot preserve set-java-major-version exactly."));
+
+                // compatibleJavaMajors 是 MMC patch 的原生字段（导入侧正是从它读的）。
+                case LaunchPlanDocument.SetJavaMajorVersionOperation set:
+                    patch["compatibleJavaMajors"] = new JsonArray(JsonValue.Create(set.Value));
                     break;
             }
         }
@@ -247,7 +248,8 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         if (!File.Exists(source))
         {
             container.Diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                          $"MMC export could not include local launch-plan file '{uri}'."));
+                                          $"MMC export could not include local launch-plan file '{uri}'.",
+                                          planPath));
             return uri.ToString();
         }
 

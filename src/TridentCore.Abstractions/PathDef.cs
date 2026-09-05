@@ -69,7 +69,6 @@ public class PathDef
         Path.Combine(InstanceDirectory, key, $"icon.{extensionGuess}");
 
     public string FileOfLockData(string key) => Path.Combine(InstanceDirectory, key, "data.lock.json");
-    public string DirectoryOfLaunchSource(string key) => Path.Combine(DirectoryOfLaunch(key), "source");
     public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
     public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
     public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
@@ -77,6 +76,7 @@ public class PathDef
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
     public string DirectoryOfLaunch(string key) => Path.Combine(InstanceDirectory, key, "launch");
+    public string DirectoryOfLaunchSource(string key) => Path.Combine(DirectoryOfLaunch(key), "source");
     public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
     public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");

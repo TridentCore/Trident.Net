@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
+using TridentCore.Abstractions.FileModels;
 
-namespace TridentCore.Abstractions.FileModels;
+namespace TridentCore.Abstractions.LaunchPlans;
 
 public sealed record LaunchPlanResult(
     string MainClass,

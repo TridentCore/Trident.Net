@@ -103,26 +103,28 @@ public class PrismLauncherService(IPrismLauncherClient client)
         return true;
     }
 
+    // HACK: 适配 PrismLauncher Meta 的奇葭多态数据——旧式声明直接带 Url（需自行拼接
+    //  maven 路径），新式走 downloads.artifact。
+    // TODO: 迁移到 TridentCore/launcher-meta 后可去掉 Url 分支。
     public static void AddValidatedLibraries(
-        LaunchPlan plan,
+        ICollection<LaunchPlanDocument.Operation> operations,
         IEnumerable<Component.Library> sources)
     {
         foreach (var lib in sources.Where(ValidateLibraryRule))
         {
             if (lib.Url != null)
             {
-                // 旧式声明——直接带 Url，无需 downloads 表。
                 var id = LibraryHelper.ParseIdentity(lib.Name);
                 var exactUrl = lib.Url.AbsoluteUri.EndsWith('/') ? lib.Url : new(lib.Url.AbsoluteUri + '/');
                 var fullUrl = new Uri(exactUrl,
                                       $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}");
-                plan.AddLibrary(new(id, fullUrl, null));
+                operations.Add(new LaunchPlanDocument.AddLibraryOperation(new(id, fullUrl, null)));
             }
             else if (lib.Downloads is { Artifact: { } artifact })
             {
-                plan.AddLibrary(new(LibraryHelper.ParseIdentity(lib.Name),
-                                    artifact.Url,
-                                    FileHash.FromSha1(artifact.Sha1)));
+                operations.Add(new LaunchPlanDocument.AddLibraryOperation(new(LibraryHelper.ParseIdentity(lib.Name),
+                                                                              artifact.Url,
+                                                                              FileHash.FromSha1(artifact.Sha1))));
             }
 
             (string, Component.Library.DownloadsEntry)? native = null;
@@ -145,11 +147,13 @@ public class PrismLauncherService(IPrismLauncherClient client)
                 if (downloads.Classifiers.TryGetValue(classifier, out var download))
                 // 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
-                    plan.AddLibrary(new(LibraryHelper.ParseIdentity($"{lib.Name}:{classifier}"),
-                                        download.Url,
-                                        FileHash.FromSha1(download.Sha1),
-                                        true,
-                                        false));
+                    operations
+                       .Add(new LaunchPlanDocument
+                                .AddLibraryOperation(new(LibraryHelper.ParseIdentity($"{lib.Name}:{classifier}"),
+                                                         download.Url,
+                                                         FileHash.FromSha1(download.Sha1),
+                                                         true,
+                                                         false)));
                 }
             }
         }

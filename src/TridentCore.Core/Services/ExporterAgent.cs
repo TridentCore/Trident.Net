@@ -1,12 +1,17 @@
 using System.IO.Compression;
+using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Exporters;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.LaunchPlans;
 
 namespace TridentCore.Core.Services;
 
-public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManager profileManager)
+public class ExporterAgent(
+    IEnumerable<IProfileExporter> exporters,
+    ProfileManager profileManager,
+    ILogger<ExporterAgent> logger)
 {
     public async Task<PackedProfileContainer> ExportAsync(
         PackData options,
@@ -40,13 +45,36 @@ public class ExporterAgent(IEnumerable<IProfileExporter> exporters, ProfileManag
                 }
 
                 var pack = new UncompressedProfilePack(key, profile, options, name, author, version);
-                return await exporter.PackAsync(pack).ConfigureAwait(false);
+                var container = await exporter.PackAsync(pack).ConfigureAwait(false);
+                Report(container.Diagnostics);
+                return container;
             }
 
             throw new KeyNotFoundException($"{key} is not a key to the managed profile");
         }
 
         throw new ExporterNotFoundException(label);
+    }
+
+    // 导出诊断的唯一出口，与导入侧对称。Error 表示目标格式无法表达某个启动意图，
+    // 导出产物的行为与源实例不一致。
+    private void Report(ICollection<LaunchPlanDiagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.Level == LaunchPlanDiagnostic.Kind.Error)
+            {
+                logger.LogError("Export diagnostic ({path}): {message}",
+                                diagnostic.Path ?? "launch plan",
+                                diagnostic.Message);
+            }
+            else
+            {
+                logger.LogWarning("Export diagnostic ({path}): {message}",
+                                  diagnostic.Path ?? "launch plan",
+                                  diagnostic.Message);
+            }
+        }
     }
 
     public async Task PackCompressedAsync(Stream writer, PackedProfileContainer container)

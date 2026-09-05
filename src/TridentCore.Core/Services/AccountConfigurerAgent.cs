@@ -1,6 +1,7 @@
-using TridentCore.Abstractions;
 using TridentCore.Abstractions.Accounts;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Accounts;
 using TridentCore.Core.Igniters;
 
@@ -57,11 +58,6 @@ public class AccountConfigurerAgent
         public Igniter Igniter { get; }
         public LaunchPlanResult LaunchPlan { get; }
 
-        public string GetLibraryPath(LockData.Library library) =>
-            PathDef.Default.FileOfLibrary(library.Id.Namespace,
-                                          library.Id.Name,
-                                          library.Id.Version,
-                                          library.Id.Platform,
-                                          library.Id.Extension);
+        public string GetLibraryPath(LockData.Library library) => LibraryLocation.Of(library);
     }
 }

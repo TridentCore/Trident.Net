@@ -211,10 +211,6 @@ public class InstanceManager(
                     tracker.StageStream.OnNext(DeployStage.LoadLock);
                     tracker.CurrentStage = DeployStage.LoadLock;
                     break;
-                case LoadLaunchPlanStage:
-                    tracker.StageStream.OnNext(DeployStage.LoadLaunchPlan);
-                    tracker.CurrentStage = DeployStage.LoadLaunchPlan;
-                    break;
                 case InstallVanillaStage:
                     tracker.StageStream.OnNext(DeployStage.InstallVanilla);
                     tracker.CurrentStage = DeployStage.InstallVanilla;
@@ -555,15 +551,26 @@ public class InstanceManager(
         var token = tracker.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
         var stagingDir = Path.Combine(homeDir, ".import.staging");
-        var launchSourceDir = PathDef.Default.DirectoryOfLaunchSource(key);
         var launchStagingDir = Path.Combine(homeDir, ".launch.staging");
         var liveBackupDir = Path.Combine(homeDir, ".live.backup");
-        var oldImportDir = Path.Combine(homeDir, ".import.old");
-        var oldLaunchSourceDir = Path.Combine(homeDir, ".launch.source.old");
+
+        // 目录级替换全部走同一条提交/回滚路径；「该不该换 launch/source」是列表里有无这一项的
+        // 数据差异，不是另一条代码分支。以后新增层只需追加一项。
+        var swaps = new List<DirectorySwap>
+        {
+            new(importDir, stagingDir, Path.Combine(homeDir, ".import.old"))
+        };
+        if (container.ReplacesManagedLaunchSource)
+        {
+            swaps.Add(new(PathDef.Default.DirectoryOfLaunchSource(key),
+                          Path.Combine(launchStagingDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME),
+                          Path.Combine(homeDir, ".launch.source.old")));
+        }
+
         // Declared home files may be absent (Trident lists every icon extension); filter to those
         // present so staging, validation, promotion, and rollback all share one consistent set.
         var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
-        var launchReplaced = false;
+        var promoted = new List<DirectorySwap>();
 
         try
         {
@@ -572,8 +579,10 @@ public class InstanceManager(
             TryCleanup(stagingDir);
             TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
-            TryCleanup(oldImportDir);
-            TryCleanup(oldLaunchSourceDir);
+            foreach (var swap in swaps)
+            {
+                TryCleanup(swap.Backup);
+            }
 
             var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
             await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
@@ -607,24 +616,12 @@ public class InstanceManager(
 
             // Phase 3 — commit: atomic dir swap + per-file .tmp promotion. Synchronous renames,
             //  no cancellation window between them; a hard crash here is an accepted edge case.
-            Directory.Move(importDir, oldImportDir);
-            Directory.Move(stagingDir, importDir);
-            if (container.ReplacesManagedLaunchSource)
+            foreach (var swap in swaps)
             {
-                if (Directory.Exists(launchSourceDir))
-                {
-                    Directory.Move(launchSourceDir, oldLaunchSourceDir);
-                }
-
-                var stagedSourceDir = Path.Combine(launchStagingDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME);
-                if (Directory.Exists(stagedSourceDir))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(launchSourceDir)!);
-                    Directory.Move(stagedSourceDir, launchSourceDir);
-                }
-
-                launchReplaced = true;
+                Promote(swap);
+                promoted.Add(swap);
             }
+
             foreach (var (_, target) in presentHomeFiles)
             {
                 File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
@@ -636,26 +633,9 @@ public class InstanceManager(
             try
             {
                 RestoreLive(liveBackupDir, buildDir);
-                if (Directory.Exists(oldImportDir))
+                foreach (var swap in promoted)
                 {
-                    if (Directory.Exists(importDir))
-                    {
-                        Directory.Delete(importDir, true);
-                    }
-                    Directory.Move(oldImportDir, importDir);
-                }
-
-                if (container.ReplacesManagedLaunchSource && Directory.Exists(oldLaunchSourceDir))
-                {
-                    if (Directory.Exists(launchSourceDir))
-                    {
-                        Directory.Delete(launchSourceDir, true);
-                    }
-                    Directory.Move(oldLaunchSourceDir, launchSourceDir);
-                }
-                else if (container.ReplacesManagedLaunchSource && launchReplaced && Directory.Exists(launchSourceDir))
-                {
-                    Directory.Delete(launchSourceDir, true);
+                    Rollback(swap);
                 }
 
                 foreach (var (_, target) in presentHomeFiles)
@@ -670,15 +650,20 @@ public class InstanceManager(
             TryCleanup(stagingDir);
             TryCleanup(launchStagingDir);
             TryCleanup(liveBackupDir);
-            TryCleanup(oldLaunchSourceDir);
+            foreach (var swap in swaps)
+            {
+                TryCleanup(swap.Backup);
+            }
             throw;
         }
 
         // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.
         TryCleanup(liveBackupDir);
-        TryCleanup(oldImportDir);
         TryCleanup(launchStagingDir);
-        TryCleanup(oldLaunchSourceDir);
+        foreach (var swap in swaps)
+        {
+            TryCleanup(swap.Backup);
+        }
 
         tracker.OldSource = profileManager.GetImmutable(key).Setup.Source;
         tracker.NewSource = container.Profile.Setup.Source;
@@ -692,6 +677,46 @@ public class InstanceManager(
                               container.Profile.Overrides);
 
         logger.LogInformation("{key} updated", key);
+
+        // 提交：把 live 挪到 backup，把 staging 挪进 live。
+        // WARNING: staging 可能不存在（新包未携带该层的任何文件），此时仍须保证 live 存在，
+        //  否则实例会在提交后丢掉整个目录（空目录与不存在对读取端等价，但结构不能缺）。
+        static void Promote(DirectorySwap swap)
+        {
+            if (Directory.Exists(swap.Live))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(swap.Backup)!);
+                Directory.Move(swap.Live, swap.Backup);
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(swap.Live)!);
+            if (Directory.Exists(swap.Staged))
+            {
+                Directory.Move(swap.Staged, swap.Live);
+            }
+            else
+            {
+                Directory.CreateDirectory(swap.Live);
+            }
+        }
+
+        // 回滚：撤销一次 Promote。backup 里无内容则视为原本没有 live（本次是新增）。
+        static void Rollback(DirectorySwap swap)
+        {
+            if (Directory.Exists(swap.Backup))
+            {
+                if (Directory.Exists(swap.Live))
+                {
+                    Directory.Delete(swap.Live, true);
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(swap.Live)!);
+                Directory.Move(swap.Backup, swap.Live);
+            }
+            else if (Directory.Exists(swap.Live))
+            {
+                Directory.Delete(swap.Live, true);
+            }
+        }
 
         void TryCleanup(string dir)
         {

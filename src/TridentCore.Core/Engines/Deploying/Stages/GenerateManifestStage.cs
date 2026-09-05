@@ -17,8 +17,15 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
 
         var plan = Context.Lock.LaunchPlan!;
 
-        var indexPath = PathDef.Default.FileOfAssetIndex(plan.AssetIndex.Id);
-        manifest.PresentFiles.Add(new(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash));
+        // 本地 asset index（计划层自带）原地读取，不进共享缓存也不进 manifest——远程 index 才需要下载。
+        var indexPath = plan.AssetIndex.Url.IsFile
+                            ? plan.AssetIndex.Url.LocalPath
+                            : PathDef.Default.FileOfAssetIndex(plan.AssetIndex.Id);
+        if (!plan.AssetIndex.Url.IsFile)
+        {
+            manifest.PresentFiles.Add(new(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash));
+        }
+
         var index = await GetAssetIndexAsync(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash)
                        .ConfigureAwait(false)
                  ?? throw new
@@ -52,12 +59,12 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         var nativesDir = PathDef.Default.DirectoryOfNatives(Context.Key);
         foreach (var lib in plan.Libraries)
         {
-            var path = PathDef.Default.FileOfLibrary(lib.Id.Namespace,
-                                                     lib.Id.Name,
-                                                     lib.Id.Version,
-                                                     lib.Id.Platform,
-                                                     lib.Id.Extension);
-            manifest.PresentFiles.Add(new(path, lib.Url, lib.Hash));
+            var path = LibraryLocation.Of(lib);
+            if (LibraryLocation.NeedsDownload(lib))
+            {
+                manifest.PresentFiles.Add(new(path, lib.Url, lib.Hash));
+            }
+
             if (lib.IsNative)
             {
                 manifest.ExplosiveFiles.Add(new(path, nativesDir));

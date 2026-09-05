@@ -24,6 +24,16 @@ public sealed record MmcPatch
     [JsonPropertyName("+libraries")]
     public IReadOnlyList<MmcLibrary>? AdditionalLibraries { get; init; }
 
+    // Prism 将 mavenFiles 下载到库目录但不置入 classpath（Forge 安装器等）。
+    public IReadOnlyList<MmcLibrary>? MavenFiles { get; init; }
+
+    // 1.7.10 时代的 mod 注入方式：把条目重打包进客户端 jar。原生计划只表达启动行为，
+    // 不做 jar 重打包；读入仅为了能在转换时如实告知用户这部分无法携带。
+    public IReadOnlyList<MmcLibrary>? JarMods { get; init; }
+
+    [JsonPropertyName("+agents")]
+    public IReadOnlyList<MmcLibrary>? Agents { get; init; }
+
     public MmcAssetIndex? AssetIndex { get; init; }
 
     public sealed record MmcAssetIndex(string Id, string Sha1, ulong Size, ulong TotalSize, Uri Url);

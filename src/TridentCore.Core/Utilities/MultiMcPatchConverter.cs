@@ -33,14 +33,26 @@ public static class MultiMcPatchConverter
         {
             operations.Add(new LaunchPlanDocument.AppendGameArgumentOperation("--tweakClass"));
             operations.Add(new LaunchPlanDocument.AppendGameArgumentOperation(tweaker));
-            diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                $"MMC patch '{uid}' tweakers were converted to game arguments."));
         }
 
         if (patch.Traits is { Count: > 0 })
         {
             diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
                                 $"MMC patch '{uid}' traits are not represented by the native launch plan."));
+        }
+
+        // jarMods 是把条目重打包进客户端 jar（1.7.10 时代的 mod 注入），既不是启动参数也不是
+        // 包引用，无法转为原生计划 operation，也接不到包仲裁层——如实报告为不支持。
+        if (patch.JarMods is { Count: > 0 } jarMods)
+        {
+            diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Error,
+                                $"MMC patch '{uid}' declares {jarMods.Count} jar mod(s) that require client jar repackaging, which is not supported."));
+        }
+
+        if (patch.Agents is { Count: > 0 })
+        {
+            diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
+                                $"MMC patch '{uid}' Java agents are not represented by the native launch plan."));
         }
 
         if (patch.CompatibleJavaMajors is { Count: > 0 })
@@ -62,7 +74,19 @@ public static class MultiMcPatchConverter
 
         foreach (var library in (patch.Libraries ?? []).Concat(patch.AdditionalLibraries ?? []))
         {
-            if (!TryConvertLibrary(library, out var converted, out var diagnostic))
+            if (!TryConvertLibrary(library, false, out var converted, out var diagnostic))
+            {
+                diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning, diagnostic!));
+                continue;
+            }
+
+            operations.Add(new LaunchPlanDocument.AddLibraryOperation(converted!));
+        }
+
+        // mavenFiles 下载到库目录但不进 classpath，对应 IsPresent=false。
+        foreach (var library in patch.MavenFiles ?? [])
+        {
+            if (!TryConvertLibrary(library, true, out var converted, out var diagnostic))
             {
                 diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning, diagnostic!));
                 continue;
@@ -79,6 +103,7 @@ public static class MultiMcPatchConverter
 
     private static bool TryConvertLibrary(
         MmcPatch.MmcLibrary library,
+        bool mavenOnly,
         out LockData.Library? converted,
         out string? diagnostic)
     {
@@ -106,7 +131,8 @@ public static class MultiMcPatchConverter
         converted = new(identity,
                          url,
                          artifact is null ? null : FileHash.FromSha1(artifact.Sha1),
-                         library.Natives is not null);
+                         library.Natives is not null,
+                         !mavenOnly);
         return true;
     }
 

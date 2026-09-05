@@ -17,8 +17,9 @@ public class DeployContext(
     // 阶段对照 BaseLock 判有效性并迁移/重建进 Lock。
     internal LockData? BaseLock;
     internal LockData Lock = null!;
-    internal LaunchPlan? LaunchPlan;
-    internal LaunchPlanDocument? LaunchPlanDocument;
+
+    // 平台阶段按序追加自己的层，ResolveLaunchPlan 折叠它们与磁盘上的来源/用户层。
+    internal readonly List<LaunchLayer> PlatformLayers = [];
     internal EntityManifest? Manifest;
     internal BundledRuntime? Runtime;
 

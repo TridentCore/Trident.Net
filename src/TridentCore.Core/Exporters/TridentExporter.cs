@@ -141,7 +141,9 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
                                                  .Where(x => !LaunchPlanFileHelper.IsPlanFile(x) || LaunchPlanFileHelper.IsEnabledPlanFile(x)))
             {
                 var relative = Path.GetRelativePath(sourceDir, file);
-                container.Files[Path.Combine("launch", "source", relative)] = file;
+                container.Files[Path.Combine(LaunchPlanFileHelper.LAUNCH_DIRECTORY_NAME,
+                                             LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME,
+                                             relative)] = file;
             }
         }
 

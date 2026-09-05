@@ -1,20 +1,45 @@
+using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Importers;
+using TridentCore.Abstractions.LaunchPlans;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Services;
 
-public class ImporterAgent(IEnumerable<IProfileImporter> importers)
+public class ImporterAgent(IEnumerable<IProfileImporter> importers, ILogger<ImporterAgent> logger)
 {
     public async Task<ImportedProfileContainer> ImportAsync(CompressedProfilePack pack)
     {
         var importer = importers.FirstOrDefault(x => x.CanHandle(pack));
         if (importer is not null)
         {
-            return await importer.ExtractAsync(pack).ConfigureAwait(false);
+            var container = await importer.ExtractAsync(pack).ConfigureAwait(false);
+            Report(container.LaunchPlanDiagnostics);
+            return container;
         }
 
         throw new ImporterNotFoundException();
+    }
+
+    // 转换诊断的唯一出口。宿主可以另行呈现，但无论如何都先落日志——静默丢弃格式转换中
+    // 无法承载的内容会让用户在游戏启动异常时完全无从追溯。
+    private void Report(IReadOnlyList<LaunchPlanDiagnostic>? diagnostics)
+    {
+        foreach (var diagnostic in diagnostics ?? [])
+        {
+            if (diagnostic.Level == LaunchPlanDiagnostic.Kind.Error)
+            {
+                logger.LogError("Import diagnostic ({path}): {message}",
+                                diagnostic.Path ?? "launch plan",
+                                diagnostic.Message);
+            }
+            else
+            {
+                logger.LogWarning("Import diagnostic ({path}): {message}",
+                                  diagnostic.Path ?? "launch plan",
+                                  diagnostic.Message);
+            }
+        }
     }
 
     public async Task ExtractFilesAsync(string key, ImportedProfileContainer container, CompressedProfilePack pack)
@@ -67,8 +92,9 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
                 throw new InvalidDataException($"Archive entry '{target}' escapes the extraction root.");
             }
 
-            if (target.StartsWith("source/", StringComparison.Ordinal)
-             && !FileHelper.IsInDirectory(destination, Path.Combine(baseDir, "source")))
+            if (target.StartsWith(LaunchPlanFileHelper.SOURCE_PREFIX, StringComparison.Ordinal)
+             && !FileHelper.IsInDirectory(destination,
+                                          Path.Combine(baseDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME)))
             {
                 throw new InvalidDataException($"Archive entry '{target}' escapes the managed launch source.");
             }
