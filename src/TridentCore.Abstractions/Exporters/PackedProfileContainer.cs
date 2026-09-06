@@ -1,4 +1,4 @@
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 
 namespace TridentCore.Abstractions.Exporters;
 
@@ -15,7 +15,7 @@ public class PackedProfileContainer(string key) : IDisposable
     //  OverrideDirectoryName => "overrides" 时 Files 塞入 "overrides-clients"/"overrides-servers" 前缀。
     public IDictionary<string, string> Files { get; } = new Dictionary<string, string>();
 
-    public ICollection<LaunchPlanDiagnostic> Diagnostics { get; } = new List<LaunchPlanDiagnostic>();
+    public ICollection<LaunchDiagnostic> Diagnostics { get; } = new List<LaunchDiagnostic>();
 
     #region IDisposable Members
 

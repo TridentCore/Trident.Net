@@ -15,15 +15,21 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
     {
         var manifest = new EntityManifest();
 
-        var plan = Context.Lock.LaunchPlan!;
+        var plan = Context.Lock.Launch!;
 
-        // 本地 asset index（计划层自带）原地读取，不进共享缓存也不进 manifest——远程 index 才需要下载。
         var indexPath = plan.AssetIndex.Url.IsFile
                             ? plan.AssetIndex.Url.LocalPath
                             : PathDef.Default.FileOfAssetIndex(plan.AssetIndex.Id);
         if (!plan.AssetIndex.Url.IsFile)
         {
             manifest.PresentFiles.Add(new(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash));
+        }
+        else
+        {
+            var assetRoot = LaunchPathHelper.AssetDirectory(Context.Key, plan);
+            manifest.PersistentFiles.Add(new(indexPath, Path.Combine(assetRoot, "indexes", plan.AssetIndex.Id + ".json"), true, false));
+            manifest.PersistentFiles.Add(new(Path.Combine(PathDef.Default.CacheAssetDirectory, "objects"),
+                                             Path.Combine(assetRoot, "objects"), true, true));
         }
 
         var index = await GetAssetIndexAsync(indexPath, plan.AssetIndex.Url, plan.AssetIndex.Hash)
@@ -57,18 +63,18 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         var nativesDir = PathDef.Default.DirectoryOfNatives(Context.Key);
-        foreach (var lib in plan.Libraries)
+        foreach (var artifact in plan.Artifacts)
         {
-            var path = LibraryLocation.Of(lib);
-            if (LibraryLocation.NeedsDownload(lib))
+            if (!artifact.Url.IsFile)
             {
-                manifest.PresentFiles.Add(new(path, lib.Url, lib.Hash));
+                manifest.PresentFiles.Add(new(ArtifactHelper.LocationOf(artifact), artifact.Url, artifact.Hash));
             }
-
-            if (lib.IsNative)
-            {
-                manifest.ExplosiveFiles.Add(new(path, nativesDir));
-            }
+        }
+        var artifacts = plan.Artifacts.ToDictionary(x => x.Id);
+        foreach (var native in plan.Natives)
+        {
+            manifest.ExplosiveFiles.Add(new(ArtifactHelper.LocationOf(artifacts[native.Artifact]), nativesDir,
+                                             Excludes: native.Excludes));
         }
 
         if (Context.Runtime != null)

@@ -39,6 +39,7 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
     #region IProfileExporter Members
 
     public string Label => CurseForgeHelper.LABEL;
+    public bool SupportsLaunchDefinitions => false;
 
     public async Task<PackedProfileContainer> PackAsync(UncompressedProfilePack pack)
     {

@@ -106,6 +106,7 @@ public static class Startup
            .AddSingleton<RepositoryAgent>()
            .AddSingleton<ImporterAgent>()
            .AddSingleton<ExporterAgent>()
+           .AddSingleton<InstanceModpackService>()
            .AddSingleton<InstanceManager>();
     }
 

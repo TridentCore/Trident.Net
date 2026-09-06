@@ -1,178 +1,99 @@
 using System.Text.Json;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.MultiMcPack;
+using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Importers;
 
 public class MultiMcImporter : IProfileImporter
 {
-    #region IProfileImporter Members
-
-    public bool CanHandle(CompressedProfilePack pack) =>
-        pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
+    public bool CanHandle(CompressedProfilePack pack) => pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {
         await using var indexStream = pack.Open(MultiMcHelper.PACK_INDEX_FILE_NAME);
-        var mmcPack = await JsonSerializer
-                           .DeserializeAsync<MmcPack>(indexStream, JsonSerializerOptions.Web)
-                           .ConfigureAwait(false);
-        if (mmcPack is null)
+        var index = await JsonSerializer.DeserializeAsync<MmcPack>(indexStream, JsonSerializerOptions.Web).ConfigureAwait(false)
+                    ?? throw new FormatException("Invalid mmc-pack.json");
+        if (index.FormatVersion != 1) throw new FormatException($"Unsupported MMC pack format {index.FormatVersion}");
+        var active = index.Components.Where(x => !x.Disabled).ToArray();
+        var minecraftVersion = active.FirstOrDefault(x => x.Uid == MultiMcHelper.UID_MINECRAFT)?.Version
+                               ?? throw new FormatException("MMC pack has no active Minecraft version");
+        var loaders = active.Where(x => MultiMcHelper.UidToLoaderMappings.ContainsKey(x.Uid)).ToArray();
+        if (loaders.Length > 1) throw new NotSupportedException("Multiple active mod loaders cannot be represented by the instance profile");
+        var loader = loaders.FirstOrDefault();
+        var profile = new Profile
         {
-            throw new FormatException($"{MultiMcHelper.PACK_INDEX_FILE_NAME} is not a valid mmc-pack.json");
-        }
-
-        var mcVersion = mmcPack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
-        if (mcVersion is null)
-        {
-            throw new FormatException("mmc-pack.json does not contain net.minecraft component");
-        }
-
-        string? loaderLurl = null;
-        foreach (var component in mmcPack.Components)
-        {
-            if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId))
+            Name = await ReadNameAsync(pack).ConfigureAwait(false) ?? "Imported MultiMc Pack",
+            Setup = new()
             {
-                loaderLurl = LoaderHelper.ToLurl(loaderId, component.Version);
-                break;
+                Version = minecraftVersion,
+                Loader = loader is null ? null : LoaderHelper.ToLurl(MultiMcHelper.UidToLoaderMappings[loader.Uid],
+                    loader.Version ?? throw new FormatException("MMC loader has no version")),
+                Packages = []
             }
-        }
+        };
 
-        string? instanceName = null;
-        if (pack.FileNames.Contains(MultiMcHelper.PACK_INSTANCE_CFG))
+        var selections = new List<LaunchSelection>();
+        var files = new Dictionary<string, string>(StringComparer.Ordinal);
+        var generated = new List<(string Target, byte[] Content)>();
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var selection in index.Components)
         {
-            await using var cfgStream = pack.Open(MultiMcHelper.PACK_INSTANCE_CFG);
-            using var reader = new StreamReader(cfgStream);
-            while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+            var componentFile = LaunchDefinitionHelper.ComponentFile(selection.Uid);
+            if (!identities.Add(selection.Uid)) throw new FormatException($"Duplicate MMC component '{selection.Uid}'");
+            selections.Add(selection.Uid == MultiMcHelper.UID_MINECRAFT
+                ? new() { From = LaunchSelection.Binding.Minecraft, Enabled = !selection.Disabled }
+                : selection.Uid == loader?.Uid
+                    ? new() { From = LaunchSelection.Binding.Loader, Enabled = !selection.Disabled }
+                    : new() { Id = selection.Uid, Version = selection.Version, Enabled = !selection.Disabled });
+
+            var patchPath = $"patches/{selection.Uid}.json";
+            if (!pack.FileNames.Contains(patchPath)) continue;
+            await using var stream = pack.Open(patchPath);
+            var patch = await JsonSerializer.DeserializeAsync<Component>(stream, JsonSerializerOptions.Web).ConfigureAwait(false)
+                        ?? throw new FormatException($"Invalid MMC component '{patchPath}'");
+            var conversion = MetadataComponentHelper.Convert(patch, selection.Uid, selection.Version, minecraftVersion);
+            generated.Add((LaunchDefinitionHelper.IMPORT_PREFIX + componentFile,
+                           LaunchDefinitionHelper.Serialize(conversion.Component)));
+            foreach (var local in conversion.LocalFiles)
             {
-                if (line.StartsWith("name=", StringComparison.OrdinalIgnoreCase))
-                {
-                    instanceName = line["name=".Length..];
-                    break;
-                }
-            }
-        }
-
-        var importFileNames = pack
-                             .FileNames
-                             .Where(x => x.StartsWith(MultiMcHelper.PACK_MINECRAFT_DIR)
-                                      && x != MultiMcHelper.PACK_MINECRAFT_DIR
-                                      && x.Length > MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)
-                             .Select(x => (x, x[(MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)..]))
-                             .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
-                             .ToList();
-        var (launchFiles, generatedFiles, diagnostics) = await ConvertPatchesAsync(pack, mmcPack).ConfigureAwait(false);
-
-        return new(new()
-        {
-            Name = instanceName ?? "Imported MultiMc Pack",
-            Setup = new() { Version = mcVersion, Loader = loaderLurl, Packages = [] }
-        },
-                   importFileNames,
-                   [("pack.png", "icon.png")],
-                   null,
-                   launchFiles,
-                   generatedFiles,
-                   diagnostics,
-                   true);
-    }
-
-    #endregion
-
-    private static async Task<(IReadOnlyList<(string Source, string Target)> LaunchFiles,
-                               IReadOnlyList<(string Target, byte[] Content)> GeneratedFiles,
-                               IReadOnlyList<LaunchPlanDiagnostic> Diagnostics)> ConvertPatchesAsync(
-        CompressedProfilePack pack,
-        MmcPack mmcPack)
-    {
-        var patchNames = pack.FileNames
-                            .Where(x => x.StartsWith("patches/", StringComparison.Ordinal)
-                                     && x.EndsWith(".json", StringComparison.Ordinal)
-                                     && ZipArchiveHelper.IsExtractableEntry(x))
-                            .ToHashSet(StringComparer.Ordinal);
-        var componentOrder = mmcPack.Components.Select((component, index) => (component.Uid, index))
-                                               .ToDictionary(x => x.Uid, x => x.index, StringComparer.Ordinal);
-        var ordered = patchNames.OrderBy(x => componentOrder.TryGetValue(UidOf(x), out var index) ? index : int.MaxValue)
-                                .ThenBy(x => x, StringComparer.Ordinal)
-                                .ToArray();
-        var launchFiles = new List<(string Source, string Target)>();
-        var generatedFiles = new List<(string Target, byte[] Content)>();
-        var diagnostics = new List<LaunchPlanDiagnostic>();
-        var referencedFiles = new HashSet<string>(StringComparer.Ordinal);
-        var usedUids = new HashSet<string>(StringComparer.Ordinal);
-        var width = Math.Max(3, Math.Max(ordered.Length - 1, 0).ToString().Length);
-        for (var index = 0; index < ordered.Length; index++)
-        {
-            var source = ordered[index];
-            var uid = UidOf(source);
-            if (!LibraryHelper.IsSafeIdentifier(uid))
-            {
-                throw new FormatException($"MMC patch '{source}' has an invalid UID");
-            }
-
-            var fileUid = LaunchPlanFileHelper.DisambiguateUid(uid, source, usedUids);
-            await using var stream = pack.Open(source);
-            var patch = await JsonSerializer.DeserializeAsync<MmcPatch>(stream, JsonSerializerOptions.Web)
-                                 .ConfigureAwait(false);
-            if (patch is null)
-            {
-                throw new FormatException($"MMC patch '{source}' is not valid JSON");
-            }
-
-            var converted = MultiMcPatchConverter.Convert(uid, patch);
-            diagnostics.AddRange(converted.Diagnostics.Select(x => x with { Path = source }));
-            var order = index.ToString($"D{width}");
-            generatedFiles.Add(($"{LaunchPlanFileHelper.SOURCE_PREFIX}{order}-{fileUid}{LaunchPlanFileHelper.PLAN_SUFFIX}",
-                                MultiMcPatchConverter.Serialize(converted.Document)));
-            foreach (var relative in ReferencedFiles(patch))
-            {
-                if (!referencedFiles.Add(relative))
-                {
-                    continue;
-                }
-
-                var archivePath = pack.FileNames.Contains(relative)
-                                       ? relative
-                                       : $".minecraft/{relative}";
+                var archivePath = pack.FileNames.Contains(local.ArchivePath) ? local.ArchivePath
+                    : $"{MultiMcHelper.PACK_MINECRAFT_DIR}/{local.ArchivePath}";
                 if (!pack.FileNames.Contains(archivePath))
                 {
-                    diagnostics.Add(new(LaunchPlanDiagnostic.Kind.Warning,
-                                        $"MMC patch '{uid}' references missing local file '{relative}'.",
-                                        source));
-                    continue;
+                    throw new FileNotFoundException($"MMC component '{selection.Uid}' references missing file '{local.ArchivePath}'");
                 }
-
-                launchFiles.Add((archivePath, $"{LaunchPlanFileHelper.SOURCE_PREFIX}{relative}"));
-            }
-        }
-
-        return (launchFiles, generatedFiles, diagnostics);
-
-        static string UidOf(string path) => path["patches/".Length..^".json".Length];
-
-        // 引用解析必须走 TryResolveLibrary——它是「这个库指向哪里」的唯一判定点，
-        // 相对结果即包内文件。mavenFiles 同样会转成层，它的本地引用也要一起带出。
-        static IEnumerable<string> ReferencedFiles(MmcPatch patch)
-        {
-            foreach (var library in (patch.Libraries ?? [])
-                                   .Concat(patch.AdditionalLibraries ?? [])
-                                   .Concat(patch.MavenFiles ?? []))
-            {
-                if (MultiMcPatchConverter.TryResolveLibrary(library, out var resolved, out _)
-                 && !resolved.Url.IsAbsoluteUri)
+                var target = LaunchDefinitionHelper.IMPORT_PREFIX + local.Target;
+                if (files.TryGetValue(target, out var previous) && previous != archivePath)
                 {
-                    yield return resolved.Url.OriginalString.Replace('\\', '/');
+                    throw new FormatException($"MMC libraries collide at '{target}'");
                 }
-            }
-
-            if (patch.AssetIndex?.Url is { IsAbsoluteUri: false } asset)
-            {
-                yield return asset.OriginalString.Replace('\\', '/');
+                files[target] = archivePath;
             }
         }
+        generated.Add((LaunchDefinitionHelper.IMPORT_PREFIX + LaunchDefinitionHelper.DEFINITION_FILE,
+                       LaunchDefinitionHelper.Serialize(new LaunchDefinition { Components = selections })));
+        var minecraftPrefix = MultiMcHelper.PACK_MINECRAFT_DIR + "/";
+        var importFiles = pack.FileNames.Where(x => x.StartsWith(minecraftPrefix, StringComparison.Ordinal))
+            .Select(x => (x, x[minecraftPrefix.Length..]))
+            .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2)).ToArray();
+        return new(profile, importFiles, [("pack.png", "icon.png")], null,
+                   files.Select(x => (x.Value, x.Key)).ToArray(), generated, [], true);
+    }
+
+    private static async Task<string?> ReadNameAsync(CompressedProfilePack pack)
+    {
+        if (!pack.FileNames.Contains(MultiMcHelper.PACK_INSTANCE_CFG)) return null;
+        await using var stream = pack.Open(MultiMcHelper.PACK_INSTANCE_CFG);
+        using var reader = new StreamReader(stream);
+        while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+        {
+            if (line.StartsWith("name=", StringComparison.OrdinalIgnoreCase)) return line[5..];
+        }
+        return null;
     }
 }

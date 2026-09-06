@@ -33,6 +33,7 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
     #region IProfileExporter Members
 
     public string Label => ModrinthHelper.LABEL;
+    public bool SupportsLaunchDefinitions => false;
 
     public async Task<PackedProfileContainer> PackAsync(UncompressedProfilePack pack)
     {

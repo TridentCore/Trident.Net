@@ -5,9 +5,8 @@ using TridentCore.Abstractions.FileModels;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// 加载磁盘锁作为只读 BaseLock，并以当前 platform + options 指纹种出新的 Lock。
-// 不判有效性——各下游阶段自行与 BaseLock 比较。文件缺失或无法解析时
-// BaseLock = null，即一切重建（数据不丢：Profile 才是真源）。
+// 加载磁盘锁作为只读 BaseLock，由下游阶段判断能否复用。
+// 文件缺失或无法解析时，从 Profile 与启动定义重新计算。
 public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
@@ -45,8 +44,7 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
 
         Context.Lock = new()
         {
-            Platform = new(Context.Setup.Version, Context.Setup.Loader),
-            Viability = new(Context.LaunchPlanHash)
+            Platform = new(Context.Setup.Version, Context.Setup.Loader)
         };
     }
 }

@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Refit;
 using TridentCore.Abstractions.Lifetimes;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Abstractions.Snapshots;
 using TridentCore.Core.Accounts;
 using TridentCore.Core.Clients;
@@ -43,6 +44,9 @@ public static class ServiceCollectionExtensions
                 });
 
             services.AddSingleton<PrismLauncherService>();
+            services.AddSingleton<ILaunchComponentProvider, PlatformComponentService>();
+            services.AddSingleton<LaunchDefinitionResolverService>();
+            services.AddSingleton<LaunchCompilerService>();
 
             return services;
         }

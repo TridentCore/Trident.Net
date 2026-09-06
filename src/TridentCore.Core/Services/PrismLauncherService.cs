@@ -1,13 +1,9 @@
-using TridentCore.Abstractions.LaunchPlans;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Clients;
 using TridentCore.Core.Models.PrismLauncherApi;
-using TridentCore.Core.Utilities;
-using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Services;
 
-// TODO: 日后换成 PlatformService，先偷 PrismLauncher 凑活着
 public class PrismLauncherService(IPrismLauncherClient client)
 {
     public const string ENDPOINT = "https://meta.prismlauncher.org";
@@ -18,9 +14,6 @@ public class PrismLauncherService(IPrismLauncherClient client)
     public const string UID_FABRIC = "net.fabricmc.fabric-loader";
     public const string UID_QUILT = "org.quiltmc.quilt-loader";
 
-    private static readonly string OS_NAME_STRING = PlatformHelper.GetOsName();
-    private static readonly string OS_FULL_STRING = $"{OS_NAME_STRING}-{PlatformHelper.GetOsArch()}";
-
     public static readonly IReadOnlyDictionary<string, string> UidMappings = new Dictionary<string, string>
     {
         [LoaderHelper.LOADERID_FORGE] = UID_FORGE,
@@ -29,132 +22,17 @@ public class PrismLauncherService(IPrismLauncherClient client)
         [LoaderHelper.LOADERID_QUILT] = UID_QUILT
     };
 
-    public async Task<ComponentIndex> GetVersionsAsync(string uid, CancellationToken token)
-    {
-        var index = await client.GetComponentIndexAsync(uid, token).ConfigureAwait(false);
-        return index;
-    }
+    public Task<ComponentIndex> GetVersionsAsync(string uid, CancellationToken token) => client.GetComponentIndexAsync(uid, token);
 
     public async Task<IReadOnlyList<ComponentIndex.ComponentVersion>> GetVersionsForMinecraftVersionAsync(
-        string uid,
-        string version,
-        CancellationToken token)
+        string uid, string version, CancellationToken token)
     {
-        var index = await client.GetComponentIndexAsync(uid, token).ConfigureAwait(false);
-        return
-        [
-            .. index.Versions.Where(x => x.Requires.Any(y => y.Uid == UID_INTERMEDIARY
-                                                          || (y.Uid == UID_MINECRAFT
-                                                           && (y.Suggest == version || y.Equal == version))))
-        ];
+        var index = await GetVersionsAsync(uid, token).ConfigureAwait(false);
+        return [.. index.Versions.Where(x => x.Requires.Any(y => y.Uid == UID_INTERMEDIARY
+            || (y.Uid == UID_MINECRAFT && (y.Suggest == version || y.Equal == version))))];
     }
 
-    public Task<ComponentIndex> GetMinecraftVersionsAsync(CancellationToken token) =>
-        GetVersionsAsync(UID_MINECRAFT, token);
-
-    public async Task<Component> GetVersionAsync(string uid, string version, CancellationToken token)
-    {
-        var component = await client.GetComponentAsync(uid, version, token).ConfigureAwait(false);
-        return component;
-    }
-
-    public async Task<IEnumerable<Component.Library>> GetPatchedLibraries(Component version, CancellationToken token)
-    {
-        var libraries = new List<Component.Library>(version.Libraries ?? Enumerable.Empty<Component.Library>());
-        foreach (var requirement in version.Requires)
-        {
-            var sub = await GetVersionAsync(requirement.Uid,
-                                            requirement.Suggest
-                                         ?? requirement.Equal
-                                         ?? throw new
-                                                FormatException($"{version.Uid}.json/requires[{requirement.Uid}].equals|suggests"),
-                                            token)
-                         .ConfigureAwait(false);
-            libraries.AddRange(sub.Libraries ?? Enumerable.Empty<Component.Library>());
-        }
-
-        return libraries;
-    }
-
-    public async Task<RuntimeManifest> GetRuntimeAsync(uint major, CancellationToken token)
-    {
-        var manifest = await client.GetRuntimeAsync(major, token).ConfigureAwait(false);
-        return manifest;
-    }
-
-    public static bool ValidateLibraryRule(Component.Library lib)
-    {
-        if (lib.Rules != null && lib.Rules.Any())
-        {
-            var rv = lib.Rules.All(y =>
-            {
-                var pass = true;
-                if (y.Os != null && y.Os.TryGetValue("name", out var os))
-                {
-                    pass = OS_FULL_STRING == os || OS_NAME_STRING == os;
-                }
-
-                // arch 规则有意忽略（pass 不变）。
-                return y.Action == "allow" ? pass : !pass;
-            });
-            return rv;
-        }
-
-        return true;
-    }
-
-    // HACK: 适配 PrismLauncher Meta 的奇葭多态数据——旧式声明只给 maven 仓库根（需自行拼坐标
-    //  路径），新式走 downloads.artifact 给完整地址。
-    // TODO: 迁移到 TridentCore/launcher-meta 后可去掉 Url 分支。
-    public static void AddValidatedLibraries(
-        ICollection<LaunchPlanDocument.Operation> operations,
-        IEnumerable<Component.Library> sources)
-    {
-        foreach (var lib in sources.Where(ValidateLibraryRule))
-        {
-            if (lib.Url != null)
-            {
-                var id = LibraryHelper.ParseIdentity(lib.Name);
-                operations
-                   .Add(new LaunchPlanDocument
-                            .AddLibraryOperation(new(id, LibraryHelper.ResolveAgainstRepository(lib.Url, id), null)));
-            }
-            else if (lib.Downloads is { Artifact: { } artifact })
-            {
-                operations.Add(new LaunchPlanDocument.AddLibraryOperation(new(LibraryHelper.ParseIdentity(lib.Name),
-                                                                              artifact.Url,
-                                                                              FileHash.FromSha1(artifact.Sha1))));
-            }
-
-            (string, Component.Library.DownloadsEntry)? native = null;
-            if (OperatingSystem.IsWindows() && lib is { Natives.Windows: not null, Downloads: not null })
-            {
-                native = (lib.Natives.Windows.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32"),
-                          lib.Downloads);
-            }
-            else if (OperatingSystem.IsLinux() && lib is { Natives.Linux: not null, Downloads: not null })
-            {
-                native = (lib.Natives.Linux, lib.Downloads);
-            }
-            else if (OperatingSystem.IsMacOS() && lib is { Natives.Osx: not null, Downloads: not null })
-            {
-                native = (lib.Natives.Osx, lib.Downloads);
-            }
-
-            if (native is var (classifier, downloads))
-            {
-                if (downloads.Classifiers.TryGetValue(classifier, out var download))
-                // 假设 native 库本身没有 platform 字段，这是个大胆的假设！
-                {
-                    operations
-                       .Add(new LaunchPlanDocument
-                                .AddLibraryOperation(new(LibraryHelper.ParseIdentity($"{lib.Name}:{classifier}"),
-                                                         download.Url,
-                                                         FileHash.FromSha1(download.Sha1),
-                                                         true,
-                                                         false)));
-                }
-            }
-        }
-    }
+    public Task<ComponentIndex> GetMinecraftVersionsAsync(CancellationToken token) => GetVersionsAsync(UID_MINECRAFT, token);
+    public Task<Component> GetVersionAsync(string uid, string version, CancellationToken token) => client.GetComponentAsync(uid, version, token);
+    public Task<RuntimeManifest> GetRuntimeAsync(uint major, CancellationToken token) => client.GetRuntimeAsync(major, token);
 }

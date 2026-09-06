@@ -44,6 +44,9 @@ public static class FileHelper
     private static StringComparison PathComparison =>
         IsPathCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
+    public static bool IsFileName(string? value) => !string.IsNullOrEmpty(value) && value is not ("." or "..")
+        && value.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+
     public static string Sanitize(string fileName)
     {
         var sanitized = !string.IsNullOrEmpty(fileName)

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Importers;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Services;
@@ -14,7 +14,7 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers, ILogger<Impo
         if (importer is not null)
         {
             var container = await importer.ExtractAsync(pack).ConfigureAwait(false);
-            Report(container.LaunchPlanDiagnostics);
+            Report(container.LaunchDiagnostics);
             return container;
         }
 
@@ -23,37 +23,38 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers, ILogger<Impo
 
     // 转换诊断的唯一出口。宿主可以另行呈现，但无论如何都先落日志——静默丢弃格式转换中
     // 无法承载的内容会让用户在游戏启动异常时完全无从追溯。
-    private void Report(IReadOnlyList<LaunchPlanDiagnostic>? diagnostics)
+    private void Report(IReadOnlyList<LaunchDiagnostic>? diagnostics)
     {
         foreach (var diagnostic in diagnostics ?? [])
         {
-            if (diagnostic.Level == LaunchPlanDiagnostic.Kind.Error)
+            if (diagnostic.Level == LaunchDiagnostic.Kind.Error)
             {
                 logger.LogError("Import diagnostic ({path}): {message}",
-                                diagnostic.Path ?? "launch plan",
+                                diagnostic.Path ?? "launch definition",
                                 diagnostic.Message);
             }
             else
             {
                 logger.LogWarning("Import diagnostic ({path}): {message}",
-                                  diagnostic.Path ?? "launch plan",
+                                  diagnostic.Path ?? "launch definition",
                                   diagnostic.Message);
             }
         }
     }
 
-    public async Task ExtractFilesAsync(string key, ImportedProfileContainer container, CompressedProfilePack pack)
+    public async Task<string> ExtractIconAsync(string directory, Uri url, HttpClient client, CancellationToken token)
     {
-        await ExtractToAsync(PathDef.Default.DirectoryOfImport(key), container.ImportFileNames, pack, CancellationToken.None)
-            .ConfigureAwait(false);
-        await ExtractToAsync(PathDef.Default.DirectoryOfHome(key), container.HomeFileNames, pack, CancellationToken.None)
-            .ConfigureAwait(false);
-        await ExtractToAsync(PathDef.Default.DirectoryOfLaunch(key), container.LaunchFileNames, pack, CancellationToken.None)
-            .ConfigureAwait(false);
-        await WriteGeneratedToAsync(PathDef.Default.DirectoryOfLaunch(key),
-                                    container.GeneratedLaunchFiles,
-                                    CancellationToken.None)
-            .ConfigureAwait(false);
+        await using var reader = await client.GetStreamAsync(url, token).ConfigureAwait(false);
+        await using var memory = new MemoryStream();
+        await reader.CopyToAsync(memory, token).ConfigureAwait(false);
+        memory.Position = 0;
+        var name = "icon." + FileHelper.GuessBitmapExtension(memory);
+        Directory.CreateDirectory(directory);
+        memory.Position = 0;
+        await using var writer = new FileStream(Path.Combine(directory, name), FileMode.CreateNew, FileAccess.Write);
+        await memory.CopyToAsync(writer, token).ConfigureAwait(false);
+        await writer.FlushAsync(token).ConfigureAwait(false);
+        return name;
     }
 
     public async Task WriteGeneratedToAsync(
@@ -92,9 +93,9 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers, ILogger<Impo
                 throw new InvalidDataException($"Archive entry '{target}' escapes the extraction root.");
             }
 
-            if (target.StartsWith(LaunchPlanFileHelper.SOURCE_PREFIX, StringComparison.Ordinal)
+            if (target.StartsWith(LaunchDefinitionHelper.IMPORT_PREFIX, StringComparison.Ordinal)
              && !FileHelper.IsInDirectory(destination,
-                                          Path.Combine(baseDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME)))
+                                          Path.Combine(baseDir, LaunchDefinitionHelper.IMPORT_DIRECTORY)))
             {
                 throw new InvalidDataException($"Archive entry '{target}' escapes the managed launch source.");
             }

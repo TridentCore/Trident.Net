@@ -19,6 +19,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
     #region IProfileExporter Members
 
     public string Label => "trident";
+    public bool SupportsLaunchDefinitions => true;
 
     public async Task<PackedProfileContainer> PackAsync(UncompressedProfilePack pack)
     {
@@ -134,16 +135,13 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
             container.Attachments.Add(Path.GetFileName(iconFile), icon);
         }
 
-        var sourceDir = PathDef.Default.DirectoryOfLaunchSource(pack.Key);
+        var sourceDir = PathDef.Default.DirectoryOfLaunchImport(pack.Key);
         if (Directory.Exists(sourceDir))
         {
-            foreach (var file in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories)
-                                                 .Where(x => !LaunchPlanFileHelper.IsPlanFile(x) || LaunchPlanFileHelper.IsEnabledPlanFile(x)))
+            foreach (var file in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
             {
                 var relative = Path.GetRelativePath(sourceDir, file);
-                container.Files[Path.Combine(LaunchPlanFileHelper.LAUNCH_DIRECTORY_NAME,
-                                             LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME,
-                                             relative)] = file;
+                container.Files[Path.Combine("launch", LaunchDefinitionHelper.IMPORT_DIRECTORY, relative)] = file;
             }
         }
 

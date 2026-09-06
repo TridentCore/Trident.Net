@@ -9,14 +9,13 @@ using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines;
 
-// 固定线性管线——各阶段按序执行并自行（对照 BaseLock）决定迁移/重建/no-op。
-// 无状态机分支：DecideNext 已移除，改为静态 yield 序列。
+// 各阶段按固定顺序执行，对照 BaseLock 决定复用或重建。
 public class DeployEngine(
     string key,
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    LaunchPlanSnapshot? launchPlanSnapshot,
+    LaunchDefinitionSnapshot definitions,
     JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
 {
     #region Nested type: DeployEngineEnumerator
@@ -26,12 +25,11 @@ public class DeployEngine(
         private static readonly Type[] SEQUENCE =
         [
             typeof(LoadLockStage),
-            typeof(InstallVanillaStage),
-            typeof(ProcessLoaderStage),
-            typeof(ResolveLaunchPlanStage),
+            typeof(ResolveComponentsStage),
+            typeof(EnsureRuntimeStage),
+            typeof(CompileLaunchStage),
             typeof(SyncPackagesStage),
             typeof(FlattenPackagesStage),
-            typeof(EnsureRuntimeStage),
             typeof(PersistLockStage),
             typeof(GenerateManifestStage),
             typeof(SolidifyManifestStage)
@@ -89,7 +87,7 @@ public class DeployEngine(
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, launchPlanSnapshot, javaHomeLocator));
+        new DeployEngineEnumerator(new(key, setup, provider, options, definitions, javaHomeLocator));
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

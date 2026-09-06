@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using IBuilder;
 
 namespace TridentCore.Core.Igniters;
@@ -52,6 +53,7 @@ public class Igniter : IBuilder<Process>
             { "${auth_uuid}", UserUuid! },
             { "${auth_access_token}", UserAccessToken! },
             { "${user_type}", UserType! },
+            { "${user_properties}", "{}" },
             { "${version_type}", ReleaseType! },
             { "${natives_directory}", NativesRootDirectory! },
             { "${library_directory}", LibraryRootDirectory! },
@@ -72,18 +74,18 @@ public class Igniter : IBuilder<Process>
             WorkingDirectory = WorkingDirectory!,
             UseShellExecute = IsDebug
         };
-        foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
+        string Expand(string argument) => Regex.Replace(argument, @"\$\{[^{}]+\}",
+            match => crates.TryGetValue(match.Value, out var value) && value is not null ? value : match.Value,
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        foreach (var argument in JvmArguments)
         {
-            var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            var line = crate.Key == null || crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
-            start.ArgumentList.Add(line);
+            start.ArgumentList.Add(Expand(argument));
         }
 
         start.ArgumentList.Add(MainClass!);
-        foreach (var argument in GameArguments.Where(x => !string.IsNullOrEmpty(x)))
+        foreach (var argument in GameArguments)
         {
-            var line = crates.GetValueOrDefault(argument, argument);
-            start.ArgumentList.Add(line);
+            start.ArgumentList.Add(Expand(argument));
         }
 
         if (WindowSize is var (width, height))

@@ -49,7 +49,7 @@ TridentCore.Cli           -> 面向终端用户的 trident 命令
 
 ### 数据布局
 
-Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录向上查找 `.trident`，找不到时回落到用户目录下的 `~/.trident`；宿主程序也可以在首次使用前覆盖 `PathDef.Default` 或 `PathDef.HomeLocatorDefault`。
+在首次调用 Core 前设置 `TRIDENT_HOME` 可以指定 home，CLI 对应选项为 `--home`。未显式指定时，Core 依次检查祖先目录中的 `.trident` 与 `~/.trident.home`，随后使用已经存在的 `~/.trident` 或平台数据目录。以下布局以显式指定 home 为例。
 
 ```text
 .trident/
@@ -63,6 +63,9 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 │       ├── profile.json     # 声明式实例元数据
 │       ├── data.lock.json   # 部署锁定数据
 │       ├── data.pack.json   # 打包数据
+│       ├── launch/          # 可选的原生启动定义
+│       │   ├── import/      # 整合包所有的 definition.json、components/ 与 files/
+│       │   └── user/        # 用户所有的 definition.json、components/ 与 files/
 │       ├── build/           # 最终投影出的 .minecraft；也承载导入内容的运行时变更
 │       ├── import/          # 导入层，通常来自整合包或需要导出的文件
 │       └── persist/         # 用户持久层，例如 saves、screenshots、options.txt
@@ -74,9 +77,10 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 ### 核心概念
 
 - Profile：实例的声明式入口，包含名称、Minecraft 版本、Loader、包 Pref、规则和运行覆盖项。
-- Deploy：把 profile、远程元数据、缓存文件和本地层合成为 `build/`，并生成 `data.lock.json`。
-- Layer：`import/` 放整合包或将来要导出的文件（以实体文件投影进 `build/`，让游戏直接读取），`persist/` 保存用户数据（以软链接投影进 `build/`）。导入内容的运行时变更直接落在 `build/`。
-- Projection：部署阶段会把虚拟文件结构增量投影到 `build/`——import 为实体文件，包与持久层为软链接。
+- 启动定义：`launch/import/` 与 `launch/user/` 中可选的有序组件选择，每个组件提供启动要求并完整替换同身份定义，详见[原生启动定义](docs/Launching.zh.md)。
+- Deploy：针对实际 Java 目标解析 profile 与启动定义，再由编译后的启动要求、包及本地层准备 `build/`，将可丢弃的计算状态写入 `data.lock.json`。
+- Layer：`import/` 放整合包或将来要导出的文件（以实体文件投影进 `build/`，让游戏直接读取），`persist/` 保存用户数据（以符号链接投影进 `build/`）。导入内容的运行时变更直接落在 `build/`。
+- Projection：部署阶段会把虚拟文件结构增量投影到 `build/`——import 为实体文件，包与持久层为符号链接。
 - Repository：通过统一接口访问 Modrinth、CurseForge 等包仓库，包标识使用 Trident Pref。
 - Tracker：部署、安装、更新和启动过程以 tracker 暴露状态、阶段和进度，适合 UI 或 CLI 订阅。
 
@@ -85,7 +89,7 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 - 创建、扫描、更新和删除受管理实例。
 - 部署 Minecraft 原版、加载器、运行时、依赖包和构建产物。
 - 启动实例，支持离线账号、Microsoft 账号、内存、窗口、Java home 和快速连接配置。
-- 导入和导出 `trident`、`modrinth`、`curseforge` 格式整合包。
+- 在目标格式的表达能力内导入和导出 `trident`、`multimc`、`modrinth`、`curseforge` 格式整合包。
 - 查询包、版本、依赖和实例内反向依赖。
 - 通过 PrismLauncher 元数据解析 Forge、NeoForge、Fabric、Quilt loader。
 
@@ -115,10 +119,19 @@ services
     .AddSingleton<RepositoryAgent>()
     .AddSingleton<ImporterAgent>()
     .AddSingleton<ExporterAgent>()
+    .AddSingleton<InstanceModpackService>()
     .AddSingleton<InstanceManager>();
 ```
 
-在自己的应用中使用时，优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
+在自己的应用中使用时，优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换，`InstanceModpackService` 负责暂存并提交导入的整合包内容。
+
+### 整合包事务
+
+安装整合包时先暂存完整实例，再发布实例目录与配置。更新将整合包源（`import/`）、导入启动定义、受影响的工作副本文件、实例附件和锁定数据失效一起提交，保留 `launch/user/` 与本地保留（`persist/`）。
+
+更新使用 `{key}/.update/`，安装使用 `instances/.install-{key}/`，其中包含 `staged/`、`backup/` 和 `journal.json`。提交失败时尝试回滚；回滚失败会保留恢复文件，并阻止后续实例活动与配置写入。有效的最终态日志允许正常使用，后续事务会重试清理残留。
+
+目前不提供自动崩溃恢复。需要恢复时，先退出所有客户端并复制实例与事务工作目录，再结合日志核对当前文件、暂存文件和备份。重命名可能早于日志写入完成，不能仅凭日志判断实际状态。在文件与 `profile.json` 恢复一致前，不要删除恢复材料或重试。
 
 ## Trident 作为 CLI
 
@@ -349,6 +362,7 @@ jobs:
 ```sh
 dotnet restore Trident.slnx
 dotnet build Trident.slnx
+dotnet test tests/TridentCore.Tests/TridentCore.Tests.csproj
 dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 ```
 

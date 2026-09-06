@@ -15,6 +15,7 @@ public class InstanceTools(
     RepositoryAgent repositories,
     InstanceManager instanceManager,
     ImporterAgent importerAgent,
+    InstanceModpackService modpacks,
     ExporterAgent exporterAgent)
 {
     [McpServerTool(Name = "instance_list")]
@@ -96,6 +97,7 @@ public class InstanceTools(
         [Description("Instance identity key (optional)")] string? identity = null) =>
         JsonSerializer.Serialize(await InstanceOperation.ImportAsync(profileManager,
                                                                      importerAgent,
+                                                                     modpacks,
                                                                      path,
                                                                      name,
                                                                      identity),

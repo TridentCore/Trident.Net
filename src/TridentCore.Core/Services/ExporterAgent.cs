@@ -4,7 +4,8 @@ using TridentCore.Abstractions;
 using TridentCore.Abstractions.Exporters;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Services;
 
@@ -44,6 +45,14 @@ public class ExporterAgent(
                     }
                 }
 
+                if (!exporter.SupportsLaunchDefinitions)
+                {
+                    var definitions = LaunchDefinitionSnapshot.Load(key, includeUser: false);
+                    if (definitions.Definition is not null || definitions.Components.Count > 0)
+                    {
+                        throw new NotSupportedException($"Export format '{label}' cannot carry this instance's imported launch definitions");
+                    }
+                }
                 var pack = new UncompressedProfilePack(key, profile, options, name, author, version);
                 var container = await exporter.PackAsync(pack).ConfigureAwait(false);
                 Report(container.Diagnostics);
@@ -58,20 +67,20 @@ public class ExporterAgent(
 
     // 导出诊断的唯一出口，与导入侧对称。Error 表示目标格式无法表达某个启动意图，
     // 导出产物的行为与源实例不一致。
-    private void Report(ICollection<LaunchPlanDiagnostic> diagnostics)
+    private void Report(ICollection<LaunchDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)
         {
-            if (diagnostic.Level == LaunchPlanDiagnostic.Kind.Error)
+            if (diagnostic.Level == LaunchDiagnostic.Kind.Error)
             {
                 logger.LogError("Export diagnostic ({path}): {message}",
-                                diagnostic.Path ?? "launch plan",
+                                diagnostic.Path ?? "launch definition",
                                 diagnostic.Message);
             }
             else
             {
                 logger.LogWarning("Export diagnostic ({path}): {message}",
-                                  diagnostic.Path ?? "launch plan",
+                                  diagnostic.Path ?? "launch definition",
                                   diagnostic.Message);
             }
         }

@@ -345,7 +345,7 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
             var nested = explosive.Unwrap && ZipArchiveHelper.HasSingleRootDirectory(zip, out rootDir);
             foreach (var entry in zip.Entries)
             {
-                if (entry.Length == 0)
+                if (entry.Length == 0 || explosive.Excludes?.Any(x => entry.FullName.StartsWith(x, StringComparison.Ordinal)) == true)
                 {
                     continue;
                 }
@@ -359,23 +359,22 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                     throw new InvalidDataException(
                         $"Native archive entry '{entry.FullName}' escapes the extraction root.");
                 }
-                if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) < entry.LastWriteTime.UtcDateTime)
+                var dir = Path.GetDirectoryName(path);
+                if (dir != null && !Directory.Exists(dir))
                 {
-                    var dir = Path.GetDirectoryName(path);
-                    if (dir != null && !Directory.Exists(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                    }
-
-                    await using var reader = entry.Open();
-                    await using (var writer = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Write))
-                    {
-                        await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                        await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                    }
-
-                    File.SetLastWriteTimeUtc(path, entry.LastWriteTime.UtcDateTime);
+                    Directory.CreateDirectory(dir);
                 }
+
+                // WARNING: Archive timestamps do not identify library versions; only overwrite declared entries,
+                //  because the game may also extract its own libraries into this directory.
+                await using var reader = entry.Open();
+                await using (var writer = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Write))
+                {
+                    await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
+                    await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
+                }
+
+                File.SetLastWriteTimeUtc(path, entry.LastWriteTime.UtcDateTime);
             }
 
             ProgressStream.OnNext((++processed, total));

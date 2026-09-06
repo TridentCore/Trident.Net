@@ -18,6 +18,7 @@ using TridentCore.Core.Engines;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Engines.Deploying.Stages;
 using TridentCore.Core.Exceptions;
+using TridentCore.Core.Facilities;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Igniters;
 using TridentCore.Core.Services.Instances;
@@ -31,6 +32,7 @@ public class InstanceManager(
     ProfileManager profileManager,
     RepositoryAgent repositories,
     ImporterAgent importers,
+    InstanceModpackService modpacks,
     AccountConfigurerAgent accountConfigurer,
     IServiceProvider provider,
     IHttpClientFactory clientFactory)
@@ -68,14 +70,15 @@ public class InstanceManager(
     }
 
     /// <summary>执行一次活动并落终态。异常全部收枕为终态，不向外抛。</summary>
-    private async Task<InstanceActivity> ExecuteAsync(ActivityRun run, Func<ActivityRun, Task> handler)
+    internal async Task<InstanceActivity> ExecuteAsync(ActivityRun run, Func<ActivityRun, Task> handler, ReservedKey? reservation = null)
     {
         ActivityState state;
         Exception? reason = null;
         try
         {
+            FileTransaction.EnsureInstanceReady(PathDef.Default.DirectoryOfHome(run.Key));
             await handler(run).ConfigureAwait(false);
-            state = run.Token.IsCancellationRequested ? ActivityState.Cancelled : ActivityState.Finished;
+            state = ActivityState.Finished;
         }
         catch (OperationCanceledException) when (run.Token.IsCancellationRequested)
         {
@@ -86,6 +89,10 @@ public class InstanceManager(
             logger.LogError(ex, "Activity {kind} of {key} faulted", run.Current.Kind, run.Key);
             state = ActivityState.Faulted;
             reason = ex;
+        }
+        finally
+        {
+            reservation?.Dispose();
         }
 
         // NOTE: 先摧除再落终态——消费方收到终态值时 IsInUse 必须已为 false，否则串联的下一段
@@ -237,26 +244,6 @@ public class InstanceManager(
         return memory;
     }
 
-    private static async Task ExtractIconFileAsync(string key, ImportedProfileContainer container, HttpClient client)
-    {
-        await using var iconReader = await client.GetStreamAsync(container.IconUrl).ConfigureAwait(false);
-        await using var iconMemory = new MemoryStream();
-        await iconReader.CopyToAsync(iconMemory).ConfigureAwait(false);
-        iconMemory.Position = 0;
-        var extension = FileHelper.GuessBitmapExtension(iconMemory);
-        var iconPath = PathDef.Default.FileOfIcon(key, extension);
-        var dir = Path.GetDirectoryName(iconPath);
-        if (dir is not null && !Directory.Exists(dir))
-        {
-            Directory.CreateDirectory(dir);
-        }
-
-        iconMemory.Position = 0;
-        await using var iconWriter = new FileStream(iconPath, FileMode.Create);
-        await iconMemory.CopyToAsync(iconWriter).ConfigureAwait(false);
-        await iconWriter.FlushAsync().ConfigureAwait(false);
-    }
-
     #endregion
 
     #region Deploy
@@ -283,16 +270,13 @@ public class InstanceManager(
                                       profile.Setup,
                                       provider,
                                       new() { FullCheckMode = options.FullCheckMode },
-                                      LaunchPlanSnapshot.LoadOrNull(run.Key),
+                                      LaunchDefinitionSnapshot.Load(run.Key),
                                       javaHomeLocator);
 
         var watch = Stopwatch.StartNew();
         foreach (var stage in engine)
         {
-            if (run.Token.IsCancellationRequested)
-            {
-                break;
-            }
+            run.Token.ThrowIfCancellationRequested();
 
             var current = StageOf(stage);
             run.Mutate<InstanceActivity.Deploying>(x => x with
@@ -317,7 +301,7 @@ public class InstanceManager(
 
             logger.LogInformation("Enter stage {name}", stage.GetType().Name);
             await stage.ProcessAsync(run.Token).ConfigureAwait(false);
-            await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(1), run.Token).ConfigureAwait(false);
         }
 
         watch.Stop();
@@ -328,9 +312,8 @@ public class InstanceManager(
         stage switch
         {
             LoadLockStage => DeployStage.LoadLock,
-            InstallVanillaStage => DeployStage.InstallVanilla,
-            ProcessLoaderStage => DeployStage.ProcessLoader,
-            ResolveLaunchPlanStage => DeployStage.ResolveLaunchPlan,
+            ResolveComponentsStage => DeployStage.ResolveComponents,
+            CompileLaunchStage => DeployStage.CompileLaunch,
             SyncPackagesStage => DeployStage.SyncPackages,
             FlattenPackagesStage => DeployStage.FlattenPackages,
             PersistLockStage => DeployStage.PersistLock,
@@ -384,24 +367,30 @@ public class InstanceManager(
                                                            .ReadAllTextAsync(lockPath, run.Token)
                                                            .ConfigureAwait(false),
                                                       JsonSerializerOptions.Web)
-                  ?.LaunchPlan is not { } plan)
+                  ?.Launch is not { } plan)
             {
-                throw new InvalidOperationException("Lock is not valid or has no launch plan");
+                throw new InvalidOperationException("Lock has no compiled launch; deploy the instance first");
             }
 
             try
             {
-                var javaHome = javaHomeLocator(plan.JavaMajorVersion).Home;
+                var java = await javaHomeLocator(plan.JavaMajors, run.Token).ConfigureAwait(false);
+                if (java.Major != plan.Target.JavaMajor || java.Architecture != plan.Target.Architecture
+                 || PlatformHelper.GetOsName() != plan.Target.Os || PlatformHelper.GetOsVersion() != plan.Target.OsVersion)
+                {
+                    throw new InvalidOperationException("The Java or platform target changed; deploy the instance again");
+                }
+                var javaHome = java.Home;
                 var workingDir = PathDef.Default.DirectoryOfBuild(run.Key);
                 var libraryDir = PathDef.Default.CacheLibraryDirectory;
-                var assetDir = PathDef.Default.CacheAssetDirectory;
+                var assetDir = LaunchPathHelper.AssetDirectory(run.Key, plan);
                 var nativeDir = PathDef.Default.DirectoryOfNatives(run.Key);
                 var igniter = plan.MakeIgniter();
 
                 run.Mutate<InstanceActivity.Running>(x => x with
                 {
                     JavaHome = javaHome,
-                    JavaVersion = plan.JavaMajorVersion
+                    JavaVersion = java.Major
                 });
 
                 igniter
@@ -500,6 +489,7 @@ public class InstanceManager(
                     }
 
                     process.Close();
+                    run.Token.ThrowIfCancellationRequested();
                 }
                 else
                 {
@@ -541,9 +531,17 @@ public class InstanceManager(
         // 仅在线安装有活动——离线导入无需等待，全在前端进行。
 
         var reserved = profileManager.RequestKey(key);
-        var run = Register(new InstanceActivity.Installing { Key = reserved.Key, Id = Guid.NewGuid() });
-        _ = ExecuteAsync(run, r => InstallCoreAsync(r, reserved, label, ns, pid, vid));
-        return run.Stream;
+        try
+        {
+            var run = Register(new InstanceActivity.Installing { Key = reserved.Key, Id = Guid.NewGuid() });
+            _ = ExecuteAsync(run, r => InstallCoreAsync(r, reserved, label, ns, pid, vid), reserved);
+            return run.Stream;
+        }
+        catch
+        {
+            reserved.Dispose();
+            throw;
+        }
     }
 
     private async Task InstallCoreAsync(
@@ -560,17 +558,13 @@ public class InstanceManager(
         var package = await repositories
                            .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
                            .ConfigureAwait(false);
-        var (pack, container) =
-            await DownloadAndImportPackageAsync(key.Key, package, run, run.Token).ConfigureAwait(false);
-
-        logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
-
-        await importers.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
+        var imported = await DownloadAndImportPackageAsync(package, run, run.Token).ConfigureAwait(false);
+        using var pack = imported.Pack;
+        var container = imported.Container;
+        await modpacks.InstallAsync(key, pack, container, run.Token).ConfigureAwait(false);
 
         var reference = container.Profile.Setup.Source;
         run.Mutate<InstanceActivity.Installing>(x => x with { Reference = reference });
-
-        profileManager.Add(key, container.Profile);
 
         logger.LogInformation("{} added", key.Key);
     }
@@ -598,253 +592,18 @@ public class InstanceManager(
         var package = await repositories
                            .ResolveAsync(new(label, ns, pid, vid), Filter.None with { Kind = ResourceKind.Modpack })
                            .ConfigureAwait(false);
-        var (pack, container) = await DownloadAndImportPackageAsync(key, package, run, run.Token)
-                                   .ConfigureAwait(false);
-
-        logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
-
-        var importDir = PathDef.Default.DirectoryOfImport(key);
-        // 只要求 import/ 存在——build/ 是 deploy 的产物，未启动过的实例没有它，
-        // Phase 2 对缺失的 build 逐文件 File.Exists 跳过，天然 no-op。
-        if (!Directory.Exists(importDir))
-        {
-            logger.LogWarning("Update of {key} skipped: the instance has no import directory", key);
-            return;
-        }
-        var buildDir = PathDef.Default.DirectoryOfBuild(key);
-
-        var token = run.Token;
-        var homeDir = PathDef.Default.DirectoryOfHome(key);
-        var stagingDir = Path.Combine(homeDir, ".import.staging");
-        var launchStagingDir = Path.Combine(homeDir, ".launch.staging");
-        var liveBackupDir = Path.Combine(homeDir, ".live.backup");
-
-        // 目录级替换全部走同一条提交/回滚路径；「该不该换 launch/source」是列表里有无这一项的
-        // 数据差异，不是另一条代码分支。以后新增层只需追加一项。
-        var swaps = new List<DirectorySwap>
-        {
-            new(importDir, stagingDir, Path.Combine(homeDir, ".import.old"))
-        };
-        if (container.ReplacesManagedLaunchSource)
-        {
-            swaps.Add(new(PathDef.Default.DirectoryOfLaunchSource(key),
-                          Path.Combine(launchStagingDir, LaunchPlanFileHelper.SOURCE_DIRECTORY_NAME),
-                          Path.Combine(homeDir, ".launch.source.old")));
-        }
-
-        // Declared home files may be absent (Trident lists every icon extension); filter to those
-        // present so staging, validation, promotion, and rollback all share one consistent set.
-        var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
-        var promoted = new List<DirectorySwap>();
-
-        try
-        {
-            // Phase 1 — stage new import + home .tmp into disposable dirs, then validate lengths.
-            //  Cancel/fail here only touches staging; the live instance is untouched.
-            TryCleanup(stagingDir);
-            TryCleanup(launchStagingDir);
-            TryCleanup(liveBackupDir);
-            foreach (var swap in swaps)
-            {
-                TryCleanup(swap.Backup);
-            }
-
-            var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
-            await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
-            await importers.ExtractToAsync(launchStagingDir, container.LaunchFileNames, pack, token).ConfigureAwait(false);
-            await importers.WriteGeneratedToAsync(launchStagingDir,
-                                                  container.GeneratedLaunchFiles,
-                                                  token)
-                         .ConfigureAwait(false);
-            await importers.ExtractToAsync(homeDir, homeTmp, pack, token).ConfigureAwait(false);
-            ValidateStaged(stagingDir, container.ImportFileNames, pack);
-            ValidateStaged(launchStagingDir, container.LaunchFileNames, pack);
-            ValidateStaged(homeDir, homeTmp, pack);
-
-            // Phase 2 — back up old live (build projections of old import) before replacing anything.
-            // NOTE: deploy 只补缺失、不覆盖现存（保留玩家改动），所以旧 import 的 build 投影必须由 update 显式清，
-            //  不能丢给 deploy；备份是为了失败时把这些带玩家痕迹的 live 副本原样还原。
-            foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
-            {
-                token.ThrowIfCancellationRequested();
-                var rel = Path.GetRelativePath(importDir, file);
-                var live = Path.Combine(buildDir, rel);
-                if (!File.Exists(live) || File.ResolveLinkTarget(live, false) is not null)
-                {
-                    continue;
-                }
-
-                var backup = Path.Combine(liveBackupDir, rel);
-                Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
-                File.Move(live, backup);
-            }
-
-            // Phase 3 — commit: atomic dir swap + per-file .tmp promotion. Synchronous renames,
-            //  no cancellation window between them; a hard crash here is an accepted edge case.
-            foreach (var swap in swaps)
-            {
-                Promote(swap);
-                promoted.Add(swap);
-            }
-
-            foreach (var (_, target) in presentHomeFiles)
-            {
-                File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
-            }
-        }
-        catch
-        {
-            // best-effort rollback to the pre-update state; never let cleanup mask the original failure.
-            try
-            {
-                RestoreLive(liveBackupDir, buildDir);
-                foreach (var swap in promoted)
-                {
-                    Rollback(swap);
-                }
-
-                foreach (var (_, target) in presentHomeFiles)
-                {
-                    File.Delete(Path.Combine(homeDir, target + ".tmp"));
-                }
-            }
-            catch (Exception rollbackEx)
-            {
-                logger.LogWarning(rollbackEx, "Update rollback for {key} left residual files", key);
-            }
-            TryCleanup(stagingDir);
-            TryCleanup(launchStagingDir);
-            TryCleanup(liveBackupDir);
-            foreach (var swap in swaps)
-            {
-                TryCleanup(swap.Backup);
-            }
-            throw;
-        }
-
-        // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.
-        TryCleanup(liveBackupDir);
-        TryCleanup(launchStagingDir);
-        foreach (var swap in swaps)
-        {
-            TryCleanup(swap.Backup);
-        }
-
+        var imported = await DownloadAndImportPackageAsync(package, run, run.Token).ConfigureAwait(false);
+        using var pack = imported.Pack;
         var oldSource = profileManager.GetImmutable(key).Setup.Source;
-        var newSource = container.Profile.Setup.Source;
-        run.Mutate<InstanceActivity.Updating>(x => x with { OldSource = oldSource, NewSource = newSource });
-
-        profileManager.Update(key,
-                              container.Profile.Setup.Source,
-                              container.Profile.Name,
-                              container.Profile.Setup.Version,
-                              container.Profile.Setup.Loader,
-                              [.. container.Profile.Setup.Packages.Select(x => x.Pref)],
-                              container.Profile.Overrides);
-
+        await modpacks.ApplyAsync(key, pack, imported.Container, run.Token).ConfigureAwait(false);
+        run.Mutate<InstanceActivity.Updating>(x => x with
+        {
+            OldSource = oldSource, NewSource = imported.Container.Profile.Setup.Source
+        });
         logger.LogInformation("{key} updated", key);
-
-        // 提交：把 live 挪到 backup，把 staging 挪进 live。
-        // WARNING: staging 可能不存在（新包未携带该层的任何文件），此时仍须保证 live 存在，
-        //  否则实例会在提交后丢掉整个目录（空目录与不存在对读取端等价，但结构不能缺）。
-        static void Promote(DirectorySwap swap)
-        {
-            if (Directory.Exists(swap.Live))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(swap.Backup)!);
-                Directory.Move(swap.Live, swap.Backup);
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(swap.Live)!);
-            if (Directory.Exists(swap.Staged))
-            {
-                Directory.Move(swap.Staged, swap.Live);
-            }
-            else
-            {
-                Directory.CreateDirectory(swap.Live);
-            }
-        }
-
-        // 回滚：撤销一次 Promote。backup 里无内容则视为原本没有 live（本次是新增）。
-        static void Rollback(DirectorySwap swap)
-        {
-            if (Directory.Exists(swap.Backup))
-            {
-                if (Directory.Exists(swap.Live))
-                {
-                    Directory.Delete(swap.Live, true);
-                }
-                Directory.CreateDirectory(Path.GetDirectoryName(swap.Live)!);
-                Directory.Move(swap.Backup, swap.Live);
-            }
-            else if (Directory.Exists(swap.Live))
-            {
-                Directory.Delete(swap.Live, true);
-            }
-        }
-
-        void TryCleanup(string dir)
-        {
-            try
-            {
-                if (Directory.Exists(dir))
-                {
-                    Directory.Delete(dir, true);
-                }
-            }
-            catch
-            {
-                // best-effort
-            }
-        }
-
-        static void ValidateStaged(string baseDir, IReadOnlyList<(string Source, string Target)> files, CompressedProfilePack pack)
-        {
-            foreach (var (source, target) in files)
-            {
-                if (pack.LengthOf(source) is not { } expected)
-                {
-                    continue;
-                }
-
-                var staged = Path.Combine(baseDir, target);
-                if (!File.Exists(staged) || new FileInfo(staged).Length != expected)
-                {
-                    throw new InvalidDataException($"Staged file '{target}' is missing or truncated.");
-                }
-            }
-        }
-
-        static void RestoreLive(string backupDir, string buildDir)
-        {
-            if (!Directory.Exists(backupDir))
-            {
-                return;
-            }
-
-            foreach (var file in Directory.EnumerateFiles(backupDir, "*", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    var rel = Path.GetRelativePath(backupDir, file);
-                    var live = Path.Combine(buildDir, rel);
-                    if (!File.Exists(live))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(live)!);
-                        File.Move(file, live);
-                    }
-                }
-                catch
-                {
-                    // best-effort: keep restoring the rest
-                }
-            }
-        }
     }
 
     private async Task<(CompressedProfilePack Pack, ImportedProfileContainer Container)> DownloadAndImportPackageAsync(
-        string key,
         Package package,
         ActivityRun run,
         CancellationToken cancellationToken)
@@ -868,17 +627,16 @@ public class InstanceManager(
         // 解压与导入无法量化，进度回到脉冲。
         run.Report(new ActivityProgress.Indeterminate(null));
         CompressedProfilePack pack = new(memory) { Reference = package };
-        var container = await importers.ImportAsync(pack).ConfigureAwait(false);
-
-        // WARNING: 首次安装时实例目录尚未创建，EnumerateFiles 对缺失目录会抛异常。
-        var homeDir = PathDef.Default.DirectoryOfHome(key);
-        if (container.IconUrl is not null
-            && (!Directory.Exists(homeDir) || !Directory.EnumerateFiles(homeDir, "icon.*").Any()))
+        try
         {
-            await ExtractIconFileAsync(key, container, client).ConfigureAwait(false);
+            var container = await importers.ImportAsync(pack).ConfigureAwait(false);
+            return (pack, container);
         }
-
-        return (pack, container);
+        catch
+        {
+            pack.Dispose();
+            throw;
+        }
     }
 
     #endregion

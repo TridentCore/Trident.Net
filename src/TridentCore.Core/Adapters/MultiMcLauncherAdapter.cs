@@ -95,7 +95,7 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         string? loader = null;
         if (pack is not null)
         {
-            version = pack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
+            version = pack.Components.FirstOrDefault(c => !c.Disabled && c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
             if (version is null)
             {
                 corruptReason ??= CorruptReason.MinecraftComponentMissing;
@@ -103,7 +103,8 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
 
             foreach (var component in pack.Components)
             {
-                if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId))
+                if (!component.Disabled && component.Version is not null
+                 && MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId))
                 {
                     loader = LoaderHelper.ToLurl(loaderId, component.Version);
                     break;

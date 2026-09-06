@@ -185,9 +185,11 @@ internal static class InstanceOperation
     public static async Task<InstanceImportResult> ImportAsync(
         ProfileManager profileManager,
         ImporterAgent importerAgent,
+        InstanceModpackService modpacks,
         string path,
         string? name,
-        string? identity)
+        string? identity,
+        CancellationToken token = default)
     {
         var sourcePath = Path.GetFullPath(path);
         if (!File.Exists(sourcePath))
@@ -197,7 +199,7 @@ internal static class InstanceOperation
 
         await using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var memory = new MemoryStream();
-        await fileStream.CopyToAsync(memory).ConfigureAwait(false);
+        await fileStream.CopyToAsync(memory, token).ConfigureAwait(false);
         memory.Position = 0;
 
         using var pack = new CompressedProfilePack(memory);
@@ -210,9 +212,8 @@ internal static class InstanceOperation
         var id = InstanceIdentityValidator.EnsureValid(identity
                                                     ?? container.Profile.Name
                                                     ?? Path.GetFileNameWithoutExtension(sourcePath));
-        var key = profileManager.RequestKey(id);
-        await importerAgent.ExtractFilesAsync(key.Key, container, pack).ConfigureAwait(false);
-        profileManager.Add(key, container.Profile);
+        using var key = profileManager.RequestKey(id);
+        await modpacks.InstallAsync(key, pack, container, token).ConfigureAwait(false);
 
         return new(key.Key,
                    container.Profile.Name ?? id,

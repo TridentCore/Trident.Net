@@ -54,9 +54,9 @@ This section is for developers embedding Trident into launchers, desktop apps, s
 
 ### Data Layout
 
-Trident only manages data under the selected home directory. By default, home is resolved by walking up from the current
-directory and looking for `.trident`; if none is found, Trident falls back to `~/.trident`. Host applications can
-override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
+Set `TRIDENT_HOME` before the first Core call to select an explicit home; the CLI exposes this as `--home`.
+Otherwise, Core checks ancestor `.trident` directories and `~/.trident.home`, then uses an existing `~/.trident`
+or platform-specific data directories. The layout below illustrates an explicit home.
 
 ```text
 .trident/
@@ -70,9 +70,9 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 │       ├── profile.json     # declarative instance metadata
 │       ├── data.lock.json   # disposable deployment snapshot
 │       ├── data.pack.json   # pack data
-│       ├── launch/           # optional durable launch-plan overlays
-│       │   ├── source/       # managed plans imported from source formats
-│       │   └── *.plan.json   # user-authored plans
+│       ├── launch/          # optional native launch definitions
+│       │   ├── import/      # pack-owned definition.json, components/ and files/
+│       │   └── user/        # user-owned definition.json, components/ and files/
 │       ├── build/            # projected .minecraft output; also holds runtime mutations to imported content
 │       ├── import/          # imported layer, usually from modpacks or exportable files
 │       └── persist/         # user-persistent data such as saves, screenshots, options.txt
@@ -86,10 +86,10 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 
 - Profile: the declarative instance entrypoint, including name, Minecraft version, loader, package Prefs, rules, and
   runtime overrides.
-- Launch plan: optional durable startup overlays under `launch/source/` and `launch/`, applied after platform metadata and
-  loader processing; MMC patch sources are normalized into native plans at import.
-- Deploy: combines the profile, launch plan, remote metadata, cached files, and local layers into `build/`, then writes
-  the disposable `data.lock.json` snapshot.
+- Launch definition: optional ordered component selections under `launch/import/` and `launch/user/`; each component
+  supplies startup requirements and replaces the complete definition of the same identity. See [Native launch definitions](docs/Launching.md).
+- Deploy: resolves the profile and launch definitions against the actual Java target, then prepares `build/` from
+  compiled startup requirements, packages and local layers, recording disposable state in `data.lock.json`.
 - Layer: `import/` stores modpack or exportable files (projected as real files into `build/` so the game reads them
   directly), and `persist/` stores user data (symlinked into `build/`). Runtime mutations to imported content land in
   `build/`.
@@ -105,7 +105,7 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 - Create, scan, update, and delete managed instances.
 - Deploy vanilla Minecraft, loaders, runtimes, dependencies, and build artifacts.
 - Run instances with offline accounts, Microsoft accounts, memory/window options, Java home, and quick-connect settings.
-- Import and export `trident`, `modrinth`, and `curseforge` modpack formats.
+- Import and export `trident`, `multimc`, `modrinth`, and `curseforge` modpack formats within each format's capabilities.
 - Query packages, versions, dependencies, and reverse dependencies inside an instance.
 - Resolve Forge, NeoForge, Fabric, and Quilt loaders through PrismLauncher metadata.
 
@@ -136,12 +136,21 @@ services
     .AddSingleton<RepositoryAgent>()
     .AddSingleton<ImporterAgent>()
     .AddSingleton<ExporterAgent>()
+    .AddSingleton<InstanceModpackService>()
     .AddSingleton<InstanceManager>();
 ```
 
 In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile
 lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent`
-plus `ExporterAgent` convert modpacks.
+plus `ExporterAgent` convert modpacks. `InstanceModpackService` stages and commits imported modpack contents.
+
+### Modpack Transactions
+
+Modpack installation stages a complete instance before publishing its directory and profile. Updates commit the Pack Source (`import/`), imported launch definitions, affected working-copy files, attachments and lock invalidation together while preserving `launch/user/` and Local Data (`persist/`).
+
+Updates use `{key}/.update/`; installations use `instances/.install-{key}/`. These workspaces contain `staged/`, `backup/` and `journal.json`. Failed commits attempt rollback; failed rollback retains recovery files and blocks further instance activities and profile writes. Valid finalized journals permit normal use, and a later transaction retries leftover cleanup.
+
+There is no automatic crash recovery. If recovery is required, exit all clients and copy the instance and transaction workspace before inspecting the journal alongside the live, staged and backup files. A rename may have completed before its journal write, so the journal alone is not authoritative. Do not delete recovery material or retry until the files and `profile.json` form a consistent state.
 
 ## Trident As A CLI
 
@@ -395,6 +404,7 @@ jobs:
 ```sh
 dotnet restore Trident.slnx
 dotnet build Trident.slnx
+dotnet test tests/TridentCore.Tests/TridentCore.Tests.csproj
 dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 ```
 

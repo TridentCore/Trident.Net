@@ -5,13 +5,13 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceImportCommand(ProfileManager profileManager, ImporterAgent importerAgent, CliOutput output)
+public class InstanceImportCommand(ProfileManager profileManager, ImporterAgent importerAgent, InstanceModpackService modpacks, CliOutput output)
     : Command<InstanceImportCommand.Arguments>
 {
     protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = InstanceOperation
-                    .ImportAsync(profileManager, importerAgent, settings.Path, settings.Name, settings.Identity)
+                    .ImportAsync(profileManager, importerAgent, modpacks, settings.Path, settings.Name, settings.Identity, cancellationToken)
                     .GetAwaiter()
                     .GetResult();
 

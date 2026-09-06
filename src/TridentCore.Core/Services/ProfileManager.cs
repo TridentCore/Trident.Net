@@ -1,5 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using TridentCore.Abstractions.Extensions;
+using TridentCore.Core.Facilities;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
@@ -65,6 +68,7 @@ public class ProfileManager : IDisposable
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
         if (handle is not null)
         {
+            FileTransaction.EnsureInstanceReady(PathDef.Default.DirectoryOfHome(key));
             profile = new(this, handle);
             return true;
         }
@@ -100,7 +104,8 @@ public class ProfileManager : IDisposable
     {
         var sanitized = FileHelper.Sanitize(key).ToLower();
 
-        while (_profiles.Any(x => x.Key == sanitized) || ReservedKeys.Any(x => x.Key == sanitized))
+        while (_profiles.Any(x => x.Key == sanitized) || ReservedKeys.Any(x => x.Key == sanitized)
+            || Path.Exists(PathDef.Default.DirectoryOfHome(sanitized)))
         {
             sanitized += '_';
         }
@@ -112,13 +117,28 @@ public class ProfileManager : IDisposable
 
     public void Add(ReservedKey key, Profile profile)
     {
-        var handle = new ProfileHandle(key.Key, profile, FileHelper.SerializerOptions);
-        handle.Save();
-        _profiles.Add(handle);
-        key.Dispose();
+        using (key)
+        {
+            var prepared = PrepareAdd(key, profile);
+            prepared.Handle.Save();
+            prepared.Publish();
+            prepared.Notify();
+        }
+    }
 
-        _logger.LogInformation("{} added", handle.Key);
-        OnProfileAdded(key.Key, profile);
+    internal PreparedAddition PrepareAdd(ReservedKey key, Profile profile) => new(this, key,
+        new ProfileHandle(key.Key, profile, FileHelper.SerializerOptions));
+
+    internal sealed class PreparedAddition(ProfileManager owner, ReservedKey key, ProfileHandle handle)
+    {
+        public ProfileHandle Handle => handle;
+        public void Publish()
+        {
+            if (!owner.ReservedKeys.Contains(key) || owner._profiles.Any(x => x.Key == key.Key))
+                throw new InvalidOperationException($"Instance key '{key.Key}' is no longer reserved for this installation");
+            owner._profiles.Add(handle);
+        }
+        public void Notify() => owner.OnProfileAdded(key.Key, handle.Value);
     }
 
     public void Remove(string key)
@@ -139,24 +159,17 @@ public class ProfileManager : IDisposable
         OnProfileRemoved(key, handle.Value);
     }
 
-    public void Update(
-        string key,
-        string? source,
-        string name,
-        string version,
-        string? loader,
-        IReadOnlyList<string> packages,
-        IDictionary<string, object> overrides)
+    internal PreparedUpdate PrepareUpdate(string key, Profile incoming)
     {
-        var handle = _profiles.FirstOrDefault(x => x.Key == key);
-        if (handle is null)
-        {
-            throw new InvalidOperationException($"{key} is not in profiles");
-        }
-
-        var changeSet = packages.ToDictionary(PackageHelper.ExtractProjectIdentityIfValid);
+        incoming = incoming.Clone();
+        var handle = _profiles.FirstOrDefault(x => x.Key == key)
+            ?? throw new InvalidOperationException($"{key} is not in profiles");
+        var original = JsonSerializer.Serialize(handle.Value, FileHelper.SerializerOptions);
+        var updated = handle.Value.Clone();
+        var source = incoming.Setup.Source;
+        var changeSet = incoming.Setup.Packages.Select(x => x.Pref).ToDictionary(PackageHelper.ExtractProjectIdentityIfValid);
         var removeSet = new List<Profile.Rice.Entry>();
-        foreach (var entry in handle.Value.Setup.Packages.Where(x => x.Source == handle.Value.Setup.Source))
+        foreach (var entry in updated.Setup.Packages.Where(x => x.Source == updated.Setup.Source))
         {
             var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Pref);
             if (changeSet.TryGetValue(extracted, out var change))
@@ -173,27 +186,41 @@ public class ProfileManager : IDisposable
 
         foreach (var remove in removeSet)
         {
-            handle.Value.Setup.Packages.Remove(remove);
+            updated.Setup.Packages.Remove(remove);
         }
 
         foreach (var add in changeSet.Values)
         {
-            handle.Value.Setup.Packages.Add(new() { Enabled = true, Source = source, Pref = add });
+            updated.Setup.Packages.Add(new() { Enabled = true, Source = source, Pref = add });
         }
 
-        foreach (var (k, v) in overrides)
+        foreach (var (k, v) in incoming.Overrides)
         {
-            handle.Value.Overrides[k] = v;
+            updated.Overrides[k] = v;
+        }
+        updated.Name = incoming.Name;
+        updated.Setup.Source = source;
+        updated.Setup.Version = incoming.Setup.Version;
+        updated.Setup.Loader = incoming.Setup.Loader;
+        return new(this, handle, original, updated);
+    }
+
+    internal sealed class PreparedUpdate(ProfileManager owner, ProfileHandle original, string fingerprint, Profile value)
+    {
+        private readonly ProfileHandle _replacement = new(original.Key, value, FileHelper.SerializerOptions);
+        public Profile Value => value;
+
+        public void Publish()
+        {
+            var index = owner._profiles.IndexOf(original);
+            if (index < 0 || !original.IsActive
+             || JsonSerializer.Serialize(original.Value, FileHelper.SerializerOptions) != fingerprint)
+                throw new InvalidOperationException($"Profile '{original.Key}' changed while the update was being prepared");
+            owner._profiles[index] = _replacement;
+            original.IsActive = false;
         }
 
-        handle.Value.Name = name;
-        handle.Value.Setup.Source = source;
-        handle.Value.Setup.Version = version;
-        handle.Value.Setup.Loader = loader;
-
-        handle.Save();
-        _logger.LogInformation("{} updated", key);
-        OnProfileUpdated(key, handle.Value);
+        public void Notify() => owner.OnProfileUpdated(original.Key, value);
     }
 
     #region Profile Changed Event
@@ -210,11 +237,25 @@ public class ProfileManager : IDisposable
 
     public event EventHandler<ProfileChangedEventArgs>? ProfileAdded;
 
-    internal void OnProfileUpdated(string key, Profile profile) => ProfileUpdated?.Invoke(this, new(key, profile));
+    internal void OnProfileUpdated(string key, Profile profile) => Notify(ProfileUpdated, key, profile);
+    internal void OnProfileRemoved(string key, Profile profile) => Notify(ProfileRemoved, key, profile);
+    internal void OnProfileAdded(string key, Profile profile) => Notify(ProfileAdded, key, profile);
 
-    internal void OnProfileRemoved(string key, Profile profile) => ProfileRemoved?.Invoke(this, new(key, profile));
-
-    internal void OnProfileAdded(string key, Profile profile) => ProfileAdded?.Invoke(this, new(key, profile));
+    private void Notify(EventHandler<ProfileChangedEventArgs>? handlers, string key, Profile profile)
+    {
+        // NOTE: Mutating a notification payload must not change committed state or another subscriber's snapshot.
+        foreach (var subscriber in handlers?.GetInvocationList() ?? [])
+        {
+            try
+            {
+                ((EventHandler<ProfileChangedEventArgs>)subscriber)(this, new(key, profile.Clone()));
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "Profile notification subscriber failed for {key}", key);
+            }
+        }
+    }
 
     #endregion
 
@@ -233,7 +274,14 @@ public class ProfileManager : IDisposable
 
         foreach (var x in _profiles)
         {
-            x.DisposeAsync().AsTask().Wait();
+            try
+            {
+                x.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "Could not save profile {key} while closing", x.Key);
+            }
         }
 
         _profiles.Clear();

@@ -5,6 +5,10 @@
     <Folder Name="/Misc/">
         <File Path="README.md" />
     </Folder>
+    <Folder Name="/src/" />
+    <Folder Name="/tests/">
+        <Project Path="tests/TridentCore.Tests/TridentCore.Tests.csproj" />
+    </Folder>
     <Project Path="src\TridentCore.Abstractions\TridentCore.Abstractions.csproj" />
     <Project Path="src\TridentCore.Cli\TridentCore.Cli.csproj" />
     <Project Path="src\TridentCore.Core\TridentCore.Core.csproj" />

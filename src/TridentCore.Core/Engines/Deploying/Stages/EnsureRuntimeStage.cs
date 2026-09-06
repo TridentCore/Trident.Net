@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -17,44 +16,44 @@ public class EnsureRuntimeStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var major = Context.Lock.LaunchPlan!.JavaMajorVersion;
-        var runtime = Context.BaseLock?.Runtime is { Major: var recordedMajor } recordedRuntime
-                   && recordedMajor == major
-                           ? recordedRuntime
-                           : null;
-        Context.Lock = Context.Lock with { Runtime = runtime };
-
-        // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户配置的 JRE 完全交给用户环境。
-        bool needManifest;
+        var majors = Context.Resolution.JavaMajors;
         try
         {
-            var resolution = Context.JavaHomeLocator(major);
-            needManifest = resolution.Origin == JavaHelper.JavaResolution.Source.Bundled;
+            Context.Java = await Context.JavaHomeLocator(majors, token).ConfigureAwait(false);
+            if (Context.Java.Origin == JavaHelper.JavaResolution.Source.UserConfigured)
+            {
+                return;
+            }
         }
         catch (JavaNotFoundException)
         {
-            needManifest = true;
+            Context.Java = null!;
         }
 
-        if (!needManifest)
+        var candidates = Context.Java is null ? majors : [Context.Java.Major];
+        foreach (var major in candidates)
         {
+            Context.Java ??= new(JavaHelper.BundledHome(major), JavaHelper.JavaResolution.Source.Bundled,
+                                 major, PlatformHelper.GetOsArch());
+            var runtime = Context.BaseLock?.Runtime;
+            Context.Lock = Context.Lock with
+            {
+                Runtime = runtime is not null && runtime.Major == major
+                       && runtime.Os == PlatformHelper.GetOsName() && runtime.Architecture == Context.Java.Architecture
+                    ? runtime : null
+            };
+            var content = await LoadManifestAsync(major, token).ConfigureAwait(false);
+            if (content is null)
+            {
+                Context.Java = null!;
+                continue;
+            }
+            var (files, links) = ParseRuntimeFiles(content);
+            if (files.Count == 0) throw new FormatException($"Java {major} runtime manifest contains no files");
+            Context.Runtime = new(major, files, links);
             return;
         }
-
-        var content = await LoadManifestAsync(major, token).ConfigureAwait(false);
-        if (content is null)
-        {
-            return;
-        }
-
-        var (files, links) = ParseRuntimeFiles(content);
-        if (files.Count == 0)
-        {
-            logger.LogWarning("Java runtime manifest for Java {major} contained no downloadable files; it will not be auto-installed and launch will fail with JavaNotFoundException",
-                              major);
-        }
-
-        Context.Runtime = new(major, files, links);
+        throw new JavaNotFoundException(majors[0]);
     }
 
     // 解析按主版本的运行时 manifest JSON。runtimes/{major}.json 的 sha1 与锁内指纹匹配时
@@ -73,20 +72,15 @@ public class EnsureRuntimeStage(
         }
 
         var manifest = await mojangService.GetRuntimeManifestAsync().ConfigureAwait(false);
-        var osString = GenerateOsString();
-        var runtimeString = GenerateRuntimeString(major);
-        if (!manifest.TryGetValue(osString, out var runtimes)
-         || !runtimes.TryGetValue(runtimeString, out var runtime)
-         || runtime.Count == 0)
+        var osString = GenerateOsString(Context.Java.Architecture);
+        var first = manifest.TryGetValue(osString, out var runtimes)
+            ? runtimes.Values.SelectMany(x => x).FirstOrDefault(x => JavaHelper.ParseJavaMajor(x.Version.Name) == major)
+            : null;
+        if (first is null)
         {
-            logger.LogWarning("Java runtime {runtime} unavailable for platform {os}; Java {major} will not be auto-installed and launch will fail with JavaNotFoundException",
-                              runtimeString,
-                              osString,
-                              major);
+            logger.LogWarning("No Java {major} runtime is available for {os}", major, osString);
             return null;
         }
-
-        var first = runtime[0];
         using var client = httpClientFactory.CreateClient(RepositoryAgent.CLIENT_NAME);
 
         var dir = Path.GetDirectoryName(path);
@@ -111,7 +105,7 @@ public class EnsureRuntimeStage(
 
         File.Move(tmp, path, true);
 
-        Context.Lock = Context.Lock with { Runtime = new(major, first.Manifest.Sha1) };
+        Context.Lock = Context.Lock with { Runtime = new(major, first.Manifest.Sha1, PlatformHelper.GetOsName(), Context.Java.Architecture) };
 
         return await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
     }
@@ -172,56 +166,45 @@ public class EnsureRuntimeStage(
         return (files, links);
     }
 
-    private static string GenerateRuntimeString(uint major) =>
-        major switch
-        {
-            8 => "jre-legacy",
-            11 or 16 => "java-runtime-alpha",
-            17 => "java-runtime-beta",
-            21 => "java-runtime-delta",
-            24 or 25 => "java-runtime-epsilon",
-            _ => "java-runtime-gamma"
-        };
-
-    private static string GenerateOsString()
+    private static string GenerateOsString(string architecture)
     {
         if (OperatingSystem.IsWindows())
         {
-            if (RuntimeInformation.OSArchitecture == Architecture.X64)
+            if (architecture == "x64")
             {
                 return "windows-x64";
             }
 
-            if (RuntimeInformation.OSArchitecture == Architecture.X86)
+            if (architecture == "x86")
             {
                 return "windows-x86";
             }
 
-            if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+            if (architecture == "arm64")
             {
                 return "windows-arm64";
             }
         }
         else if (OperatingSystem.IsLinux())
         {
-            if (RuntimeInformation.OSArchitecture == Architecture.X64)
+            if (architecture == "x64")
             {
                 return "linux";
             }
 
-            if (RuntimeInformation.OSArchitecture == Architecture.X86)
+            if (architecture == "x86")
             {
                 return "linux-i386";
             }
         }
         else if (OperatingSystem.IsMacOS())
         {
-            if (RuntimeInformation.OSArchitecture == Architecture.X64)
+            if (architecture == "x64")
             {
                 return "mac-os";
             }
 
-            if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+            if (architecture == "arm64")
             {
                 return "mac-os-arm64";
             }

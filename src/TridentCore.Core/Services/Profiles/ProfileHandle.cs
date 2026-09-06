@@ -1,6 +1,7 @@
 using System.Text.Json;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Core.Facilities;
 
 namespace TridentCore.Core.Services.Profiles;
 
@@ -18,6 +19,7 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
             return;
         }
 
+        FileTransaction.EnsureInstanceReady(PathDef.Default.DirectoryOfHome(key));
         var profilePath = PathDef.Default.FileOfProfile(key);
         var dir = Path.GetDirectoryName(profilePath);
         if (dir is not null && !Directory.Exists(dir))

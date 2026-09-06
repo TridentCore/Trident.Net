@@ -3,12 +3,11 @@ namespace TridentCore.Core.Engines.Deploying;
 public enum DeployStage
 {
     LoadLock,
-    InstallVanilla,
-    ProcessLoader,
-    ResolveLaunchPlan,
+    ResolveComponents,
+    EnsureRuntime,
+    CompileLaunch,
     SyncPackages,
     FlattenPackages,
-    EnsureRuntime,
     PersistLock,
     GenerateManifest,
     SolidifyManifest

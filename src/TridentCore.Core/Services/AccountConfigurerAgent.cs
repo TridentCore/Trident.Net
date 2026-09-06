@@ -1,6 +1,5 @@
 using TridentCore.Abstractions.Accounts;
-using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Accounts;
 using TridentCore.Core.Igniters;
@@ -49,15 +48,15 @@ public class AccountConfigurerAgent
 
     public class LaunchContext
     {
-        public LaunchContext(Igniter igniter, LaunchPlanResult launchPlan)
+        public LaunchContext(Igniter igniter, CompiledLaunch launch)
         {
             Igniter = igniter;
-            LaunchPlan = launchPlan;
+            Launch = launch;
         }
 
         public Igniter Igniter { get; }
-        public LaunchPlanResult LaunchPlan { get; }
+        public CompiledLaunch Launch { get; }
 
-        public string GetLibraryPath(LockData.Library library) => LibraryLocation.Of(library);
+        public string GetArtifactPath(LaunchArtifact artifact) => ArtifactHelper.LocationOf(artifact);
     }
 }

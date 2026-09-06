@@ -1,4 +1,4 @@
-using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Core.Clients;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
@@ -10,7 +10,7 @@ public class AuthlibInjectorService(IAuthlibInjectorClient client)
     public const string LIBRARY_NAMESPACE = "moe.yushi";
     public const string LIBRARY_NAME = "authlib-injector";
 
-    public static LockData.Library.Identity LibraryIdentity(string version) =>
+    public static LaunchArtifact.Identity LibraryIdentity(string version) =>
         new(LIBRARY_NAMESPACE, LIBRARY_NAME, version, null, "jar");
 
     public async Task<AuthlibInjectorArtifact> GetLatestAsync(CancellationToken token = default)

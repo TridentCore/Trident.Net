@@ -1,5 +1,5 @@
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 
 namespace TridentCore.Abstractions.Importers;
 
@@ -10,5 +10,5 @@ public record ImportedProfileContainer(
     Uri? IconUrl,
     IReadOnlyList<(string Source, string Target)> LaunchFileNames,
     IReadOnlyList<(string Target, byte[] Content)>? GeneratedLaunchFiles = null,
-    IReadOnlyList<LaunchPlanDiagnostic>? LaunchPlanDiagnostics = null,
-    bool ReplacesManagedLaunchSource = false);
+    IReadOnlyList<LaunchDiagnostic>? LaunchDiagnostics = null,
+    bool ReplacesLaunchImport = false);

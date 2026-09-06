@@ -1,5 +1,5 @@
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.LaunchPlans;
+using TridentCore.Abstractions.Launching;
 using TridentCore.Core.Services.Instances;
 using TridentCore.Core.Utilities;
 
@@ -10,29 +10,20 @@ public class DeployContext(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    LaunchPlanSnapshot? launchPlanSnapshot,
+    LaunchDefinitionSnapshot definitions,
     JavaHomeLocatorDelegate javaHomeLocator)
 {
-    // BaseLock 是磁盘锁的只读快照；Lock 是本周期重新生成的状态。
-    // 阶段对照 BaseLock 判有效性并迁移/重建进 Lock。
     internal LockData? BaseLock;
     internal LockData Lock = null!;
-
-    // 平台阶段按序追加自己的层，ResolveLaunchPlan 折叠它们与磁盘上的来源/用户层。
-    internal readonly List<LaunchLayer> PlatformLayers = [];
+    internal LaunchResolution Resolution = null!;
+    internal JavaHelper.JavaResolution Java = null!;
     internal EntityManifest? Manifest;
     internal BundledRuntime? Runtime;
 
     public string Key => key;
-
     public Profile.Rice Setup => setup;
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
-    public LaunchPlanSnapshot? LaunchPlanSnapshot => launchPlanSnapshot;
-    public string? LaunchPlanHash => launchPlanSnapshot?.Hash;
+    public LaunchDefinitionSnapshot Definitions => definitions;
     public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;
-
-    internal bool CanReuseLaunchPlan => BaseLock?.Platform == Lock.Platform
-                                      && BaseLock.LaunchPlan is not null
-                                      && BaseLock.Viability.LaunchPlanHash == LaunchPlanHash;
 }

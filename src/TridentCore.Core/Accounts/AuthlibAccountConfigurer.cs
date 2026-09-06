@@ -20,7 +20,7 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
     {
         var ai = (AuthlibAccount)account;
 
-        var aiLib = context.LaunchPlan.Libraries.FirstOrDefault(x => x.Id is
+        var aiLib = context.Launch.Artifacts.FirstOrDefault(x => x.Id is
         {
             Namespace: AuthlibInjectorService
                .LIBRARY_NAMESPACE,
@@ -31,11 +31,11 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
         if (aiLib is null)
         {
             throw new
-                AccountConfigurationException($"Authlib-injector library not found in launch plan for account {ai.Username}. "
+                AccountConfigurationException($"Authlib-injector library not found in compiled launch for account {ai.Username}. "
                                             + "The deployment may be incomplete.");
         }
 
-        var aiPath = context.GetLibraryPath(aiLib);
+        var aiPath = context.GetArtifactPath(aiLib);
         context.Igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
 
         var prefetched = await _yggdrasil.GetMetadataBase64Async(ai.ServerUrl, token).ConfigureAwait(false);

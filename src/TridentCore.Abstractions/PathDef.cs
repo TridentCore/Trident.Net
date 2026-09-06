@@ -76,7 +76,8 @@ public class PathDef
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
     public string DirectoryOfLaunch(string key) => Path.Combine(InstanceDirectory, key, "launch");
-    public string DirectoryOfLaunchSource(string key) => Path.Combine(DirectoryOfLaunch(key), "source");
+    public string DirectoryOfLaunchImport(string key) => Path.Combine(DirectoryOfLaunch(key), "import");
+    public string DirectoryOfLaunchUser(string key) => Path.Combine(DirectoryOfLaunch(key), "user");
     public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
     public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");

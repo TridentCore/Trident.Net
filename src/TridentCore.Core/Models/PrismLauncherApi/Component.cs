@@ -1,87 +1,71 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace TridentCore.Core.Models.PrismLauncherApi;
 
-public record Component(
-    [property: JsonPropertyName("+tweakers")]
-    IReadOnlyList<string>? Tweakers,
-    [property: JsonPropertyName("+traits")]
-    IReadOnlyList<string>? Traits,
-    Component.AssetIndexEntry? AssetIndex,
-    IReadOnlyList<uint>? CompatibleJavaMajors,
-    int FormatVersion,
-    IReadOnlyList<Component.Library>? Libraries,
-    IReadOnlyList<Component.Library>? MavenFiles,
-    string? MainClass,
-    Component.Library? MainJar,
-    string? MinecraftArguments,
-    string Name,
-    int Order,
-    DateTimeOffset ReleaseTime,
-    IReadOnlyList<Component.Requirement> Requires,
-    string Type,
-    string Uid,
-    string Version)
+public sealed record Component
 {
-    #region Nested type: AssetIndexEntry
+    public int FormatVersion { get; init; } = 1;
+    public string Uid { get; init; } = "";
+    public string? Version { get; init; }
+    public string? Name { get; init; }
+    public string? MainClass { get; init; }
+    public string? MinecraftArguments { get; init; }
+    public Dictionary<string, JsonElement[]>? Arguments { get; init; }
+    public AssetIndexEntry? AssetIndex { get; init; }
+    public IReadOnlyList<uint>? CompatibleJavaMajors { get; init; }
+    public IReadOnlyList<Library>? Libraries { get; init; }
+    public IReadOnlyList<Library>? MavenFiles { get; init; }
+    public Library? MainJar { get; init; }
+    public IReadOnlyList<Requirement> Requires { get; init; } = [];
+    public IReadOnlyList<Requirement> Conflicts { get; init; } = [];
+    public IReadOnlyList<Library>? JarMods { get; init; }
 
-    public record AssetIndexEntry(string Id, string Sha1, ulong Size, ulong TotalSize, Uri Url);
+    [JsonPropertyName("+libraries")]
+    public IReadOnlyList<Library>? AdditionalLibraries { get; init; }
+    [JsonPropertyName("+jvmArgs")]
+    public IReadOnlyList<string>? JvmArguments { get; init; }
+    [JsonPropertyName("+tweakers")]
+    public IReadOnlyList<string>? Tweakers { get; init; }
+    [JsonPropertyName("+traits")]
+    public IReadOnlyList<string>? Traits { get; init; }
+    [JsonPropertyName("+agents")]
+    public IReadOnlyList<Library>? Agents { get; init; }
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; init; }
 
-    #endregion
+    public sealed record AssetIndexEntry(string Id, string? Sha1, ulong Size, ulong TotalSize, Uri Url);
 
-    #region Nested type: Library
-
-    public record Library(
-        Library.DownloadsEntry? Downloads,
-        Library.ExtractExtry? Extract,
-        string Name,
-        Uri? Url,
-        Library.NativesEntry? Natives,
-        IReadOnlyList<Library.Rule>? Rules)
+    public sealed record Library
     {
-        #region Nested type: DownloadsEntry
+        public string Name { get; init; } = "";
+        public Uri? Url { get; init; }
+        public DownloadsEntry? Downloads { get; init; }
+        public IReadOnlyDictionary<string, string>? Natives { get; init; }
+        public IReadOnlyList<Rule>? Rules { get; init; }
+        public ExtractEntry? Extract { get; init; }
+        [JsonPropertyName("MMC-hint")]
+        public string? Hint { get; init; }
+        [JsonPropertyName("MMC-filename")]
+        public string? FileName { get; init; }
+        [JsonPropertyName("MMC-absoluteUrl")]
+        public Uri? AbsoluteUrl { get; init; }
+        [JsonPropertyName("MMC-absulute_url")]
+        public Uri? LegacyAbsoluteUrl { get; init; }
 
-        public record DownloadsEntry(
-            DownloadsEntry.ArtifactEntry? Artifact,
-            IDictionary<string, DownloadsEntry.ArtifactEntry> Classifiers)
+        public sealed record DownloadsEntry
         {
-            #region Nested type: ArtifactEntry
-
-            public record ArtifactEntry(string Sha1, ulong Size, Uri Url);
-
-            #endregion
+            public ArtifactEntry? Artifact { get; init; }
+            public IReadOnlyDictionary<string, ArtifactEntry> Classifiers { get; init; } = new Dictionary<string, ArtifactEntry>();
+            public sealed record ArtifactEntry(string? Sha1, ulong Size, Uri Url);
         }
-
-        #endregion
-
-        #region Nested type: ExtractExtry
-
-        public record ExtractExtry(IReadOnlyList<string> Exclude);
-
-        #endregion
-
-        #region Nested type: NativesEntry
-
-        public record NativesEntry(string? Windows, string? Linux, string? Osx);
-
-        #endregion
-
-        #region Nested type: Rule
-
-        public record Rule(string Action, IDictionary<string, string>? Os);
-
-        #endregion
+        public sealed record ExtractEntry(IReadOnlyList<string> Exclude);
+        public sealed record Rule(string Action, IReadOnlyDictionary<string, string>? Os,
+                                  IReadOnlyDictionary<string, bool>? Features = null);
     }
 
-    #endregion
-
-    #region Nested type: Requirement
-
-    public record Requirement(
-        [property: JsonPropertyName("suggests")]
-        string? Suggest,
-        [property: JsonPropertyName("equals")] string? Equal,
-        string Uid);
-
-    #endregion
+    public sealed record Requirement(
+        string Uid,
+        [property: JsonPropertyName("equals")] string? Equal = null,
+        [property: JsonPropertyName("suggests")] string? Suggest = null);
 }

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Services.Instances;
 
@@ -28,7 +29,7 @@ public static class JavaHelper
     ];
 
     public static JavaHomeLocatorDelegate MakeLocator(Func<uint, string?> javaHomeSelector, bool withFallback = true) =>
-        major => Locate(major, javaHomeSelector(major), withFallback);
+        (majors, token) => LocateAsync(majors, javaHomeSelector, withFallback, token);
 
     public static async Task<IReadOnlyList<JavaRuntimeCandidate>> ScanJavaRuntimesAsync(
         CancellationToken cancellationToken = default)
@@ -99,9 +100,9 @@ public static class JavaHelper
                    .ConfigureAwait(false);
             return string.IsNullOrWhiteSpace(output) ? null : ParseRuntimeInfoFromOutput(output);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return null;
+            throw;
         }
         catch
         {
@@ -109,47 +110,57 @@ public static class JavaHelper
         }
     }
 
-    private static JavaRuntimeInfo? ParseRuntimeInfoFromOutput(string output)
+    internal static JavaRuntimeInfo? ParseRuntimeInfoFromOutput(string output)
     {
         var vendor = ExtractJavaProperty(output, "java.vendor");
         var version = ExtractJavaProperty(output, "java.version") ?? ExtractJavaVersion(output);
         var major = ParseJavaMajor(version);
-        return vendor == null && version == null && major == null ? null : new(vendor, version, major);
+        var architecture = ExtractJavaProperty(output, "os.arch");
+        return vendor == null && version == null && major == null ? null
+            : new(vendor, version, major, architecture is null ? null : LaunchRuleHelper.NormalizeArchitecture(architecture));
     }
 
-    private static JavaResolution Locate(uint major, string? home, bool withFallback = true)
+    private static async Task<JavaResolution> LocateAsync(
+        IReadOnlyList<uint> majors,
+        Func<uint, string?> selector,
+        bool withFallback,
+        CancellationToken token)
     {
-        if (!string.IsNullOrEmpty(home) && Directory.Exists(home))
+        if (majors.Count == 0) throw new ArgumentException("No compatible Java versions supplied", nameof(majors));
+        var configured = majors.Select(selector).Where(x => !string.IsNullOrWhiteSpace(x))
+                               .Select(x => x!).Distinct(FileHelper.PathComparer).ToArray();
+        foreach (var home in configured)
         {
-            return new(home, JavaResolution.Source.UserConfigured);
+            var info = await ProbeHomeAsync(home, cancellationToken: token).ConfigureAwait(false);
+            if (info is { Major: > 0, Architecture: not null } && majors.Contains((uint)info.Value.Major.Value))
+            {
+                return new(Path.GetFullPath(home), JavaResolution.Source.UserConfigured,
+                           (uint)info.Value.Major.Value, info.Value.Architecture!);
+            }
         }
-
+        if (configured.Length > 0)
+        {
+            throw new InvalidOperationException($"Configured Java installations are unavailable or incompatible with Java {string.Join(", ", majors)}");
+        }
         if (withFallback)
         {
-            var dir = PathDef.Default.DirectoryOfRuntime(major);
-
-            // WARNING: macOS 的运行时在 .bundle 里，真实 java home 是
-            //  <dir>/jre.bundle/Contents/Home 而非 <dir> 本身。
-            if (OperatingSystem.IsMacOS())
+            foreach (var major in majors)
             {
-                var bundleHome = Path.Combine(dir, "jre.bundle", "Contents", "Home");
-                var bundleJava = Path.Combine(bundleHome, "bin", "java");
-                if (File.Exists(bundleJava))
+                var home = BundledHome(major);
+                if (ResolveJavaExecutable(home) is null) continue;
+                var info = await ProbeHomeAsync(home, cancellationToken: token).ConfigureAwait(false);
+                if (info is { Major: > 0, Architecture: not null } && info.Value.Major.Value == major)
                 {
-                    return new(bundleHome, JavaResolution.Source.Bundled);
+                    return new(home, JavaResolution.Source.Bundled, major, info.Value.Architecture!);
                 }
             }
-
-            // Windows/Linux 为扁平布局，<dir>/bin/java(.exe)。
-            var path = Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java");
-            if (File.Exists(path))
-            {
-                return new(dir, JavaResolution.Source.Bundled);
-            }
         }
-
-        throw new JavaNotFoundException(major);
+        throw new JavaNotFoundException(majors[0]);
     }
+
+    public static string BundledHome(uint major) => OperatingSystem.IsMacOS()
+        ? Path.Combine(PathDef.Default.DirectoryOfRuntime(major), "jre.bundle", "Contents", "Home")
+        : PathDef.Default.DirectoryOfRuntime(major);
 
     private static string? ResolveJavaExecutable(string home)
     {
@@ -350,20 +361,14 @@ public static class JavaHelper
         return null;
     }
 
-    private static int? ParseJavaMajor(string? version)
+    internal static int? ParseJavaMajor(string? version)
     {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return null;
-        }
-
-        var major = version.Split('.', 2).FirstOrDefault();
-        if (major != null && int.TryParse(major, out var result))
-        {
-            return result is 1 ? 8 : result;
-        }
-
-        return null;
+        if (string.IsNullOrWhiteSpace(version)) return null;
+        var value = version.AsSpan().Trim();
+        if (value.StartsWith("1.")) value = value[2..];
+        var length = 0;
+        while (length < value.Length && char.IsAsciiDigit(value[length])) length++;
+        return int.TryParse(value[..length], out var result) && result > 0 ? result : null;
     }
 
     public readonly record struct JavaRuntimeCandidate(
@@ -373,15 +378,15 @@ public static class JavaHelper
         int? Major,
         string Source);
 
-    public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
+    public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major, string? Architecture);
 
     // 定位到的 Java home 与其来源配对，部署管线据此区分用户配置的 JRE（不动）
     // 与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
-    public record JavaResolution(string Home, JavaResolution.Source Origin)
+    public record JavaResolution(string Home, JavaResolution.Source Origin, uint Major, string Architecture)
     {
         public enum Source
         {
-            // 用户显式配置且在盘——不校验、不修复。
+            // 用户配置的运行时仅验证，不由部署管线修改。
             UserConfigured,
 
             // 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。
