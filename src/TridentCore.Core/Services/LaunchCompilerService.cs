@@ -11,9 +11,9 @@ public sealed class LaunchCompilerService
     public string Fingerprint(LaunchResolution resolution, LaunchTarget target) =>
         HashHelper.ComputeObjectHash(new { Compiler = FORMAT_VERSION, resolution.Fingerprint, Target = target });
 
-    public Compilation Compile(LaunchResolution resolution, LaunchTarget target)
+    public Compilation Compile(LaunchResolution resolution, LaunchTarget target, bool ignoreJavaRequirements = false)
     {
-        if (!resolution.JavaMajors.Contains(target.JavaMajor))
+        if (!ignoreJavaRequirements && !resolution.JavaMajors.Contains(target.JavaMajor))
         {
             throw new FormatException($"Java {target.JavaMajor} is incompatible with the selected components");
         }

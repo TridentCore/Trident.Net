@@ -20,7 +20,8 @@ public class EnsureRuntimeStage(
         try
         {
             Context.Java = await Context.JavaHomeLocator(majors, token).ConfigureAwait(false);
-            if (Context.Java.Origin == JavaHelper.JavaResolution.Source.UserConfigured)
+            if (Context.Java.Origin is JavaHelper.JavaResolution.Source.UserConfigured
+                or JavaHelper.JavaResolution.Source.Forced)
             {
                 return;
             }

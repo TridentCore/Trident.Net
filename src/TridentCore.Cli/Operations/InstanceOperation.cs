@@ -1,4 +1,5 @@
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Repositories.Resources;
@@ -136,7 +137,10 @@ internal static class InstanceOperation
     {
         var ctx = resolver.Resolve(instance, profile);
         var options = new DeployOptions(fullCheck);
-        var locator = JavaHelper.MakeLocator(_ => javaHome);
+        var forcedJava = javaHome ?? ctx.Profile.GetOverride<string>(Profile.OVERRIDE_JAVA_HOME);
+        var locator = !string.IsNullOrWhiteSpace(forcedJava)
+            ? JavaHelper.MakeForcedLocator(forcedJava)
+            : JavaHelper.MakeLocator(_ => null);
         var activities = instanceManager.Deploy(ctx.Key, options, locator);
         var final = await ActivityAwaiter.AwaitCompletionAsync(activities, CancellationToken.None).ConfigureAwait(false);
         ActivityAwaiter.ThrowIfFaulted(final, "Build failed.");

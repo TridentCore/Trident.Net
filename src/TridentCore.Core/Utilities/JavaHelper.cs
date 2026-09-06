@@ -31,6 +31,18 @@ public static class JavaHelper
     public static JavaHomeLocatorDelegate MakeLocator(Func<uint, string?> javaHomeSelector, bool withFallback = true) =>
         (majors, token) => LocateAsync(majors, javaHomeSelector, withFallback, token);
 
+    public static JavaHomeLocatorDelegate MakeForcedLocator(string javaHome) => async (_, token) =>
+    {
+        var info = await ProbeHomeAsync(javaHome, cancellationToken: token).ConfigureAwait(false);
+        if (info is not { Major: > 0, Architecture: not null })
+        {
+            throw new InvalidOperationException($"Configured Java installation '{javaHome}' is unavailable or could not be inspected");
+        }
+
+        return new(Path.GetFullPath(javaHome), JavaResolution.Source.Forced,
+                   (uint)info.Value.Major.Value, info.Value.Architecture!);
+    };
+
     public static async Task<IReadOnlyList<JavaRuntimeCandidate>> ScanJavaRuntimesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -386,7 +398,10 @@ public static class JavaHelper
     {
         public enum Source
         {
-            // 用户配置的运行时仅验证，不由部署管线修改。
+            // 实例级 Java 路径或命令行路径，跳过组件 major 匹配与运行时下载。
+            Forced,
+
+            // 全局按 major 提供的运行时，仅验证，不由部署管线修改。
             UserConfigured,
 
             // 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。

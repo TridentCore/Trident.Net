@@ -19,7 +19,8 @@ public sealed class CompileLaunchStage(LaunchCompilerService compiler, ILogger<C
             logger.LogInformation("Reusing compiled launch for {key}", Context.Key);
             return Task.CompletedTask;
         }
-        var compilation = compiler.Compile(Context.Resolution, target);
+        var compilation = compiler.Compile(Context.Resolution, target,
+                                            ignoreJavaRequirements: Context.Java.Origin == JavaHelper.JavaResolution.Source.Forced);
         Context.Lock = Context.Lock with { Launch = compilation.Result };
         foreach (var diagnostic in compilation.Diagnostics)
         {

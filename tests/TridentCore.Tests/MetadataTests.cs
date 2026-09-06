@@ -14,6 +14,21 @@ namespace TridentCore.Tests;
 public sealed class MetadataTests
 {
     [TestMethod]
+    public void TraitHintsOnlyApplyRecognizedBehavior()
+    {
+        var source = JsonSerializer.Deserialize<Component>("""
+            {"uid":"net.minecraft","compatibleJavaMajors":[21],"+traits":[
+              "XR:Initial","FirstThreadOnMacOS","feature:is_quick_play_singleplayer","future:unknown"
+            ]}
+            """, JsonSerializerOptions.Web)!;
+        var component = MetadataComponentHelper.Convert(source, "net.minecraft", "1.21.1", "1.21.1").Component;
+        Assert.AreEqual(true, component.StartOnFirstThread);
+        var unrecognized = MetadataComponentHelper.Convert(source with { Traits = ["XR:Initial", "future:unknown"] },
+            "net.minecraft", "1.21.1", "1.21.1").Component;
+        Assert.IsNull(unrecognized.StartOnFirstThread);
+    }
+
+    [TestMethod]
     public void FabricFixtureAcceptsMixinVersion()
     {
         var converted = MetadataComponentHelper.Convert(FixtureHelper.Metadata("fabric-0.16.14.json"),

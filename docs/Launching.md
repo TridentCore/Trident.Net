@@ -81,7 +81,7 @@ Local artifacts are consumed in place rather than copied into the shared library
 
 ## Deployment and caching
 
-The launch pipeline resolves components, determines the actual Java version and architecture, then compiles an immutable result. Explicitly configured Java installations are validated rather than rewritten by deployment. Native selection follows the JVM architecture, including when it differs from the host architecture.
+The launch pipeline resolves components, determines the actual Java version and architecture, then compiles an immutable result. Global Java settings provide candidates for the component major requirements; missing candidates may be satisfied by downloading a bundled runtime. An instance-level Java override is a hard choice: Core probes that path, skips global candidate selection and runtime download, and compiles against its actual major and architecture even when the metadata requirements do not list that major. Native selection follows the JVM architecture, including when it differs from the host architecture.
 
 `data.lock.json` stores the compiled result, not another editable definition. Its fingerprint includes the resolved components, definition-tree content, compiler version and target. Cached arguments retain artifact identity references; launch assembly binds their physical paths. A cache hit reuses the whole result without applying declarations again.
 
@@ -92,6 +92,14 @@ Component resolution still runs and may consult the platform metadata services. 
 Extracted native libraries remain instance-isolated in `build/natives`. Core extracts only artifacts explicitly declared for native extraction. A JAR name or classifier containing `natives` does not imply that usage: ordinary libraries remain on the classpath and may be extracted by the game itself.
 
 The launcher and game can therefore write to the same native directory. Deployment overwrites the entries of selected native archives, honors extraction exclusions and leaves other files alone. It does not clear or relocate the directory. ZIP timestamps are not treated as evidence that two library versions have the same content.
+
+## Extending metadata traits
+
+External metadata traits are an open set of behavior hints, not a list of capabilities every launcher must implement. `MetadataComponentHelper.Convert` matches them by name: recognized traits apply their implemented behavior; unrecognized traits are ignored without rejecting launch or emitting user warnings. They are not appended to the game's command line.
+
+To support another trait, extend the trait-handling block in that converter and map its behavior into the native component model. `FirstThreadOnMacOS`, for example, sets `StartOnFirstThread`; markers such as `XR:Initial` need no action. An unmatched trait must leave native fields unset rather than overwrite other components' contributions. If support needs a new native field, carry it through compilation and supported export formats rather than adding a trait-name check at individual launch call sites.
+
+This permissive policy applies to external traits only. Required artifacts, path boundaries and concrete execution data retain their own validation; native JSON schema validation remains strict.
 
 ## Format boundaries
 

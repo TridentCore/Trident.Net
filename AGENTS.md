@@ -41,3 +41,4 @@ The CLI layer follows a strict **Commands → Operations → Tools** pattern —
 - **Coding style:** See `.editorconfig` for full rules
 - **Solution file:** `Trident.slnx`
 - **Build:** `dotnet build Trident.slnx`
+- **Launch metadata:** follow [Extending metadata traits](docs/Launching.md#extending-metadata-traits) when adding trait support.

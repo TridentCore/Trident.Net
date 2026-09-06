@@ -36,10 +36,6 @@ public static class MetadataComponentHelper
             {
                 firstThread = true;
             }
-            else
-            {
-                throw new NotSupportedException($"Component '{id}' requires unsupported launch trait '{trait}'");
-            }
         }
 
         var localFiles = new Dictionary<string, LocalFile>(StringComparer.Ordinal);

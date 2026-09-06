@@ -1,6 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TridentCore.Abstractions;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
+using TridentCore.Tests.Utilities;
 
 namespace TridentCore.Tests;
 
@@ -20,6 +22,30 @@ public sealed class JavaRuntimeTests
         Assert.IsNotNull(info);
         Assert.AreEqual(21, info.Value.Major);
         Assert.AreEqual("arm64", info.Value.Architecture);
+    }
+
+    [TestMethod]
+    public async Task ForcedJavaUsesItsActualMajorOutsideComponentRequirements()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("The Java probe fixture uses a POSIX executable");
+            return;
+        }
+        using var sandbox = FixtureHelper.CreateSandbox();
+        var home = Path.Combine(sandbox.Root, "java");
+        Directory.CreateDirectory(Path.Combine(home, "bin"));
+        var executable = Path.Combine(home, "bin", "java");
+        await File.WriteAllTextAsync(executable, "#!/bin/sh\nprintf 'java.version = 23.0.1\\nos.arch = aarch64\\n' >&2\n");
+        File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        var java = await JavaHelper.MakeForcedLocator(home)([17u, 21u], CancellationToken.None);
+        Assert.AreEqual(JavaHelper.JavaResolution.Source.Forced, java.Origin);
+        Assert.AreEqual(23u, java.Major);
+        var result = new LaunchCompilerService().Compile(FixtureHelper.Resolution(FixtureHelper.Game()),
+            FixtureHelper.Target with { JavaMajor = java.Major, Architecture = java.Architecture },
+            ignoreJavaRequirements: true).Result;
+        Assert.AreEqual(23u, result.Target.JavaMajor);
     }
 
     [TestMethod]
