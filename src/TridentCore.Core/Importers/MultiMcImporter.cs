@@ -11,7 +11,7 @@ public class MultiMcImporter : IProfileImporter
     #region IProfileImporter Members
 
     public bool CanHandle(CompressedProfilePack pack) =>
-        pack.RootPrefix is null && pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
+        pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {

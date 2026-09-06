@@ -42,7 +42,7 @@ public static class Startup
         services.AddSingleton(cliContext);
         services.AddSingleton<CliOutput>();
         services.AddSingleton<InstanceContextResolver>();
-        services.AddSingleton<TrackerAwaiter>();
+        services.AddSingleton<ActivityAwaiter>();
         services.AddSingleton<StdinValueReader>();
         services.AddSingleton<BuiltinRepositoryProviderAccessor>();
         services.AddSingleton<UserRepositoryStore>();

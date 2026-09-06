@@ -18,8 +18,7 @@ public class TridentImporter : IProfileImporter
 
     #region IProfileImporter Members
 
-    public bool CanHandle(CompressedProfilePack pack) =>
-        pack.RootPrefix is null && pack.FileNames.Contains(IndexFileName);
+    public bool CanHandle(CompressedProfilePack pack) => pack.FileNames.Contains(IndexFileName);
 
     public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
     {

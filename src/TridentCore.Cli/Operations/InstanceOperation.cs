@@ -131,15 +131,15 @@ internal static class InstanceOperation
         InstanceManager instanceManager,
         string instance,
         string? profile,
-        bool fastMode,
         bool fullCheck,
         string? javaHome)
     {
         var ctx = resolver.Resolve(instance, profile);
-        var options = new DeployOptions(fastMode, fullCheck);
+        var options = new DeployOptions(fullCheck);
         var locator = JavaHelper.MakeLocator(_ => javaHome);
-        var tracker = instanceManager.Deploy(ctx.Key, options, locator);
-        await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None).ConfigureAwait(false);
+        var activities = instanceManager.Deploy(ctx.Key, options, locator);
+        var final = await ActivityAwaiter.AwaitCompletionAsync(activities, CancellationToken.None).ConfigureAwait(false);
+        ActivityAwaiter.ThrowIfFaulted(final, "Build failed.");
         return new(ctx.Key, "finished");
     }
 
@@ -221,7 +221,7 @@ internal static class InstanceOperation
                    sourcePath);
     }
 
-    public static async Task<InstallTracker> StartInstallAsync(
+    public static async Task<IObservable<InstanceActivity>> StartInstallAsync(
         InstanceManager instanceManager,
         RepositoryAgent repositories,
         string pref,

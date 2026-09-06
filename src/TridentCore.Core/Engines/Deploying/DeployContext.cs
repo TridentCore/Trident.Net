@@ -8,8 +8,6 @@ public class DeployContext(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    string optionsHash,
-    string priorityHash,
     JavaHomeLocatorDelegate javaHomeLocator)
 {
     // BaseLock 是磁盘锁的只读快照（缺失或旧 FORMAT=1 时为 null）；Lock 是本周期的产物。
@@ -24,7 +22,5 @@ public class DeployContext(
     public Profile.Rice Setup => setup;
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
-    public string OptionsHash => optionsHash;
-    public string PriorityHash => priorityHash;
     public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;
 }

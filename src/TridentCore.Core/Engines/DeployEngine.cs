@@ -15,8 +15,6 @@ public class DeployEngine(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    string optionsHash,
-    string priorityHash,
     JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
 {
     #region Nested type: DeployEngineEnumerator
@@ -88,7 +86,7 @@ public class DeployEngine(
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, optionsHash, priorityHash, javaHomeLocator));
+        new DeployEngineEnumerator(new(key, setup, provider, options, javaHomeLocator));
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

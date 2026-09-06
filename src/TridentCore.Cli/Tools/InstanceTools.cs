@@ -4,6 +4,7 @@ using ModelContextProtocol.Server;
 using TridentCore.Cli.Operations;
 using TridentCore.Cli.Services;
 using TridentCore.Core.Services;
+using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Cli.Tools;
 
@@ -106,11 +107,13 @@ public class InstanceTools(
         [Description("Modpack PREF")] string pref,
         [Description("Instance identity key (optional)")] string? identity = null)
     {
-        var tracker = await InstanceOperation
-                           .StartInstallAsync(instanceManager, repositories, pref, identity)
-                           .ConfigureAwait(false);
-        await TrackerAwaiter.AwaitCompletionAsync(tracker, CancellationToken.None).ConfigureAwait(false);
-        TrackerAwaiter.ThrowIfFaulted(tracker, "Install failed.");
-        return JsonSerializer.Serialize(new { key = tracker.Key, source = tracker.Reference }, McpJson.Options);
+        var activities = await InstanceOperation
+                              .StartInstallAsync(instanceManager, repositories, pref, identity)
+                              .ConfigureAwait(false);
+        var final = (InstanceActivity.Installing)await ActivityAwaiter
+                                                     .AwaitCompletionAsync(activities, CancellationToken.None)
+                                                     .ConfigureAwait(false);
+        ActivityAwaiter.ThrowIfFaulted(final, "Install failed.");
+        return JsonSerializer.Serialize(new { key = final.Key, source = final.Reference }, McpJson.Options);
     }
 }
