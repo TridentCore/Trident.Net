@@ -70,7 +70,14 @@ public class InstanceManager(
     }
 
     /// <summary>执行一次活动并落终态。异常全部收枕为终态，不向外抛。</summary>
-    private async Task<InstanceActivity> ExecuteAsync(ActivityRun run, Func<ActivityRun, Task> handler)
+    private Task<InstanceActivity> ExecuteAsync(ActivityRun run, Func<ActivityRun, Task> handler)
+    {
+        var task = ExecuteCoreAsync(run, handler);
+        run.Track(task);
+        return task;
+    }
+
+    private async Task<InstanceActivity> ExecuteCoreAsync(ActivityRun run, Func<ActivityRun, Task> handler)
     {
         ActivityState state;
         Exception? reason = null;
@@ -149,6 +156,40 @@ public class InstanceManager(
         {
             run.Mutate<InstanceActivity.Running>(x => x with { IsDetaching = true });
             run.Abort();
+        }
+    }
+
+    /// <summary>
+    ///     为退出收尾：运行中的游戏 Detach（不杀进程、正常落会话记录），其余活动 Abort，
+    ///     并等待这些活动的终态落地，至多等待 <paramref name="grace" />。
+    /// </summary>
+    public async Task SettleAsync(TimeSpan grace)
+    {
+        ActivityRun[] runs = [.. _runs.Values];
+        if (runs.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var run in runs)
+        {
+            if (run.Current is InstanceActivity.Running)
+            {
+                Detach(run.Key);
+            }
+            else
+            {
+                Abort(run.Key);
+            }
+        }
+
+        try
+        {
+            await Task.WhenAll(runs.Select(x => x.Execution)).WaitAsync(grace).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // 宽限耗尽，放行退出。
         }
     }
 

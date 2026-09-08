@@ -20,6 +20,7 @@ internal sealed class ActivityRun
 {
     private readonly Lock _gate = new();
     private readonly CancellationTokenSource _source;
+    private Task? _execution;
 
     // WARNING: 必须是 ReplaySubject(1) 而非 BehaviorSubject——后者在 OnCompleted 之后只给新订阅者
     //  发完成信号、不重放值，“先终结后订阅”的消费方会拿不到终态快照。
@@ -38,6 +39,12 @@ internal sealed class ActivityRun
     public IObservable<InstanceActivity> Stream => _subject;
     public CancellationToken Token => _source.Token;
     public string Key => Current.Key;
+
+    /// <summary>由 InstanceManager 在执行体启动时登记，供等待终态落地（如退出收尾）。</summary>
+    public void Track(Task task) => _execution = task;
+
+    /// <summary>执行体完成即该活动终态（及其同步下游写入）已落地；未登记视为已完成。</summary>
+    public Task Execution => _execution ?? Task.CompletedTask;
 
     /// <summary>按当前具体类型改写并发布。终态之后的改写被丢弃。</summary>
     public void Mutate<T>(Func<T, T> mutator) where T : InstanceActivity
