@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reactive.Subjects;
 using System.Reflection;
 using System.Text.Json;
@@ -124,6 +126,12 @@ public class InstanceManager(
     public InstanceActivity? ActivityOf(string key) => _runs.TryGetValue(key, out var run) ? run.Current : null;
 
     public bool IsInUse(string key) => _runs.ContainsKey(key);
+
+    /// <summary>任意实例有活动在进行。</summary>
+    public bool IsInUse() => !_runs.IsEmpty;
+
+    /// <summary>当前全部活动快照的瞬时副本。</summary>
+    public IReadOnlyList<InstanceActivity> CurrentActivities => _runs.Values.Select(x => x.Current).ToList();
 
     /// <summary>中止当前活动。无活动则无操作。</summary>
     public void Abort(string key)
