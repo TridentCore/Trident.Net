@@ -4,7 +4,7 @@ using IBuilder;
 
 namespace TridentCore.Core.Igniters;
 
-public class Igniter : IBuilder<Process>
+public class Igniter : IBuilder<ProcessStartInfo>
 {
     public const string COMMAND_WRAPPER_PLACEHOLDER = "{command}";
 
@@ -36,9 +36,9 @@ public class Igniter : IBuilder<Process>
     public char? ClassPathSeparator { get; set; }
     public string CommandWrapperTemplate { get; set; } = string.Empty;
 
-    #region IBuilder<Process> Members
+    #region IBuilder<ProcessStartInfo> Members
 
-    public Process Build()
+    public ProcessStartInfo Build()
     {
         var separator = ClassPathSeparator ?? (OperatingSystem.IsWindows() ? ';' : ':');
         var classPath = string.Join(separator, Libraries);
@@ -100,10 +100,7 @@ public class Igniter : IBuilder<Process>
             start.ArgumentList.Add(address);
         }
 
-        start = ApplyCommandWrapper(start);
-
-        var process = new Process { StartInfo = start };
-        return process;
+        return ApplyCommandWrapper(start);
     }
 
     #endregion

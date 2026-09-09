@@ -3,7 +3,7 @@ using TridentCore.Core.Igniters;
 
 namespace TridentCore.Core.Services.Instances;
 
-public class LaunchOptions(
+public sealed class LaunchOptions(
     string? brand = null,
     LaunchMode launchMode = LaunchMode.Managed,
     IAccount? account = null,
@@ -13,14 +13,14 @@ public class LaunchOptions(
     string? additionalArguments = null,
     string? commandWrapperTemplate = null)
 {
-    public LaunchMode Mode { get; set; } = launchMode;
+    public LaunchMode Mode { get; init; } = launchMode;
 
-    public IAccount? Account { get; set; } = account;
-    public uint MaxMemory { get; set; } = maxMemory;
-    public (uint, uint) WindowSize { get; set; } = windowSize ?? (1270, 720);
-    public string? QuickConnectAddress { get; set; } = quickConnectAddress;
-    public string AdditionalArguments { get; set; } = additionalArguments ?? string.Empty;
-    public string CommandWrapperTemplate { get; set; } = commandWrapperTemplate ?? string.Empty;
+    public IAccount? Account { get; init; } = account;
+    public uint MaxMemory { get; init; } = maxMemory;
+    public (uint, uint) WindowSize { get; init; } = windowSize ?? (1270, 720);
+    public string? QuickConnectAddress { get; init; } = quickConnectAddress;
+    public string AdditionalArguments { get; init; } = additionalArguments ?? string.Empty;
+    public string CommandWrapperTemplate { get; init; } = commandWrapperTemplate ?? string.Empty;
 
-    public string Brand { get; set; } = brand ?? "Trident";
+    public string Brand { get; init; } = brand ?? "Trident";
 }

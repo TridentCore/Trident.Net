@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Text.Json;
@@ -110,7 +109,7 @@ public class InstanceRunCommand(
         {
             var started = await AwaitLaunchStartAsync(key, activities, cancellationToken).ConfigureAwait(false);
 
-            if (started.State is not ActivityState.Faulted)
+            if (started is InstanceActivity.Running { ProcessId: not null })
             {
                 output.WriteSuccess($"Game process started for {key}.");
             }
@@ -206,34 +205,12 @@ public class InstanceRunCommand(
                     .ConfigureAwait(false);
     }
 
-    // 启动完成 = 拿到进程句柄，或活动已终结（启动失败/非托管模式）。
     private static Task<InstanceActivity> AwaitLaunchStartCoreAsync(
         IObservable<InstanceActivity> activities,
         CancellationToken cancellationToken) =>
         activities
-           .FirstAsync(x => x.IsCompleted
-                         || (x is InstanceActivity.Running running
-                          && TryGetStartedProcessId(running.Process, out _)))
+           .FirstAsync(x => x.IsCompleted || x is InstanceActivity.Running { ProcessId: not null })
            .ToTask(cancellationToken);
-
-    private static bool TryGetStartedProcessId(Process? process, out int processId)
-    {
-        processId = 0;
-        if (process == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            processId = process.Id;
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-    }
 
     private void WriteScrap(Scrap scrap)
     {

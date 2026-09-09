@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Core.Engines.Deploying;
+using TridentCore.Core.Engines.Launching;
 
 namespace TridentCore.Core.Services.Instances;
 
@@ -31,6 +31,7 @@ public abstract record InstanceActivity
     public ActivityProgress Progress { get; init; } = new ActivityProgress.Indeterminate(null);
 
     public DateTimeOffset StartedAt { get; init; } = DateTimeOffset.Now;
+    public DateTimeOffset? CompletedAt { get; init; }
 
     /// <summary>失败原因，仅 <see cref="ActivityState.Faulted" /> 时非空。</summary>
     public Exception? FailureReason { get; init; }
@@ -84,18 +85,16 @@ public abstract record InstanceActivity
     {
         public override InstanceState Kind => InstanceState.Running;
 
-        public required LaunchOptions Options { get; init; }
-
-        // NOTE: 进程句柄的所有者是启动引擎，不是本记录——记录被丢弃不影响进程，值里持有它只为
-        //  让仪表盘能接上监视。进程退出后的快照不再携带它。
-        public Process? Process { get; init; }
+        public string? AccountId { get; init; }
+        public uint MaxMemory { get; init; }
+        public int? ProcessId { get; init; }
+        public DateTimeOffset? RunStartedAt { get; init; }
+        public LaunchOutcome? Outcome { get; init; }
+        public int? ExitCode { get; init; }
 
         public string? JavaHome { get; init; }
         public uint? JavaVersion { get; init; }
         public string? CommandLine { get; init; }
-
-        /// <summary>已请求分离：中止时不杀进程，让游戏脱离启动器继续运行。</summary>
-        public bool IsDetaching { get; init; }
     }
 
     #endregion

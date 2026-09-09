@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading.Channels;
 using TridentCore.Core.Engines.Launching;
@@ -5,110 +6,154 @@ using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines;
 
-public class LaunchEngine : IAsyncEnumerable<Scrap>
+public sealed class LaunchEngine : IAsyncDisposable
 {
-    private readonly Process _inner;
-
-    public LaunchEngine(Process inner)
+    private readonly Process _process;
+    private readonly bool _managed;
+    private readonly Channel<string> _output = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
     {
-        _inner = inner;
-        _inner.StartInfo.RedirectStandardError = true;
-        _inner.StartInfo.RedirectStandardOutput = true;
-        _inner.EnableRaisingEvents = true;
+        SingleReader = true,
+        AllowSynchronousContinuations = false
+    });
+    private int _readersRemaining = 2;
+    private bool _started;
+    private bool _detached;
+    private bool _disposed;
+
+    public LaunchEngine(ProcessStartInfo startInfo, bool managed = true)
+    {
+        _managed = managed;
+        _process = new Process { StartInfo = startInfo };
+        if (managed)
+        {
+            startInfo.UseShellExecute = false;
+            startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
+            _process.OutputDataReceived += OnOutput;
+            _process.ErrorDataReceived += OnOutput;
+        }
     }
 
-    #region IAsyncEnumerable<Scrap> Members
-
-    public IAsyncEnumerator<Scrap> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    public (int ProcessId, DateTimeOffset StartedAt) Start()
     {
-        ArgumentNullException.ThrowIfNull(_inner);
-        return new LaunchEngineEnumerator(_inner, cancellationToken);
+        if (_started)
+        {
+            throw new InvalidOperationException("The game process has already started");
+        }
+
+        if (!_process.Start())
+        {
+            throw new InvalidOperationException("The game process could not be started");
+        }
+
+        _started = true;
+        _detached = !_managed;
+        var started = (_process.Id, DateTimeOffset.Now);
+        if (_managed)
+        {
+            _process.BeginOutputReadLine();
+            _process.BeginErrorReadLine();
+        }
+
+        return started;
     }
 
-    #endregion
-
-    #region Nested type: LaunchEngineEnumerator
-
-    public class LaunchEngineEnumerator : IAsyncEnumerator<Scrap>
+    public async Task<Result> WaitAsync(
+        Action<Scrap> report,
+        Func<bool> preserveProcess,
+        CancellationToken cancellationToken = default)
     {
-        private readonly CancellationToken _cancellationToken;
-        private readonly Channel<Scrap> _channel = Channel.CreateUnbounded<Scrap>();
-        private readonly Process _inner;
-
-        internal LaunchEngineEnumerator(Process process, CancellationToken token = default)
+        if (!_started)
         {
-            _cancellationToken = token;
-            _inner = process;
-            process.OutputDataReceived += ProcessOnOutputDataReceived;
-            process.ErrorDataReceived += ProcessOnErrorDataReceived;
-            process.Exited += ProcessOnExited;
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            throw new InvalidOperationException("The game process has not started");
         }
 
-        #region IAsyncEnumerator<Scrap> Members
-
-        public Scrap Current { get; private set; } = null!;
-
-        public ValueTask DisposeAsync()
+        if (!_managed)
         {
-            _channel.Writer.TryComplete();
-            _inner.CancelErrorRead();
-            _inner.CancelOutputRead();
-
-            _inner.EnableRaisingEvents = false;
-            _inner.OutputDataReceived -= ProcessOnOutputDataReceived;
-            _inner.ErrorDataReceived -= ProcessOnErrorDataReceived;
-            _inner.Exited -= ProcessOnExited;
-
-            // WARNING: 这里不调 inner.Close()——它会抛异常（原因未知）。
-            return ValueTask.CompletedTask;
+            return new(LaunchOutcome.Detached, null);
         }
 
-        public async ValueTask<bool> MoveNextAsync()
+        try
         {
-            try
+            await foreach (var line in _output.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
+                report(ScrapHelper.Parse(line));
+            }
 
-                if (await _channel.Reader.WaitToReadAsync(_cancellationToken).ConfigureAwait(false))
+            await _process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            if (!_process.HasExited)
+            {
+                if (preserveProcess())
                 {
-                    if (_channel.Reader.TryRead(out var piece))
-                    {
-                        Current = piece;
-                        return true;
-                    }
+                    _detached = true;
+                    return new(LaunchOutcome.Detached, null);
                 }
 
-                return false;
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
+                await TerminateAsync().ConfigureAwait(false);
+                return new(LaunchOutcome.Aborted, _process.ExitCode);
             }
         }
 
-        #endregion
-
-        private void ProcessOnOutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _channel.Writer.TryWrite(ScrapHelper.Parse(e.Data));
-            }
-        }
-
-        private void ProcessOnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                _channel.Writer.TryWrite(ScrapHelper.Parse(e.Data));
-            }
-        }
-
-        private void ProcessOnExited(object? sender, EventArgs e) => _channel.Writer.TryComplete();
-
-        #endregion
+        var exitCode = _process.ExitCode;
+        return new(exitCode == 0 ? LaunchOutcome.Exited : LaunchOutcome.Crashed, exitCode);
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        try
+        {
+            if (_started && !_detached && !_process.HasExited)
+            {
+                await TerminateAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _process.OutputDataReceived -= OnOutput;
+            _process.ErrorDataReceived -= OnOutput;
+            _output.Writer.TryComplete();
+            _process.Dispose();
+        }
+    }
+
+    private async Task TerminateAsync()
+    {
+        try
+        {
+            _process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex) when ((ex is InvalidOperationException or Win32Exception) && _process.HasExited)
+        {
+        }
+
+        await _process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private void OnOutput(object sender, DataReceivedEventArgs e)
+    {
+        if (e.Data is { } line)
+        {
+            if (line.Length > 0)
+            {
+                _output.Writer.TryWrite(line);
+            }
+        }
+        else if (Interlocked.Decrement(ref _readersRemaining) == 0)
+        {
+            // NOTE: Process exit can precede the final output callbacks; close only after both pipes reach EOF.
+            _output.Writer.TryComplete();
+        }
+    }
+
+    public readonly record struct Result(LaunchOutcome Outcome, int? ExitCode);
 }
