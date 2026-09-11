@@ -100,6 +100,18 @@ Utilities/   → CLI-specific helpers
 | List versions | `PackageOperation.VersionList` | `package version list` | `package_version_list` |
 | Set version | `PackageOperation.VersionSet` | `package version set` | `package_version_set` |
 
+### Patch
+
+| Function | Operation | Command | Tool |
+|----------|-----------|---------|------|
+| List patches | `PatchOperation.ExecuteAsync` | `patch list` | `patch_list` |
+| Add a user patch | `PatchOperation.ExecuteAsync` | `patch add` | — |
+| Enable/disable a patch | `PatchOperation.ExecuteAsync` | `patch enable` / `patch disable` | `patch_set_enabled` |
+| Reorder a patch | `PatchOperation.ExecuteAsync` | `patch move` | `patch_move` |
+| Remove a patch | `PatchOperation.ExecuteAsync` | `patch remove` | — |
+
+> **Note:** Native patches are external instance data owned by the static Core `PatchStorageHelper`; never store patch paths or activation in profile overrides. See `docs/PATCHES.md` for the disk contract.
+
 ### Repository
 
 | Function | Operation | Command | Tool |

@@ -34,7 +34,8 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
                 key = result.Key,
                 format = result.Format,
                 type = result.Type,
-                output = result.Output
+                output = result.Output,
+                warnings = result.Warnings
             });
         }
         else
@@ -46,6 +47,10 @@ public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAge
                                       ("Type", result.Type),
                                       ("Output", result.Output),
                                       ("Size", $"{size:n0} bytes"));
+            foreach (var warning in result.Warnings)
+            {
+                output.WriteWarning(warning);
+            }
             output.WriteSuccess($"Instance {result.Key} exported.");
         }
 

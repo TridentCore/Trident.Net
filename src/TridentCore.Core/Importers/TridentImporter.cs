@@ -60,13 +60,28 @@ public class TridentImporter : IProfileImporter
             }
         }
 
+        // 整合包只承载导入层。归档即便手工塞入了用户层内容，也一律不读取、不提取。
+        var patchIndexPath = "patches/" + PatchStorageHelper.IndexFileName;
+        var generatedPatches = new Dictionary<string, byte[]>();
+        var patchIndex = new PackPatchIndex();
+        if (pack.FileNames.Contains(patchIndexPath))
+        {
+            await using var patchStream = pack.Open(patchIndexPath);
+            patchIndex = await JsonSerializer.DeserializeAsync<PackPatchIndex>(patchStream, FileHelper.SerializerOptions).ConfigureAwait(false)
+                      ?? throw new InvalidDataException("Patch index is empty.");
+        }
+        generatedPatches.Add(PatchStorageHelper.IndexFileName,
+            JsonSerializer.SerializeToUtf8Bytes(patchIndex, FileHelper.SerializerOptions));
+        var patchFiles = pack.FileNames
+            .Where(x => x.StartsWith("patches/import/", StringComparison.Ordinal))
+            .Select(x => (x, x["patches/".Length..]))
+            .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
+            .ToList();
         var container = new ImportedProfileContainer(index,
                                                      [
                                                          .. pack
                                                            .FileNames
-                                                           .Where(x => x.StartsWith(OverridesDirectoryName)
-                                                                    && x != OverridesDirectoryName
-                                                                    && x.Length > OverridesDirectoryName.Length + 1)
+                                                           .Where(x => x.StartsWith(OverridesDirectoryName + "/", StringComparison.Ordinal))
                                                            .Select(x => (x, x[(OverridesDirectoryName.Length + 1)..]))
                                                            .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                                                      ],
@@ -76,7 +91,14 @@ public class TridentImporter : IProfileImporter
                                                          ("LICENSE.txt", "LICENSE.txt"),
                                                          .. FileHelper.SupportedBitmapExtensions.Select(ext => ($"icon.{ext}", $"icon.{ext}"))
                                                      ],
-                                                     null);
+                                                     null)
+        {
+            Patches = new()
+            {
+                Files = patchFiles,
+                Generated = generatedPatches
+            }
+        };
 
         return container;
     }

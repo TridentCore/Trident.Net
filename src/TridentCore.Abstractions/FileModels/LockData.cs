@@ -4,16 +4,20 @@ using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Abstractions.FileModels;
 
-// Version-locking source of truth——Platform 是声明意图（来自 Profile），Artifact 是平台计算的
-// 构建缓存（vanilla + loader），Packages 是解析并锁定的依赖。可跨机器迁移（无本地标识）。
+// Platform records package compatibility; artifact regions cache their own inputs independently.
 public record LockData
 {
-    public const int FORMAT = 2;
+    public const int FORMAT = 6;
 
     public required PlatformData Platform { get; init; }
     public required ViabilityData Viability { get; init; }
     public ArtifactData? Artifact { get; init; }
+    public ArtifactRegion? Vanilla { get; init; }
+    public ArtifactRegion? Loader { get; init; }
+    public ArtifactRegion? Launch { get; init; }
     public IReadOnlyList<LockedPackage> Packages { get; init; } = [];
+
+    public record ArtifactRegion(string Input, ArtifactData Output);
 
     public RuntimeData? Runtime { get; init; }
 
@@ -33,15 +37,20 @@ public record LockData
 
     #region Nested type: ArtifactData
 
-    // 平台计算出的构建缓存（vanilla + loader 参数/库/assets）。随平台整体生灭：
-    // 平台匹配时原子迁移，不匹配时按步骤（先 vanilla 后 loader）重建。
+    // The effective launch data and each preceding region use the same portable representation.
     public record ArtifactData(
         string MainClass,
         uint JavaMajorVersion,
-        IReadOnlyList<string> GameArguments,
-        IReadOnlyList<string> JavaArguments,
+        IReadOnlyList<string[]> GameArguments,
+        IReadOnlyList<string[]> JavaArguments,
         IReadOnlyList<Library> Libraries,
-        AssetData AssetIndex);
+        AssetData AssetIndex)
+    {
+        public Library? MainJar { get; init; }
+        public IReadOnlyList<Agent> Agents { get; init; } = [];
+    }
+
+    public record Agent(Library Library, string? Arguments = null);
 
     #endregion
 
@@ -87,8 +96,11 @@ public record LockData
     #region Nested type: Library
 
     // NOTE: IsNative 决定是否解压到 Natives 目录，IsPresent 决定是否加入 ClassPath，两者互不干扰。
-    public record Library(Library.Identity Id, Uri Url, FileHash? Hash, bool IsNative = false, bool IsPresent = true)
+    public record Library(Library.Identity Id, Uri? Url, FileHash? Hash, bool IsNative = false, bool IsPresent = true)
     {
+        public string? LocalPath { get; init; }
+        public string? CacheKey { get; init; }
+        public IReadOnlyList<string> Exclude { get; init; } = [];
         #region Nested type: Identity
 
         public record Identity(string Namespace, string Name, string Version, string? Platform, string Extension);
@@ -102,7 +114,7 @@ public record LockData
 
     // 缓存在 runtimes/{major}.json 的运行时 manifest 指纹。EnsureRuntimeStage 凭 sha1 匹配
     // 离线复用缓存而非每次部署都拉 Mojang 运行时索引。随 artifact 迁移：平台（Java 大版本）不变则原子迁移，变则重建。
-    public record RuntimeData(uint Major, string Sha1);
+    public record RuntimeData(uint Major, string Sha1, string? Version = null);
 
     #endregion
 }

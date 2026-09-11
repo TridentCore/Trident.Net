@@ -1,132 +1,73 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Services;
+using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
 public class InstallVanillaStage(
     ILogger<InstallVanillaStage> logger,
-    PrismLauncherService prismLauncherService,
-    AuthlibInjectorService authlibInjectorService) : StageBase
+    PrismLauncherService prismLauncherService) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        // WARNING: 缓存命中（平台未变且存在完整 artifact）→ 原子迁移。vanilla 与 loader 耦合
-        //  （Forge 重写 args/mainClass），必须一起走。
-        if (Context.BaseLock?.Platform == Context.Lock.Platform && Context.BaseLock.Artifact is { } cached)
+        var fingerprint = PatchHelper.Fingerprint(new
         {
-            Context.Lock = Context.Lock with { Artifact = cached };
-            logger.LogInformation("Migrated artifact from BaseLock (platform unchanged)");
+            Format = LockData.FORMAT,
+            Context.Setup.Version,
+            Platform = RuntimeInformation.RuntimeIdentifier,
+            Architecture = RuntimeInformation.OSArchitecture,
+            OsVersion = Environment.OSVersion.VersionString,
+            Patch = Context.Patches.Fingerprint("vanilla")
+        });
+        if (Context.BaseLock?.Vanilla is { } cached && cached.Input == fingerprint)
+        {
+            Context.Lock = Context.Lock with { Artifact = cached.Output, Vanilla = cached };
+            logger.LogInformation("Migrated vanilla region");
             return;
         }
 
-        logger.LogInformation("Platform changed or no artifact, rebuilding vanilla");
-        await BuildVanillaAsync(token).ConfigureAwait(false);
+        var original = Context.Patches.HasReplacement("vanilla")
+                           ? null
+                           : await BuildVanillaAsync(token).ConfigureAwait(false);
+        var artifact = Context.Patches.Apply("vanilla", original);
+        Context.Lock = Context.Lock with { Artifact = artifact, Vanilla = new(fingerprint, artifact) };
     }
 
-    private async Task BuildVanillaAsync(CancellationToken token)
+    private async Task<LockData.ArtifactData> BuildVanillaAsync(CancellationToken token)
     {
-        var libraries = new List<LockData.Library>();
-        var gameArguments = new List<string>();
-        var javaArguments = new List<string>();
-
         var version = await prismLauncherService
                            .GetVersionAsync(PrismLauncherService.UID_MINECRAFT, Context.Setup.Version, token)
                            .ConfigureAwait(false);
-        logger.LogInformation("Got version index {version}({uid})", version.Version, version.Uid);
-
-        var patched = await prismLauncherService.GetPatchedLibraries(version, token).ConfigureAwait(false);
-        PrismLauncherService.AddValidatedLibrariesToArtifact(libraries, patched);
-
-        logger.LogInformation("Libraries added, refer to artifact file for details");
-
-        if (version.MainJar is { Name: { } name, Downloads.Artifact: { } artifact })
+        var libraries = new List<LockData.Library>();
+        if (!Context.Patches.HasReplacement("vanilla.libraries"))
         {
-            libraries.AddLibrary(name, artifact.Url, FileHash.FromSha1(artifact.Sha1));
-            logger.LogInformation("Client jar appended: {name}", name);
+            var patched = await prismLauncherService.GetPatchedLibraries(version, token).ConfigureAwait(false);
+            PrismLauncherService.AddValidatedLibrariesToArtifact(libraries, patched);
         }
-        else
+
+        if (version.MainJar is not { Name: { } name, Downloads.Artifact: { } main })
         {
             throw new FormatException("{minecraft_version}/mainJar.downloads.artifact");
         }
-
-        var arguments = version.MinecraftArguments?.Split(' ') ?? Enumerable.Empty<string>();
-        foreach (var arg in arguments)
-        {
-            AddUnique(gameArguments, arg);
-        }
-
-        logger.LogInformation("Game arguments added, refer to artifact file for details");
-
-        if (OperatingSystem.IsMacOS())
-        {
-            javaArguments.Add("-XstartOnFirstThread");
-        }
-
-        if (OperatingSystem.IsWindows())
-        {
-            javaArguments
-               .Add("-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump");
-        }
-
-        javaArguments.AddRange([
-            // 版本文件不再提供，这里手动生成；logging 段省略。
-            "-Djava.library.path=${natives_directory}",
-            "-DlibraryDirectory=${library_directory}",
-            "-Djna.tmpdir=${natives_directory}",
-            "-Dorg.lwjgl.system.SharedLibraryExtractPath=${natives_directory}",
-            "-Dio.netty.native.workdir=${natives_directory}",
-            "-Dminecraft.launcher.brand=${launcher_name}",
-            "-Dminecraft.launcher.version=${launcher_version}",
-            "-Xmx${jvm_max_memory}",
-            "-cp",
-            "${classpath}"
-        ]);
-
-        logger.LogInformation("Jvm arguments generated, refer to artifact file for details");
-
-        var firstJreVersion = version.CompatibleJavaMajors?.FirstOrDefault() ?? 8u;
-        if (firstJreVersion.Equals(0))
+        var major = version.CompatibleJavaMajors?.FirstOrDefault() ?? 8u;
+        if (major == 0)
         {
             throw new FormatException("{minecraft_version}/compatibleJavaMajors");
         }
-
-        logger.LogInformation("Set java major version compatibility to {major}", firstJreVersion);
-
-        LockData.AssetData assetIndex;
-        if (version.AssetIndex is { } index)
-        {
-            assetIndex = new(index.Id, index.Url, FileHash.FromSha1(index.Sha1));
-            logger.LogInformation("Set asset index to {index}", index.Id);
-        }
-        else
+        if (version.AssetIndex is not { } index)
         {
             throw new FormatException("{minecraft_version}/assetIndex");
         }
-
-        var mainClass = version.MainClass ?? "net.minecraft.client.main.Main";
-        logger.LogInformation("Set main class path to {mainClass}", mainClass);
-
-        // authlib-injector 常驻磁盘，仅启动时经 -javaagent 激活。
-        var aiArtifact = await authlibInjectorService.GetLatestAsync(token).ConfigureAwait(false);
-        var aiLibraryId = AuthlibInjectorService.LibraryIdentity(aiArtifact.Version);
-        libraries.AddLibrary(new(aiLibraryId, aiArtifact.DownloadUrl, aiArtifact.Hash, false, false));
-        logger.LogInformation("authlib-injector {version} registered as library", aiArtifact.Version);
-
-        Context.Lock = Context.Lock with
+        return new(version.MainClass ?? "net.minecraft.client.main.Main", major,
+                   ArgumentHelper.GroupArguments(ArgumentHelper.Tokenize(version.MinecraftArguments ?? "")), ArgumentHelper.DefaultJvmArguments(firstThreadOnMacOS: true),
+                   libraries, new(index.Id, index.Url, FileHash.FromSha1(index.Sha1)))
         {
-            Artifact = new(mainClass, firstJreVersion, gameArguments, javaArguments, libraries, assetIndex)
+            MainJar = new(PatchHelper.ParseIdentity(name), main.Url, FileHash.FromSha1(main.Sha1))
         };
-    }
-
-    private static void AddUnique(List<string> collection, string arg)
-    {
-        arg = arg.Trim();
-        if (!collection.Contains(arg))
-        {
-            collection.Add(arg);
-        }
     }
 }

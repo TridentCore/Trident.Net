@@ -63,6 +63,7 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 │       ├── profile.json     # 声明式实例元数据
 │       ├── data.lock.json   # 部署锁定数据
 │       ├── data.pack.json   # 打包数据
+│       ├── patches/         # 外部原生 Patch 索引、规则与所属资产
 │       ├── build/           # 最终投影出的 .minecraft；也承载导入内容的运行时变更
 │       ├── import/          # 导入层，通常来自整合包或需要导出的文件
 │       └── persist/         # 用户持久层，例如 saves、screenshots、options.txt
@@ -79,6 +80,8 @@ Trident 只管理选定 home 目录下的数据。默认 home 会从当前目录
 - Projection：部署阶段会把虚拟文件结构增量投影到 `build/`——import 为实体文件，包与持久层为软链接。
 - Repository：通过统一接口访问 Modrinth、CurseForge 等包仓库，包标识使用 Trident Pref。
 - Tracker：部署、安装、更新和启动过程以 tracker 暴露状态、阶段和进度，适合 UI 或 CLI 订阅。
+
+原生部署 Patch 属于可选的实例外部数据，由 `patches/data.patch.json` 记录启用状态和顺序；在各部署作用位置先应用导入层，再应用用户层，不向 `profile.json` 添加引用。Trident Portable Instance 只携带导入层；用户层不参与整合包导入导出，由本地快照保存。格式、管理命令和导入导出行为见[原生部署 Patch 参考](docs/PATCHES.md)。
 
 ### 主要能力
 

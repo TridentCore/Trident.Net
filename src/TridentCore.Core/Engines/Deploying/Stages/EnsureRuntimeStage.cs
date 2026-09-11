@@ -18,13 +18,17 @@ public class EnsureRuntimeStage(
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         var major = Context.Lock.Artifact!.JavaMajorVersion;
-        Context.Lock = Context.Lock with { Runtime = Context.Lock.Runtime };
+        if (Context.Lock.Runtime?.Major != major)
+        {
+            Context.Lock = Context.Lock with { Runtime = null };
+        }
 
-        // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户配置的 JRE 完全交给用户环境。
+        // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户给定的 JRE 原样使用，只校验可用性。
         bool needManifest;
+        JavaHelper.JavaResolution? resolution = null;
         try
         {
-            var resolution = Context.JavaHomeLocator(major);
+            resolution = Context.JavaHomeLocator(major);
             needManifest = resolution.Origin == JavaHelper.JavaResolution.Source.Bundled;
         }
         catch (JavaNotFoundException)
@@ -34,20 +38,16 @@ public class EnsureRuntimeStage(
 
         if (!needManifest)
         {
+            JavaHelper.EnsureUsable(resolution!, major);
             return;
         }
 
         var content = await LoadManifestAsync(major, token).ConfigureAwait(false);
-        if (content is null)
-        {
-            return;
-        }
-
         var (files, links) = ParseRuntimeFiles(content);
-        if (files.Count == 0)
+        var executable = OperatingSystem.IsWindows() ? "bin/java.exe" : "bin/java";
+        if (!files.Any(x => x.Path == executable || x.Path.EndsWith("/" + executable, StringComparison.Ordinal)))
         {
-            logger.LogWarning("Java runtime manifest for Java {major} contained no downloadable files; it will not be auto-installed and launch will fail with JavaNotFoundException",
-                              major);
+            throw new JavaNotFoundException(major);
         }
 
         Context.Runtime = new(major, files, links);
@@ -56,12 +56,13 @@ public class EnsureRuntimeStage(
     // 解析按主版本的运行时 manifest JSON。runtimes/{major}.json 的 sha1 与锁内指纹匹配时
     // 返回缓存（离线快路径）；否则拉 Mojang 运行时索引、下载 manifest、按索引 sha1 校验、
     // 持久化并记录指纹供下次使用。
-    private async Task<string?> LoadManifestAsync(uint major, CancellationToken token)
+    private async Task<string> LoadManifestAsync(uint major, CancellationToken token)
     {
         var path = PathDef.Default.FileOfRuntimeManifest(major);
         var recorded = Context.Lock.Runtime;
 
         if (recorded is { } fingerprint
+         && JavaHelper.ParseJavaMajor(fingerprint.Version) == major
          && File.Exists(path)
          && FileHelper.VerifyModified(path, null, FileHash.Sha1(fingerprint.Sha1)))
         {
@@ -71,18 +72,18 @@ public class EnsureRuntimeStage(
         var manifest = await mojangService.GetRuntimeManifestAsync().ConfigureAwait(false);
         var osString = GenerateOsString();
         var runtimeString = GenerateRuntimeString(major);
-        if (!manifest.TryGetValue(osString, out var runtimes)
-         || !runtimes.TryGetValue(runtimeString, out var runtime)
-         || runtime.Count == 0)
+        if (osString is null || runtimeString is null
+         || !manifest.TryGetValue(osString, out var runtimes)
+         || !runtimes.TryGetValue(runtimeString, out var candidates))
         {
-            logger.LogWarning("Java runtime {runtime} unavailable for platform {os}; Java {major} will not be auto-installed and launch will fail with JavaNotFoundException",
-                              runtimeString,
-                              osString,
-                              major);
-            return null;
+            throw new JavaNotFoundException(major);
         }
-
-        var first = runtime[0];
+        var first = candidates
+                    .Where(x => JavaHelper.ParseJavaMajor(x.Version.Name) == major)
+                    .OrderByDescending(x => x.Version.Released)
+                    .FirstOrDefault()
+                 ?? throw new JavaNotFoundException(major);
+        logger.LogInformation("Selected Java {version} for requested major {major}", first.Version.Name, major);
         using var client = httpClientFactory.CreateClient(RepositoryAgent.CLIENT_NAME);
 
         var dir = Path.GetDirectoryName(path);
@@ -107,7 +108,7 @@ public class EnsureRuntimeStage(
 
         File.Move(tmp, path, true);
 
-        Context.Lock = Context.Lock with { Runtime = new(major, first.Manifest.Sha1) };
+        Context.Lock = Context.Lock with { Runtime = new(major, first.Manifest.Sha1, first.Version.Name) };
 
         return await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
     }
@@ -168,18 +169,21 @@ public class EnsureRuntimeStage(
         return (files, links);
     }
 
-    private static string GenerateRuntimeString(uint major) =>
+    // NOTE: 显式 family 映射而非全表扫描——Mojang 只有在新增 major 时才会新增 family，那属于
+    //  需要 Trident 跟进的源变化；全表扫描会把 minecraft-java-exe 这类非运行时条目和
+    //  java-runtime-*-snapshot 一起纳入候选。family 内的补丁版本仍取 released 最新，无需改代码。
+    private static string? GenerateRuntimeString(uint major) =>
         major switch
         {
             8 => "jre-legacy",
-            11 or 16 => "java-runtime-alpha",
-            17 => "java-runtime-beta",
+            16 => "java-runtime-alpha",
+            17 => "java-runtime-gamma",
             21 => "java-runtime-delta",
-            24 or 25 => "java-runtime-epsilon",
-            _ => "java-runtime-gamma"
+            25 => "java-runtime-epsilon",
+            _ => null
         };
 
-    private static string GenerateOsString()
+    private static string? GenerateOsString()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -223,6 +227,6 @@ public class EnsureRuntimeStage(
             }
         }
 
-        throw new NotSupportedException("Unsupported operating system.");
+        return null;
     }
 }

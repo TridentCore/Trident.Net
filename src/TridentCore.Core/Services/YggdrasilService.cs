@@ -19,7 +19,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     {
         var client = clientFactory.CreateClient();
         client.BaseAddress = new(serverUrl);
-        var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
+        var yggdrasil = RestService.ForGenerated<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var clientToken = Guid.NewGuid().ToString("N");
         var request = new YggdrasilAuthenticateRequest(new("Minecraft", 1), username, password, clientToken, true);
@@ -56,7 +56,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     {
         var client = clientFactory.CreateClient();
         client.BaseAddress = new(serverUrl);
-        var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
+        var yggdrasil = RestService.ForGenerated<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         try
         {
@@ -78,7 +78,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     {
         var client = clientFactory.CreateClient();
         client.BaseAddress = new(serverUrl);
-        var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
+        var yggdrasil = RestService.ForGenerated<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var request = new YggdrasilRefreshRequest(accessToken, clientToken, true, selectedProfile);
 
@@ -97,7 +97,7 @@ public class YggdrasilService(IHttpClientFactory clientFactory)
     {
         var client = clientFactory.CreateClient();
         client.BaseAddress = new(serverUrl);
-        var yggdrasil = RestService.For<IYggdrasilClient>(client, REFIT_SETTINGS);
+        var yggdrasil = RestService.ForGenerated<IYggdrasilClient>(client, REFIT_SETTINGS);
 
         var response = await yggdrasil.GetProfileAsync(uuid, token).ConfigureAwait(false);
 

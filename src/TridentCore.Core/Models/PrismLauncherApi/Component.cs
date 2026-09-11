@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace TridentCore.Core.Models.PrismLauncherApi;
@@ -23,6 +24,25 @@ public record Component(
     string Uid,
     string Version)
 {
+    /// <summary>
+    ///     本地组件定义（`patches/{uid}.json`）可能携带远端 meta 之外的字段；只做「存在即拒绝」判断的
+    ///     字段留在这里，不逐个建模。
+    /// </summary>
+    [JsonExtensionData]
+    public IDictionary<string, JsonElement>? ExtraMembers { get; init; }
+
+    [JsonPropertyName("+jvmArgs")]
+    public IReadOnlyList<string>? JvmArguments { get; init; }
+
+    [JsonPropertyName("+libraries")]
+    public IReadOnlyList<Component.Library>? ExtraLibraries { get; init; }
+
+    [JsonPropertyName("+agents")]
+    public IReadOnlyList<Component.Library>? Agents { get; init; }
+
+    /// <summary>Mojang 风格的 `downloads` 表（`client` 等条目），仅本地 net.minecraft 定义使用。</summary>
+    public IDictionary<string, Component.Library.DownloadsEntry.ArtifactEntry>? Downloads { get; init; }
+
     #region Nested type: AssetIndexEntry
 
     public record AssetIndexEntry(string Id, string Sha1, ulong Size, ulong TotalSize, Uri Url);
@@ -39,11 +59,27 @@ public record Component(
         Library.NativesEntry? Natives,
         IReadOnlyList<Library.Rule>? Rules)
     {
+        [JsonPropertyName("MMC-hint")]
+        public string? Hint { get; init; }
+
+        [JsonPropertyName("MMC-filename")]
+        public string? FileName { get; init; }
+
+        [JsonPropertyName("MMC-absoluteUrl")]
+        public Uri? AbsoluteUrl { get; init; }
+
+        // NOTE: Prism 同时读取这个拼写错误的历史字段，导出只写正确拼写。
+        [JsonPropertyName("MMC-absulute_url")]
+        public Uri? MisspelledAbsoluteUrl { get; init; }
+
+        /// <summary>`+agents` 条目与 library 同形，额外带这个可选参数。</summary>
+        public string? Argument { get; init; }
+
         #region Nested type: DownloadsEntry
 
         public record DownloadsEntry(
             DownloadsEntry.ArtifactEntry? Artifact,
-            IDictionary<string, DownloadsEntry.ArtifactEntry> Classifiers)
+            IReadOnlyDictionary<string, DownloadsEntry.ArtifactEntry>? Classifiers)
         {
             #region Nested type: ArtifactEntry
 
@@ -68,7 +104,11 @@ public record Component(
 
         #region Nested type: Rule
 
-        public record Rule(string Action, IDictionary<string, string>? Os);
+        public record Rule(string Action, IReadOnlyDictionary<string, string>? Os)
+        {
+            [JsonExtensionData]
+            public IDictionary<string, JsonElement>? ExtraMembers { get; init; }
+        }
 
         #endregion
     }

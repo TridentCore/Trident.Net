@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text;
 using IBuilder;
+using TridentCore.Abstractions.FileModels;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Igniters;
 
@@ -8,8 +10,11 @@ public class Igniter : IBuilder<ProcessStartInfo>
 {
     public const string COMMAND_WRAPPER_PLACEHOLDER = "{command}";
 
+    public record JavaAgent(LockData.Library.Identity Id, string Path, string? Arguments = null);
+
     public IList<string> GameArguments { get; } = new List<string>();
     public IList<string> JvmArguments { get; } = new List<string>();
+    public IList<JavaAgent> JavaAgents { get; } = [];
     public IList<string> Libraries { get; } = new List<string>();
     public string? WorkingDirectory { get; set; }
     public string? AssetRootDirectory { get; set; }
@@ -51,6 +56,9 @@ public class Igniter : IBuilder<ProcessStartInfo>
             { "${assets_index_name}", AssetIndex! },
             { "${auth_uuid}", UserUuid! },
             { "${auth_access_token}", UserAccessToken! },
+            { "${auth_session}", $"token:{UserAccessToken}:{UserUuid}" },
+            { "${user_properties}", "{}" },
+            { "${instance_directory}", Path.GetDirectoryName(WorkingDirectory!)! },
             { "${user_type}", UserType! },
             { "${version_type}", ReleaseType! },
             { "${natives_directory}", NativesRootDirectory! },
@@ -72,18 +80,36 @@ public class Igniter : IBuilder<ProcessStartInfo>
             WorkingDirectory = WorkingDirectory!,
             UseShellExecute = IsDebug
         };
-        foreach (var argument in JvmArguments.Where(x => !string.IsNullOrEmpty(x)))
+        string Expand(string argument)
         {
-            var crate = crates.FirstOrDefault(x => argument.Contains(x.Key));
-            var line = crate.Key == null || crate.Value == null ? argument : argument.Replace(crate.Key, crate.Value);
-            start.ArgumentList.Add(line);
+            foreach (var (placeholder, value) in crates)
+            {
+                if (value is not null)
+                {
+                    argument = argument.Replace(placeholder, value, StringComparison.Ordinal);
+                }
+            }
+            return argument;
+        }
+        foreach (var argument in JvmArguments)
+        {
+            start.ArgumentList.Add(Expand(argument));
+        }
+
+        foreach (var agent in LibraryHelper.ResolveAgents(JavaAgents, x => x.Id))
+        {
+            var value = $"-javaagent:{Expand(agent.Path)}";
+            if (agent.Arguments is not null)
+            {
+                value += "=" + Expand(agent.Arguments);
+            }
+            start.ArgumentList.Add(value);
         }
 
         start.ArgumentList.Add(MainClass!);
-        foreach (var argument in GameArguments.Where(x => !string.IsNullOrEmpty(x)))
+        foreach (var argument in GameArguments)
         {
-            var line = crates.GetValueOrDefault(argument, argument);
-            start.ArgumentList.Add(line);
+            start.ArgumentList.Add(Expand(argument));
         }
 
         if (WindowSize is var (width, height))
@@ -258,6 +284,12 @@ public class Igniter : IBuilder<ProcessStartInfo>
     public Igniter AddJvmArgument(string argument)
     {
         JvmArguments.Add(argument);
+        return this;
+    }
+
+    public Igniter AddJavaAgent(JavaAgent agent)
+    {
+        JavaAgents.Add(agent);
         return this;
     }
 

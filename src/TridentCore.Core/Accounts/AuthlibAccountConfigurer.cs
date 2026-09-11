@@ -20,23 +20,26 @@ public class AuthlibAccountConfigurer : IAccountConfigurer
     {
         var ai = (AuthlibAccount)account;
 
-        var aiLib = context.Lock.Artifact!.Libraries.FirstOrDefault(x => x.Id is
+        var library = context.Lock.Artifact!.Libraries.LastOrDefault(x => x is
         {
-            Namespace: AuthlibInjectorService
-               .LIBRARY_NAMESPACE,
-            Name: AuthlibInjectorService
-               .LIBRARY_NAME
+            IsNative: false,
+            IsPresent: false,
+            Id:
+            {
+                Namespace: AuthlibInjectorService.LIBRARY_NAMESPACE,
+                Name: AuthlibInjectorService.LIBRARY_NAME,
+                Platform: null,
+                Extension: "jar"
+            }
         });
 
-        if (aiLib is null)
+        if (library is null)
         {
-            throw new
-                AccountConfigurationException($"Authlib-injector library not found in artifact for account {ai.Username}. "
-                                            + "The deployment may be incomplete.");
+            throw new AccountConfigurationException($"Authlib-injector library not found in artifact for account {ai.Username}. "
+                                                    + "The deployment may be incomplete.");
         }
 
-        var aiPath = context.GetLibraryPath(aiLib);
-        context.Igniter.AddJvmArgument($"-javaagent:{aiPath}={ai.ServerUrl}");
+        context.Igniter.AddJavaAgent(new(library.Id, context.GetLibraryPath(library), ai.ServerUrl));
 
         var prefetched = await _yggdrasil.GetMetadataBase64Async(ai.ServerUrl, token).ConfigureAwait(false);
         context.Igniter.AddJvmArgument($"-Dauthlibinjector.yggdrasil.prefetched={prefetched}");

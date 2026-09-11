@@ -27,8 +27,29 @@ public static class JavaHelper
         "JavaHome", "InstallationPath", "InstallLocation", "InstallDir", "Home", "Path"
     ];
 
+    // NOTE: 调用方给定的 home 一律原样采用——不校验、不回退。按 major 选择全局 home 的函数
+    //  只在调用方没有给定 home 时才被求值，因此实例 override 存在时也不会触发它的副作用。
+    public static JavaHomeLocatorDelegate MakeLocator(string? instanceHome, Func<uint, string?> globalSelector, bool withFallback = true) =>
+        MakeLocator(major => string.IsNullOrEmpty(instanceHome) ? globalSelector(major) : instanceHome, withFallback);
+
     public static JavaHomeLocatorDelegate MakeLocator(Func<uint, string?> javaHomeSelector, bool withFallback = true) =>
         major => Locate(major, javaHomeSelector(major), withFallback);
+
+    // 用户给定的 home 在使用点校验：缺失时明确报错，绝不用别的运行时顶替——用户可能正是
+    //  故意用某个 JRE 试运行，静默替换会让「跑起来了」变成假信号。捆绑运行时由管线自愈，无需校验。
+    public static void EnsureUsable(JavaResolution resolution, uint major)
+    {
+        if (resolution.Origin == JavaResolution.Source.Bundled)
+        {
+            return;
+        }
+
+        if (ResolveJavaExecutable(resolution.Home) is null)
+        {
+            throw new JavaNotFoundException($"The configured Java home '{resolution.Home}' does not contain a Java executable for Java {major}.",
+                                            null);
+        }
+    }
 
     public static async Task<IReadOnlyList<JavaRuntimeCandidate>> ScanJavaRuntimesAsync(
         CancellationToken cancellationToken = default)
@@ -119,7 +140,7 @@ public static class JavaHelper
 
     private static JavaResolution Locate(uint major, string? home, bool withFallback = true)
     {
-        if (!string.IsNullOrEmpty(home) && Directory.Exists(home))
+        if (!string.IsNullOrEmpty(home))
         {
             return new(home, JavaResolution.Source.UserConfigured);
         }
@@ -350,20 +371,15 @@ public static class JavaHelper
         return null;
     }
 
-    private static int? ParseJavaMajor(string? version)
+    public static int? ParseJavaMajor(string? version)
     {
         if (string.IsNullOrWhiteSpace(version))
         {
             return null;
         }
-
-        var major = version.Split('.', 2).FirstOrDefault();
-        if (major != null && int.TryParse(major, out var result))
-        {
-            return result is 1 ? 8 : result;
-        }
-
-        return null;
+        var match = System.Text.RegularExpressions.Regex.Match(version, @"^(?:1\.)?(\d+)",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        return match.Success && int.TryParse(match.Groups[1].Value, out var major) ? major : null;
     }
 
     public readonly record struct JavaRuntimeCandidate(
@@ -375,16 +391,16 @@ public static class JavaHelper
 
     public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
 
-    // 定位到的 Java home 与其来源配对，部署管线据此区分用户配置的 JRE（不动）
+    // 定位到的 Java home 与其来源配对，部署管线据此区分用户给定的 JRE（原样使用）
     // 与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
     public record JavaResolution(string Home, JavaResolution.Source Origin)
     {
         public enum Source
         {
-            // 用户显式配置且在盘——不校验、不修复。
+            // 用户给定（实例 override、CLI --java-home、按 major 配置的 home）——原样使用，缺失即报错。
             UserConfigured,
 
-            // 无可用用户配置——解析到 runtimes/ 下的管线捆绑运行时。
+            // 无任何用户给定——解析到 runtimes/ 下的管线捆绑运行时。
             Bundled
         }
     }

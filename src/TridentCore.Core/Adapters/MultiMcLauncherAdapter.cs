@@ -95,17 +95,19 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         string? loader = null;
         if (pack is not null)
         {
-            version = pack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT)?.Version;
+            var minecraft = pack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT && !c.Disabled);
+            version = minecraft?.Version ?? minecraft?.CachedVersion;
             if (version is null)
             {
                 corruptReason ??= CorruptReason.MinecraftComponentMissing;
             }
 
-            foreach (var component in pack.Components)
+            foreach (var component in pack.Components.Where(x => !x.Disabled))
             {
-                if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId))
+                if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId)
+                 && (component.Version ?? component.CachedVersion) is { } loaderVersion)
                 {
-                    loader = LoaderHelper.ToLurl(loaderId, component.Version);
+                    loader = LoaderHelper.ToLurl(loaderId, loaderVersion);
                     break;
                 }
             }

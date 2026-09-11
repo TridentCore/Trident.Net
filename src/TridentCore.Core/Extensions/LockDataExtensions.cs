@@ -8,32 +8,60 @@ namespace TridentCore.Core.Extensions;
 
 public static class LockDataExtensions
 {
-    public static Igniter MakeIgniter(this LockData.ArtifactData self)
+    public static Igniter MakeIgniter(this LockData.ArtifactData self, string? key = null)
     {
         var igniter = new Igniter();
 
-        foreach (var argument in self.GameArguments)
+        foreach (var argument in self.GameArguments.SelectMany(x => x))
         {
             igniter.AddGameArgument(argument);
         }
 
-        foreach (var argument in self.JavaArguments)
+        foreach (var argument in self.JavaArguments.SelectMany(x => x))
         {
             igniter.AddJvmArgument(argument);
         }
 
-        foreach (var library in self.Libraries.Where(x => x.IsPresent))
+        foreach (var library in self.AllLibraries().Where(x => x.IsPresent))
         {
-            igniter.AddLibrary(PathDef.Default.FileOfLibrary(library.Id.Namespace,
-                                                             library.Id.Name,
-                                                             library.Id.Version,
-                                                             library.Id.Platform,
-                                                             library.Id.Extension));
+            igniter.AddLibrary(library.FilePath(key));
+        }
+
+        foreach (var agent in self.Agents)
+        {
+            igniter.AddJavaAgent(new(agent.Library.Id, agent.Library.FilePath(key), agent.Arguments));
         }
 
         igniter.SetMainClass(self.MainClass).SetAssetIndex(self.AssetIndex.Id);
 
         return igniter;
+    }
+
+    public static IEnumerable<LockData.Library> AllLibraries(this LockData.ArtifactData artifact) =>
+        artifact.MainJar is { } main ? artifact.Libraries.Append(main) : artifact.Libraries;
+
+    public static string FilePath(this LockData.Library library, string? key)
+    {
+        if (library.LocalPath is { } local)
+        {
+            if (key is null || !local.StartsWith("patches/", StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("A local patch library requires an instance and a patches-relative path.");
+            }
+            return PatchHelper.ResolvePath(PathDef.Default.DirectoryOfHome(key), local);
+        }
+        var path = PathDef.Default.FileOfLibrary(library.Id.Namespace, library.Id.Name, library.Id.Version,
+                                                  library.Id.Platform, library.Id.Extension);
+        if (library.CacheKey is { } cacheKey)
+        {
+            if (cacheKey.Length != 64 || !cacheKey.All(char.IsAsciiHexDigit))
+            {
+                throw new InvalidDataException("Invalid patch library cache key.");
+            }
+            path = Path.Combine(PathDef.Default.CacheLibraryDirectory, ".patches", cacheKey,
+                                Path.GetRelativePath(PathDef.Default.CacheLibraryDirectory, path));
+        }
+        return path;
     }
 
     // NOTE: 由锁定包的冻结规则 + 解析结果推导的 build 内相对目标。集中于此，
@@ -45,38 +73,6 @@ public static class LockDataExtensions
                                          self.Resolved.FileName,
                                          self.Resolved.Kind);
 
-    // 可变列表式库累加，与平台计算 artifact 重建时的去重规则一致
-    // （vanilla 与 loader 都会增量加库）。
-    public static void AddLibrary(this IList<LockData.Library> libs, LockData.Library library)
-    {
-        // NOTE: 允许仅 IsNative 不同的并存，不允许仅 IsPresent 不同的并存；IsPresent==true 优先。
-        var found = libs.FirstOrDefault(x => x.Id.Namespace == library.Id.Namespace
-                                          && x.Id.Name == library.Id.Name
-                                          && x.Id.Platform == library.Id.Platform
-                                          && x.Id.Extension == library.Id.Extension
-                                          && x.IsNative == library.IsNative);
-        if (found != null)
-        {
-            if (found.Id.Version == library.Id.Version)
-            {
-                if (library.IsPresent)
-                {
-                    libs.Remove(found);
-                }
-                else
-                {
-                    return;
-                }
-            }
-            else if (found.IsPresent && library.IsPresent)
-            {
-                libs.Remove(found);
-            }
-        }
-
-        libs.Add(library);
-    }
-
     public static void AddLibrary(
         this IList<LockData.Library> libs,
         string fullname,
@@ -84,7 +80,7 @@ public static class LockDataExtensions
         FileHash? hash,
         bool native = false,
         bool present = true) =>
-        libs.AddLibrary(new(ParseLibraryIdentity(fullname), url, hash, native, present));
+        libs.Add(new(ParseLibraryIdentity(fullname), url, hash, native, present));
 
     // HACK: 适配 PrismLauncher Meta 的奇葩多态数据。
     public static void AddLibraryPrismFlavor(this IList<LockData.Library> libs, string fullname, Uri url)
@@ -95,7 +91,7 @@ public static class LockDataExtensions
 
         var fullUrl = new Uri(exactUrl,
                               $"{id.Namespace.Replace('.', '/')}/{id.Name}/{id.Version}/{id.Name}-{id.Version}.{id.Extension}");
-        libs.AddLibrary(new(id, fullUrl, null));
+        libs.Add(new(id, fullUrl, null));
     }
 
     private static LockData.Library.Identity ParseLibraryIdentity(string fullname)

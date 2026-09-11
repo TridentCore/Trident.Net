@@ -2,12 +2,11 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-// 加载磁盘锁作为只读 BaseLock，并以当前 platform + options 指纹种出新的 Lock。
-// 不判有效性——各下游阶段自行与 BaseLock 比较。文件缺失或旧格式（FORMAT<2）时
-// BaseLock = null，即一切重建（数据不丢：Profile 才是真源）。
+// Load a read-only baseline; each region validates its own inputs before reusing cached output.
 public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
@@ -31,7 +30,6 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
             }
             catch (JsonException e)
             {
-                // 旧 FORMAT=1（或损坏）文件——与新结构不兼容。
                 logger.LogWarning("Lock unreadable (likely legacy format), rebuilding: {message}", e.Message);
             }
             catch (Exception e)
@@ -44,10 +42,12 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
             logger.LogInformation("No usable lock on disk, creating fresh");
         }
 
+        Context.Patches = await PatchStorageHelper.LoadAsync(Context.Key, token).ConfigureAwait(false);
         Context.Lock = new()
         {
             Platform = new(Context.Setup.Version, Context.Setup.Loader),
-            Viability = new()
+            Viability = new(),
+            Runtime = Context.BaseLock?.Runtime
         };
     }
 }

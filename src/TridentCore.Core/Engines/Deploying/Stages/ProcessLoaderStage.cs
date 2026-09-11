@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Services;
+using TridentCore.Core.Utilities;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
@@ -15,27 +15,34 @@ public class ProcessLoaderStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        // NOTE: 平台未变 → 整个 artifact（含 loader）已被 InstallVanilla 迁移。
-        if (Context.BaseLock?.Platform == Context.Lock.Platform)
+        var artifact = Context.Lock.Artifact
+                    ?? throw new InvalidOperationException("Artifact missing before loader processing");
+        var fingerprint = PatchHelper.Fingerprint(new
         {
-            logger.LogInformation("Platform unchanged, loader migrated with artifact");
+            Format = LockData.FORMAT,
+            Context.Setup.Loader,
+            Input = PatchHelper.Fingerprint(artifact),
+            Patch = Context.Patches.Fingerprint("loader")
+        });
+        if (Context.BaseLock?.Loader is { } cached && cached.Input == fingerprint)
+        {
+            Context.Lock = Context.Lock with { Artifact = cached.Output, Loader = cached };
+            logger.LogInformation("Migrated loader region");
             return;
         }
-
+        if (Context.Patches.HasReplacement("loader") || !Context.Patches.IsLoaderEnabled() || Context.Setup.Loader is null)
+        {
+            Store(Context.Patches.Apply("loader", artifact));
+            return;
+        }
         var loader = Context.Setup.Loader;
-        logger.LogInformation("Process loader: {}", loader ?? "(None)");
-        if (loader == null)
-        {
-            return;
-        }
-
         if (!LoaderHelper.TryParse(loader, out var parsed))
         {
             throw new FormatException($"{loader} is not well formatted loader string");
         }
 
-        var artifact = Context.Lock.Artifact
-                    ?? throw new InvalidOperationException("Artifact missing before loader processing");
+        void Store(LockData.ArtifactData output) =>
+            Context.Lock = Context.Lock with { Artifact = output, Loader = new(fingerprint, output) };
         var working = new WorkingArtifact
         {
             Libraries = [.. artifact.Libraries],
@@ -70,16 +77,13 @@ public class ProcessLoaderStage(
                 throw new FormatException($"{parsed.Identity} is not known loader");
         }
 
-        Context.Lock = Context.Lock with
+        Store(Context.Patches.Apply("loader", artifact with
         {
-            Artifact = artifact with
-            {
-                Libraries = working.Libraries,
-                GameArguments = working.GameArguments,
-                JavaArguments = working.JavaArguments,
-                MainClass = working.MainClass
-            }
-        };
+            Libraries = working.Libraries,
+            GameArguments = working.GameArguments,
+            JavaArguments = working.JavaArguments,
+            MainClass = working.MainClass
+        }));
     }
 
     private async Task InstallForgeAsync(WorkingArtifact working, string uid, string version, CancellationToken token)
@@ -102,45 +106,31 @@ public class ProcessLoaderStage(
             working.GameArguments.Clear();
         }
 
-        foreach (var argument in index.MinecraftArguments?.Split(' ') ?? Enumerable.Empty<string>())
-        {
-            AddUnique(working.GameArguments, argument);
-        }
+        working.GameArguments.AddRange(ArgumentHelper.GroupArguments(ArgumentHelper.Tokenize(index.MinecraftArguments ?? "")));
 
-        if (index.Tweakers != null)
-        // 不确定列表多元素时如何添加——大胆估计不会多个。
+        foreach (var tweaker in index.Tweakers ?? [])
         {
-            foreach (var tweaker in index.Tweakers)
-            {
-                AddUnique(working.GameArguments, "--tweakClass");
-                AddUnique(working.GameArguments, tweaker);
-            }
+            working.GameArguments.Add(["--tweakClass", tweaker]);
         }
 
         AddUnique(working.JavaArguments, "-Dforgewrapper.librariesDir=${library_directory}");
 
-        var installer = working.Libraries.FirstOrDefault(x => x.Id.Platform == "installer"
-                                                           && x.Id.Namespace == uid
-                                                           && x.Id.Name == "forge");
+        var installer = LibraryHelper.Resolve(working.Libraries).LastOrDefault(x => !x.IsNative && !x.IsPresent
+                                                                               && x.Id.Platform == "installer"
+                                                                               && x.Id.Namespace == uid
+                                                                               && x.Id.Name is "forge" or "neoforge");
         if (installer != null)
         {
             AddUnique(working.JavaArguments,
-                      $"-Dforgewrapper.installer={PathDef.Default.FileOfLibrary(installer.Id.Namespace, installer.Id.Name, installer.Id.Version, installer.Id.Platform, installer.Id.Extension)}");
+                      $"-Dforgewrapper.installer={installer.FilePath(Context.Key)}");
         }
 
-        var minecraft = working.Libraries.FirstOrDefault(x => x.Id is
-        {
-            Platform: "client",
-            Namespace: "com.mojang",
-            Name: "minecraft"
-        });
+        var minecraft = Context.Lock.Artifact?.MainJar;
         if (minecraft != null)
         {
             AddUnique(working.JavaArguments,
-                      $"-Dforgewrapper.minecraft={PathDef.Default.FileOfLibrary(minecraft.Id.Namespace, minecraft.Id.Name, minecraft.Id.Version, minecraft.Id.Platform, minecraft.Id.Extension)}");
+                      $"-Dforgewrapper.minecraft={minecraft.FilePath(Context.Key)}");
         }
-
-        // 经拦截给 ForgeWrapper 注入主参数；找不到也不报错（报错需新异常类型，不值）。
 
         working.MainClass = index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main";
     }
@@ -163,20 +153,19 @@ public class ProcessLoaderStage(
         working.MainClass = index.MainClass ?? "net.fabricmc.loader.impl.launch.knot.KnotClient";
     }
 
-    private static void AddUnique(List<string> collection, string arg)
+    private static void AddUnique(List<string[]> collection, string arg)
     {
-        arg = arg.Trim();
-        if (!collection.Contains(arg))
+        if (!collection.Any(x => x.Length == 1 && x[0] == arg))
         {
-            collection.Add(arg);
+            collection.Add([arg]);
         }
     }
 
     private sealed class WorkingArtifact
     {
         public required List<LockData.Library> Libraries { get; init; }
-        public required List<string> GameArguments { get; init; }
-        public required List<string> JavaArguments { get; init; }
+        public required List<string[]> GameArguments { get; init; }
+        public required List<string[]> JavaArguments { get; init; }
         public required string MainClass { get; set; }
     }
 }

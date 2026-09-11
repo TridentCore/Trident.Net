@@ -25,6 +25,7 @@ Layering: `Abstractions ← Pref ← Core ← Cli`. Dependencies flow downward o
 - **Repository** — Package source abstraction (Modrinth, CurseForge, user-configured). Queried through `RepositoryAgent`.
 - **Loader** — Mod loader (Forge, NeoForge, Fabric, Quilt). Metadata via PrismLauncher API.
 - **Lock Data** (`data.lock.json`) — Snapshotted deployment state for rebuild and diff.
+- **Native patches** (`patches/`) — External deployment declarations with no references in `profile.json`; `data.patch.json` orders import and users layers. Only the import layer participates in modpack import/export. The users layer is local user data, preserved on updates and included in local snapshots.
 
 ## CLI Project
 
@@ -41,3 +42,5 @@ The CLI layer follows a strict **Commands → Operations → Tools** pattern —
 - **Coding style:** See `.editorconfig` for full rules
 - **Solution file:** `Trident.slnx`
 - **Build:** `dotnet build Trident.slnx`
+- **Verification:** Do not add test cases, mock-based suites, or feature-specific test/check projects except for the Pref/PURL parsing and formatting library. Validate deployment and launch support with actual distribution packs and real instance runs; compilation and passing assertions are not end-to-end acceptance.
+- **Stateless helpers:** Use static `XxxHelper` classes under `Utilities`; reserve `XxxService` for stateful application capabilities.

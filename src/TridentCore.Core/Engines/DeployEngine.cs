@@ -26,6 +26,7 @@ public class DeployEngine(
             typeof(LoadLockStage),
             typeof(InstallVanillaStage),
             typeof(ProcessLoaderStage),
+            typeof(ApplyLaunchPatchStage),
             typeof(SyncPackagesStage),
             typeof(FlattenPackagesStage),
             typeof(EnsureRuntimeStage),

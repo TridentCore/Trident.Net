@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services.Profiles;
 using TridentCore.Core.Utilities;
@@ -146,6 +147,16 @@ public class ProfileManager : IDisposable
         string version,
         string? loader,
         IReadOnlyList<string> packages,
+        IDictionary<string, object> overrides) =>
+        CommitUpdate(key, PrepareUpdate(key, source, name, version, loader, packages, overrides));
+
+    internal Profile PrepareUpdate(
+        string key,
+        string? source,
+        string name,
+        string version,
+        string? loader,
+        IReadOnlyList<string> packages,
         IDictionary<string, object> overrides)
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key);
@@ -154,9 +165,10 @@ public class ProfileManager : IDisposable
             throw new InvalidOperationException($"{key} is not in profiles");
         }
 
+        var updated = handle.Value.Clone();
         var changeSet = packages.ToDictionary(PackageHelper.ExtractProjectIdentityIfValid);
         var removeSet = new List<Profile.Rice.Entry>();
-        foreach (var entry in handle.Value.Setup.Packages.Where(x => x.Source == handle.Value.Setup.Source))
+        foreach (var entry in updated.Setup.Packages.Where(x => x.Source == updated.Setup.Source))
         {
             var extracted = PackageHelper.ExtractProjectIdentityIfValid(entry.Pref);
             if (changeSet.TryGetValue(extracted, out var change))
@@ -173,27 +185,39 @@ public class ProfileManager : IDisposable
 
         foreach (var remove in removeSet)
         {
-            handle.Value.Setup.Packages.Remove(remove);
+            updated.Setup.Packages.Remove(remove);
         }
 
         foreach (var add in changeSet.Values)
         {
-            handle.Value.Setup.Packages.Add(new() { Enabled = true, Source = source, Pref = add });
+            updated.Setup.Packages.Add(new() { Enabled = true, Source = source, Pref = add });
         }
 
         foreach (var (k, v) in overrides)
         {
-            handle.Value.Overrides[k] = v;
+            updated.Overrides[k] = v;
         }
 
-        handle.Value.Name = name;
-        handle.Value.Setup.Source = source;
-        handle.Value.Setup.Version = version;
-        handle.Value.Setup.Loader = loader;
+        updated.Name = name;
+        updated.Setup.Source = source;
+        updated.Setup.Version = version;
+        updated.Setup.Loader = loader;
+        return updated;
+    }
 
-        handle.Save();
+    internal void CommitUpdate(string key, Profile updated, bool notify = true)
+    {
+        var handle = _profiles.FirstOrDefault(x => x.Key == key)
+                  ?? throw new InvalidOperationException($"{key} is not in profiles");
+        handle.Save(updated);
+        handle.Value.Name = updated.Name;
+        handle.Value.Setup = updated.Setup;
+        handle.Value.Overrides = updated.Overrides;
         _logger.LogInformation("{} updated", key);
-        OnProfileUpdated(key, handle.Value);
+        if (notify)
+        {
+            OnProfileUpdated(key, handle.Value);
+        }
     }
 
     #region Profile Changed Event

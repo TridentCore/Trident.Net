@@ -1,5 +1,6 @@
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Cli.Commands.Package;
@@ -132,11 +133,12 @@ internal static class InstanceOperation
         string instance,
         string? profile,
         bool fullCheck,
-        string? javaHome)
+        string? javaHome,
+        Func<uint, string?>? globalJavaHomeSelector = null)
     {
         var ctx = resolver.Resolve(instance, profile);
         var options = new DeployOptions(fullCheck);
-        var locator = JavaHelper.MakeLocator(_ => javaHome);
+        var locator = JavaHelper.MakeLocator(javaHome ?? ctx.Profile.GetOverride<string>(Profile.OVERRIDE_JAVA_HOME), globalJavaHomeSelector ?? (_ => null));
         var activities = instanceManager.Deploy(ctx.Key, options, locator);
         var final = await ActivityAwaiter.AwaitCompletionAsync(activities, CancellationToken.None).ConfigureAwait(false);
         ActivityAwaiter.ThrowIfFaulted(final, "Build failed.");
@@ -179,7 +181,13 @@ internal static class InstanceOperation
         await exporterAgent.PackCompressedAsync(file, container).ConfigureAwait(false);
         await file.FlushAsync().ConfigureAwait(false);
 
-        return new(ctx.Key, format, type, outputPath);
+        var patches = await PatchStorageHelper.ReadIndexAtAsync(PathDef.Default.DirectoryOfPatches(ctx.Key)).ConfigureAwait(false);
+        return new(ctx.Key, format, type, outputPath)
+        {
+            Warnings = format != "trident" && patches.Import.Count > 0
+                           ? ["Native patches are not included in this format; launch behavior may change. Use the Trident format to preserve imported patches and their assets."]
+                           : []
+        };
     }
 
     public static async Task<InstanceImportResult> ImportAsync(
@@ -307,6 +315,9 @@ internal sealed record InstanceResetResult(string Key, IReadOnlyList<string> Del
 
 internal sealed record InstanceBuildResult(string Key, string State);
 
-internal sealed record InstanceExportResult(string Key, string Format, string Type, string Output);
+internal sealed record InstanceExportResult(string Key, string Format, string Type, string Output)
+{
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+}
 
 internal sealed record InstanceImportResult(string Key, string Name, string Version, string? Loader, string Path);

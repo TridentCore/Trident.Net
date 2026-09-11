@@ -10,10 +10,11 @@ public class DeployContext(
     DeployEngineOptions options,
     JavaHomeLocatorDelegate javaHomeLocator)
 {
-    // BaseLock 是磁盘锁的只读快照（缺失或旧 FORMAT=1 时为 null）；Lock 是本周期的产物。
-    // 阶段对照 BaseLock 判有效性并迁移/重建进 Lock。
+    // BaseLock 是磁盘锁的只读快照（缺失或不可读时为 null）；Lock 是本周期的产物。
+    // 阶段各自对照 BaseLock 中对应的 region 记录判有效性并迁移/重建进 Lock。
     internal LockData? BaseLock;
     internal LockData Lock = null!;
+    internal PatchSet Patches = null!;
     internal EntityManifest? Manifest;
     internal BundledRuntime? Runtime;
 

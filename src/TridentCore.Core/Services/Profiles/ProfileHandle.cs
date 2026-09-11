@@ -11,7 +11,7 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
 
     internal bool IsActive { get; set; } = true;
 
-    internal void Save()
+    internal void Save(Profile? replacement = null)
     {
         if (!IsActive)
         {
@@ -25,8 +25,17 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
             Directory.CreateDirectory(dir);
         }
 
-        var json = JsonSerializer.Serialize(Value, options);
-        File.WriteAllText(profilePath, json);
+        var json = JsonSerializer.Serialize(replacement ?? Value, options);
+        var temporary = profilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary, json);
+            File.Move(temporary, profilePath, true);
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
     }
 
     public static ProfileHandle Create(string key, Profile value, JsonSerializerOptions options) =>

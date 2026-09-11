@@ -50,17 +50,24 @@ public class GenerateManifestStage(IHttpClientFactory factory) : StageBase
         }
 
         var nativesDir = PathDef.Default.DirectoryOfNatives(Context.Key);
-        foreach (var lib in artifact.Libraries)
+        var libraries = artifact.AllLibraries().Concat(artifact.Agents.Select(x => x.Library));
+        foreach (var file in libraries.GroupBy(x => x.FilePath(Context.Key), FileHelper.PathComparer))
         {
-            var path = PathDef.Default.FileOfLibrary(lib.Id.Namespace,
-                                                     lib.Id.Name,
-                                                     lib.Id.Version,
-                                                     lib.Id.Platform,
-                                                     lib.Id.Extension);
-            manifest.PresentFiles.Add(new(path, lib.Url, lib.Hash));
-            if (lib.IsNative)
+            var library = file.FirstOrDefault(x => x.Hash is not null) ?? file.First();
+            if (library.LocalPath is not null)
             {
-                manifest.ExplosiveFiles.Add(new(path, nativesDir));
+                if (!FileHelper.VerifyModified(file.Key, null, library.Hash))
+                {
+                    throw new InvalidDataException($"Local library '{library.LocalPath}' is missing or changed during deployment.");
+                }
+            }
+            else
+            {
+                manifest.PresentFiles.Add(new(file.Key, library.Url ?? throw new InvalidDataException("Library has no source."), library.Hash));
+            }
+            foreach (var native in file.Where(x => x.IsNative))
+            {
+                manifest.ExplosiveFiles.Add(new(file.Key, nativesDir) { Exclude = native.Exclude });
             }
         }
 

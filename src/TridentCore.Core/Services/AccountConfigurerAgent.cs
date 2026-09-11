@@ -1,7 +1,7 @@
-using TridentCore.Abstractions;
 using TridentCore.Abstractions.Accounts;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Core.Accounts;
+using TridentCore.Core.Extensions;
 using TridentCore.Core.Igniters;
 
 namespace TridentCore.Core.Services;
@@ -48,20 +48,17 @@ public class AccountConfigurerAgent
 
     public class LaunchContext
     {
-        public LaunchContext(Igniter igniter, LockData @lock)
+        public LaunchContext(Igniter igniter, LockData @lock, string key)
         {
             Igniter = igniter;
             Lock = @lock;
+            Key = key;
         }
 
         public Igniter Igniter { get; }
         public LockData Lock { get; }
+        public string Key { get; }
 
-        public string GetLibraryPath(LockData.Library library) =>
-            PathDef.Default.FileOfLibrary(library.Id.Namespace,
-                                          library.Id.Name,
-                                          library.Id.Version,
-                                          library.Id.Platform,
-                                          library.Id.Extension);
+        public string GetLibraryPath(LockData.Library library) => library.FilePath(Key);
     }
 }

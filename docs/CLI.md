@@ -23,6 +23,26 @@ trident --debug repository status --label modrinth
 
 When stdout is redirected, commands prefer structured JSON output automatically.
 
+## Native Patches
+
+Native patches live outside `profile.json`. The index at `patches/data.patch.json` controls their import/users layers, enabled state and order.
+
+```sh
+trident patch list --instance example
+trident patch add --instance example --path ./my-patch/patch.json --name my-adjustments
+trident patch disable --instance example --path my-adjustments/patch.json
+trident patch enable --instance example --path my-adjustments/patch.json
+trident patch move --instance example --path my-adjustments/patch.json --position 0
+trident patch remove --instance example --path my-adjustments/patch.json --yes
+```
+
+`--layer` defaults to `users`; `--layer import` selects imported entries. Positions are zero-based within that layer.
+Removal deletes owned files and requires confirmation. Patch changes take effect at the next deployment without
+clearing unrelated lock regions. MCP exposes `patch_list`, `patch_set_enabled` and `patch_move`.
+
+Trident Portable Instance carries the import patch layer with its entries, order and assets. The user patch layer stays local and no export format
+carries it. Other export formats omit patches, and structured export results include a `warnings` array when this happens. See [the patch format reference](PATCHES.md).
+
 ## Output Styling
 
 Human-readable output uses Spectre Console styling for tables, summaries, status badges, spinners, progress bars, and confirmation prompts.

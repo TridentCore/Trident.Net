@@ -34,7 +34,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddPrismLauncher()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IPrismLauncherClient>(_ =>
                                               new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMojangLauncher()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IMojangLauncherClient>(_ =>
                                                new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
                                                       .Web))))
@@ -59,7 +59,7 @@ public static class ServiceCollectionExtensions
                     client.BaseAddress = new(MojangService.LAUNCHER_ENDPOINT);
                 });
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IMojangPistonClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
                 {
@@ -74,7 +74,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMicrosoft()
         {
             services
-               .AddRefitClient<IMicrosoftClient>(_ =>
+               .AddRefitGeneratedClient<IMicrosoftClient>(_ =>
                                                      new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
                                                             .Web)
                                                      {
@@ -111,7 +111,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddXboxLive()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IXboxLiveClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.General)
                     {
                         PropertyNameCaseInsensitive = true
@@ -126,7 +126,7 @@ public static class ServiceCollectionExtensions
                                                                       .Version?.ToString()));
                 });
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IXboxServiceClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.General)
                     {
                         PropertyNameCaseInsensitive = true
@@ -147,7 +147,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMinecraft()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IMinecraftClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web)
                     {
                         PropertyNamingPolicy =
@@ -170,7 +170,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddAuthlibInjector()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IAuthlibInjectorClient>(_ =>
                                                 new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults
                                                        .Web))))
@@ -190,7 +190,7 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddMclogs()
         {
             services
-               .AddRefitClient<
+               .AddRefitGeneratedClient<
                     IMclogsClient>(_ => new(new SystemTextJsonContentSerializer(new(JsonSerializerDefaults.Web))))
                .ConfigureHttpClient(client =>
                 {

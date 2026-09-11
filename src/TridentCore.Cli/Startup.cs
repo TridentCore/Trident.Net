@@ -117,6 +117,8 @@ public static class Startup
             config.AddExample("--json", "package", "list", "--instance", "cherry_picks");
             config.AddExample("--no-interactive", "instance", "delete", "--instance", "cherry_picks", "--yes");
 
+            config.AddCommand<PatchCommand>("patch").WithDescription("Manage external native patches and their order.");
+
             config.AddBranch("instance",
                              instance =>
                              {

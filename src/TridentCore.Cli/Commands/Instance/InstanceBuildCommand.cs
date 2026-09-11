@@ -5,7 +5,7 @@ using TridentCore.Core.Services;
 
 namespace TridentCore.Cli.Commands.Instance;
 
-public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliOutput output)
+public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliConfigurationStore configuration, CliOutput output)
     : InstanceCommandBase<InstanceBuildCommand.Arguments>(resolver)
 {
     protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
@@ -17,7 +17,8 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
                                 instance.Key,
                                 settings.Profile,
                                 settings.FullCheck ?? false,
-                                settings.JavaHome)
+                                settings.JavaHome,
+                                _ => configuration.Get<string>(TridentCore.Abstractions.FileModels.Profile.OVERRIDE_JAVA_HOME))
                     .GetAwaiter()
                     .GetResult();
 

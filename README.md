@@ -70,6 +70,7 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
 │       ├── profile.json     # declarative instance metadata
 │       ├── data.lock.json   # deployment lock data
 │       ├── data.pack.json   # pack data
+│       ├── patches/         # external native patch index, rules and owned assets
 │       ├── build/           # projected .minecraft output; also holds runtime mutations to imported content
 │       ├── import/          # imported layer, usually from modpacks or exportable files
 │       └── persist/         # user-persistent data such as saves, screenshots, options.txt
@@ -94,6 +95,11 @@ override `PathDef.Default` or `PathDef.HomeLocatorDefault` before first use.
   Prefs.
 - Tracker: deploy, install, update, and run operations expose state, stage, and progress through trackers for UI and CLI
   subscribers.
+
+Native deployment patches are optional external instance data. They are indexed in `patches/data.patch.json`,
+apply imported rules before user rules at each deployment boundary, and never add references to `profile.json`.
+Trident Portable Instance preserves the import layer; the users layer stays local and is preserved by snapshots. See [Native deployment patches](docs/PATCHES.md) for the
+format, management commands and import/export behavior.
 
 ### Capabilities
 

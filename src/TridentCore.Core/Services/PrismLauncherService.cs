@@ -137,7 +137,7 @@ public class PrismLauncherService(IPrismLauncherClient client)
 
             if (native is var (classifier, downloads))
             {
-                if (downloads.Classifiers.TryGetValue(classifier, out var download))
+                if (downloads.Classifiers?.TryGetValue(classifier, out var download) == true)
                 // 假设 native 库本身没有 platform 字段，这是个大胆的假设！
                 {
                     libraries.AddLibrary($"{lib.Name}:{classifier}",

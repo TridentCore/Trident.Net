@@ -58,7 +58,7 @@ public class RepositoryAgent
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.CurseForge:
                     {
                         var curseforge = new CurseForgeRepository(profile.Label,
-                                                                  RestService.For<ICurseForgeClient>(BuildClient(profile),
+                                                                  RestService.ForGenerated<ICurseForgeClient>(BuildClient(profile),
                                                                       new
                                                                           RefitSettings(new
                                                                               SystemTextJsonContentSerializer(new(JsonSerializerDefaults
@@ -74,7 +74,7 @@ public class RepositoryAgent
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.Modrinth:
                     {
                         var modrinth = new ModrinthRepository(profile.Label,
-                                                              RestService.For<IModrinthClient>(BuildClient(profile),
+                                                              RestService.ForGenerated<IModrinthClient>(BuildClient(profile),
                                                                   new
                                                                       RefitSettings(new
                                                                                         SystemTextJsonContentSerializer(new(JsonSerializerDefaults
@@ -95,7 +95,7 @@ public class RepositoryAgent
                 case IRepositoryProviderAccessor.ProviderProfile.DriverType.Packwiz:
                     {
                         var packwiz = new PackwizRepository(profile.Label,
-                                                            RestService.For<IGitHubClient>(BuildClient(profile),
+                                                            RestService.ForGenerated<IGitHubClient>(BuildClient(profile),
                                                                 new
                                                                     RefitSettings(new
                                                                                       SystemTextJsonContentSerializer(new(JsonSerializerDefaults

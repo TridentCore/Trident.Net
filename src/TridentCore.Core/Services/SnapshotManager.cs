@@ -30,7 +30,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         var setup = profileManager.GetImmutable(key).Setup.Clone();
 
         var home = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
-        var dirs = new[] { PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key) };
+        var dirs = new[] { PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key), PathDef.Default.DirectoryOfPatches(key) };
 
 
         var producer = Task.Run(async () =>
@@ -260,7 +260,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                     var dirs = new[]
                         {
-                            PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key)
+                            PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key), PathDef.Default.DirectoryOfPatches(key)
                         };
 
                     foreach (var dir in dirs)

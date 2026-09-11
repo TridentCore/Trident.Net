@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Exporters;
 using TridentCore.Abstractions.Extensions;
+using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Engines.Deploying;
@@ -106,6 +107,24 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
         }
 
         var homeDir = PathDef.Default.DirectoryOfHome(pack.Key);
+        var patchesDir = PathDef.Default.DirectoryOfPatches(pack.Key);
+        var patchesImportDir = Path.Combine(patchesDir, "import");
+        var patchIndex = await PatchStorageHelper.ReadIndexAtAsync(patchesDir).ConfigureAwait(false);
+        var patchFiles = Directory.Exists(patchesImportDir)
+                             ? Directory.EnumerateFiles(patchesImportDir, "*", SearchOption.AllDirectories).ToArray()
+                             : [];
+        if (patchIndex.Import.Count > 0 || patchFiles.Length > 0)
+        {
+            // 整合包只承载导入层，且无条件完整携带：禁用条目、顺序与资产一并打包；用户层从不随包导出。
+            var packPatchIndex = new PackPatchIndex { Format = patchIndex.Format, Import = patchIndex.Import };
+            container.Attachments.Add("patches/" + PatchStorageHelper.IndexFileName,
+                new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(packPatchIndex, FileHelper.SerializerOptions)));
+            foreach (var file in patchFiles)
+            {
+                var relative = Path.GetRelativePath(patchesImportDir, file).Replace('\\', '/');
+                container.Files.Add($"patches/import/{relative}", PatchHelper.ResolvePath(patchesImportDir, relative));
+            }
+        }
         var licenseFile = Path.Combine(homeDir, "LICENSE.txt");
         if (File.Exists(licenseFile))
         {

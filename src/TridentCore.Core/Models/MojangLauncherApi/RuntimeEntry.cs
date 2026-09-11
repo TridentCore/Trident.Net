@@ -19,7 +19,7 @@ public record RuntimeEntry(
 
     #region Nested type: EntryVersion
 
-    public record EntryVersion(string Name, DateTimeOffset Rreleased);
+    public record EntryVersion(string Name, DateTimeOffset Released);
 
     #endregion
 }

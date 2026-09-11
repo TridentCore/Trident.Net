@@ -289,6 +289,7 @@ public class InstanceManager(
             LoadLockStage => DeployStage.LoadLock,
             InstallVanillaStage => DeployStage.InstallVanilla,
             ProcessLoaderStage => DeployStage.ProcessLoader,
+            ApplyLaunchPatchStage => DeployStage.ApplyLaunchPatch,
             SyncPackagesStage => DeployStage.SyncPackages,
             FlattenPackagesStage => DeployStage.FlattenPackages,
             PersistLockStage => DeployStage.PersistLock,
@@ -344,9 +345,11 @@ public class InstanceManager(
         }
 
         var profile = profileManager.GetImmutable(operation.Key);
-        var javaHome = javaHomeLocator(artifact.JavaMajorVersion).Home;
+        var resolution = javaHomeLocator(artifact.JavaMajorVersion);
+        JavaHelper.EnsureUsable(resolution, artifact.JavaMajorVersion);
+        var javaHome = resolution.Home;
         var workingDirectory = PathDef.Default.DirectoryOfBuild(operation.Key);
-        var igniter = artifact.MakeIgniter();
+        var igniter = artifact.MakeIgniter(operation.Key);
 
         operation.Mutate<InstanceActivity.Running>(x => x with
         {
@@ -380,12 +383,12 @@ public class InstanceManager(
             igniter.SetQuickConnectAddress(options.QuickConnectAddress);
         }
 
-        foreach (var additional in options.AdditionalArguments.Split(' '))
+        foreach (var additional in ArgumentHelper.Tokenize(options.AdditionalArguments))
         {
             igniter.AddJvmArgument(additional);
         }
 
-        await accountConfigurer.ConfigureLaunchAsync(account, new(igniter, lockData), operation.Token)
+        await accountConfigurer.ConfigureLaunchAsync(account, new(igniter, lockData, operation.Key), operation.Token)
             .ConfigureAwait(false);
         if (options.Mode == LaunchMode.Debug)
         {
@@ -524,14 +527,12 @@ public class InstanceManager(
 
         logger.LogDebug("{} files collected to extract", container.ImportFileNames.Count);
 
+        var oldSource = profileManager.GetImmutable(key).Setup.Source;
+        var preparedProfile = profileManager.PrepareUpdate(key, container.Profile.Setup.Source, container.Profile.Name,
+            container.Profile.Setup.Version, container.Profile.Setup.Loader,
+            [.. container.Profile.Setup.Packages.Select(x => x.Pref)], container.Profile.Overrides);
         var importDir = PathDef.Default.DirectoryOfImport(key);
-        // 只要求 import/ 存在——build/ 是 deploy 的产物，未启动过的实例没有它，
-        // Phase 2 对缺失的 build 逐文件 File.Exists 跳过，天然 no-op。
-        if (!Directory.Exists(importDir))
-        {
-            logger.LogWarning("Update of {key} skipped: the instance has no import directory", key);
-            return;
-        }
+        Directory.CreateDirectory(importDir);
         var buildDir = PathDef.Default.DirectoryOfBuild(key);
 
         var token = run.Token;
@@ -539,6 +540,10 @@ public class InstanceManager(
         var stagingDir = Path.Combine(homeDir, ".import.staging");
         var liveBackupDir = Path.Combine(homeDir, ".live.backup");
         var oldImportDir = Path.Combine(homeDir, ".import.old");
+        var patchStagingHome = Path.Combine(homeDir, ".patches.staging");
+        var homeBackupDir = Path.Combine(homeDir, ".home.backup");
+        var homePromotionsStarted = false;
+        PatchStorageHelper.ImportUpdate? patchUpdate = null;
         // Declared home files may be absent (Trident lists every icon extension); filter to those
         // present so staging, validation, promotion, and rollback all share one consistent set.
         var presentHomeFiles = container.HomeFileNames.Where(f => pack.LengthOf(f.Source) is not null).ToList();
@@ -550,12 +555,17 @@ public class InstanceManager(
             TryCleanup(stagingDir);
             TryCleanup(liveBackupDir);
             TryCleanup(oldImportDir);
+            TryCleanup(patchStagingHome);
+            TryCleanup(homeBackupDir);
+            Directory.CreateDirectory(stagingDir);
 
             var homeTmp = presentHomeFiles.Select(f => (f.Source, Target: f.Target + ".tmp")).ToList();
             await importers.ExtractToAsync(stagingDir, container.ImportFileNames, pack, token).ConfigureAwait(false);
             await importers.ExtractToAsync(homeDir, homeTmp, pack, token).ConfigureAwait(false);
             ValidateStaged(stagingDir, container.ImportFileNames, pack);
             ValidateStaged(homeDir, homeTmp, pack);
+            await importers.ExtractPatchesAsync(patchStagingHome, container, pack, token).ConfigureAwait(false);
+            patchUpdate = await PatchStorageHelper.PrepareImportUpdateAsync(homeDir, patchStagingHome, token).ConfigureAwait(false);
 
             // Phase 2 — back up old live (build projections of old import) before replacing anything.
             // NOTE: deploy 只补缺失、不覆盖现存（保留玩家改动），所以旧 import 的 build 投影必须由 update 显式清，
@@ -575,19 +585,46 @@ public class InstanceManager(
                 File.Move(live, backup);
             }
 
+            foreach (var (_, target) in presentHomeFiles)
+            {
+                var original = Path.Combine(homeDir, target);
+                if (File.Exists(original))
+                {
+                    var backup = Path.Combine(homeBackupDir, target);
+                    Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                    File.Copy(original, backup);
+                }
+            }
+
             // Phase 3 — commit: atomic dir swap + per-file .tmp promotion. Synchronous renames,
             //  no cancellation window between them; a hard crash here is an accepted edge case.
             Directory.Move(importDir, oldImportDir);
             Directory.Move(stagingDir, importDir);
+            patchUpdate.Commit();
+            homePromotionsStarted = true;
             foreach (var (_, target) in presentHomeFiles)
             {
                 File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
             }
+            profileManager.CommitUpdate(key, preparedProfile, false);
         }
         catch
         {
-            // best-effort rollback to the pre-update state; never let cleanup mask the original failure.
-            try
+            var restored = true;
+            void Restore(Action action)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception rollbackEx)
+                {
+                    restored = false;
+                    logger.LogWarning(rollbackEx, "Update rollback for {key} left residual files", key);
+                }
+            }
+            Restore(() => patchUpdate?.Rollback());
+            Restore(() =>
             {
                 RestoreLive(liveBackupDir, buildDir);
                 if (Directory.Exists(oldImportDir))
@@ -598,35 +635,45 @@ public class InstanceManager(
                     }
                     Directory.Move(oldImportDir, importDir);
                 }
+            });
+            Restore(() =>
+            {
                 foreach (var (_, target) in presentHomeFiles)
                 {
+                    if (homePromotionsStarted)
+                    {
+                        var backup = Path.Combine(homeBackupDir, target);
+                        if (File.Exists(backup))
+                        {
+                            File.Copy(backup, Path.Combine(homeDir, target), true);
+                        }
+                        else
+                        {
+                            File.Delete(Path.Combine(homeDir, target));
+                        }
+                    }
                     File.Delete(Path.Combine(homeDir, target + ".tmp"));
                 }
-            }
-            catch (Exception rollbackEx)
+            });
+            if (restored)
             {
-                logger.LogWarning(rollbackEx, "Update rollback for {key} left residual files", key);
+                TryCleanup(stagingDir);
+                TryCleanup(liveBackupDir);
+                TryCleanup(patchStagingHome);
+                TryCleanup(homeBackupDir);
             }
-            TryCleanup(stagingDir);
-            TryCleanup(liveBackupDir);
             throw;
         }
 
         // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.
         TryCleanup(liveBackupDir);
         TryCleanup(oldImportDir);
+        TryCleanup(patchStagingHome);
+        TryCleanup(homeBackupDir);
 
-        var oldSource = profileManager.GetImmutable(key).Setup.Source;
         var newSource = container.Profile.Setup.Source;
         run.Mutate<InstanceActivity.Updating>(x => x with { OldSource = oldSource, NewSource = newSource });
-
-        profileManager.Update(key,
-                              container.Profile.Setup.Source,
-                              container.Profile.Name,
-                              container.Profile.Setup.Version,
-                              container.Profile.Setup.Loader,
-                              [.. container.Profile.Setup.Packages.Select(x => x.Pref)],
-                              container.Profile.Overrides);
+        profileManager.OnProfileUpdated(key, profileManager.GetImmutable(key));
 
         logger.LogInformation("{key} updated", key);
 

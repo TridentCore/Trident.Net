@@ -75,6 +75,7 @@ public class PathDef
     public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
+    public string DirectoryOfPatches(string key) => Path.Combine(DirectoryOfHome(key), "patches");
     public string DirectoryOfSnapshots(string key) => Path.Combine(InstanceDirectory, key, "snapshots");
 
     public string DirectoryOfSnapshotObjects(string key) => Path.Combine(DirectoryOfSnapshots(key), "objects");

@@ -70,10 +70,8 @@ public class InstanceRunCommand(
                                                                              .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)));
         var deployOptions = new DeployOptions(settings.FullCheck);
 
-        var locator = JavaHelper.MakeLocator(_ => settings.JavaHome
-                                               ?? profile.GetOverride(TridentProfile.OVERRIDE_JAVA_HOME,
-                                                                      configuration.Get<string>(TridentProfile
-                                                                         .OVERRIDE_JAVA_HOME)));
+        var locator = JavaHelper.MakeLocator(settings.JavaHome ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME),
+            _ => configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_HOME));
 
         if (!output.UseStructuredOutput)
         {
