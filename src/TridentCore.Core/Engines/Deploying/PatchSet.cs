@@ -9,7 +9,8 @@ namespace TridentCore.Core.Engines.Deploying;
 
 public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
 {
-    private static readonly HashSet<string> FIELDS = ["libraries", "agents", "gameArguments", "jvmArguments", "mainClass", "javaMajor", "mainJar", "assetIndex"];
+    private const string JAVA_MAJORS = "compatibleJavaMajors";
+    private static readonly HashSet<string> FIELDS = ["libraries", "agents", "gameArguments", "jvmArguments", "mainClass", JAVA_MAJORS, "mainJar", "assetIndex"];
 
     public record LocalAsset(string Path, FileHash? Hash);
     public record Instruction(string Source, PatchDocument.Operation Operation, IReadOnlyDictionary<string, LocalAsset> Assets);
@@ -63,7 +64,7 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
         {
             throw new InvalidDataException($"Unknown patch target '{operation.Target}'.");
         }
-        if (operation.Action is not ("replace" or "append" or "remove"))
+        if (operation.Action is not ("replace" or "append" or "remove" or "intersect"))
         {
             throw new InvalidDataException($"Unknown patch operation '{operation.Action}'.");
         }
@@ -81,8 +82,16 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
         }
         var isDependency = field is "libraries" or "agents";
         var isArguments = field is "gameArguments" or "jvmArguments";
+        var isJavaMajors = field == JAVA_MAJORS;
+        // NOTE: 交集的语义只对 Java 兼容版本集合成立；其余字段的“交”没有定义，尤其集合类字段的
+        //  append/remove 与运行时的 major 约束毫无关系。
+        if (operation.Action == "intersect" && !isJavaMajors)
+        {
+            throw new InvalidDataException($"{operation.Target} does not support intersect.");
+        }
         if (field is not null && !isDependency && !isArguments
-         && operation.Action != "replace" && !(field == "mainJar" && operation.Action == "remove"))
+         && operation.Action != "replace" && !(isJavaMajors && operation.Action == "intersect")
+         && !(field == "mainJar" && operation.Action == "remove"))
         {
             throw new InvalidDataException($"{operation.Target} does not support {operation.Action}.");
         }
@@ -182,7 +191,9 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
 
     public static void ValidateArtifact(LockData.ArtifactData artifact)
     {
-        if (string.IsNullOrWhiteSpace(artifact.MainClass) || artifact.JavaMajorVersion == 0
+        // NOTE: 集合允许为空——交集本就能把需求缩到空，那由仲裁点报 NoCompatibleJava；在这里报会把
+        //  它误归因成 patch 结构错误。空只作为运算结果出现，文件里写出的值一律要求非空。
+        if (string.IsNullOrWhiteSpace(artifact.MainClass) || artifact.CompatibleJavaMajors is null
          || artifact.AssetIndex is null || string.IsNullOrWhiteSpace(artifact.AssetIndex.Id))
         {
             throw new InvalidDataException("Launch data must provide a main class, Java major and asset index.");
@@ -197,7 +208,7 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
         if (!operation.Target.Contains('.'))
         {
             var replacement = Read<PatchArtifact>(operation);
-            return new(replacement.MainClass, replacement.JavaMajor,
+            return new(replacement.MainClass, Normalize(replacement.CompatibleJavaMajors),
                        ValidateArguments(replacement.GameArguments),
                        [.. replacement.DefaultJvmArguments ? ArgumentHelper.DefaultJvmArguments() : [], .. ValidateArguments(replacement.JvmArguments)],
                        ConvertLibraries(replacement.Libraries, instruction), replacement.AssetIndex)
@@ -219,7 +230,12 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
         return field switch
         {
             "mainClass" => artifact with { MainClass = Read<string>(operation) },
-            "javaMajor" => artifact with { JavaMajorVersion = Read<uint>(operation) },
+            JAVA_MAJORS => artifact with
+            {
+                CompatibleJavaMajors = operation.Action == "intersect"
+                                           ? Intersect(artifact.CompatibleJavaMajors, Read<IReadOnlyList<uint>>(operation))
+                                           : Normalize(Read<IReadOnlyList<uint>>(operation))
+            },
             "assetIndex" => artifact with { AssetIndex = Read<LockData.AssetData>(operation) },
             "mainJar" => artifact with { MainJar = operation.Action == "remove" ? null : ConvertLibrary(Read<PatchLibrary>(operation), instruction) },
             "libraries" => artifact with { Libraries = ApplyLibraries(artifact.Libraries, instruction) },
@@ -349,12 +365,13 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
                 case null:
                     var artifact = Read<PatchArtifact>(operation);
                     if (string.IsNullOrWhiteSpace(artifact.MainClass)
-                     || artifact.JavaMajor == 0
+                     || artifact.CompatibleJavaMajors is not { Count: > 0 } majors
+                     || majors.Any(x => x == 0)
                      || artifact.AssetIndex is null
                      || string.IsNullOrWhiteSpace(artifact.AssetIndex.Id)
                      || artifact.AssetIndex.Url is null)
                     {
-                        throw new InvalidDataException("A whole-result replacement needs a main class, Java major and asset index.");
+                        throw new InvalidDataException("A whole-result replacement needs a main class, Java majors and asset index.");
                     }
                     _ = ValidateArguments(artifact.GameArguments);
                     _ = ValidateArguments(artifact.JvmArguments);
@@ -367,10 +384,10 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
                     }
                     break;
 
-                case "javaMajor":
-                    if (Read<uint>(operation) == 0)
+                case JAVA_MAJORS:
+                    if (Read<IReadOnlyList<uint>>(operation) is not { Count: > 0 } declared || declared.Any(x => x == 0))
                     {
-                        throw new InvalidDataException("javaMajor must be positive.");
+                        throw new InvalidDataException("Compatible Java majors must be a non-empty list of positive numbers.");
                     }
                     break;
 
@@ -449,6 +466,16 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
             throw new InvalidDataException("Arguments must be nonempty arrays of tokens.");
         }
         return groups;
+    }
+
+    // 去重并升序：集合语义与顺序无关，但顺序决定指纹，必须先归一化再参与缓存与比较。
+    private static IReadOnlyList<uint> Normalize(IEnumerable<uint>? majors) =>
+        [.. (majors ?? []).Where(x => x != 0).Distinct().Order()];
+
+    private static IReadOnlyList<uint> Intersect(IReadOnlyList<uint>? left, IEnumerable<uint>? right)
+    {
+        var rightNormalized = Normalize(right);
+        return [.. Normalize(left).Where(rightNormalized.Contains)];
     }
 
     private static T Read<T>(PatchDocument.Operation operation)

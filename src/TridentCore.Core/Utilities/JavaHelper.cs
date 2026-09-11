@@ -27,26 +27,75 @@ public static class JavaHelper
         "JavaHome", "InstallationPath", "InstallLocation", "InstallDir", "Home", "Path"
     ];
 
-    // NOTE: 调用方给定的 home 一律原样采用——不校验、不回退。按 major 选择全局 home 的函数
-    //  只在调用方没有给定 home 时才被求值，因此实例 override 存在时也不会触发它的副作用。
-    public static JavaHomeLocatorDelegate MakeLocator(string? instanceHome, Func<uint, string?> globalSelector, bool withFallback = true) =>
-        MakeLocator(major => string.IsNullOrEmpty(instanceHome) ? globalSelector(major) : instanceHome, withFallback);
+    // 捆绑运行时按主版本分 family（索引里 family 内的补丁版本由管线自取最新）。这张表是“Trident 能
+    //  静默获取哪些主版本”的唯一真源：仲裁的许可集合与 family 查表都取自它，两者不会漂移。
+    private static readonly (uint Major, string Family)[] BUNDLED_FAMILIES =
+    [
+        (8, "jre-legacy"),
+        (16, "java-runtime-alpha"),
+        (17, "java-runtime-gamma"),
+        (21, "java-runtime-delta"),
+        (25, "java-runtime-epsilon")
+    ];
 
-    public static JavaHomeLocatorDelegate MakeLocator(Func<uint, string?> javaHomeSelector, bool withFallback = true) =>
-        major => Locate(major, javaHomeSelector(major), withFallback);
+    public static string? BundledFamily(uint major) =>
+        BUNDLED_FAMILIES.FirstOrDefault(x => x.Major == major).Family;
 
-    // 用户给定的 home 在使用点校验：缺失时明确报错，绝不用别的运行时顶替——用户可能正是
-    //  故意用某个 JRE 试运行，静默替换会让「跑起来了」变成假信号。捆绑运行时由管线自愈，无需校验。
-    public static void EnsureUsable(JavaResolution resolution, uint major)
+    // 通配 vault：用户把 home 钉在某个路径上（实例 override、--java-home），任何主版本都落它。
+    public static IReadOnlyList<(uint? Major, string Home)> WildcardVault(string? home) =>
+        string.IsNullOrEmpty(home) ? [] : [(null, home)];
+
+    // 需求集与提供方（vault / 捆绑运行时）的仲裁，返回唯一 home 与它命中的主版本：
+    //  1. vault 里的通配项直接取胜，需求集完全不参与；
+    //  2. 否则按需求降序取第一个 vault 能提供的 major（缺省回退在后，不静默换成别的运行时）；
+    //  3. 都没有则取“需求 ∩ 可捆绑主版本”里最大的那个；
+    //  4. 需求集本身为空是 patch 自相矛盾（报 NoCompatibleJavaException）；需求非空但两个提供方
+    //     都覆盖不到则报 JavaNotFoundException 并列出需求。
+    public static JavaResolution Resolve(IReadOnlyList<uint>? demand, IReadOnlyList<(uint? Major, string Home)> vault)
     {
-        if (resolution.Origin == JavaResolution.Source.Bundled)
+        foreach (var (major, home) in vault)
         {
-            return;
+            if (major is null && !string.IsNullOrEmpty(home))
+            {
+                return new(home, JavaResolution.Source.UserConfigured, null);
+            }
         }
 
-        if (ResolveJavaExecutable(resolution.Home) is null)
+        var majors = (demand ?? []).Where(x => x != 0).Distinct().OrderDescending().ToList();
+        if (majors.Count == 0)
         {
-            throw new JavaNotFoundException($"The configured Java home '{resolution.Home}' does not contain a Java executable for Java {major}.",
+            throw new NoCompatibleJavaException();
+        }
+
+        foreach (var major in majors)
+        {
+            foreach (var (key, home) in vault)
+            {
+                if (key == major && !string.IsNullOrEmpty(home))
+                {
+                    return new(home, JavaResolution.Source.UserConfigured, major);
+                }
+            }
+        }
+
+        foreach (var major in majors)
+        {
+            if (BundledFamily(major) is not null)
+            {
+                return LocateBundled(major);
+            }
+        }
+
+        throw new JavaNotFoundException($"None of the compatible Java majors ({string.Join(", ", majors)}) can be provided by a configured runtime or by Trident's bundled runtimes.",
+                                        null);
+    }
+
+    // 捆绑运行时由管线自愈，但部署与启动是两次独立解析：启动前它必须已经落在磁盘上。
+    public static void EnsureBundledPresent(JavaResolution resolution)
+    {
+        if (resolution.Origin == JavaResolution.Source.Bundled && ResolveJavaExecutable(resolution.Home) is null)
+        {
+            throw new JavaNotFoundException($"The bundled runtime for Java {resolution.RequestedMajor} is missing at '{resolution.Home}'.",
                                             null);
         }
     }
@@ -138,38 +187,15 @@ public static class JavaHelper
         return vendor == null && version == null && major == null ? null : new(vendor, version, major);
     }
 
-    private static JavaResolution Locate(uint major, string? home, bool withFallback = true)
+    private static JavaResolution LocateBundled(uint major)
     {
-        if (!string.IsNullOrEmpty(home))
-        {
-            return new(home, JavaResolution.Source.UserConfigured);
-        }
+        var dir = PathDef.Default.DirectoryOfRuntime(major);
 
-        if (withFallback)
-        {
-            var dir = PathDef.Default.DirectoryOfRuntime(major);
-
-            // WARNING: macOS 的运行时在 .bundle 里，真实 java home 是
-            //  <dir>/jre.bundle/Contents/Home 而非 <dir> 本身。
-            if (OperatingSystem.IsMacOS())
-            {
-                var bundleHome = Path.Combine(dir, "jre.bundle", "Contents", "Home");
-                var bundleJava = Path.Combine(bundleHome, "bin", "java");
-                if (File.Exists(bundleJava))
-                {
-                    return new(bundleHome, JavaResolution.Source.Bundled);
-                }
-            }
-
-            // Windows/Linux 为扁平布局，<dir>/bin/java(.exe)。
-            var path = Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "java.exe" : "java");
-            if (File.Exists(path))
-            {
-                return new(dir, JavaResolution.Source.Bundled);
-            }
-        }
-
-        throw new JavaNotFoundException(major);
+        // WARNING: macOS 的运行时在 .bundle 里，真实 java home 是
+        //  <dir>/jre.bundle/Contents/Home 而非 <dir> 本身。
+        return OperatingSystem.IsMacOS()
+                   ? new(Path.Combine(dir, "jre.bundle", "Contents", "Home"), JavaResolution.Source.Bundled, major)
+                   : new(dir, JavaResolution.Source.Bundled, major);
     }
 
     private static string? ResolveJavaExecutable(string home)
@@ -391,13 +417,13 @@ public static class JavaHelper
 
     public readonly record struct JavaRuntimeInfo(string? Vendor, string? Version, int? Major);
 
-    // 定位到的 Java home 与其来源配对，部署管线据此区分用户给定的 JRE（原样使用）
-    // 与捆绑运行时（自愈）。返回裸路径会让每个调用方从字符串猜来源。
-    public record JavaResolution(string Home, JavaResolution.Source Origin)
+    // 定位到的 Java home、来源，以及它命中的需求主版本（通配 vault 不声明主版本，为 null）。
+    //  部署管线据此区分用户给定的 JRE（原样使用）与捆绑运行时（自愈）。
+    public record JavaResolution(string Home, JavaResolution.Source Origin, uint? RequestedMajor)
     {
         public enum Source
         {
-            // 用户给定（实例 override、CLI --java-home、按 major 配置的 home）——原样使用，缺失即报错。
+            // 用户给定（实例 override、CLI --java-home、按 major 配置的 home）——原样使用，不校验。
             UserConfigured,
 
             // 无任何用户给定——解析到 runtimes/ 下的管线捆绑运行时。

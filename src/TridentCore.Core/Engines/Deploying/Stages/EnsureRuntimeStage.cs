@@ -17,29 +17,18 @@ public class EnsureRuntimeStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var major = Context.Lock.Artifact!.JavaMajorVersion;
+        // 需求集来自 patch，提供方来自外壳（vault）与 Trident 的捆绑运行时；仲裁在这里落地成唯一主版本。
+        // 仅捆绑运行时由管线管理、可 manifest 自愈；用户给定的 JRE 原样使用，不校验、不回退。
+        var resolution = JavaHelper.Resolve(Context.Lock.Artifact!.CompatibleJavaMajors, Context.Vault);
+        if (resolution.Origin != JavaHelper.JavaResolution.Source.Bundled)
+        {
+            return;
+        }
+
+        var major = resolution.RequestedMajor!.Value;
         if (Context.Lock.Runtime?.Major != major)
         {
             Context.Lock = Context.Lock with { Runtime = null };
-        }
-
-        // NOTE: 仅捆绑运行时（或尚未安装者）由管线管理、可 manifest 自愈；用户给定的 JRE 原样使用，只校验可用性。
-        bool needManifest;
-        JavaHelper.JavaResolution? resolution = null;
-        try
-        {
-            resolution = Context.JavaHomeLocator(major);
-            needManifest = resolution.Origin == JavaHelper.JavaResolution.Source.Bundled;
-        }
-        catch (JavaNotFoundException)
-        {
-            needManifest = true;
-        }
-
-        if (!needManifest)
-        {
-            JavaHelper.EnsureUsable(resolution!, major);
-            return;
         }
 
         var content = await LoadManifestAsync(major, token).ConfigureAwait(false);
@@ -71,7 +60,7 @@ public class EnsureRuntimeStage(
 
         var manifest = await mojangService.GetRuntimeManifestAsync().ConfigureAwait(false);
         var osString = GenerateOsString();
-        var runtimeString = GenerateRuntimeString(major);
+        var runtimeString = JavaHelper.BundledFamily(major);
         if (osString is null || runtimeString is null
          || !manifest.TryGetValue(osString, out var runtimes)
          || !runtimes.TryGetValue(runtimeString, out var candidates))
@@ -168,20 +157,6 @@ public class EnsureRuntimeStage(
 
         return (files, links);
     }
-
-    // NOTE: 显式 family 映射而非全表扫描——Mojang 只有在新增 major 时才会新增 family，那属于
-    //  需要 Trident 跟进的源变化；全表扫描会把 minecraft-java-exe 这类非运行时条目和
-    //  java-runtime-*-snapshot 一起纳入候选。family 内的补丁版本仍取 released 最新，无需改代码。
-    private static string? GenerateRuntimeString(uint major) =>
-        major switch
-        {
-            8 => "jre-legacy",
-            16 => "java-runtime-alpha",
-            17 => "java-runtime-gamma",
-            21 => "java-runtime-delta",
-            25 => "java-runtime-epsilon",
-            _ => null
-        };
 
     private static string? GenerateOsString()
     {

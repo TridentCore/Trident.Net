@@ -70,8 +70,9 @@ public class InstanceRunCommand(
                                                                              .OVERRIDE_BEHAVIOR_COMMAND_WRAPPER)));
         var deployOptions = new DeployOptions(settings.FullCheck);
 
-        var locator = JavaHelper.MakeLocator(settings.JavaHome ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME),
-            _ => configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_HOME));
+        var vault = JavaHelper.WildcardVault(settings.JavaHome
+                                          ?? profile.GetOverride<string>(TridentProfile.OVERRIDE_JAVA_HOME)
+                                          ?? configuration.Get<string>(TridentProfile.OVERRIDE_JAVA_HOME));
 
         if (!output.UseStructuredOutput)
         {
@@ -81,10 +82,10 @@ public class InstanceRunCommand(
                                       ("Account", account.Username));
         }
 
-        var deployActivities = instanceManager.Deploy(instance.Key, deployOptions, locator);
+        var deployActivities = instanceManager.Deploy(instance.Key, deployOptions, vault);
         await activityAwaiter.AwaitDeployAsync(deployActivities, cancellationToken).ConfigureAwait(false);
 
-        var activities = instanceManager.Launch(instance.Key, launchOptions, locator);
+        var activities = instanceManager.Launch(instance.Key, launchOptions, vault);
 
         if (launchOptions.Mode == LaunchMode.Managed)
         {

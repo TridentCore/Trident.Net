@@ -54,8 +54,8 @@ public class InstallVanillaStage(
         {
             throw new FormatException("{minecraft_version}/mainJar.downloads.artifact");
         }
-        var major = version.CompatibleJavaMajors?.FirstOrDefault() ?? 8u;
-        if (major == 0)
+        var majors = version.CompatibleJavaMajors is { Count: > 0 } declared ? declared : [8u];
+        if (majors.Any(x => x == 0))
         {
             throw new FormatException("{minecraft_version}/compatibleJavaMajors");
         }
@@ -63,7 +63,7 @@ public class InstallVanillaStage(
         {
             throw new FormatException("{minecraft_version}/assetIndex");
         }
-        return new(version.MainClass ?? "net.minecraft.client.main.Main", major,
+        return new(version.MainClass ?? "net.minecraft.client.main.Main", [.. majors.Distinct().Order()],
                    ArgumentHelper.GroupArguments(ArgumentHelper.Tokenize(version.MinecraftArguments ?? "")), ArgumentHelper.DefaultJvmArguments(firstThreadOnMacOS: true),
                    libraries, new(index.Id, index.Url, FileHash.FromSha1(index.Sha1)))
         {

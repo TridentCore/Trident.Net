@@ -162,13 +162,13 @@ public class InstanceManager(
         string key,
         DeployOptions deploy,
         LaunchOptions launch,
-        JavaHomeLocatorDelegate javaHomeLocator) =>
+        IReadOnlyList<(uint? Major, string Home)> javaVault) =>
         Start(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() }, async operation =>
         {
-            await DeployCoreAsync(operation, deploy, javaHomeLocator).ConfigureAwait(false);
+            await DeployCoreAsync(operation, deploy, javaVault).ConfigureAwait(false);
             operation.BeginPhase(CreateRunningActivity(key, launch));
             operation.Token.ThrowIfCancellationRequested();
-            await LaunchCoreAsync(operation, launch, javaHomeLocator).ConfigureAwait(false);
+            await LaunchCoreAsync(operation, launch, javaVault).ConfigureAwait(false);
         });
 
     #region Common
@@ -225,16 +225,16 @@ public class InstanceManager(
     public IObservable<InstanceActivity> Deploy(
         string key,
         DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator)
+        IReadOnlyList<(uint? Major, string Home)> javaVault)
     {
         return Start(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() },
-                     operation => DeployCoreAsync(operation, options, javaHomeLocator));
+                     operation => DeployCoreAsync(operation, options, javaVault));
     }
 
     private async Task DeployCoreAsync(
         InstanceOperation run,
         DeployOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator)
+        IReadOnlyList<(uint? Major, string Home)> javaVault)
     {
         logger.LogInformation("Begin deploy {}", run.Key);
 
@@ -243,7 +243,7 @@ public class InstanceManager(
                                       profile.Setup,
                                       provider,
                                       new() { FullCheckMode = options.FullCheckMode },
-                                      javaHomeLocator);
+                                      javaVault);
 
         var watch = Stopwatch.StartNew();
         foreach (var stage in engine)
@@ -306,8 +306,8 @@ public class InstanceManager(
     public IObservable<InstanceActivity> Launch(
         string key,
         LaunchOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator) =>
-        Start(CreateRunningActivity(key, options), operation => LaunchCoreAsync(operation, options, javaHomeLocator));
+        IReadOnlyList<(uint? Major, string Home)> javaVault) =>
+        Start(CreateRunningActivity(key, options), operation => LaunchCoreAsync(operation, options, javaVault));
 
     private static InstanceActivity.Running CreateRunningActivity(string key, LaunchOptions options) => new()
     {
@@ -321,7 +321,7 @@ public class InstanceManager(
     private async Task LaunchCoreAsync(
         InstanceOperation operation,
         LaunchOptions options,
-        JavaHomeLocatorDelegate javaHomeLocator)
+        IReadOnlyList<(uint? Major, string Home)> javaVault)
     {
         logger.LogInformation("Begin launch {key}", operation.Key);
 
@@ -345,8 +345,8 @@ public class InstanceManager(
         }
 
         var profile = profileManager.GetImmutable(operation.Key);
-        var resolution = javaHomeLocator(artifact.JavaMajorVersion);
-        JavaHelper.EnsureUsable(resolution, artifact.JavaMajorVersion);
+        var resolution = JavaHelper.Resolve(artifact.CompatibleJavaMajors, javaVault);
+        JavaHelper.EnsureBundledPresent(resolution);
         var javaHome = resolution.Home;
         var workingDirectory = PathDef.Default.DirectoryOfBuild(operation.Key);
         var igniter = artifact.MakeIgniter(operation.Key);
@@ -355,7 +355,7 @@ public class InstanceManager(
         {
             AccountId = account.Uuid,
             JavaHome = javaHome,
-            JavaVersion = artifact.JavaMajorVersion
+            JavaVersion = resolution.RequestedMajor
         });
 
         igniter

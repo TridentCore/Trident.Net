@@ -18,7 +18,7 @@ public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceMana
                                 settings.Profile,
                                 settings.FullCheck ?? false,
                                 settings.JavaHome,
-                                _ => configuration.Get<string>(TridentCore.Abstractions.FileModels.Profile.OVERRIDE_JAVA_HOME))
+                                configuration.Get<string>(TridentCore.Abstractions.FileModels.Profile.OVERRIDE_JAVA_HOME))
                     .GetAwaiter()
                     .GetResult();
 

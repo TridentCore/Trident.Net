@@ -4,7 +4,6 @@ using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Reactive;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Engines.Deploying.Stages;
-using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Engines;
 
@@ -15,7 +14,7 @@ public class DeployEngine(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    JavaHomeLocatorDelegate javaHomeLocator) : IEnumerable<StageBase>
+    IReadOnlyList<(uint? Major, string Home)> javaVault) : IEnumerable<StageBase>
 {
     #region Nested type: DeployEngineEnumerator
 
@@ -87,7 +86,7 @@ public class DeployEngine(
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, javaHomeLocator));
+        new DeployEngineEnumerator(new(key, setup, provider, options, javaVault));
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

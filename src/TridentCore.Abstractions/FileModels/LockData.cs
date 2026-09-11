@@ -7,7 +7,7 @@ namespace TridentCore.Abstractions.FileModels;
 // Platform records package compatibility; artifact regions cache their own inputs independently.
 public record LockData
 {
-    public const int FORMAT = 6;
+    public const int FORMAT = 7;
 
     public required PlatformData Platform { get; init; }
     public required ViabilityData Viability { get; init; }
@@ -40,7 +40,7 @@ public record LockData
     // The effective launch data and each preceding region use the same portable representation.
     public record ArtifactData(
         string MainClass,
-        uint JavaMajorVersion,
+        IReadOnlyList<uint> CompatibleJavaMajors,
         IReadOnlyList<string[]> GameArguments,
         IReadOnlyList<string[]> JavaArguments,
         IReadOnlyList<Library> Libraries,
@@ -48,6 +48,16 @@ public record LockData
     {
         public Library? MainJar { get; init; }
         public IReadOnlyList<Agent> Agents { get; init; } = [];
+
+        // NOTE: 兼容旧的单个 major 写法。读取时折叠成单元素集合；写出恒为 null，所以不再落盘。
+        //  移除见 POLY-167。
+        [Obsolete("compat: legacy scalar javaMajorVersion, remove once on-disk lock files have migrated (POLY-167)")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public uint? JavaMajorVersion
+        {
+            get => null;
+            init => CompatibleJavaMajors = value is { } major ? [major] : [];
+        }
     }
 
     public record Agent(Library Library, string? Arguments = null);

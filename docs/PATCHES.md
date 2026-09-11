@@ -44,13 +44,18 @@ Each indexed entry points to a `patch.json` in its own directory. Indexed owners
 
 ```json
 {
-  "format": 1,
+  "format": 2,
   "name": "My launch adjustments",
   "operations": [
     {
-      "target": "launch.javaMajor",
+      "target": "launch.compatibleJavaMajors",
       "action": "replace",
-      "value": 25
+      "value": [21, 25]
+    },
+    {
+      "target": "launch.compatibleJavaMajors",
+      "action": "intersect",
+      "value": [17, 21]
     },
     {
       "target": "launch.jvmArguments",
@@ -101,7 +106,7 @@ The scopes are `vanilla`, `loader` and `launch`. `loader` receives the vanilla o
 | `gameArguments` | Array of token arrays | replace, append, remove |
 | `jvmArguments` | Array of token arrays | replace, append, remove |
 | `mainClass` | Nonempty string | replace |
-| `javaMajor` | Positive integer | replace |
+| `compatibleJavaMajors` | Nonempty array of positive integers | replace, intersect |
 | `assetIndex` | `{id, url, hash?}` | replace |
 | `mainJar` | Library description | replace, remove |
 
@@ -112,7 +117,7 @@ Replacing the whole `vanilla` or `loader` result skips that default producer. Re
 ```json
 {
   "mainClass": "example.bootstrap.Main",
-  "javaMajor": 25,
+  "compatibleJavaMajors": [25],
   "defaultJvmArguments": true,
   "gameArguments": [["--username", "${auth_player_name}"]],
   "jvmArguments": [],
@@ -128,7 +133,7 @@ Replacing the whole `vanilla` or `loader` result skips that default producer. Re
 }
 ```
 
-`defaultJvmArguments` supplies Trident's classpath, memory, native paths and platform arguments before the additional groups. It does not infer a macOS threading model: include `-XstartOnFirstThread` in an argument operation restricted to macOS only when the replacement runtime requires it. The standard vanilla producer supplies its own first-thread setting. Set `defaultJvmArguments` to false only when supplying the complete JVM invocation yourself. The final result must have an entry point, Java major and asset index.
+`defaultJvmArguments` supplies Trident's classpath, memory, native paths and platform arguments before the additional groups. It does not infer a macOS threading model: include `-XstartOnFirstThread` in an argument operation restricted to macOS only when the replacement runtime requires it. The standard vanilla producer supplies its own first-thread setting. Set `defaultJvmArguments` to false only when supplying the complete JVM invocation yourself. The final result must have an entry point, an asset index and a compatible Java major set. The set may be empty once intersections have run: that is reported when the runtime is resolved, not as a patch error.
 
 ### Collections and selectors
 
@@ -170,13 +175,15 @@ Operations and libraries can carry ordered platform rules:
 
 With no rules, an item applies everywhere. With rules, it begins disallowed and each matching rule sets allow/disallow: rules are evaluated top to bottom and the last matching rule decides. A bare `allow` matches every platform, so `[allow, disallow windows]` expresses everywhere except Windows, and `[allow osx]` expresses macOS only. OS values include windows, linux, osx and architecture-qualified names such as osx-arm64. Architecture and OS-version conditions are regular expressions evaluated against the host architecture and OS version.
 
+`compatibleJavaMajors` is a set, not a choice: it lists every Java major the result accepts. `replace` declares the set outright and discards whatever earlier declarations supplied; `intersect` narrows it to the majors both sides accept. A whole-result replacement carries the set as well. The applied result may end up empty, in which case the runtime resolution reports that no Java version fits rather than rejecting the patch. Index format stays 1; documents are format 2, and format 1 documents remain readable so modpacks built against the earlier single-major form still deploy.
+
 ## Java and cache behavior
 
-A Java path given by the user — the instance override, the CLI option or a per-major home in the launcher settings — is used as-is: it is never validated into a fallback and never silently replaced by another runtime. Pointing an instance at a Java home that turns out to be wrong therefore fails with an explicit Java-not-found error instead of quietly running on a different runtime. Only when nothing was given does the pipeline fall back to its bundled runtime, resolving the patched major to the Mojang runtime family for that major and downloading the newest release of it. A major Mojang does not publish, such as 11 or 24, has no automatic runtime and requires a user-provided Java.
+Java selection has two sides. The **requirement** is the patched `compatibleJavaMajors` set. The **providers** are the Java homes the user configured — a per-major home in the launcher settings, or a path pinned for the whole instance (the instance override, the CLI option), which applies to any major — plus Trident's bundled runtimes. Resolution takes the newest demanded major a configured home covers, and only when no configured home covers any of them does it take the newest demanded major Trident can bundle, downloading it and resolving it to the Mojang runtime family for that major. A major the user did not configure is not a substitute for one they did, and a configured path is used as-is: never validated, never silently replaced by another runtime. When neither side covers any demanded major, deployment fails naming the demanded majors; when the requirement is empty, it fails reporting that no compatible Java remains. Both are reported to the user with a prompt to configure Java.
 
-A patch changes the requested major, not the Java path or this selection chain.
+Patch operations therefore change which majors the instance accepts, never the Java path.
 
-The lock has independent vanilla, loader and launch regions. Each fingerprints the deployment data format together with its relevant operations, assets and upstream output. Package version resolution still depends on the profile's Minecraft/loader compatibility fields, not on arbitrary patch edits. The runtime region depends on the selected major. Unchanged downstream inputs retain their caches.
+The lock has independent vanilla, loader and launch regions. Each fingerprints the deployment data format together with its relevant operations, assets and upstream output. Package version resolution still depends on the profile's Minecraft/loader compatibility fields, not on arbitrary patch edits. The runtime region depends on the resolved major. Unchanged downstream inputs retain their caches.
 
 An operation is always applied to that region's input, never reapplied to its already-patched cached output. Local asset content changes participate in invalidation. Source assets removed by the effective rules need not be materialized.
 
@@ -197,7 +204,7 @@ Positions are zero-based within a layer. The default layer is users. Removal del
 
 ## Import, update and export
 
-External archives with `mmc-pack.json` are translated without contacting a repository: the profile takes the Minecraft version and loader identity from the components array, and every component the archive also carries a local definition for (`patches/<uid>.json`, present when a component was installed from a file) is converted into a native document in components order. Everything the archive does not describe is left to the standard deployment producers, so importing never requires network access and a missing definition cannot be guessed wrong. Disabled components are skipped: they contribute no launch data. Platform rules, local libraries, JVM arguments and first-thread behavior are preserved; source rule sets default to allowed, so a set containing a disallow is converted to allow-everything-except, matching the native last-match semantics. `-XstartOnFirstThread` is added on macOS only when a component declares the `FirstThreadOnMacOS` trait, and other traits are ignored. Java compatibility lists are normalized to their first declared major. A local definition for the Minecraft or the loader component replaces that region's default producer, so a locally pinned version is not overlaid with the standard one. Loaders outside the metadata the producers know are out of scope: an archive that carries one cannot be launched from it alone.
+External archives with `mmc-pack.json` are translated without contacting a repository: the profile takes the Minecraft version and loader identity from the components array, and every component the archive also carries a local definition for (`patches/<uid>.json`, present when a component was installed from a file) is converted into a native document in components order. Everything the archive does not describe is left to the standard deployment producers, so importing never requires network access and a missing definition cannot be guessed wrong. Disabled components are skipped: they contribute no launch data. Platform rules, local libraries, JVM arguments and first-thread behavior are preserved; source rule sets default to allowed, so a set containing a disallow is converted to allow-everything-except, matching the native last-match semantics. `-XstartOnFirstThread` is added on macOS only when a component declares the `FirstThreadOnMacOS` trait, and other traits are ignored. Java compatibility lists are carried as an intersecting declaration, so a later component can only narrow what earlier ones accept. A local definition for the Minecraft or the loader component replaces that region's default producer, so a locally pinned version is not overlaid with the standard one. Loaders outside the metadata the producers know are out of scope: an archive that carries one cannot be launched from it alone.
 
 JAR modifications are unsupported. Native patches do not provide arbitrary script execution or JAR rewriting operations. Agent declarations are preserved as first-class launch data rather than folded into the classpath.
 

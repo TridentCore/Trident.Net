@@ -1,5 +1,4 @@
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Core.Services.Instances;
 
 namespace TridentCore.Core.Engines.Deploying;
 
@@ -8,7 +7,7 @@ public class DeployContext(
     Profile.Rice setup,
     IServiceProvider provider,
     DeployEngineOptions options,
-    JavaHomeLocatorDelegate javaHomeLocator)
+    IReadOnlyList<(uint? Major, string Home)> javaVault)
 {
     // BaseLock 是磁盘锁的只读快照（缺失或不可读时为 null）；Lock 是本周期的产物。
     // 阶段各自对照 BaseLock 中对应的 region 记录判有效性并迁移/重建进 Lock。
@@ -23,5 +22,5 @@ public class DeployContext(
     public Profile.Rice Setup => setup;
     public IServiceProvider Provider => provider;
     public DeployEngineOptions Options => options;
-    public JavaHomeLocatorDelegate JavaHomeLocator => javaHomeLocator;
+    public IReadOnlyList<(uint? Major, string Home)> Vault => javaVault;
 }

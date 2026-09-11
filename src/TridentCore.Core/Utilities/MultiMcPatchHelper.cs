@@ -92,7 +92,7 @@ public static class MultiMcPatchHelper
             baseOperations.Add(Operation("vanilla", "replace", new PatchArtifact
             {
                 MainClass = "net.minecraft.client.main.Main",
-                JavaMajor = minecraft.CompatibleJavaMajors?.FirstOrDefault() ?? 8,
+                CompatibleJavaMajors = minecraft.CompatibleJavaMajors is { Count: > 0 } declared ? [.. declared.Distinct().Order()] : [8],
                 AssetIndex = ParseAssetIndex(minecraft)
             }));
         }
@@ -197,7 +197,7 @@ public static class MultiMcPatchHelper
 
         if (definition.CompatibleJavaMajors is { Count: > 0 } majors)
         {
-            operations.Add(Operation("launch.javaMajor", "replace", majors[0]));
+            operations.Add(Operation("launch.compatibleJavaMajors", "intersect", majors));
         }
 
         var jvmArguments = (definition.JvmArguments ?? [])
