@@ -9,7 +9,7 @@ namespace TridentCore.Core.Utilities;
 
 public static class PatchStorageHelper
 {
-    public const string IndexFileName = "data.patch.json";
+    public const string INDEX_FILE_NAME = "data.patch.json";
 
     public static Task<PatchSet> LoadAsync(string key, CancellationToken token = default) =>
         LoadDirectoryAsync(PathDef.Default.DirectoryOfHome(key), token);
@@ -30,9 +30,9 @@ public static class PatchStorageHelper
                 {
                     var document = await ReadDocumentAsync(path, token).ConfigureAwait(false);
                     var directory = Path.GetDirectoryName(path)!;
-                    foreach (var operation in document.Operations)
+                    for (var position = 0; position < document.Operations.Count; position++)
                     {
-                        PatchSet.Validate(operation);
+                        var operation = document.Operations[position];
                         if (!PatchHelper.Matches(operation.Rules))
                         {
                             continue;
@@ -56,7 +56,7 @@ public static class PatchStorageHelper
                             }
                             assets.Add(local, new(Path.GetRelativePath(home, assetPath).Replace('\\', '/'), hash));
                         }
-                        operations.Add(new(relative, operation, assets));
+                        operations.Add(new(relative, position + 1, operation, assets));
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -74,16 +74,8 @@ public static class PatchStorageHelper
     public static async Task SaveIndexAsync(string key, PatchIndex index, CancellationToken token = default)
     {
         var root = PathDef.Default.DirectoryOfPatches(key);
-        ValidateIndex(index);
-        foreach (var (layer, entries) in new[] { ("import", index.Import), ("users", index.Users) })
-        {
-            ValidateEntries(root, layer, entries);
-            foreach (var entry in entries)
-            {
-                await ReadDocumentAsync(PatchHelper.ResolvePath(root, $"{layer}/{entry.Path}"), token).ConfigureAwait(false);
-            }
-        }
-        await WriteJsonAsync(Path.Combine(root, IndexFileName), index, token).ConfigureAwait(false);
+        ValidateEntries(PathDef.Default.DirectoryOfHome(key), index);
+        await WriteJsonAsync(Path.Combine(root, INDEX_FILE_NAME), index, token).ConfigureAwait(false);
     }
 
     public static async Task SaveDocumentAsync(string key, string layer, string path, PatchDocument document, CancellationToken token = default)
@@ -156,6 +148,10 @@ public static class PatchStorageHelper
             throw new KeyNotFoundException($"Patch '{layer}/{path}' is not indexed.");
         }
         var entry = entries[found];
+        if (enabled == true)
+        {
+            await ReadDocumentAsync(target, token).ConfigureAwait(false);
+        }
         entries[found] = enabled is { } value ? entry with { Enabled = value } : entry;
         if (position is { } to)
         {
@@ -184,7 +180,7 @@ public static class PatchStorageHelper
             throw new KeyNotFoundException($"Patch '{layer}/{path}' is not indexed.");
         }
         index = layer == "import" ? index with { Import = remaining } : index with { Users = remaining };
-        await WriteJsonAsync(Path.Combine(root, IndexFileName), index, token).ConfigureAwait(false);
+        await WriteJsonAsync(Path.Combine(root, INDEX_FILE_NAME), index, token).ConfigureAwait(false);
         var directory = Path.GetDirectoryName(target)!;
         if (!FileHelper.PathComparer.Equals(directory, Path.Combine(root, layer))
          && !remaining.Any(x => FileHelper.IsInDirectory(PatchHelper.ResolvePath(root, $"{layer}/{x.Path}"), directory)))
@@ -225,7 +221,7 @@ public static class PatchStorageHelper
         {
             Directory.CreateDirectory(root);
             var import = Path.Combine(root, "import");
-            var index = Path.Combine(root, IndexFileName);
+            var index = Path.Combine(root, INDEX_FILE_NAME);
             if (Directory.Exists(import))
             {
                 Directory.Move(import, Path.Combine(staged, "previous-import"));
@@ -245,7 +241,7 @@ public static class PatchStorageHelper
         public void Rollback()
         {
             var import = Path.Combine(root, "import");
-            var index = Path.Combine(root, IndexFileName);
+            var index = Path.Combine(root, INDEX_FILE_NAME);
             if (_newIndexMoved)
             {
                 File.Delete(index);
@@ -282,7 +278,7 @@ public static class PatchStorageHelper
 
     public static async Task<PatchIndex> ReadIndexAtAsync(string root, CancellationToken token = default)
     {
-        var path = Path.Combine(root, IndexFileName);
+        var path = Path.Combine(root, INDEX_FILE_NAME);
         if (!File.Exists(path))
         {
             return new();

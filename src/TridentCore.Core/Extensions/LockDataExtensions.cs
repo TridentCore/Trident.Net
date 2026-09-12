@@ -10,7 +10,7 @@ public static class LockDataExtensions
 {
     public static Igniter MakeIgniter(this LockData.ArtifactData self, string? key = null)
     {
-        var igniter = new Igniter();
+        var igniter = new Igniter { ArgumentResolver = argument => LaunchArgumentHelper.Expand(argument, self, key) };
 
         foreach (var argument in self.GameArguments.SelectMany(x => x))
         {

@@ -7,10 +7,9 @@ namespace TridentCore.Abstractions.FileModels;
 // Platform records package compatibility; artifact regions cache their own inputs independently.
 public record LockData
 {
-    public const int FORMAT = 7;
+    public const int FORMAT = 8;
 
     public required PlatformData Platform { get; init; }
-    public required ViabilityData Viability { get; init; }
     public ArtifactData? Artifact { get; init; }
     public ArtifactRegion? Vanilla { get; init; }
     public ArtifactRegion? Loader { get; init; }
@@ -25,13 +24,6 @@ public record LockData
 
     // NOTE: 内联值比较 record；LoadLock 恒提供它，阶段间用 == 比较。
     public record PlatformData(string Minecraft, string? Loader);
-
-    #endregion
-
-    #region Nested type: ViabilityData
-
-    // Retained as an empty compatibility object for existing lock files.
-    public record ViabilityData;
 
     #endregion
 

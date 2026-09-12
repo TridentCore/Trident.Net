@@ -4,15 +4,12 @@ using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.MultiMcPack;
 using TridentCore.Core.Models.PrismLauncherApi;
+using TridentCore.Core.Services;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 
 namespace TridentCore.Core.Utilities;
 
-// 把 MultiMC/Prism 实例归档自带的组件定义（patches/<uid>.json）翻译成原生 patch 文档。
-//
-// NOTE: 只翻译归档里已有的内容。归档通常只带 mmc-pack.json（uid + version），组件定义只有在用户
-//  「从文件安装」过组件时才落盘；其余启动声明由 profile 的 Minecraft 版本与加载器经标准产出阶段获取。
-//  因此导入永不联网——离线归档始终可导入，代价只是不再把远端 meta 的声明固化成本地 patch。
+// 将源实例自带的组件定义转换成原生 Patch；未提供定义的组件仍由标准提供方处理。
 public static class MultiMcPatchHelper
 {
     // NOTE: 改写客户端 JAR 的声明用 patch 无法复现，宁可明确失败也不静默产出一个错的实例。
@@ -25,7 +22,7 @@ public static class MultiMcPatchHelper
     // 读取归档自带的组件定义，按 mmc-pack.json 的启用状态与顺序校验。不存在定义的组件不出现在结果里，
     //  由调用方交给标准产出阶段。
     public static async Task<IReadOnlyDictionary<string, Component>> ReadDefinitionsAsync(
-        CompressedProfilePack pack,
+        IProfilePackSource pack,
         MmcPack manifest)
     {
         if (manifest.FormatVersion != 1)
@@ -74,7 +71,7 @@ public static class MultiMcPatchHelper
     }
 
     public static Result Convert(
-        CompressedProfilePack pack,
+        IProfilePackSource pack,
         MmcPack manifest,
         IReadOnlyDictionary<string, Component> definitions,
         string? instanceArguments = null)
@@ -107,10 +104,29 @@ public static class MultiMcPatchHelper
             Add("_trident_base", new() { Name = "Imported launch defaults", Operations = baseOperations }, true);
         }
 
+        var needsIntermediary = definitions.ContainsKey(PrismLauncherService.UID_FABRIC)
+                             || definitions.ContainsKey(PrismLauncherService.UID_QUILT);
         foreach (var entry in manifest.Components.Where(x => !x.Disabled))
         {
             if (!definitions.TryGetValue(entry.Uid, out var definition))
             {
+                if (needsIntermediary && entry.Uid == PrismLauncherService.UID_INTERMEDIARY)
+                {
+                    var version = entry.Version ?? entry.CachedVersion
+                               ?? throw new InvalidDataException("The intermediary component has no version.");
+                    var identity = PatchHelper.ParseIdentity($"net.fabricmc:intermediary:{version}");
+                    Add(entry.Uid, new()
+                    {
+                        Name = "Intermediary mappings",
+                        Operations =
+                        [
+                            Operation("launch.libraries", "append", new PatchLibrary[]
+                            {
+                                new() { Identity = PatchHelper.Identity(identity), Url = new(new Uri("https://maven.fabricmc.net/"), MavenPath(identity)) }
+                            })
+                        ]
+                    }, true);
+                }
                 continue;
             }
 
@@ -150,7 +166,7 @@ public static class MultiMcPatchHelper
                 true);
         }
 
-        generated.Add(PatchStorageHelper.IndexFileName,
+        generated.Add(PatchStorageHelper.INDEX_FILE_NAME,
                       JsonSerializer.SerializeToUtf8Bytes(new PackPatchIndex { Import = references },
                                                           FileHelper.SerializerOptions));
         return new(files.Distinct().ToArray(), generated);
@@ -168,7 +184,7 @@ public static class MultiMcPatchHelper
         Component definition,
         string owner,
         List<(string Source, string Target)> files,
-        CompressedProfilePack pack)
+        IProfilePackSource pack)
     {
         foreach (var field in JAR_MODIFICATION_FIELDS)
         {
@@ -198,6 +214,11 @@ public static class MultiMcPatchHelper
         if (definition.CompatibleJavaMajors is { Count: > 0 } majors)
         {
             operations.Add(Operation("launch.compatibleJavaMajors", "intersect", majors));
+        }
+
+        if (definition.MainClass == "io.github.zekerzhayard.forgewrapper.installer.Main")
+        {
+            operations.Add(Operation("launch.jvmArguments", "append", ArgumentHelper.ForgeWrapperJvmArguments()));
         }
 
         var jvmArguments = (definition.JvmArguments ?? [])
@@ -276,7 +297,7 @@ public static class MultiMcPatchHelper
         string owner,
         List<PatchDocument.Operation> operations,
         List<(string Source, string Target)> files,
-        CompressedProfilePack pack,
+        IProfilePackSource pack,
         bool auxiliary)
     {
         foreach (var library in ParseLibraries(source, owner, files, pack, auxiliary))
@@ -292,7 +313,7 @@ public static class MultiMcPatchHelper
         Component.Library source,
         string owner,
         List<(string Source, string Target)> files,
-        CompressedProfilePack pack) =>
+        IProfilePackSource pack) =>
         new()
         {
             Library = ParseLibraries(source, owner, files, pack, false).FirstOrDefault(x => !x.Native)
@@ -304,7 +325,7 @@ public static class MultiMcPatchHelper
         Component.Library source,
         string owner,
         List<(string Source, string Target)> files,
-        CompressedProfilePack pack,
+        IProfilePackSource pack,
         bool auxiliary)
     {
         if (string.IsNullOrWhiteSpace(source.Name))
@@ -464,12 +485,6 @@ public static class MultiMcPatchHelper
                                                   },
                                                   os?.GetValueOrDefault("version"));
         }).ToList();
-        // NOTE: 源格式的规则默认放行（disallow 只是减集），原生 patch 规则默认排除、最后匹配者生效；
-        //  含 disallow 的规则集前置一条无条件 allow，使「除 X 外都放行」在两种语义下等价。
-        if (converted.Any(x => x.Action == "disallow"))
-        {
-            converted.Insert(0, new("allow"));
-        }
         return converted;
     }
 

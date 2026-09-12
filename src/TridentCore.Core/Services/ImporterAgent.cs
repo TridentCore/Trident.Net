@@ -28,25 +28,27 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
         await ExtractPatchesAsync(PathDef.Default.DirectoryOfHome(key), container, pack, CancellationToken.None).ConfigureAwait(false);
     }
 
-    public async Task ExtractPatchesAsync(string home, ImportedProfileContainer container, CompressedProfilePack pack, CancellationToken token)
+    public async Task ExtractPatchesAsync(string home, ImportedProfileContainer container, IProfilePackSource pack, CancellationToken token)
     {
         var root = Path.Combine(home, "patches");
         var previous = await PatchStorageHelper.ReadIndexAtAsync(root, token).ConfigureAwait(false);
         PatchIndex? index = null;
-        if (container.Patches.Generated.TryGetValue(PatchStorageHelper.IndexFileName, out var bytes))
+        if (container.Patches.Generated.TryGetValue(PatchStorageHelper.INDEX_FILE_NAME, out var bytes))
         {
             var incoming = JsonSerializer.Deserialize<PackPatchIndex>(bytes, FileHelper.SerializerOptions)
                         ?? throw new InvalidDataException("Patch index is empty.");
-            // NOTE: 归档只有导入层，用户层条目始终取自本机现有索引。合并后的索引要先验再写盘——
-            //  条目重叠（例如包与本地同名目录）必须在覆盖本地文件之前拒绝。
             index = new PatchIndex { Format = incoming.Format, Import = incoming.Import, Users = previous.Users };
             PatchStorageHelper.ValidateEntries(home, index);
+        }
+        foreach (var (_, target) in container.Patches.Files)
+        {
+            RequireImportLayer(target);
         }
         await ExtractToAsync(root, container.Patches.Files, pack, token).ConfigureAwait(false);
         foreach (var (relative, file) in container.Patches.Generated)
         {
             var path = PatchHelper.ResolvePath(root, relative);
-            if (index is not null && relative == PatchStorageHelper.IndexFileName)
+            if (index is not null && relative == PatchStorageHelper.INDEX_FILE_NAME)
             {
                 await PatchStorageHelper.WriteJsonAsync(path, index, token).ConfigureAwait(false);
             }
@@ -74,7 +76,7 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
     public async Task ExtractToAsync(
         string baseDir,
         IReadOnlyList<(string Source, string Target)> files,
-        CompressedProfilePack pack,
+        IProfilePackSource pack,
         CancellationToken token)
     {
         var present = files.Where(f => pack.LengthOf(f.Source) is not null).ToList();

@@ -2,8 +2,10 @@ using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Adapters;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Importers;
 
 namespace TridentCore.Core.Services;
 
@@ -11,6 +13,7 @@ public class MigratorAgent(
     IEnumerable<ILauncherAdapter> adapters,
     RepositoryAgent repository,
     ProfileManager profiles,
+    ImporterAgent importers,
     ILogger<MigratorAgent> logger)
 {
     private readonly Dictionary<LauncherKind, ILauncherAdapter> _adapters = BuildKindIndex(adapters);
@@ -101,14 +104,21 @@ public class MigratorAgent(
                     Percent = 0
                 });
 
-                // NOTE: files land in build/ first and the profile is registered only after a full
-                //  transfer, so a failed copy leaves no profile behind. On failure the reserved key is
-                //  released and the partial build directory removed so retries start clean.
+                // NOTE: Register only after both runtime files and patch sources have landed;
+                //  a failed transfer must remove the entire reserved instance.
                 var reservedKey = profiles.RequestKey(instance.Key);
                 var registered = false;
                 try
                 {
                     var buildDir = PathDef.Default.DirectoryOfBuild(reservedKey.Key);
+                    ImportedProfileContainer? imported = null;
+                    if (instance.Kind is LauncherKind.MultiMc or LauncherKind.PrismLauncher)
+                    {
+                        var source = new DirectoryProfilePackSource(instance.HomeDirectory);
+                        imported = await MultiMcImporter.ExtractSourceAsync(source).ConfigureAwait(false);
+                        await importers.ExtractPatchesAsync(PathDef.Default.DirectoryOfHome(reservedKey.Key), imported,
+                                                           source, CancellationToken.None).ConfigureAwait(false);
+                    }
                     packagesByInstance.TryGetValue(instance, out var instancePackages);
                     await TransferFilesAsync(instance.RuntimeDirectory,
                                              buildDir,
@@ -118,7 +128,7 @@ public class MigratorAgent(
                                              list.Count,
                                              progress)
                        .ConfigureAwait(false);
-                    profiles.Add(reservedKey, BuildProfile(instance, instancePackages));
+                    profiles.Add(reservedKey, BuildProfile(instance, instancePackages, imported?.Profile));
                     registered = true;
                     entries.Add(new(displayName, true));
                     logger.LogInformation("Migrated {Name} as {Key}", displayName, reservedKey.Key);
@@ -128,7 +138,7 @@ public class MigratorAgent(
                     if (!registered)
                     {
                         reservedKey.Dispose();
-                        BestEffortDelete(PathDef.Default.DirectoryOfBuild(reservedKey.Key));
+                        BestEffortDelete(PathDef.Default.DirectoryOfHome(reservedKey.Key));
                     }
                 }
             }
@@ -192,12 +202,12 @@ public class MigratorAgent(
         return collected;
     }
 
-    private static Profile BuildProfile(LauncherInstance instance, IReadOnlyList<Package>? packages)
+    private static Profile BuildProfile(LauncherInstance instance, IReadOnlyList<Package>? packages, Profile? imported)
     {
         var setup = new Profile.Rice
         {
-            Version = instance.MinecraftVersion!,
-            Loader = instance.Loader,
+            Version = imported?.Setup.Version ?? instance.MinecraftVersion!,
+            Loader = imported is null ? instance.Loader : imported.Setup.Loader,
             Packages =
             [
                 .. (packages ?? []).Select(p => new Profile.Rice.Entry

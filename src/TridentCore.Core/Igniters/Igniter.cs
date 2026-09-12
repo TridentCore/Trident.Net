@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using IBuilder;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Core.Utilities;
@@ -9,6 +10,8 @@ namespace TridentCore.Core.Igniters;
 public class Igniter : IBuilder<ProcessStartInfo>
 {
     public const string COMMAND_WRAPPER_PLACEHOLDER = "{command}";
+
+    private static readonly Regex PLACEHOLDER = new(@"\$\{[^{}]+\}", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     public record JavaAgent(LockData.Library.Identity Id, string Path, string? Arguments = null);
 
@@ -40,6 +43,7 @@ public class Igniter : IBuilder<ProcessStartInfo>
     public bool IsDebug { get; set; }
     public char? ClassPathSeparator { get; set; }
     public string CommandWrapperTemplate { get; set; } = string.Empty;
+    public Func<string, string>? ArgumentResolver { get; set; }
 
     #region IBuilder<ProcessStartInfo> Members
 
@@ -80,17 +84,10 @@ public class Igniter : IBuilder<ProcessStartInfo>
             WorkingDirectory = WorkingDirectory!,
             UseShellExecute = IsDebug
         };
-        string Expand(string argument)
-        {
-            foreach (var (placeholder, value) in crates)
-            {
-                if (value is not null)
-                {
-                    argument = argument.Replace(placeholder, value, StringComparison.Ordinal);
-                }
-            }
-            return argument;
-        }
+        string Expand(string argument) => PLACEHOLDER.Replace(argument, match =>
+            crates.TryGetValue(match.Value, out var value) && value is not null
+                ? value
+                : ArgumentResolver?.Invoke(match.Value) ?? match.Value);
         foreach (var argument in JvmArguments)
         {
             start.ArgumentList.Add(Expand(argument));

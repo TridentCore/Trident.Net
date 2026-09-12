@@ -13,7 +13,7 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
     private static readonly HashSet<string> FIELDS = ["libraries", "agents", "gameArguments", "jvmArguments", "mainClass", JAVA_MAJORS, "mainJar", "assetIndex"];
 
     public record LocalAsset(string Path, FileHash? Hash);
-    public record Instruction(string Source, PatchDocument.Operation Operation, IReadOnlyDictionary<string, LocalAsset> Assets);
+    public record Instruction(string Source, int Position, PatchDocument.Operation Operation, IReadOnlyDictionary<string, LocalAsset> Assets);
 
     public string Fingerprint(string scope) => PatchHelper.Fingerprint(instructions
         .Where(x => Scope(x.Operation.Target) == scope)
@@ -49,7 +49,7 @@ public sealed class PatchSet(IReadOnlyList<PatchSet.Instruction> instructions)
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                throw new InvalidDataException($"Patch '{instruction.Source}', operation {i + 1} ({instruction.Operation.Target}): {ex.Message}", ex);
+                throw new InvalidDataException($"Patch '{instruction.Source}', operation {instruction.Position} ({instruction.Operation.Target}): {ex.Message}", ex);
             }
         }
         return result ?? throw new InvalidDataException($"No data supplied for {scope}.");

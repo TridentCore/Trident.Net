@@ -21,6 +21,7 @@ public class ProcessLoaderStage(
         {
             Format = LockData.FORMAT,
             Context.Setup.Loader,
+            Context.Setup.Version,
             Input = PatchHelper.Fingerprint(artifact),
             Patch = Context.Patches.Fingerprint("loader")
         });
@@ -113,26 +114,11 @@ public class ProcessLoaderStage(
             working.GameArguments.Add(["--tweakClass", tweaker]);
         }
 
-        AddUnique(working.JavaArguments, "-Dforgewrapper.librariesDir=${library_directory}");
-
-        var installer = LibraryHelper.Resolve(working.Libraries).LastOrDefault(x => !x.IsNative && !x.IsPresent
-                                                                               && x.Id.Platform == "installer"
-                                                                               && x.Id.Namespace == uid
-                                                                               && x.Id.Name is "forge" or "neoforge");
-        if (installer != null)
-        {
-            AddUnique(working.JavaArguments,
-                      $"-Dforgewrapper.installer={installer.FilePath(Context.Key)}");
-        }
-
-        var minecraft = Context.Lock.Artifact?.MainJar;
-        if (minecraft != null)
-        {
-            AddUnique(working.JavaArguments,
-                      $"-Dforgewrapper.minecraft={minecraft.FilePath(Context.Key)}");
-        }
-
         working.MainClass = index.MainClass ?? "io.github.zekerzhayard.forgewrapper.installer.Main";
+        if (working.MainClass == "io.github.zekerzhayard.forgewrapper.installer.Main")
+        {
+            working.JavaArguments.AddRange(ArgumentHelper.ForgeWrapperJvmArguments());
+        }
     }
 
     private async Task InstallFabricAsync(WorkingArtifact working, string uid, string version, CancellationToken token)
@@ -151,14 +137,6 @@ public class ProcessLoaderStage(
                                                           ?? Enumerable.Empty<Component.Library>());
 
         working.MainClass = index.MainClass ?? "net.fabricmc.loader.impl.launch.knot.KnotClient";
-    }
-
-    private static void AddUnique(List<string[]> collection, string arg)
-    {
-        if (!collection.Any(x => x.Length == 1 && x[0] == arg))
-        {
-            collection.Add([arg]);
-        }
     }
 
     private sealed class WorkingArtifact

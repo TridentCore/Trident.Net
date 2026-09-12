@@ -15,7 +15,10 @@ public class MultiMcImporter : IProfileImporter
     public bool CanHandle(CompressedProfilePack pack) =>
         pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
 
-    public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
+    public Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack) =>
+        ExtractSourceAsync(pack);
+
+    public static async Task<ImportedProfileContainer> ExtractSourceAsync(IProfilePackSource pack)
     {
         await using var indexStream = pack.Open(MultiMcHelper.PACK_INDEX_FILE_NAME);
         var mmcPack = await JsonSerializer
@@ -26,8 +29,6 @@ public class MultiMcImporter : IProfileImporter
             throw new FormatException($"{MultiMcHelper.PACK_INDEX_FILE_NAME} is not a valid mmc-pack.json");
         }
 
-        // NOTE: 只读归档自带的组件定义（用户「从文件安装」组件时才会落盘）。其余组件的启动声明留给
-        //  标准产出阶段按 profile 的版本与加载器获取，导入期不联网，因此离线归档始终可导入。
         var definitions = await MultiMcPatchHelper.ReadDefinitionsAsync(pack, mmcPack).ConfigureAwait(false);
 
         var minecraft = mmcPack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT && !c.Disabled);
@@ -39,7 +40,6 @@ public class MultiMcImporter : IProfileImporter
             throw new FormatException("mmc-pack.json does not contain net.minecraft component");
         }
 
-        // NOTE: 组件声明的 uid 即加载器身份，声明了什么就用什么——不去猜、不去纠正。
         string? loaderLurl = null;
         foreach (var component in mmcPack.Components.Where(x => !x.Disabled))
         {
@@ -98,9 +98,7 @@ public class MultiMcImporter : IProfileImporter
 
         var importFileNames = pack
                              .FileNames
-                             .Where(x => x.StartsWith(MultiMcHelper.PACK_MINECRAFT_DIR)
-                                      && x != MultiMcHelper.PACK_MINECRAFT_DIR
-                                      && x.Length > MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)
+                             .Where(x => x.StartsWith(MultiMcHelper.PACK_MINECRAFT_DIR + "/", StringComparison.Ordinal))
                              .Select(x => (x, x[(MultiMcHelper.PACK_MINECRAFT_DIR.Length + 1)..]))
                              .Where(x => ZipArchiveHelper.IsExtractableEntry(x.Item2))
                              .ToList();

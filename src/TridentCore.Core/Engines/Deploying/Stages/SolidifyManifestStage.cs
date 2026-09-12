@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Reactive.Subjects;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
@@ -326,67 +325,10 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
                    .ToArray();
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // NOTE: native 库被移除或换版后，旧文件不能被 JVM 的 java.library.path 搜到，否则可能加载到
-        //  错版本的库。这里只清理「本轮不再产出」的文件，不做整目录重建——重建会让每次部署都重新解压
-        //  全部 native，而 freshness 检查本来能跳过未变文件。
-        var nativesDirectory = PathDef.Default.DirectoryOfNatives(Context.Key);
-        var stale = Directory.Exists(nativesDirectory)
-                        ? Directory.EnumerateFiles(nativesDirectory, "*", SearchOption.AllDirectories).ToHashSet(PATH_COMPARER)
-                        : new HashSet<string>(PATH_COMPARER);
-
-        foreach (var explosive in manifest.ExplosiveFiles)
-        {
-            logger.LogDebug("Extracting {file} to {dir}", explosive.SourcePath, explosive.TargetDirectory);
-            await using var zip =
-                new ZipArchive(new FileStream(explosive.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read),
-                               ZipArchiveMode.Read,
-                               false);
-            string? rootDir = null;
-            var nested = explosive.Unwrap && ZipArchiveHelper.HasSingleRootDirectory(zip, out rootDir);
-            foreach (var entry in zip.Entries)
-            {
-                if (entry.Length == 0 || explosive.Exclude.Any(x => entry.FullName.StartsWith(x, StringComparison.Ordinal)))
-                {
-                    continue;
-                }
-
-                var path = Path.Combine(explosive.TargetDirectory,
-                                        nested && !string.IsNullOrEmpty(rootDir)
-                                            ? entry.FullName[(rootDir.Length + 1)..]
-                                            : entry.FullName);
-                if (!FileHelper.IsInDirectory(path, explosive.TargetDirectory))
-                {
-                    throw new InvalidDataException(
-                        $"Native archive entry '{entry.FullName}' escapes the extraction root.");
-                }
-                stale.Remove(path);
-                if (!File.Exists(path) || File.GetLastWriteTimeUtc(path) < entry.LastWriteTime.UtcDateTime)
-                {
-                    var dir = Path.GetDirectoryName(path);
-                    if (dir != null && !Directory.Exists(dir))
-                    {
-                        Directory.CreateDirectory(dir);
-                    }
-
-                    await using var reader = entry.Open();
-                    await using (var writer = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Write))
-                    {
-                        await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                        await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                    }
-
-                    File.SetLastWriteTimeUtc(path, entry.LastWriteTime.UtcDateTime);
-                }
-            }
-
-            ProgressStream.OnNext((++processed, total));
-        }
-
-        foreach (var path in stale)
-        {
-            logger.LogDebug("Dropping stale native {path}", path);
-            File.Delete(path);
-        }
+        await NativeHelper.ExtractAsync(PathDef.Default.DirectoryOfNatives(Context.Key),
+                                        [.. manifest.ExplosiveFiles], cancel.Token).ConfigureAwait(false);
+        processed += manifest.ExplosiveFiles.Count;
+        ProgressStream.OnNext((processed, total));
 
         SymlinkPhotos.Apply(buildDirectory, [.. entities]);
 

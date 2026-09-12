@@ -61,7 +61,7 @@ public class TridentImporter : IProfileImporter
         }
 
         // 整合包只承载导入层。归档即便手工塞入了用户层内容，也一律不读取、不提取。
-        var patchIndexPath = "patches/" + PatchStorageHelper.IndexFileName;
+        var patchIndexPath = "patches/" + PatchStorageHelper.INDEX_FILE_NAME;
         var generatedPatches = new Dictionary<string, byte[]>();
         var patchIndex = new PackPatchIndex();
         if (pack.FileNames.Contains(patchIndexPath))
@@ -70,7 +70,7 @@ public class TridentImporter : IProfileImporter
             patchIndex = await JsonSerializer.DeserializeAsync<PackPatchIndex>(patchStream, FileHelper.SerializerOptions).ConfigureAwait(false)
                       ?? throw new InvalidDataException("Patch index is empty.");
         }
-        generatedPatches.Add(PatchStorageHelper.IndexFileName,
+        generatedPatches.Add(PatchStorageHelper.INDEX_FILE_NAME,
             JsonSerializer.SerializeToUtf8Bytes(patchIndex, FileHelper.SerializerOptions));
         var patchFiles = pack.FileNames
             .Where(x => x.StartsWith("patches/import/", StringComparison.Ordinal))

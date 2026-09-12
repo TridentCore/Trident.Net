@@ -117,7 +117,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
         {
             // 整合包只承载导入层，且无条件完整携带：禁用条目、顺序与资产一并打包；用户层从不随包导出。
             var packPatchIndex = new PackPatchIndex { Format = patchIndex.Format, Import = patchIndex.Import };
-            container.Attachments.Add("patches/" + PatchStorageHelper.IndexFileName,
+            container.Attachments.Add("patches/" + PatchStorageHelper.INDEX_FILE_NAME,
                 new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(packPatchIndex, FileHelper.SerializerOptions)));
             foreach (var file in patchFiles)
             {

@@ -7,22 +7,11 @@ public static class LibraryHelper
 {
     public static LockData.ArtifactData Resolve(LockData.ArtifactData artifact)
     {
-        var libraries = Resolve(artifact.AllLibraries()).ToList();
-        // NOTE: MainJar 走同一套 slot 仲裁（AllLibraries 把它排在末位，同 slot 时它胜出），但必须按
-        //  slot 找回胜者再摘出：仲裁按 slot 首次出现的位置排列，同 slot 的普通库会把合并后的条目留在
-        //  较早的位置，用末位反推会认错库。
-        var mainJarSlot = artifact.MainJar is { } main ? Identify(main) : (Slot?)null;
-        var mainJarIndex = mainJarSlot is { } slot ? libraries.FindIndex(x => Identify(x) == slot) : -1;
-        var mainJar = mainJarIndex < 0 ? null : libraries[mainJarIndex];
-        if (mainJarIndex >= 0)
-        {
-            libraries.RemoveAt(mainJarIndex);
-        }
-
+        var libraries = Resolve(artifact.AllLibraries());
         return artifact with
         {
-            Libraries = libraries,
-            MainJar = mainJar,
+            Libraries = artifact.MainJar is null ? libraries : libraries.Take(libraries.Count - 1).ToArray(),
+            MainJar = artifact.MainJar is null ? null : libraries[^1],
             Agents = ResolveAgents(artifact.Agents, x => x.Library.Id)
         };
     }

@@ -5,7 +5,7 @@ namespace TridentCore.Abstractions.Importers;
 
 // 归档到「包内容」的唯一视图。外层包装目录（如手工重新压缩产生的 "整合包名/"、codeload 的
 // "repo-sha/"）在此剥离，导入器只看见包自身的结构。
-public class CompressedProfilePack : IDisposable
+public class CompressedProfilePack : IProfilePackSource, IDisposable
 {
     private readonly ZipArchive _archive;
 

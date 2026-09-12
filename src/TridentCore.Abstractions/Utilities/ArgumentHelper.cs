@@ -30,6 +30,13 @@ public static class ArgumentHelper
         return GroupArguments(arguments);
     }
 
+    public static IReadOnlyList<string[]> ForgeWrapperJvmArguments() =>
+    [
+        ["-Dforgewrapper.librariesDir=${library_directory}"],
+        ["-Dforgewrapper.installer=${forge_installer}"],
+        ["-Dforgewrapper.minecraft=${main_jar}"]
+    ];
+
     public static IReadOnlyList<string[]> GroupArguments(IReadOnlyList<string> arguments)
     {
         var groups = new List<string[]>();

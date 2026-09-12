@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions.Adapters;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Models.MultiMcPack;
+using TridentCore.Core.Models.PrismLauncherApi;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Adapters;
@@ -97,6 +98,10 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
         {
             var minecraft = pack.Components.FirstOrDefault(c => c.Uid == MultiMcHelper.UID_MINECRAFT && !c.Disabled);
             version = minecraft?.Version ?? minecraft?.CachedVersion;
+            if (version is null && minecraft is not null)
+            {
+                version = await ReadLocalVersionAsync(instanceDir, minecraft.Uid, cancellationToken).ConfigureAwait(false);
+            }
             if (version is null)
             {
                 corruptReason ??= CorruptReason.MinecraftComponentMissing;
@@ -104,10 +109,14 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
 
             foreach (var component in pack.Components.Where(x => !x.Disabled))
             {
-                if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId)
-                 && (component.Version ?? component.CachedVersion) is { } loaderVersion)
+                if (MultiMcHelper.UidToLoaderMappings.TryGetValue(component.Uid, out var loaderId))
                 {
-                    loader = LoaderHelper.ToLurl(loaderId, loaderVersion);
+                    var loaderVersion = component.Version ?? component.CachedVersion
+                                     ?? await ReadLocalVersionAsync(instanceDir, component.Uid, cancellationToken).ConfigureAwait(false);
+                    if (loaderVersion is not null)
+                    {
+                        loader = LoaderHelper.ToLurl(loaderId, loaderVersion);
+                    }
                     break;
                 }
             }
@@ -134,6 +143,25 @@ public class MultiMcLauncherAdapter(ILogger<MultiMcLauncherAdapter>? logger = nu
                 .. IDENTIFIABLE_SUBDIRS.Where(d => Directory.Exists(Path.Combine(runtimeDir, d)))
             ]
         };
+    }
+
+    private static async Task<string?> ReadLocalVersionAsync(string directory, string uid, CancellationToken token)
+    {
+        var path = PatchHelper.ResolvePath(directory, $"patches/{uid}.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            var definition = await JsonSerializer.DeserializeAsync<Component>(stream, FileHelper.SerializerOptions, token).ConfigureAwait(false);
+            return definition?.Version;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     // instance.cfg 是 INI 式 key=value 文件；逐行读入查找表，名称与可能的
