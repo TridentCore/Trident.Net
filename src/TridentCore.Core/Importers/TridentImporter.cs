@@ -46,7 +46,10 @@ public class TridentImporter : IProfileImporter
         var included = options.IncludedOverrides.Where(x => x.Enabled).Select(x => x.Key).ToFrozenSet();
         foreach (var key in index.Overrides.Keys)
         {
-            if (!included.Contains(key) || UNSAFE_OVERRIDE_KEYS.Contains(key))
+            // modpack.* 身份元数据与导出端对称地视为安全：不受 IncludedOverrides 开关影响，
+            //  且不在 UNSAFE_OVERRIDE_KEYS 之中，导入时放行以保留原生包的名称/作者/版本。
+            if (!key.StartsWith("modpack.", StringComparison.Ordinal)
+                && (!included.Contains(key) || UNSAFE_OVERRIDE_KEYS.Contains(key)))
             {
                 index.RemoveOverride(key);
             }

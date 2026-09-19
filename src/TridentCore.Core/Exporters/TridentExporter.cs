@@ -29,7 +29,9 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
 
         foreach (var key in exported.Overrides.Keys)
         {
-            if (!overrideKeySet.Contains(key))
+            // modpack.* 身份元数据始终保留，不受用户开关的 IncludedOverrides 影响；
+            //  否则导入端会因白名单不命中而丢失原生包的名称/作者/版本。
+            if (!key.StartsWith("modpack.", StringComparison.Ordinal) && !overrideKeySet.Contains(key))
             {
                 exported.RemoveOverride(key);
             }
