@@ -132,16 +132,11 @@ internal static class InstanceOperation
         InstanceManager instanceManager,
         string instance,
         string? profile,
-        bool fullCheck,
-        string? javaHome,
-        string? globalJavaHome = null)
+        bool fullCheck)
     {
         var ctx = resolver.Resolve(instance, profile);
         var options = new DeployOptions(fullCheck);
-        var vault = JavaHelper.WildcardVault(javaHome
-                                          ?? ctx.Profile.GetOverride<string>(Profile.OVERRIDE_JAVA_HOME)
-                                          ?? globalJavaHome);
-        var activities = instanceManager.Deploy(ctx.Key, options, vault);
+        var activities = instanceManager.Deploy(ctx.Key, options);
         var final = await ActivityAwaiter.AwaitCompletionAsync(activities, CancellationToken.None).ConfigureAwait(false);
         ActivityAwaiter.ThrowIfFaulted(final, "Build failed.");
         return new(ctx.Key, "finished");

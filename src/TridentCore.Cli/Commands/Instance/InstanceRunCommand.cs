@@ -82,7 +82,7 @@ public class InstanceRunCommand(
                                       ("Account", account.Username));
         }
 
-        var deployActivities = instanceManager.Deploy(instance.Key, deployOptions, vault);
+        var deployActivities = instanceManager.Deploy(instance.Key, deployOptions);
         await activityAwaiter.AwaitDeployAsync(deployActivities, cancellationToken).ConfigureAwait(false);
 
         var activities = instanceManager.Launch(instance.Key, launchOptions, vault);

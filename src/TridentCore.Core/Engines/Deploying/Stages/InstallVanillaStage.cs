@@ -15,15 +15,7 @@ public class InstallVanillaStage(
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var fingerprint = PatchHelper.Fingerprint(new
-        {
-            Format = LockData.FORMAT,
-            Context.Setup.Version,
-            Platform = RuntimeInformation.RuntimeIdentifier,
-            Architecture = RuntimeInformation.OSArchitecture,
-            OsVersion = Environment.OSVersion.VersionString,
-            Patch = Context.Patches.Fingerprint("vanilla")
-        });
+        var fingerprint = LockValidationHelper.VanillaInput(Context.Setup, Context.Patches);
         if (Context.BaseLock?.Vanilla is { } cached && cached.Input == fingerprint)
         {
             Context.Lock = Context.Lock with { Artifact = cached.Output, Vanilla = cached };

@@ -7,7 +7,7 @@ namespace TridentCore.Abstractions.FileModels;
 // Platform records package compatibility; artifact regions cache their own inputs independently.
 public record LockData
 {
-    public const int FORMAT = 8;
+    public const int FORMAT = 9;
 
     public required PlatformData Platform { get; init; }
     public ArtifactData? Artifact { get; init; }
@@ -15,10 +15,13 @@ public record LockData
     public ArtifactRegion? Loader { get; init; }
     public ArtifactRegion? Launch { get; init; }
     public IReadOnlyList<LockedPackage> Packages { get; init; } = [];
+    public string? PackagesInput { get; init; }
+    public string? PackageSource { get; init; }
+    public IReadOnlyList<string> PackageSourceOrders { get; init; } = [];
 
     public record ArtifactRegion(string Input, ArtifactData Output);
 
-    public RuntimeData? Runtime { get; init; }
+    public uint? RuntimeMajor { get; init; }
 
     #region Nested type: PlatformData
 
@@ -58,17 +61,12 @@ public record LockData
 
     #region Nested type: LockedPackage
 
-    // NOTE: 声明的 pref 与其解析锁定的 Package、锁定时的规则结果。pref 是 diff 键（声明意图，可能
-    //  floating）；Resolved 原样保存完整解析结果，规则重算、manifest 生成与宿主 UI 都不再命中仓库。
-    //
-    //  SuppressedBy 指认 FlattenPackages 中赢得目标路径仲裁的 pref；被抑制的包保持锁定，
-    //  优先级重排后其版本仍在而不必重解析（null = 生效，将物化进 build）。
+    // NOTE: 保留所有来源的解析结果；离线仲裁不得重新解析 floating pref。
     public record LockedPackage(
         string Pref,
         string? Source,
         Package Resolved,
-        PackageRule Rule,
-        string? SuppressedBy = null)
+        PackageRule Rule)
     {
         [Obsolete("compat: legacy purl key, remove once on-disk lock files have migrated")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -112,11 +110,4 @@ public record LockData
 
     #endregion
 
-    #region Nested type: RuntimeData
-
-    // 缓存在 runtimes/{major}.json 的运行时 manifest 指纹。EnsureRuntimeStage 凭 sha1 匹配
-    // 离线复用缓存而非每次部署都拉 Mojang 运行时索引。随 artifact 迁移：平台（Java 大版本）不变则原子迁移，变则重建。
-    public record RuntimeData(uint Major, string Sha1, string? Version = null);
-
-    #endregion
 }

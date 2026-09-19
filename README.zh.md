@@ -114,6 +114,11 @@ services
     .AddXboxLive()
     .AddMinecraft()
     .AddMclogs()
+    .AddTransient<PackageResolver>()
+    .AddTransient<PackagePlanner>()
+    .AddTransient<PackageMaterializer>()
+    .AddTransient<DeploymentPlanner>()
+    .AddTransient<DeploymentIndexService>()
     .AddSingleton<ProfileManager>()
     .AddSingleton<RepositoryAgent>()
     .AddSingleton<ImporterAgent>()
@@ -122,6 +127,8 @@ services
 ```
 
 在自己的应用中使用时，优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
+
+资源规划可独立于 `DeployEngine` 使用：`LockValidationHelper` 验证已解析需求，`DeploymentPlanner` 处理库和本地投影，`AssetPlanner` / `RuntimePlanner` 展开可读的本地索引。这些 Planner 不联网、不写文件。部署消费方可用 `DeploymentIndexService` 补齐缺失索引，就绪检查消费方则直接停止。部署按锁内可选 major 准备 Mojang Java 运行时，不受用户启动偏好影响；用户 Java Home 仅在启动时选择。
 
 ## Trident 作为 CLI
 

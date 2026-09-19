@@ -133,6 +133,11 @@ services
     .AddXboxLive()
     .AddMinecraft()
     .AddMclogs()
+    .AddTransient<PackageResolver>()
+    .AddTransient<PackagePlanner>()
+    .AddTransient<PackageMaterializer>()
+    .AddTransient<DeploymentPlanner>()
+    .AddTransient<DeploymentIndexService>()
     .AddSingleton<ProfileManager>()
     .AddSingleton<RepositoryAgent>()
     .AddSingleton<ImporterAgent>()
@@ -143,6 +148,8 @@ services
 In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile
 lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent`
 plus `ExporterAgent` convert modpacks.
+
+Resource planning is available independently of `DeployEngine`: `LockValidationHelper` validates the resolved requirements, `DeploymentPlanner` handles libraries and local projections, and `AssetPlanner` / `RuntimePlanner` expand readable local indexes. These planners perform no network access or filesystem writes. A deployment caller can use `DeploymentIndexService` to fetch missing indexes; a readiness caller can stop instead. Deployment prepares the optional locked Mojang Java major regardless of user launch preferences, while launch alone selects a configured Java home.
 
 ## Trident As A CLI
 

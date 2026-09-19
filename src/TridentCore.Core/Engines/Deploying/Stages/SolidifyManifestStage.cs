@@ -1,353 +1,90 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reactive.Subjects;
-using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
-using TridentCore.Core.Exceptions;
+using TridentCore.Core.Extensions;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
-public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpClientFactory factory) : StageBase
+public class SolidifyManifestStage(IHttpClientFactory factory) : StageBase
 {
-    private static readonly StringComparer PATH_COMPARER = OperatingSystem.IsWindows()
-                                                               ? StringComparer.OrdinalIgnoreCase
-                                                               : StringComparer.Ordinal;
-
     public Subject<(int Current, int Total)> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
-        var manifest = Context.Manifest!;
-        var buildDirectory = PathDef.Default.DirectoryOfBuild(Context.Key);
-        var importDirectory = PathDef.Default.DirectoryOfImport(Context.Key);
-        var persistDirectory = PathDef.Default.DirectoryOfPersist(Context.Key);
-
-        var files = new List<object>();
-        var projections = new Dictionary<string, ProjectionCandidate>(PATH_COMPARER);
-
-        foreach (var fragile in manifest.FragileFiles)
-        {
-            if (FileHelper.IsInDirectory(fragile.TargetPath, buildDirectory))
-            {
-                UpsertProjection(projections,
-                                 fragile.TargetPath,
-                                 ProjectionPriority.Package,
-                                 fragile,
-                                 $"package {fragile.TargetPath}");
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    $"Package target '{fragile.TargetPath}' escapes the build directory.");
-            }
-        }
-
-        foreach (var present in manifest.PresentFiles)
-        {
-            files.Add(present);
-        }
-
-        foreach (var persistent in manifest.PersistentFiles)
-        {
-            var priority = GetProjectionPriority(persistent, buildDirectory, importDirectory, persistDirectory);
-            if (priority is { } actual)
-            {
-                UpsertProjection(projections,
-                                 persistent.TargetPath,
-                                 actual,
-                                 persistent,
-                                 $"persistent {persistent.TargetPath}");
-            }
-            else
-            {
-                files.Add(persistent);
-            }
-        }
-
-        files.AddRange(projections.Values.Select(x => x.File));
-
-        var total = files.Count + manifest.ExplosiveFiles.Count;
-        logger.LogInformation("Created solidifying tasks of {}", total);
-
-        var processed = 0;
-        var semaphore = new SemaphoreSlim(Math.Max(Environment.ProcessorCount - 1, 1));
-        var watch = Stopwatch.StartNew();
-        var cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
-        var entities = new ConcurrentBag<SymlinkPhotos.Entity>();
-
+        var plan = Context.Manifest!;
+        var total = plan.Downloads.Count + plan.Operations.Count;
+        var completed = 0;
         ProgressStream.OnNext((0, total));
-        var tasks = files
-                   .Select(async x =>
-                    {
-                        if (cancel.IsCancellationRequested)
-                        {
-                            return;
-                        }
-
-                        var entered = false;
-                        try
-                        {
-                            await semaphore.WaitAsync(cancel.Token).ConfigureAwait(false);
-                            entered = true;
-                            switch (x)
-                            {
-                                case EntityManifest.FragileFile fragile:
-                                    {
-                                        if (!FileHelper.VerifyModified(fragile.SourcePath, null, fragile.Hash))
-                                        {
-                                            logger.LogDebug("Starting download fragile file {src} from {url}",
-                                                            fragile.SourcePath,
-                                                            fragile.Url);
-                                            var dir = Path.GetDirectoryName(fragile.SourcePath);
-                                            if (dir != null && !Directory.Exists(dir))
-                                            {
-                                                Directory.CreateDirectory(dir);
-                                            }
-
-                                            using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(fragile.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(fragile.SourcePath,
-                                                                                        FileMode.Create,
-                                                                                        FileAccess.Write,
-                                                                                        FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                                        }
-
-                                        entities.Add(new(fragile.TargetPath, fragile.SourcePath, false));
-
-                                        break;
-                                    }
-                                case EntityManifest.PresentFile present:
-                                    {
-                                        if (!FileHelper.VerifyModified(present.Path, null, present.Hash))
-                                        {
-                                            var dir = Path.GetDirectoryName(present.Path);
-                                            if (dir != null && !Directory.Exists(dir))
-                                            {
-                                                Directory.CreateDirectory(dir);
-                                            }
-
-                                            using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
-                                            await using var reader = await client
-                                                                          .GetStreamAsync(present.Url, cancel.Token)
-                                                                          .ConfigureAwait(false);
-                                            await using var writer = new FileStream(present.Path,
-                                                                                        FileMode.Create,
-                                                                                        FileAccess.Write,
-                                                                                        FileShare.Write);
-                                            await reader.CopyToAsync(writer, cancel.Token).ConfigureAwait(false);
-                                            await writer.FlushAsync(cancel.Token).ConfigureAwait(false);
-                                            if (present.IsExecutable
-                                             && !OperatingSystem.IsWindows()
-                                             && File.Exists(present.Path))
-                                            {
-                                                var current = File.GetUnixFileMode(present.Path);
-                                                File.SetUnixFileMode(present.Path,
-                                                                     current
-                                                                   | UnixFileMode.UserExecute
-                                                                   | UnixFileMode.GroupExecute
-                                                                   | UnixFileMode.OtherExecute);
-                                            }
-                                        }
-
-                                        break;
-                                    }
-                                case EntityManifest.PersistentFile persistent:
-                                    {
-                                        // 虚文件（如持久化功能）在创建软链接前先确保目标不是既有 Symlink；
-                                        // 非虚文件策略更简单——无则复制，有则不管。
-                                        if (persistent.IsPhantom)
-                                        {
-                                            if (persistent.IsDirectory)
-                                            {
-                                                if (File.Exists(persistent.TargetPath)
-                                                 && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
-                                                {
-                                                    throw new BuildArtifactConflictException(persistent.TargetPath,
-                                                        BuildArtifactConflictException.ConflictKind
-                                                           .OccupiedByRegularFileSystemEntry);
-                                                }
-
-                                                if (Directory.Exists(persistent.TargetPath)
-                                                 && Directory.ResolveLinkTarget(persistent.TargetPath, false) is null)
-                                                {
-                                                    // WARNING: 目标位是目录时先反向同步文件、替换同名，再创建链接。
-                                                    var dirs = new Queue<string>();
-                                                    var toClean = new Stack<string>();
-                                                    toClean.Push(persistent.TargetPath);
-                                                    dirs.Enqueue(persistent.TargetPath);
-                                                    while (dirs.TryDequeue(out var src))
-                                                    {
-                                                        var dirRelative = Path.GetRelativePath(persistent.TargetPath, src);
-                                                        var dst = Path.Combine(persistent.SourcePath, dirRelative);
-                                                        if (!Directory.Exists(dst))
-                                                        {
-                                                            Directory.CreateDirectory(dst);
-                                                        }
-
-                                                        foreach (var file in Directory.GetFiles(src))
-                                                        {
-                                                            var target = Path.Combine(dst, Path.GetFileName(file));
-                                                            logger
-                                                               .LogDebug("Backporting violating persistent file {src} to {dst}",
-                                                                         file,
-                                                                         target);
-                                                            File.Move(file, target, true);
-                                                        }
-
-                                                        foreach (var dir in Directory.GetDirectories(src))
-                                                        {
-                                                            toClean.Push(dir);
-                                                            dirs.Enqueue(dir);
-                                                        }
-                                                    }
-
-                                                    foreach (var dir in toClean)
-                                                    {
-                                                        // WARNING: 关掉递归，以此确认上述算法无问题。
-                                                        Directory.Delete(dir, false);
-                                                    }
-                                                }
-
-                                                entities.Add(new(persistent.TargetPath, persistent.SourcePath, true));
-                                            }
-                                            else
-                                            {
-                                                // WARNING: 部分模组更新是 Delete-Create 而非 Open-Overwrite，
-                                                //  会删掉软链接；如此写入会让 build/ 的反向同步反过来影响 live/。
-
-                                                if (File.Exists(persistent.TargetPath)
-                                                 && File.ResolveLinkTarget(persistent.TargetPath, false) is null)
-                                                {
-                                                    logger.LogDebug("Backporting violating persistent file {src} to {dst}",
-                                                                    persistent.TargetPath,
-                                                                    persistent.SourcePath);
-                                                    File.Move(persistent.TargetPath, persistent.SourcePath, true);
-                                                }
-
-                                                entities.Add(new(persistent.TargetPath, persistent.SourcePath, false));
-                                            }
-                                        }
-                                        else
-                                        {
-                                            if (IsSymbolicLink(persistent.TargetPath))
-                                            {
-                                                throw new BuildArtifactConflictException(persistent.TargetPath,
-                                                    BuildArtifactConflictException.ConflictKind
-                                                                                  .LegacyImportProjection);
-                                            }
-
-                                            if (persistent.IsDirectory)
-                                            {
-
-                                                var dirs = new Queue<string>();
-                                                dirs.Enqueue(persistent.SourcePath);
-                                                while (dirs.TryDequeue(out var src))
-                                                {
-                                                    var dirRelative = Path.GetRelativePath(persistent.SourcePath, src);
-                                                    var dst = Path.Combine(persistent.TargetPath, dirRelative);
-                                                    if (!Directory.Exists(dst))
-                                                    {
-                                                        Directory.CreateDirectory(dst);
-                                                    }
-
-                                                    foreach (var file in Directory.GetFiles(src))
-                                                    {
-                                                        var target = Path.Combine(dst, Path.GetFileName(file));
-                                                        if (!File.Exists(target))
-                                                        {
-                                                            logger.LogDebug("Copying persistent file from {src} to {dst}",
-                                                                            persistent.SourcePath,
-                                                                            persistent.TargetPath);
-                                                            File.Copy(file, target);
-                                                            File.SetLastWriteTimeUtc(target,
-                                                                File.GetLastWriteTimeUtc(file));
-                                                        }
-                                                    }
-
-                                                    foreach (var dir in Directory.GetDirectories(src))
-                                                    {
-                                                        dirs.Enqueue(dir);
-                                                    }
-                                                }
-                                            }
-                                            else
-                                            {
-                                                if (!File.Exists(persistent.TargetPath))
-                                                {
-                                                    var dir = Path.GetDirectoryName(persistent.TargetPath);
-                                                    if (dir != null && !Directory.Exists(dir))
-                                                    {
-                                                        Directory.CreateDirectory(dir);
-                                                    }
-
-                                                    logger.LogDebug("Copying persistent file from {src} to {dst}",
-                                                                    persistent.SourcePath,
-                                                                    persistent.TargetPath);
-                                                    File.Copy(persistent.SourcePath, persistent.TargetPath);
-                                                    File.SetLastWriteTimeUtc(persistent.TargetPath,
-                                                                             File.GetLastWriteTimeUtc(persistent
-                                                                                .SourcePath));
-                                                }
-                                            }
-                                        }
-
-                                        break;
-                                    }
-                            }
-
-                            Interlocked.Increment(ref processed);
-                            ProgressStream.OnNext((processed, total));
-                        }
-                        catch (OperationCanceledException) when (cancel.Token.IsCancellationRequested)
-                        {
-                            throw;
-                        }
-                        catch (Exception ex)
-                        {
-                            await cancel.CancelAsync().ConfigureAwait(false);
-                            logger.LogError(ex, "Failed to solidify {}", x);
-                            throw;
-                        }
-                        finally
-                        {
-                            if (entered)
-                            {
-                                semaphore.Release();
-                            }
-                        }
-                    })
-                   .ToArray();
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-
-        await NativeHelper.ExtractAsync(PathDef.Default.DirectoryOfNatives(Context.Key),
-                                        [.. manifest.ExplosiveFiles], cancel.Token).ConfigureAwait(false);
-        processed += manifest.ExplosiveFiles.Count;
-        ProgressStream.OnNext((processed, total));
-
-        SymlinkPhotos.Apply(buildDirectory, [.. entities]);
-
-        if (!Path.Exists(buildDirectory))
+        using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
+        await Parallel.ForEachAsync(plan.Downloads, new ParallelOptions
         {
-            Directory.CreateDirectory(buildDirectory);
+            CancellationToken = token,
+            MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1)
+        }, async (download, ct) =>
+        {
+            await DownloadHelper.DownloadAsync(client, download.Url, download.Path, download.Hash, ct).ConfigureAwait(false);
+            if (download.Executable) MakeExecutable(download.Path);
+            lock (ProgressStream) ProgressStream.OnNext((++completed, total));
+        }).ConfigureAwait(false);
+
+        foreach (var operation in plan.Operations)
+        {
+            token.ThrowIfCancellationRequested();
+            switch (operation)
+            {
+                case DeploymentPlan.CreateDirectory directory:
+                    Directory.CreateDirectory(directory.Path);
+                    break;
+                case DeploymentPlan.Copy copy:
+                    EnsureParent(copy.Target);
+                    File.Copy(copy.Source, copy.Target);
+                    File.SetLastWriteTimeUtc(copy.Target, File.GetLastWriteTimeUtc(copy.Source));
+                    break;
+                case DeploymentPlan.Move move:
+                    EnsureParent(move.Target);
+                    File.Move(move.Source, move.Target, true);
+                    break;
+                case DeploymentPlan.RemoveLink remove:
+                    if (FilePlanningHelper.LinkTarget(remove.Path) is null)
+                        throw new IOException($"The planned symbolic link has changed: {remove.Path}");
+                    if (remove.Directory) Directory.Delete(remove.Path, false);
+                    else File.Delete(remove.Path);
+                    break;
+                case DeploymentPlan.RemoveDirectory remove:
+                    Directory.Delete(remove.Path, false);
+                    break;
+                case DeploymentPlan.Link link:
+                    EnsureParent(link.Path);
+                    if (link.Directory) Directory.CreateSymbolicLink(link.Path, link.Target);
+                    else File.CreateSymbolicLink(link.Path, link.Target);
+                    break;
+                case DeploymentPlan.MakeExecutable executable:
+                    MakeExecutable(executable.Path);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown deployment operation: {operation}");
+            }
+            ProgressStream.OnNext((++completed, total));
         }
 
-        await File
-             .WriteAllTextAsync(Path.Combine(buildDirectory, "allowed_symlinks.txt"),
-                                $"""
-                                 [prefix]{PathDef.Default.CachePackageDirectory}
-                                 [prefix]{PathDef.Default.DirectoryOfPersist(Context.Key)}
-                                 """,
-                                cancel.Token)
-             .ConfigureAwait(false);
+        var natives = Context.Lock.Artifact!.AllLibraries().Where(x => x.IsNative)
+            .Select(x => new NativeHelper.Archive(x.FilePath(Context.Key), false, x.Exclude)).ToArray();
+        await NativeHelper.ExtractAsync(PathDef.Default.DirectoryOfNatives(Context.Key), natives, token).ConfigureAwait(false);
+        var build = PathDef.Default.DirectoryOfBuild(Context.Key);
+        Directory.CreateDirectory(build);
+        var path = Path.Combine(build, "allowed_symlinks.txt");
+        var content = $"[prefix]{PathDef.Default.CachePackageDirectory}\n[prefix]{PathDef.Default.DirectoryOfPersist(Context.Key)}";
+        if (!File.Exists(path) || await File.ReadAllTextAsync(path, token).ConfigureAwait(false) != content)
+            await File.WriteAllTextAsync(path, content, token).ConfigureAwait(false);
+    }
 
-        watch.Stop();
-        logger.LogInformation("Solidifying finished in {ms}ms", watch.ElapsedMilliseconds);
+    private static void EnsureParent(string path) => Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+    private static void MakeExecutable(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
     }
 
     public override void Dispose()
@@ -355,86 +92,4 @@ public class SolidifyManifestStage(ILogger<SolidifyManifestStage> logger, IHttpC
         base.Dispose();
         ProgressStream.Dispose();
     }
-
-    private static bool IsSymbolicLink(string path)
-    {
-        try
-        {
-            if (File.ResolveLinkTarget(path, false) is not null)
-            {
-                return true;
-            }
-        }
-        catch (IOException) { }
-
-        try
-        {
-            if (Directory.ResolveLinkTarget(path, false) is not null)
-            {
-                return true;
-            }
-        }
-        catch (IOException) { }
-
-        return false;
-    }
-
-    private ProjectionPriority? GetProjectionPriority(
-        EntityManifest.PersistentFile persistent,
-        string buildDir,
-        string importDir,
-        string persistDir)
-    {
-        if (!FileHelper.IsInDirectory(persistent.TargetPath, buildDir))
-        {
-            return null;
-        }
-
-        if (FileHelper.IsInDirectory(persistent.SourcePath, persistDir))
-        {
-            return ProjectionPriority.Persist;
-        }
-
-        if (FileHelper.IsInDirectory(persistent.SourcePath, importDir))
-        {
-            return ProjectionPriority.Import;
-        }
-
-        return null;
-    }
-
-    private void UpsertProjection(
-        IDictionary<string, ProjectionCandidate> projections,
-        string targetPath,
-        ProjectionPriority priority,
-        object file,
-        string description)
-    {
-        if (projections.TryGetValue(targetPath, out var existing))
-        {
-            if (priority > existing.Priority)
-            {
-                logger.LogDebug("Projection {next} overrides {current} at {target}",
-                                description,
-                                existing.Description,
-                                targetPath);
-                projections[targetPath] = new(file, priority, description);
-            }
-            else
-            {
-                logger.LogDebug("Projection {current} keeps {target} over {skipped}",
-                                existing.Description,
-                                targetPath,
-                                description);
-            }
-
-            return;
-        }
-
-        projections[targetPath] = new(file, priority, description);
-    }
-
-    private enum ProjectionPriority { Package = 0, Import = 1, Persist = 2 }
-
-    private record ProjectionCandidate(object File, ProjectionPriority Priority, string Description);
 }

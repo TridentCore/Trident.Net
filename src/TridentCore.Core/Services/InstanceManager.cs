@@ -165,7 +165,7 @@ public class InstanceManager(
         IReadOnlyList<(uint? Major, string Home)> javaVault) =>
         Start(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() }, async operation =>
         {
-            await DeployCoreAsync(operation, deploy, javaVault).ConfigureAwait(false);
+            await DeployCoreAsync(operation, deploy).ConfigureAwait(false);
             operation.BeginPhase(CreateRunningActivity(key, launch));
             operation.Token.ThrowIfCancellationRequested();
             await LaunchCoreAsync(operation, launch, javaVault).ConfigureAwait(false);
@@ -224,17 +224,15 @@ public class InstanceManager(
 
     public IObservable<InstanceActivity> Deploy(
         string key,
-        DeployOptions options,
-        IReadOnlyList<(uint? Major, string Home)> javaVault)
+        DeployOptions options)
     {
         return Start(new InstanceActivity.Deploying { Key = key, Id = Guid.NewGuid() },
-                     operation => DeployCoreAsync(operation, options, javaVault));
+                     operation => DeployCoreAsync(operation, options));
     }
 
     private async Task DeployCoreAsync(
         InstanceOperation run,
-        DeployOptions options,
-        IReadOnlyList<(uint? Major, string Home)> javaVault)
+        DeployOptions options)
     {
         logger.LogInformation("Begin deploy {}", run.Key);
 
@@ -242,8 +240,7 @@ public class InstanceManager(
         var engine = new DeployEngine(run.Key,
                                       profile.Setup,
                                       provider,
-                                      new() { FullCheckMode = options.FullCheckMode },
-                                      javaVault);
+                                      new() { FullCheckMode = options.FullCheckMode });
 
         var watch = Stopwatch.StartNew();
         foreach (var stage in engine)
@@ -276,7 +273,6 @@ public class InstanceManager(
 
             logger.LogInformation("Enter stage {name}", stage.GetType().Name);
             await stage.ProcessAsync(run.Token).ConfigureAwait(false);
-            await Task.Delay(TimeSpan.FromSeconds(1), run.Token).ConfigureAwait(false);
         }
 
         watch.Stop();
@@ -291,9 +287,8 @@ public class InstanceManager(
             ProcessLoaderStage => DeployStage.ProcessLoader,
             ApplyLaunchPatchStage => DeployStage.ApplyLaunchPatch,
             SyncPackagesStage => DeployStage.SyncPackages,
-            FlattenPackagesStage => DeployStage.FlattenPackages,
             PersistLockStage => DeployStage.PersistLock,
-            EnsureRuntimeStage => DeployStage.EnsureRuntime,
+            SelectRuntimeStage => DeployStage.SelectRuntime,
             GenerateManifestStage => DeployStage.GenerateManifest,
             SolidifyManifestStage => DeployStage.SolidifyManifest,
             _ => throw new NotSupportedException($"Unrecognized deploy stage {stage.GetType().Name}")
@@ -345,7 +340,7 @@ public class InstanceManager(
         }
 
         var profile = profileManager.GetImmutable(operation.Key);
-        var resolution = JavaHelper.Resolve(artifact.CompatibleJavaMajors, javaVault);
+        var resolution = JavaHelper.Resolve(artifact.CompatibleJavaMajors, javaVault, lockData.RuntimeMajor);
         JavaHelper.EnsureBundledPresent(resolution);
         var javaHome = resolution.Home;
         var workingDirectory = PathDef.Default.DirectoryOfBuild(operation.Key);

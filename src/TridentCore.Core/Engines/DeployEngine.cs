@@ -13,8 +13,7 @@ public class DeployEngine(
     string key,
     Profile.Rice setup,
     IServiceProvider provider,
-    DeployEngineOptions options,
-    IReadOnlyList<(uint? Major, string Home)> javaVault) : IEnumerable<StageBase>
+    DeployEngineOptions options) : IEnumerable<StageBase>
 {
     #region Nested type: DeployEngineEnumerator
 
@@ -27,8 +26,7 @@ public class DeployEngine(
             typeof(ProcessLoaderStage),
             typeof(ApplyLaunchPatchStage),
             typeof(SyncPackagesStage),
-            typeof(FlattenPackagesStage),
-            typeof(EnsureRuntimeStage),
+            typeof(SelectRuntimeStage),
             typeof(PersistLockStage),
             typeof(GenerateManifestStage),
             typeof(SolidifyManifestStage)
@@ -86,7 +84,7 @@ public class DeployEngine(
     #region IEnumerable<StageBase> Members
 
     public IEnumerator<StageBase> GetEnumerator() =>
-        new DeployEngineEnumerator(new(key, setup, provider, options, javaVault));
+        new DeployEngineEnumerator(new(key, setup, provider, options));
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 

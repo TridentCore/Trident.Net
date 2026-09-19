@@ -17,14 +17,7 @@ public class ProcessLoaderStage(
     {
         var artifact = Context.Lock.Artifact
                     ?? throw new InvalidOperationException("Artifact missing before loader processing");
-        var fingerprint = PatchHelper.Fingerprint(new
-        {
-            Format = LockData.FORMAT,
-            Context.Setup.Loader,
-            Context.Setup.Version,
-            Input = PatchHelper.Fingerprint(artifact),
-            Patch = Context.Patches.Fingerprint("loader")
-        });
+        var fingerprint = LockValidationHelper.LoaderInput(Context.Setup, Context.Patches, artifact);
         if (Context.BaseLock?.Loader is { } cached && cached.Input == fingerprint)
         {
             Context.Lock = Context.Lock with { Artifact = cached.Output, Loader = cached };

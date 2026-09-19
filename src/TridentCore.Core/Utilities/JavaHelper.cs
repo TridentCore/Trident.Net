@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using TridentCore.Abstractions;
 using TridentCore.Core.Exceptions;
@@ -45,13 +46,8 @@ public static class JavaHelper
     public static IReadOnlyList<(uint? Major, string Home)> WildcardVault(string? home) =>
         string.IsNullOrEmpty(home) ? [] : [(null, home)];
 
-    // 需求集与提供方（vault / 捆绑运行时）的仲裁，返回唯一 home 与它命中的主版本：
-    //  1. vault 里的通配项直接取胜，需求集完全不参与；
-    //  2. 否则按需求降序取第一个 vault 能提供的 major（缺省回退在后，不静默换成别的运行时）；
-    //  3. 都没有则取“需求 ∩ 可捆绑主版本”里最大的那个；
-    //  4. 需求集本身为空是 patch 自相矛盾（报 NoCompatibleJavaException）；需求非空但两个提供方
-    //     都覆盖不到则报 JavaNotFoundException 并列出需求。
-    public static JavaResolution Resolve(IReadOnlyList<uint>? demand, IReadOnlyList<(uint? Major, string Home)> vault)
+    // 用户通配项优先，其次是兼容大版本对应的用户路径，最后使用锁定的 Mojang 运行时。
+    public static JavaResolution Resolve(IReadOnlyList<uint>? demand, IReadOnlyList<(uint? Major, string Home)> vault, uint? runtimeMajor)
     {
         foreach (var (major, home) in vault)
         {
@@ -78,17 +74,41 @@ public static class JavaHelper
             }
         }
 
-        foreach (var major in majors)
+        if (runtimeMajor is { } bundled && majors.Contains(bundled))
         {
-            if (BundledFamily(major) is not null)
-            {
-                return LocateBundled(major);
-            }
+            return LocateBundled(bundled);
         }
 
         throw new JavaNotFoundException($"None of the compatible Java majors ({string.Join(", ", majors)}) can be provided by a configured runtime or by Trident's bundled runtimes.",
                                         null);
     }
+
+    public static uint? SelectRuntimeMajor(IReadOnlyList<uint> demand)
+    {
+        var platform = RuntimePlatform();
+        return demand.Where(x => BundledFamily(x) is not null && (platform switch
+            {
+                "linux-i386" => x == 8,
+                "windows-x86" => x <= 17,
+                "mac-os-arm64" or "windows-arm64" => x >= 17,
+                "linux" or "mac-os" or "windows-x64" => true,
+                _ => false
+            }))
+            .OrderDescending().Select(x => (uint?)x).FirstOrDefault();
+    }
+
+    public static string? RuntimePlatform() => (OperatingSystem.IsWindows(), OperatingSystem.IsLinux(),
+        OperatingSystem.IsMacOS(), RuntimeInformation.OSArchitecture) switch
+    {
+        (true, _, _, Architecture.X64) => "windows-x64",
+        (true, _, _, Architecture.X86) => "windows-x86",
+        (true, _, _, Architecture.Arm64) => "windows-arm64",
+        (_, true, _, Architecture.X64) => "linux",
+        (_, true, _, Architecture.X86) => "linux-i386",
+        (_, _, true, Architecture.X64) => "mac-os",
+        (_, _, true, Architecture.Arm64) => "mac-os-arm64",
+        _ => null
+    };
 
     // 捆绑运行时由管线自愈，但部署与启动是两次独立解析：启动前它必须已经落在磁盘上。
     public static void EnsureBundledPresent(JavaResolution resolution)

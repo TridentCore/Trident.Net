@@ -9,12 +9,7 @@ public class ApplyLaunchPatchStage(AuthlibInjectorService authlibInjectorService
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         var input = Context.Lock.Artifact!;
-        var fingerprint = PatchHelper.Fingerprint(new
-        {
-            Format = LockData.FORMAT,
-            Input = PatchHelper.Fingerprint(input),
-            Patch = Context.Patches.Fingerprint("launch")
-        });
+        var fingerprint = LockValidationHelper.LaunchInput(Context.Patches, input);
         if (Context.BaseLock?.Launch is { } cached && cached.Input == fingerprint)
         {
             Context.Lock = Context.Lock with { Artifact = cached.Output, Launch = cached };

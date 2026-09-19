@@ -124,7 +124,7 @@ Common launch override keys:
 
 | Key | Type | Used By |
 | --- | --- | --- |
-| `java.home` | string | Java runtime selection. |
+| `java.home` | string | Java runtime selection for launch only. |
 | `java.max_memory` | integer | Max JVM memory in MB. |
 | `java.additional_arguments` | string | Extra JVM arguments. |
 | `window.width` | integer | Initial window width. |
@@ -159,6 +159,8 @@ trident instance run --instance cherry_picks --max-memory 8192 --command-wrapper
 `instance inspect` is an instance overview command. It shows core instance metadata and a small package preview; use `package list` for the complete installed package list or `package search` to find packages.
 
 Supported export formats are `trident`, `modrinth`, and `curseforge`.
+
+`instance build` prepares the optional matching Mojang runtime independently of Java home settings. Use `--java-home` with `instance run` to select a custom launch runtime.
 
 `reset` deletes build artifacts (`build/`, `data.lock.json`) but keeps `profile.json`, `import/`, and `persist/`.
 

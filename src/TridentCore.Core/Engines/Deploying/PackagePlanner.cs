@@ -1,59 +1,19 @@
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions.FileModels;
-using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
-using TridentCore.Core.Services;
+using TridentCore.Core.Exceptions;
+using TridentCore.Core.Extensions;
 using TridentCore.Core.Utilities;
-using TridentCore.Pref;
 
 namespace TridentCore.Core.Engines.Deploying;
 
-public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agent)
+public class PackagePlanner(ILogger<PackagePlanner> logger)
 {
-    // 独立规划 API，导出器与宿主物化流程使用。解析 + 评估规则 + 物化目标路径为
-    // PackagePlan；部署管线不用它——直接对锁用 ResolveAsync/EvaluateRule。
-    public async IAsyncEnumerable<PackagePlan> PlanAsync(
-        IReadOnlyList<Profile.Rice.Entry> packages,
-        PackagePlannerContext context)
-    {
-        var resolved = await ResolveAsync(packages, context.Filter).ConfigureAwait(false);
-        foreach (var (entry, package) in resolved)
-        {
-            var rule = EvaluateRule(entry, package, context.Rules);
-            yield return ToPlan(entry, package, rule);
-        }
-    }
-
-    public async Task<IReadOnlyList<(Profile.Rice.Entry Entry, Package Package)>> ResolveAsync(
-        IReadOnlyList<Profile.Rice.Entry> packages,
-        Filter filter)
-    {
-        var index = new List<(PackageIdentifier Key, Profile.Rice.Entry Origin)>();
-        foreach (var entry in packages)
-        {
-            if (!PackageHelper.TryParse(entry.Pref, out var parsed))
-            {
-                throw new FormatException($"Package {entry.Pref} is not a valid package");
-            }
-
-            index.Add((new(parsed.Repository, parsed.Namespace, parsed.Identity, parsed.Version), entry));
-        }
-
-        if (index.Count == 0)
-        {
-            return [];
-        }
-
-        var resolved = await agent.ResolveBatchAsync(index.Select(x => x.Key).Distinct(), filter).ConfigureAwait(false);
-
-        resolved.ThrowIfFailures();
-
-        // NOTE: 同项目同版本现可来自不同源（SyncPackages 以 (project, source) 为键）；
-        //  把一次解析扇出给共享该键的每个条目。
-        var byKey = index.ToLookup(x => x.Key, x => x.Origin);
-        return [.. resolved.Successful.SelectMany(x => byKey[x.Key].Select(origin => (origin, x.Value)))];
-    }
+    public IReadOnlyList<PackagePlan> Plan(
+        IReadOnlyList<(Profile.Rice.Entry Entry, Package Package)> resolved,
+        IReadOnlyList<Profile.Rice.Rule> rules) =>
+        [.. resolved.Select(x => ToPlan(x.Package, EvaluateRule(x.Entry, x.Package, rules)))];
 
     public LockData.PackageRule EvaluateRule(
         Profile.Rice.Entry entry,
@@ -79,7 +39,7 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
         return new(false, null, false);
     }
 
-    private static PackagePlan ToPlan(Profile.Rice.Entry entry, Package package, LockData.PackageRule rule)
+    public static PackagePlan ToPlan(Package package, LockData.PackageRule rule)
     {
         var relativeTarget = PackagePathHelper.RelativeTarget(rule.Normalizing,
                                                               rule.Destination,
@@ -95,5 +55,78 @@ public class PackagePlanner(ILogger<PackagePlanner> logger, RepositoryAgent agen
                    package.Download,
                    package.Hash)
         { IsSkipping = rule.Skipping };
+    }
+
+    public IReadOnlyList<LockData.LockedPackage> Plan(LockData data)
+    {
+        var projects = Arbitrate(data.Packages, ProjectKeyOf,
+            (_, winner) => winner.Resolved.ProjectName, data);
+        return Arbitrate(projects, x => x.RelativeTarget(), (path, _) => path, data).Where(x => !x.Rule.Skipping).ToArray();
+    }
+
+    // 按键去重——单成员直通；多个按叠加优先级排序取顶（物化）、其余抑制；同层平局不可解。
+    private static List<LockData.LockedPackage> Arbitrate(
+        IEnumerable<LockData.LockedPackage> items,
+        Func<LockData.LockedPackage, string> keyOf,
+        Func<string, LockData.LockedPackage, string> subjectOf,
+        LockData data)
+    {
+        var result = new List<LockData.LockedPackage>();
+
+        foreach (var group in items.GroupBy(keyOf, StringComparer.OrdinalIgnoreCase))
+        {
+            var members = group.ToList();
+            if (members.Count == 1)
+            {
+                result.Add(members[0]);
+                continue;
+            }
+
+            var ranked = members.Select(p => (Pkg: p, Rank: RankOf(p, data))).OrderByDescending(x => x.Rank).ToList();
+
+            var topRank = ranked[0].Rank;
+            if (ranked.Count(x => x.Rank.CompareTo(topRank) == 0) > 1)
+            {
+                throw new PackageConflictException(subjectOf(group.Key, ranked[0].Pkg),
+                [
+                    .. ranked.Where(x => x.Rank.CompareTo(topRank) == 0).Select(x => x.Pkg)
+                ]);
+            }
+
+            result.Add(ranked[0].Pkg);
+        }
+
+        return result;
+    }
+
+    // NOTE: (Tier, Index)：手动 3 > SourceOrders 列出的 2（末位最高）> 未列出的非整合包 1 >
+    //  当前整合包（Setup.Source）0。列进 SourceOrders 即声明显式叠加层。
+    private static (int Tier, int Index) RankOf(LockData.LockedPackage p, LockData data)
+    {
+        if (p.Source == null)
+        {
+            return (3, 0);
+        }
+
+        for (var i = 0; i < data.PackageSourceOrders.Count; i++)
+        {
+            if (data.PackageSourceOrders[i] == p.Source) return (2, i);
+        }
+
+        return p.Source == data.PackageSource ? (0, 0) : (1, 0);
+    }
+
+    private static string ProjectKeyOf(LockData.LockedPackage p)
+    {
+        if (PackageHelper.TryParse(p.Pref, out var parsed))
+        {
+            return string.Concat(parsed.Repository.ToLowerInvariant(),
+                                 "|",
+                                 parsed.Namespace ?? string.Empty,
+                                 "|",
+                                 parsed.Identity);
+        }
+
+        throw new FormatException("Invalid pref: " + p.Pref);
     }
 }

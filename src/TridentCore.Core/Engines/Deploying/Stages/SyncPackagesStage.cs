@@ -3,13 +3,14 @@ using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Repositories;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying.Stages;
 
 // NOTE: 按 pref 在 BaseLock（真源）与 Lock（产物）之间同步包，绝不重解析已锁 vid 的包。
 //  规则变更对缓存解析结果离线重算；仅 fingerprint 变化的 floating pref（或全新 pref）才
 //  命中仓库——规则微调永远漂移不了已锁版本。
-public class SyncPackagesStage(PackagePlanner planner) : StageBase
+public class SyncPackagesStage(PackageResolver resolver, PackagePlanner planner) : StageBase
 {
     protected override async Task OnProcessAsync(CancellationToken token)
     {
@@ -22,7 +23,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
         // Step 1——按 (project, source) 身份做 diff。vid 有意忽略，fixed→floating 翻转仍能匹配
         // 并继承已锁解析；含 source 使同项目来自不同层（整合包/手动/recipe）各自存活到
-        // FlattenPackages，由它按叠加优先级裁决同目标冲突。
+        // PackagePlanner，由它按叠加优先级裁决同目标冲突。
         var setupByKey = new Dictionary<Key, Profile.Rice.Entry>();
         foreach (var entry in enabled)
         {
@@ -40,7 +41,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
 
         // NOTE: floating 解析的 filter 只依赖 platform(Version/Loader)，不依赖 deploy options——
-        //  options 变更走 Verify(重部署门)，不在这里触发 floating 重解析。
+        //  规则和来源顺序变化不触发 floating 重解析。
         var platformChanged = baseLock == null || baseLock.Platform != Context.Lock.Platform;
 
         var result = new List<LockData.LockedPackage>();
@@ -54,7 +55,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
             var parsed = PackageHelper.Parse(entry.Pref);
             var floating = parsed.Version == null;
-            // NOTE: floating pref 在 platform/options fingerprint 变化时失效（解析依赖 filter）；
+            // NOTE: floating pref 在 platform 变化时失效（解析依赖 filter）；
             //  fixed pref 保持 vid，除非用户显式重钉（vid 与锁定不同）——尊重意图。
             var resolvedInvalid = floating
                                       ? platformChanged
@@ -68,9 +69,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             else
             {
                 var rule = planner.EvaluateRule(entry, locked.Resolved, rules);
-                // NOTE: SuppressedBy 只由 FlattenPackages 仲裁；此处匹配时重置，
-                //  使后来成为唯一占位的输家被重新激活，不留过期赢家指针。
-                result.Add(locked with { Pref = entry.Pref, Source = entry.Source, Rule = rule, SuppressedBy = null });
+                result.Add(locked with { Pref = entry.Pref, Source = entry.Source, Rule = rule });
             }
         }
 
@@ -81,7 +80,7 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
 
         if (toResolve.Count > 0)
         {
-            var resolved = await planner.ResolveAsync(toResolve, filter).ConfigureAwait(false);
+            var resolved = await resolver.ResolveAsync(toResolve, filter).ConfigureAwait(false);
             foreach (var (entry, package) in resolved)
             {
                 result.Add(BuildLocked(entry, package, rules));
@@ -93,7 +92,13 @@ public class SyncPackagesStage(PackagePlanner planner) : StageBase
             return;
         }
 
-        Context.Lock = Context.Lock with { Packages = result };
+        Context.Lock = Context.Lock with
+        {
+            Packages = result,
+            PackagesInput = LockValidationHelper.PackagesInput(setup),
+            PackageSource = setup.Source,
+            PackageSourceOrders = [.. setup.SourceOrders]
+        };
     }
 
     private LockData.LockedPackage BuildLocked(

@@ -45,8 +45,7 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
         Context.Patches = await PatchStorageHelper.LoadAsync(Context.Key, token).ConfigureAwait(false);
         Context.Lock = new()
         {
-            Platform = new(Context.Setup.Version, Context.Setup.Loader),
-            Runtime = Context.BaseLock?.Runtime
+            Platform = new(Context.Setup.Version, Context.Setup.Loader)
         };
     }
 }

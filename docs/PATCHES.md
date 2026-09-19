@@ -181,11 +181,15 @@ With no rules, an item applies everywhere. With rules, it begins disallowed and 
 
 ## Java and cache behavior
 
-Java selection has two sides. The **requirement** is the patched `compatibleJavaMajors` set. The **providers** are the Java homes the user configured — a per-major home in the launcher settings, or a path pinned for the whole instance (the instance override, the CLI option), which applies to any major — plus Trident's bundled runtimes. Resolution takes the newest demanded major a configured home covers, and only when no configured home covers any of them does it take the newest demanded major Trident can bundle, downloading it and resolving it to the Mojang runtime family for that major. A major the user did not configure is not a substitute for one they did, and a configured path is used as-is: never validated, never silently replaced by another runtime. When neither side covers any demanded major, deployment fails naming the demanded majors; when the requirement is empty, it fails reporting that no compatible Java remains. Both are reported to the user with a prompt to configure Java.
+Deployment selects an optional Mojang runtime major from the final patched `compatibleJavaMajors` set, independently of user-configured Java homes. A supported intersection selects the newest matching major; an empty intersection adds no runtime deployment requirement. All patches run before that choice is persisted in the lock.
+
+Launch uses the user's instance override or a matching configured home first, then falls back to the lock's runtime major. Configured paths are used as given, without validation or silent fallback. If launch cannot select a Java runtime, it reports an error for the user to configure Java or review the patch. A missing runtime requirement does not itself fail deployment.
+
+Mojang runtime files and their local index are shared by major. The lock does not pin a Java patch release. Removing a major's index causes the next deployment to fetch the current index and repair the shared files.
 
 Patch operations therefore change which majors the instance accepts, never the Java path.
 
-The lock has independent vanilla, loader and launch regions. Each fingerprints the deployment data format together with its relevant operations, assets and upstream output. The loader region also includes the profile's Minecraft version because its standard provider can resolve version-specific intermediary mappings independently of the vanilla output. Package version resolution still depends on the profile's Minecraft/loader compatibility fields, not on arbitrary patch edits. The runtime region depends on the resolved major. Unchanged downstream inputs retain their caches.
+The lock has independent vanilla, loader and launch regions. Each fingerprints the deployment data format together with its relevant operations, assets and upstream output. The loader region also includes the profile's Minecraft version because its standard provider can resolve version-specific intermediary mappings independently of the vanilla output. Package version resolution still depends on the profile's Minecraft/loader compatibility fields, not on arbitrary patch edits. The optional runtime major is derived from the final artifact. Unchanged downstream inputs retain their caches.
 
 An operation is always applied to that region's input, never reapplied to its already-patched cached output. Local asset content changes participate in invalidation. Source assets removed by the effective rules need not be materialized.
 

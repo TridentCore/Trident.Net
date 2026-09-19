@@ -1,88 +1,95 @@
 using System.IO.Compression;
-using System.Text.Json;
-using TridentCore.Core.Engines.Deploying;
-using HashAlgorithm = TridentCore.Abstractions.Utilities.HashAlgorithm;
 
 namespace TridentCore.Core.Utilities;
 
 public static class NativeHelper
 {
-    private const string INDEX_FILE_NAME = ".trident-natives.json";
-
-    public static async Task ExtractAsync(string directory, IReadOnlyList<EntityManifest.ExplosiveFile> archives, CancellationToken token)
+    public static async Task ExtractAsync(string directory, IReadOnlyList<Archive> archives, CancellationToken token)
     {
-        if (Path.Exists(directory) && (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
-        {
+        if (FilePlanningHelper.LinkTarget(directory) is not null)
             throw new InvalidDataException("The managed natives directory cannot be a symbolic link.");
+        var opened = new List<ZipArchive>();
+        try
+        {
+            var expected = new Dictionary<string, ZipArchiveEntry>(FileHelper.PathComparer);
+            foreach (var archive in archives)
+            {
+                token.ThrowIfCancellationRequested();
+                var zip = ZipFile.OpenRead(archive.SourcePath);
+                opened.Add(zip);
+                string? root = null;
+                var unwrap = archive.Unwrap && ZipArchiveHelper.HasSingleRootDirectory(zip, out root);
+                foreach (var entry in zip.Entries)
+                {
+                    if (entry.FullName.EndsWith('/') || archive.Exclude.Any(x => entry.FullName.StartsWith(x, StringComparison.Ordinal))) continue;
+                    var relative = unwrap ? entry.FullName[(root!.Length + 1)..] : entry.FullName;
+                    var target = PatchHelper.ResolvePath(directory, relative);
+                    expected[Path.GetRelativePath(directory, target)] = entry;
+                }
+            }
+            if (await IsCurrentAsync(directory, expected, token).ConfigureAwait(false)) return;
+            await ReplaceAsync(directory, expected, token).ConfigureAwait(false);
         }
-        var sources = new List<string>();
-        foreach (var archive in archives)
+        finally
+        {
+            foreach (var zip in opened) zip.Dispose();
+        }
+    }
+
+    private static async Task<bool> IsCurrentAsync(string directory, IReadOnlyDictionary<string, ZipArchiveEntry> expected, CancellationToken token)
+    {
+        if (!Directory.Exists(directory)) return expected.Count == 0;
+        var actual = new HashSet<string>(FileHelper.PathComparer);
+        var pending = new Stack<string>();
+        pending.Push(directory);
+        while (pending.TryPop(out var current))
         {
             token.ThrowIfCancellationRequested();
-            if (!FileHelper.IsPathEquivalent(archive.TargetDirectory, directory))
+            foreach (var entry in new DirectoryInfo(current).EnumerateFileSystemInfos())
             {
-                throw new InvalidDataException("A native archive must target the managed natives directory.");
+                if (entry.LinkTarget is not null) return false;
+                if (entry is DirectoryInfo) pending.Push(entry.FullName);
+                else actual.Add(Path.GetRelativePath(directory, entry.FullName));
             }
-            sources.Add(PatchHelper.Fingerprint(new
-            {
-                Hash = await FileHelper.ComputeHashAsync(archive.SourcePath, HashAlgorithm.Sha256).ConfigureAwait(false),
-                archive.Unwrap,
-                archive.Exclude
-            }));
         }
-        var fingerprint = PatchHelper.Fingerprint(new { Format = 1, Sources = sources });
-        if (await IsCurrentAsync(directory, fingerprint, token).ConfigureAwait(false))
+        if (!actual.SetEquals(expected.Keys)) return false;
+        foreach (var (relative, entry) in expected)
         {
-            return;
+            var path = PatchHelper.ResolvePath(directory, relative);
+            if (new FileInfo(path).Length != entry.Length) return false;
+            await using var source = entry.Open();
+            await using var target = File.OpenRead(path);
+            var left = new byte[81920];
+            var right = new byte[left.Length];
+            int count;
+            while ((count = await source.ReadAsync(left, token).ConfigureAwait(false)) != 0)
+            {
+                await target.ReadExactlyAsync(right.AsMemory(0, count), token).ConfigureAwait(false);
+                if (!left.AsSpan(0, count).SequenceEqual(right.AsSpan(0, count))) return false;
+            }
         }
+        return true;
+    }
 
+    private static async Task ReplaceAsync(string directory, IReadOnlyDictionary<string, ZipArchiveEntry> expected, CancellationToken token)
+    {
         var staging = directory + ".staging-" + Guid.NewGuid().ToString("N");
         var backup = directory + ".previous-" + Guid.NewGuid().ToString("N");
         var installed = false;
         try
         {
             Directory.CreateDirectory(staging);
-            foreach (var archive in archives)
-            {
-                using var zip = ZipFile.OpenRead(archive.SourcePath);
-                string? root = null;
-                var unwrap = archive.Unwrap && ZipArchiveHelper.HasSingleRootDirectory(zip, out root);
-                foreach (var entry in zip.Entries)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (entry.FullName.EndsWith('/') || archive.Exclude.Any(x => entry.FullName.StartsWith(x, StringComparison.Ordinal)))
-                    {
-                        continue;
-                    }
-                    var relative = unwrap ? entry.FullName[(root!.Length + 1)..] : entry.FullName;
-                    if (FileHelper.PathComparer.Equals(relative, INDEX_FILE_NAME))
-                    {
-                        throw new InvalidDataException("A native archive contains the reserved extraction index.");
-                    }
-                    var target = PatchHelper.ResolvePath(staging, relative);
-                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                    await using var source = entry.Open();
-                    await using var output = File.Create(target);
-                    await source.CopyToAsync(output, token).ConfigureAwait(false);
-                }
-            }
-
-            var files = new Dictionary<string, string>(FileHelper.PathComparer);
-            foreach (var file in Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories))
+            foreach (var (relative, entry) in expected)
             {
                 token.ThrowIfCancellationRequested();
-                files.Add(Path.GetRelativePath(staging, file).Replace('\\', '/'),
-                          await FileHelper.ComputeHashAsync(file, HashAlgorithm.Sha256).ConfigureAwait(false));
+                var target = PatchHelper.ResolvePath(staging, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                await using var source = entry.Open();
+                await using var output = File.Create(target);
+                await source.CopyToAsync(output, token).ConfigureAwait(false);
             }
-            await PatchStorageHelper.WriteJsonAsync(Path.Combine(staging, INDEX_FILE_NAME), new Extraction(fingerprint, files), token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-
-            // NOTE: Keep the extraction index inside the directory being swapped so a failed
-            //  replacement can never mark the previous native files as the new result.
-            if (Directory.Exists(directory))
-            {
-                Directory.Move(directory, backup);
-            }
+            if (Directory.Exists(directory)) Directory.Move(directory, backup);
             try
             {
                 Directory.Move(staging, directory);
@@ -90,66 +97,16 @@ public static class NativeHelper
             }
             catch
             {
-                if (Directory.Exists(backup))
-                {
-                    Directory.Move(backup, directory);
-                }
+                if (Directory.Exists(backup)) Directory.Move(backup, directory);
                 throw;
             }
         }
         finally
         {
-            if (Directory.Exists(staging))
-            {
-                Directory.Delete(staging, true);
-            }
-            if (installed && Directory.Exists(backup))
-            {
-                Directory.Delete(backup, true);
-            }
+            if (Directory.Exists(staging)) Directory.Delete(staging, true);
+            if (installed && Directory.Exists(backup)) Directory.Delete(backup, true);
         }
     }
 
-    private static async Task<bool> IsCurrentAsync(string directory, string fingerprint, CancellationToken token)
-    {
-        var index = Path.Combine(directory, INDEX_FILE_NAME);
-        if (!File.Exists(index) || (File.GetAttributes(index) & FileAttributes.ReparsePoint) != 0)
-        {
-            return false;
-        }
-        Extraction? extraction;
-        try
-        {
-            await using var stream = File.OpenRead(index);
-            extraction = await JsonSerializer.DeserializeAsync<Extraction>(stream, FileHelper.SerializerOptions, token).ConfigureAwait(false);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-        if (extraction?.Input != fingerprint || extraction.Files is null)
-        {
-            return false;
-        }
-        var actual = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                              .Select(x => Path.GetRelativePath(directory, x).Replace('\\', '/'))
-                              .Where(x => !FileHelper.PathComparer.Equals(x, INDEX_FILE_NAME))
-                              .ToHashSet(FileHelper.PathComparer);
-        if (!actual.SetEquals(extraction.Files.Keys))
-        {
-            return false;
-        }
-        foreach (var (relative, hash) in extraction.Files)
-        {
-            token.ThrowIfCancellationRequested();
-            var path = PatchHelper.ResolvePath(directory, relative);
-            if (await FileHelper.ComputeHashAsync(path, HashAlgorithm.Sha256).ConfigureAwait(false) != hash)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private sealed record Extraction(string Input, IReadOnlyDictionary<string, string> Files);
+    public sealed record Archive(string SourcePath, bool Unwrap, IReadOnlyList<string> Exclude);
 }

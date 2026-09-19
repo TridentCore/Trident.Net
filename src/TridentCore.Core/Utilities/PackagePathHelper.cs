@@ -2,7 +2,7 @@ using TridentCore.Abstractions.Repositories.Resources;
 
 namespace TridentCore.Core.Utilities;
 
-// 包在 build 内相对目标路径的唯一真源。FlattenPackages（冲突分组）、GenerateManifest
+// 包在 build 内相对目标路径的唯一真源。PackagePlanner（冲突分组）、DeploymentPlanner
 // （物化）与 PackagePlanner（独立规划/导出）共用，三处不可能漂移。
 public static class PackagePathHelper
 {

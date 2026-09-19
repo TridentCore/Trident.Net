@@ -48,13 +48,11 @@ public class CurseForgeExporter(IServiceProvider serviceProvider) : IProfileExpo
 
         if (pack.Options.OfflineMode)
         {
+            var resolver = serviceProvider.GetRequiredService<PackageResolver>();
             var planner = serviceProvider.GetRequiredService<PackagePlanner>();
             var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
-            var plans = await planner
-                             .PlanAsync([.. setup.Packages.Where(x => x.Enabled)],
-                                        new([.. setup.Rules.Where(x => x.Enabled)], Filter.FromSetup(setup)))
-                             .ToListAsync()
-                             .ConfigureAwait(false);
+            var resolvedPackages = await resolver.ResolveAsync([.. setup.Packages.Where(x => x.Enabled)], Filter.FromSetup(setup)).ConfigureAwait(false);
+            var plans = planner.Plan(resolvedPackages, [.. setup.Rules.Where(x => x.Enabled)]);
             var bag = new ConcurrentBag<(string, string)>();
             await materializer
                  .MaterializeAsync(plans,

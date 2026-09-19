@@ -7,9 +7,8 @@ public enum DeployStage
     ProcessLoader,
     ApplyLaunchPatch,
     SyncPackages,
-    FlattenPackages,
     PersistLock,
-    EnsureRuntime,
+    SelectRuntime,
     GenerateManifest,
     SolidifyManifest
 }

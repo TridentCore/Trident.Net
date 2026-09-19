@@ -68,13 +68,11 @@ public class MultiMcExporter(PrismLauncherService prismLauncherService, IService
         container.Attachments.Add(MultiMcHelper.PACK_INSTANCE_CFG, instanceCfgStream);
 
         // 把全部 mod 文件打进 .minecraft/（MultiMC 格式恒离线）。
+        var resolver = serviceProvider.GetRequiredService<PackageResolver>();
         var planner = serviceProvider.GetRequiredService<PackagePlanner>();
         var materializer = serviceProvider.GetRequiredService<PackageMaterializer>();
-        var plans = await planner
-                         .PlanAsync([.. setup.Packages.Where(x => x.Enabled)],
-                                    new([.. setup.Rules.Where(x => x.Enabled)], Filter.FromSetup(setup)))
-                         .ToListAsync()
-                         .ConfigureAwait(false);
+        var resolvedPackages = await resolver.ResolveAsync([.. setup.Packages.Where(x => x.Enabled)], Filter.FromSetup(setup)).ConfigureAwait(false);
+        var plans = planner.Plan(resolvedPackages, [.. setup.Rules.Where(x => x.Enabled)]);
         var bag = new ConcurrentBag<(string, string)>();
         await materializer
              .MaterializeAsync(plans,
