@@ -23,6 +23,7 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
 
         var build = PathDef.Default.DirectoryOfBuild(key);
         var candidates = new Dictionary<string, Projection>(FileHelper.PathComparer);
+        var packageLinks = new Dictionary<string, string>(FileHelper.PathComparer);
         foreach (var package in packages.Plan(data))
         {
             var parsed = PackageHelper.Parse(package.Pref);
@@ -30,6 +31,7 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 package.Resolved.VersionId, Path.GetExtension(package.Resolved.FileName));
             var target = FilePlanningHelper.ProjectionPath(build, package.RelativeTarget());
             candidates[target] = new(source, target, 0, false, package.Resolved.Download, package.Resolved.Hash);
+            packageLinks[target] = source;
         }
         Collect(PathDef.Default.DirectoryOfImport(key), build, 1, candidates, token);
         Collect(PathDef.Default.DirectoryOfPersist(key), build, 2, candidates, token);
@@ -82,7 +84,20 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 if (projection.Directory)
                 {
                     if (File.Exists(projection.Target)) throw Conflict(projection.Target);
-                    if (Directory.Exists(projection.Target)) BackportDirectory(projection.Target, projection.Source, plan, token);
+                    if (Directory.Exists(projection.Target))
+                    {
+                        foreach (var existing in existingLinks.Values.Where(x => FileHelper.IsInDirectory(x.Path, projection.Target)))
+                        {
+                            var relative = Path.GetRelativePath(projection.Target, existing.Path);
+                            var persisted = Path.Combine(projection.Source, relative);
+                            if ((packageLinks.TryGetValue(existing.Path, out var packageSource)
+                                 && FilePlanningHelper.LinkMatches(existing.Path, packageSource))
+                                || (Path.Exists(persisted) && FilePlanningHelper.LinkMatches(existing.Path, persisted)))
+                                continue;
+                            throw new InvalidDataException($"Cannot backport an unmanaged symbolic link: {existing.Path}");
+                        }
+                        BackportDirectory(projection.Target, projection.Source, plan, token);
+                    }
                 }
                 else
                 {
@@ -99,28 +114,38 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
 
     private static void Collect(string source, string build, int priority, IDictionary<string, Projection> candidates, CancellationToken token)
     {
+        if (FilePlanningHelper.LinkTarget(source) is not null)
+            throw new InvalidDataException($"Managed source directory cannot be a symbolic link: {source}");
         if (!Directory.Exists(source)) return;
-        var pending = new Stack<string>();
-        pending.Push(source);
-        while (pending.TryPop(out var directory))
+        var pending = new Stack<(string Directory, bool Covered)>();
+        pending.Push((source, false));
+        while (pending.TryPop(out var current))
         {
             token.ThrowIfCancellationRequested();
-            if (FilePlanningHelper.LinkTarget(directory) is not null)
-                throw new InvalidDataException($"Managed source directory cannot be a symbolic link: {directory}");
+            var (directory, covered) = current;
             if (priority == 2 && File.Exists(Path.Combine(directory, ".keep")))
             {
                 if (FileHelper.IsPathEquivalent(source, directory))
                     throw new InvalidDataException("The persistence root cannot be projected as one directory.");
-                var target = FilePlanningHelper.ProjectionPath(build, Path.GetRelativePath(source, directory));
-                candidates[target] = new(directory, target, priority, true, null, null);
-                continue;
+                if (!covered)
+                {
+                    var target = FilePlanningHelper.ProjectionPath(build, Path.GetRelativePath(source, directory));
+                    candidates[target] = new(directory, target, priority, true, null, null);
+                    covered = true;
+                }
             }
-            foreach (var file in Directory.EnumerateFiles(directory))
+            foreach (var entry in new DirectoryInfo(directory).EnumerateFileSystemInfos())
             {
-                var target = FilePlanningHelper.ProjectionPath(build, Path.GetRelativePath(source, file));
-                candidates[target] = new(file, target, priority, false, null, null);
+                if (entry.LinkTarget is not null)
+                    throw new InvalidDataException($"Managed source cannot contain a symbolic link: {entry.FullName}");
+                if (entry is DirectoryInfo)
+                    pending.Push((entry.FullName, covered));
+                else if (!covered)
+                {
+                    var target = FilePlanningHelper.ProjectionPath(build, Path.GetRelativePath(source, entry.FullName));
+                    candidates[target] = new(entry.FullName, target, priority, false, null, null);
+                }
             }
-            foreach (var child in Directory.EnumerateDirectories(directory)) pending.Push(child);
         }
     }
 
@@ -148,7 +173,12 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
         if (!Directory.Exists(target)) plan.Operations.Add(new DeploymentPlan.CreateDirectory(target));
         foreach (var entry in new DirectoryInfo(source).EnumerateFileSystemInfos())
         {
-            if (entry.LinkTarget is not null) continue;
+            if (entry.LinkTarget is not null)
+            {
+                if (!plan.Operations.OfType<DeploymentPlan.RemoveLink>().Any(x => FileHelper.IsPathEquivalent(x.Path, entry.FullName)))
+                    throw new InvalidDataException($"Cannot backport an unmanaged symbolic link: {entry.FullName}");
+                continue;
+            }
             var destination = Path.Combine(target, entry.Name);
             if (entry is DirectoryInfo) BackportDirectory(entry.FullName, destination, plan, token);
             else plan.Operations.Add(new DeploymentPlan.Move(entry.FullName, destination));

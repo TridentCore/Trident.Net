@@ -12,7 +12,7 @@ public class GenerateManifestStage(DeploymentPlanner planner, DeploymentIndexSer
         Append(new AssetPlanner().Plan(assets, token));
         if (Context.Lock.RuntimeMajor is { } major)
         {
-            var runtime = await indexes.EnsureRuntimeAsync(major, token).ConfigureAwait(false);
+            var runtime = await indexes.EnsureRuntimeAsync(major, Context.Lock.RuntimeIndex, token).ConfigureAwait(false);
             Append(new RuntimePlanner().Plan(runtime, token));
         }
         Context.Manifest = plan;

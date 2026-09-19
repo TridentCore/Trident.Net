@@ -25,11 +25,13 @@ public static class DeploymentIndexHelper
         catch (DirectoryNotFoundException) { return null; }
     }
 
-    public static async Task<RuntimeIndex?> ReadRuntimeAsync(uint major, CancellationToken token = default)
+    public static async Task<RuntimeIndex?> ReadRuntimeAsync(uint major, FileHash? hash, CancellationToken token = default)
     {
         try
         {
-            var content = await File.ReadAllTextAsync(PathDef.Default.FileOfRuntimeManifest(major), token).ConfigureAwait(false);
+            var path = PathDef.Default.FileOfRuntimeManifest(major);
+            if (!FileHelper.VerifyModified(path, null, hash)) return null;
+            var content = await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
             return ParseRuntime(major, content);
         }
         catch (JsonException) { return null; }

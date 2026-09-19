@@ -22,6 +22,9 @@ public record LockData
     public record ArtifactRegion(string Input, ArtifactData Output);
 
     public uint? RuntimeMajor { get; init; }
+    public RuntimeIndexReference? RuntimeIndex { get; init; }
+
+    public record RuntimeIndexReference(Uri Url, FileHash? Hash);
 
     #region Nested type: PlatformData
 
