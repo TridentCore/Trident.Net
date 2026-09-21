@@ -85,7 +85,7 @@ public sealed class DeploymentDiffer
 
         public void EvaluateRequirements(CancellationToken token)
         {
-            foreach (var requirement in Target.Downloads)
+            foreach (var requirement in Target.Requirements)
             {
                 token.ThrowIfCancellationRequested();
                 if (FileHelper.VerifyModified(requirement.Path, null, requirement.Hash))
@@ -98,7 +98,8 @@ public sealed class DeploymentDiffer
                 {
                     if (requirement.Url is null)
                         throw new InvalidDataException($"Local deployment source is missing or changed: {requirement.Path}");
-                    Plan.Downloads.Add(requirement);
+                    Plan.Downloads.Add(new(
+                        requirement.Path, requirement.Url, requirement.Hash, requirement.Executable));
                 }
             }
         }
@@ -230,6 +231,9 @@ public sealed class DeploymentDiffer
             }
             if (!OldPersist.TryGetValue(buildPath, out var previous))
                 throw BuildArtifactConflictException.Occupied(buildPath);
+            // WARNING: persist mtime 变化不能证明它比 build 更新。程序可能先通过链接 Open-Overwrite persist，
+            //  再以 Delete-Create 写出更晚的 build 普通文件；当前策略仍让 persist 胜出并删除该 build 副本。
+            //  在双副本仲裁方案闭合前，不要把这里的 mtime 判断视为完整的写入先后证据。
             if (persistTicks != previous.LastWriteTimeUtcTicks)
             {
                 Plan.Operations.Add(new DeploymentPlan.RemoveBuildFile(buildPath));

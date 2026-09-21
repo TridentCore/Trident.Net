@@ -116,6 +116,8 @@ services
     .AddMclogs()
     .AddTransient<PackageResolver>()
     .AddTransient<PackagePlanner>()
+    .AddTransient<ProjectionArbitrator>()
+    .AddTransient<SourceProjectionPlanner>()
     .AddTransient<PackageMaterializer>()
     .AddTransient<DeploymentPlanner>()
     .AddTransient<DeploymentDiffer>()
@@ -129,7 +131,7 @@ services
 
 在自己的应用中使用时，优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
 
-资源规划可独立于 `DeployEngine` 使用：`LockValidationHelper` 验证已解析需求，`DeploymentPlanner` 生成库与本地投影的目标视图，`DeploymentDiffer` 将目标视图与当前运行目录比较，`AssetPlanner` / `RuntimePlanner` 展开可读的本地索引。这些组件不联网、不写文件。部署消费方可用 `DeploymentIndexService` 补齐缺失索引，就绪检查消费方则直接停止。部署按锁内可选 major 准备 Mojang Java 运行时，不受用户启动偏好影响；用户 Java Home 仅在启动时选择。
+资源规划可独立于 `DeployEngine` 使用：`LockValidationHelper` 验证已解析需求，`SourceProjectionPlanner` 扫描受管来源，`ProjectionArbitrator` 以不读写文件系统的纯逻辑应用路径优先级，`DeploymentPlanner` 组装库与投影目标视图，`DeploymentDiffer` 再将目标视图与当前运行目录比较；`AssetPlanner` / `RuntimePlanner` 展开可读的本地索引。这些组件不联网、不写文件。部署消费方可用 `DeploymentIndexService` 补齐缺失索引，就绪检查消费方则直接停止。部署按锁内可选 major 准备 Mojang Java 运行时，不受用户启动偏好影响；用户 Java Home 仅在启动时选择。
 
 ## Trident 作为 CLI
 

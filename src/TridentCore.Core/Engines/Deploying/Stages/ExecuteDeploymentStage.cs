@@ -24,8 +24,6 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1)
         }, async (download, ct) =>
         {
-            if (download.Url is null)
-                throw new InvalidOperationException($"The planned download has no source: {download.Path}");
             await DownloadHelper.DownloadAsync(client, download.Url, download.Path, download.Hash, ct).ConfigureAwait(false);
             if (download.Executable) MakeExecutable(download.Path);
             lock (ProgressStream) ProgressStream.OnNext((++completed, total));

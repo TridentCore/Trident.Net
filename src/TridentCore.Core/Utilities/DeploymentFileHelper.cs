@@ -26,15 +26,15 @@ public static class DeploymentFileHelper
 
     public static void RequireFile(DeploymentTarget target, string path, Uri? url, FileHash? hash, bool executable = false)
     {
-        var existing = target.Downloads.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
+        var existing = target.Requirements.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
         if (existing is not null)
         {
             if (existing.Hash != hash || existing.Url != url) throw new InvalidDataException($"Conflicting file requirements: {path}");
             if (executable && !existing.Executable)
-                target.Downloads[target.Downloads.IndexOf(existing)] = existing with { Executable = true };
+                target.Requirements[target.Requirements.IndexOf(existing)] = existing with { Executable = true };
             return;
         }
-        target.Downloads.Add(new(path, url, hash, executable));
+        target.Requirements.Add(new(path, url, hash, executable));
     }
 
     public static string? LinkTarget(string path) => new FileInfo(path).LinkTarget;

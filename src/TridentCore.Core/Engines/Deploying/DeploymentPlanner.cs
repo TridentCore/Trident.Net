@@ -1,13 +1,15 @@
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Utilities;
-using TridentCore.Core.Exceptions;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying;
 
-public sealed class DeploymentPlanner(PackagePlanner packages)
+public sealed class DeploymentPlanner(
+    PackagePlanner packages,
+    SourceProjectionPlanner sources,
+    ProjectionArbitrator arbitrator)
 {
     public DeploymentTarget CreateTarget(string key, LockData data, CancellationToken token = default)
     {
@@ -38,81 +40,10 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 package.Resolved.Hash);
             DeploymentFileHelper.RequireProjection(candidates, build, projection);
         }
-        Collect(PathDef.Default.DirectoryOfImport(key), build, DeploymentTarget.ProjectionKind.Import, candidates, token);
-        Collect(PathDef.Default.DirectoryOfPersist(key), build, DeploymentTarget.ProjectionKind.Persist, candidates, token);
-
-        target.Projections.AddRange(Select(candidates.Values));
+        var sourceProjections = sources.CreateTarget(key, token);
+        target.Projections.AddRange(arbitrator.Select(candidates.Values.Concat(sourceProjections)));
         foreach (var projection in target.Projections.Where(x => x.Kind == DeploymentTarget.ProjectionKind.Package))
             DeploymentFileHelper.RequireFile(target, projection.Source, projection.Url, projection.Hash);
         return target;
     }
-
-    private static List<DeploymentTarget.Projection> Select(IEnumerable<DeploymentTarget.Projection> candidates)
-    {
-        var selected = new List<DeploymentTarget.Projection>();
-        foreach (var candidate in candidates.OrderByDescending(x => x.Kind).ThenBy(x => x.Target.Length))
-        {
-            var ancestor = selected.FirstOrDefault(x => FileHelper.IsInDirectory(candidate.Target, x.Target));
-            if (ancestor is not null)
-            {
-                if (ancestor.Kind == candidate.Kind) throw Conflict(candidate.Target);
-                continue;
-            }
-
-            var descendants = selected.Where(x => FileHelper.IsInDirectory(x.Target, candidate.Target)).ToArray();
-            if (descendants.Length != 0)
-            {
-                if (descendants.Any(x => x.Kind == candidate.Kind)) throw Conflict(candidate.Target);
-                continue;
-            }
-            selected.Add(candidate);
-        }
-        return selected;
-    }
-
-    private static void Collect(
-        string source,
-        string build,
-        DeploymentTarget.ProjectionKind kind,
-        IDictionary<string, DeploymentTarget.Projection> candidates,
-        CancellationToken token)
-    {
-        if (DeploymentFileHelper.LinkTarget(source) is not null)
-            throw new InvalidDataException($"Managed source directory cannot be a symbolic link: {source}");
-        if (!Directory.Exists(source)) return;
-        var pending = new Stack<(string Directory, bool Covered)>();
-        pending.Push((source, false));
-        while (pending.TryPop(out var current))
-        {
-            token.ThrowIfCancellationRequested();
-            var (directory, covered) = current;
-            if (kind == DeploymentTarget.ProjectionKind.Persist && File.Exists(Path.Combine(directory, ".keep")))
-            {
-                if (FileHelper.IsPathEquivalent(source, directory))
-                    throw new InvalidDataException("The persistence root cannot be projected as one directory.");
-                if (!covered)
-                {
-                    var target = DeploymentFileHelper.ProjectionPath(build, Path.GetRelativePath(source, directory));
-                    DeploymentFileHelper.RequireProjection(candidates, build, new(directory, target, kind, true, null, null));
-                    covered = true;
-                }
-            }
-
-            foreach (var entry in new DirectoryInfo(directory).EnumerateFileSystemInfos())
-            {
-                if (entry.LinkTarget is not null)
-                    throw new InvalidDataException($"Managed source cannot contain a symbolic link: {entry.FullName}");
-                if (entry is DirectoryInfo)
-                    pending.Push((entry.FullName, covered));
-                else if (!covered)
-                {
-                    var target = DeploymentFileHelper.ProjectionPath(build, Path.GetRelativePath(source, entry.FullName));
-                    DeploymentFileHelper.RequireProjection(candidates, build, new(entry.FullName, target, kind, false, null, null));
-                }
-            }
-        }
-    }
-
-    private static BuildArtifactConflictException Conflict(string path) =>
-        new(path, BuildArtifactConflictException.ConflictKind.OccupiedByRegularFileSystemEntry);
 }

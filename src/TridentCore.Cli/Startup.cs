@@ -101,6 +101,8 @@ public static class Startup
            .AddTransient<IProfileExporter, ModrinthExporter>()
            .AddTransient<IProfileExporter, MultiMcExporter>()
            .AddTransient<PackagePlanner>()
+           .AddTransient<ProjectionArbitrator>()
+           .AddTransient<SourceProjectionPlanner>()
            .AddTransient<DeploymentPlanner>()
            .AddTransient<DeploymentDiffer>()
            .AddTransient<DeploymentIndexService>()

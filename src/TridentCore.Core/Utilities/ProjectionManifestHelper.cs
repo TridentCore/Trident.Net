@@ -69,6 +69,8 @@ public static class ProjectionManifestHelper
         Directory.CreateDirectory(build);
         if (DeploymentFileHelper.LinkTarget(build) is not null)
             throw new InvalidDataException($"The run directory cannot be a symbolic link: {build}");
+        // WARNING: import 与 persist 清单生命周期独立并按顺序提交；第二次写入失败可能留下不同代次，
+        //  此处不提供跨文件事务或回滚，下一次部署按磁盘上的两份清单继续求差。
         await WriteAtomicAsync(build, PathDef.Default.FileOfImportProjectionManifest(key), imports, token).ConfigureAwait(false);
         await WriteAtomicAsync(build, PathDef.Default.FileOfPersistProjectionManifest(key), persists, token).ConfigureAwait(false);
     }

@@ -589,8 +589,8 @@ public class InstanceManager(
                 }
             }
 
-            // Phase 3 — commit: atomic dir swap + per-file .tmp promotion. Synchronous renames,
-            //  no cancellation window between them; a hard crash here is an accepted edge case.
+            // Phase 3 — commit: atomic directory swap, per-file promotion, and direct import manifest invalidation.
+            //  Profile persistence remains last so manifest deletion failures use the existing rollback path.
             Directory.Move(importDir, oldImportDir);
             Directory.Move(stagingDir, importDir);
             patchUpdate.Commit();
@@ -599,6 +599,8 @@ public class InstanceManager(
             {
                 File.Move(Path.Combine(homeDir, target + ".tmp"), Path.Combine(homeDir, target), true);
             }
+            // WARNING: 清单失效不单独回滚；删除成功后若 profile 提交失败，下一次部署按无 import 清单建立新基线。
+            ProjectionManifestHelper.DeleteImport(key);
             profileManager.CommitUpdate(key, preparedProfile, false);
         }
         catch
@@ -656,15 +658,6 @@ public class InstanceManager(
                 TryCleanup(homeBackupDir);
             }
             throw;
-        }
-
-        try
-        {
-            ProjectionManifestHelper.DeleteImport(key);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Updated {key} but could not clear the stale import projection manifest", key);
         }
 
         // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.

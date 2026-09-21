@@ -357,42 +357,25 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         IReadOnlyDictionary<string, ReferenceInfo> references,
         CancellationToken token)
     {
-        var build = PathDef.Default.DirectoryOfBuild(key);
-        var temporaryDirectory = Path.Combine(build, PathDef.MANIFEST_TEMPORARY_DIRECTORY_NAME);
         var entries = new[]
         {
             (Path: PathDef.Default.FileOfImportProjectionManifest(key), Import: true),
             (Path: PathDef.Default.FileOfPersistProjectionManifest(key), Import: false)
         };
-        var staged = new Dictionary<string, (string Path, ReferenceInfo Reference)>(FileHelper.PathComparer);
-        try
+        // WARNING: 两份清单生命周期独立并按顺序直接恢复；I/O 失败可能只完成其中一份，
+        //  此处不提供跨文件事务或中断恢复，后续部署将按磁盘上实际存在的清单重新规划。
+        foreach (var entry in entries)
         {
-            foreach (var entry in entries)
-            {
-                token.ThrowIfCancellationRequested();
-                var relative = Path.GetRelativePath(home, entry.Path);
-                if (!references.TryGetValue(relative, out var reference)) continue;
-                var temporary = Path.Combine(temporaryDirectory, $"{Path.GetFileName(entry.Path)}.{Guid.NewGuid():N}.restore");
-                DeploymentFileHelper.EnsureRealParent(temporary, build);
-                File.Copy(PathDef.Default.FileOfSnapshotObject(key, reference.Hash), temporary, false);
-                staged.Add(entry.Path, (temporary, reference));
-            }
+            token.ThrowIfCancellationRequested();
+            if (entry.Import) ProjectionManifestHelper.DeleteImport(key);
+            else ProjectionManifestHelper.DeletePersist(key);
 
-            foreach (var entry in entries)
-            {
-                if (entry.Import) ProjectionManifestHelper.DeleteImport(key);
-                else ProjectionManifestHelper.DeletePersist(key);
-                if (!staged.TryGetValue(entry.Path, out var restore)) continue;
-                File.Move(restore.Path, entry.Path, false);
-                File.SetAttributes(entry.Path, restore.Reference.Attributes);
-                File.SetLastWriteTime(entry.Path, restore.Reference.LastModifiedAt);
-            }
-        }
-        finally
-        {
-            foreach (var restore in staged.Values) File.Delete(restore.Path);
-            if (Directory.Exists(temporaryDirectory) && !Directory.EnumerateFileSystemEntries(temporaryDirectory).Any())
-                Directory.Delete(temporaryDirectory, false);
+            var relative = Path.GetRelativePath(home, entry.Path);
+            if (!references.TryGetValue(relative, out var reference)) continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(entry.Path)!);
+            File.Copy(PathDef.Default.FileOfSnapshotObject(key, reference.Hash), entry.Path, false);
+            File.SetAttributes(entry.Path, reference.Attributes);
+            File.SetLastWriteTime(entry.Path, reference.LastModifiedAt);
         }
     }
 
