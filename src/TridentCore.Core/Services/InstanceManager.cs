@@ -258,17 +258,17 @@ public class InstanceManager(
                 Progress = new ActivityProgress.Indeterminate(current.ToString())
             });
 
-            // 只有固实阶段能报出文件计数，其余阶段保持脉冲。
-            if (stage is SolidifyManifestStage solidify)
+            // 只有部署执行阶段能报出文件计数，其余阶段保持脉冲。
+            if (stage is ExecuteDeploymentStage execute)
             {
-                solidify
+                execute
                    .ProgressStream.Subscribe(x => run.Mutate<InstanceActivity.Deploying>(a => a with
                     {
                         FileCount = x,
                         Progress = new ActivityProgress.Determinate(current.ToString(),
                                                                     x.Total == 0 ? 0d : (double)x.Current / x.Total)
                     }))
-                   .DisposeWith(solidify);
+                   .DisposeWith(execute);
             }
 
             logger.LogInformation("Enter stage {name}", stage.GetType().Name);
@@ -289,8 +289,8 @@ public class InstanceManager(
             SyncPackagesStage => DeployStage.SyncPackages,
             PersistLockStage => DeployStage.PersistLock,
             SelectRuntimeStage => DeployStage.SelectRuntime,
-            GenerateManifestStage => DeployStage.GenerateManifest,
-            SolidifyManifestStage => DeployStage.SolidifyManifest,
+            PlanDeploymentStage => DeployStage.PlanDeployment,
+            ExecuteDeploymentStage => DeployStage.ExecuteDeployment,
             _ => throw new NotSupportedException($"Unrecognized deploy stage {stage.GetType().Name}")
         };
 
@@ -527,8 +527,17 @@ public class InstanceManager(
             container.Profile.Setup.Version, container.Profile.Setup.Loader,
             [.. container.Profile.Setup.Packages.Select(x => x.Pref)], container.Profile.Overrides);
         var importDir = PathDef.Default.DirectoryOfImport(key);
+        if (DeploymentFileHelper.LinkTarget(importDir) is not null)
+            throw new InvalidDataException($"Managed source directory cannot be a symbolic link: {importDir}");
         Directory.CreateDirectory(importDir);
         var buildDir = PathDef.Default.DirectoryOfBuild(key);
+        var importManifestPath = PathDef.Default.FileOfImportProjectionManifest(key);
+        var importManifest = ProjectionManifestHelper.ReadImport(key);
+        var oldProjectionPaths = File.Exists(importManifestPath)
+            ? importManifest.Files
+            : DeploymentFileHelper.EnumerateFilesWithoutLinks(importDir)
+                .Select(x => Path.GetRelativePath(importDir, x).Replace(Path.DirectorySeparatorChar, '/'))
+                .ToArray();
 
         var token = run.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);
@@ -562,20 +571,15 @@ public class InstanceManager(
             await importers.ExtractPatchesAsync(patchStagingHome, container, pack, token).ConfigureAwait(false);
             patchUpdate = await PatchStorageHelper.PrepareImportUpdateAsync(homeDir, patchStagingHome, token).ConfigureAwait(false);
 
-            // Phase 2 — back up old live (build projections of old import) before replacing anything.
-            // NOTE: deploy 只补缺失、不覆盖现存（保留玩家改动），所以旧 import 的 build 投影必须由 update 显式清，
-            //  不能丢给 deploy；备份是为了失败时把这些带玩家痕迹的 live 副本原样还原。
-            foreach (var file in Directory.EnumerateFiles(importDir, "*", SearchOption.AllDirectories))
+            // Phase 2 — back up old build projections before replacing anything.
+            // NOTE: the manifest includes projections whose import source was already removed by the author.
+            foreach (var relative in oldProjectionPaths)
             {
                 token.ThrowIfCancellationRequested();
-                var rel = Path.GetRelativePath(importDir, file);
-                var live = Path.Combine(buildDir, rel);
-                if (!File.Exists(live) || File.ResolveLinkTarget(live, false) is not null)
-                {
-                    continue;
-                }
+                var live = ProjectionManifestHelper.ResolveStoredPath(buildDir, relative);
+                if (!File.Exists(live) || DeploymentFileHelper.HasLinkAtOrAbove(live, buildDir)) continue;
 
-                var backup = Path.Combine(liveBackupDir, rel);
+                var backup = Path.Combine(liveBackupDir, relative.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
                 File.Move(live, backup);
             }
@@ -658,6 +662,15 @@ public class InstanceManager(
                 TryCleanup(homeBackupDir);
             }
             throw;
+        }
+
+        try
+        {
+            ProjectionManifestHelper.DeleteImport(key);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Updated {key} but could not clear the stale import projection manifest", key);
         }
 
         // Phase 4 — drop backups. Non-critical: next deploy rebuilds live from the new import.

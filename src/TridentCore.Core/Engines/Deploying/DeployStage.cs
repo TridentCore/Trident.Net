@@ -9,6 +9,6 @@ public enum DeployStage
     SyncPackages,
     PersistLock,
     SelectRuntime,
-    GenerateManifest,
-    SolidifyManifest
+    PlanDeployment,
+    ExecuteDeployment
 }

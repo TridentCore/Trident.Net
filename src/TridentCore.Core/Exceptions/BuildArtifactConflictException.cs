@@ -5,7 +5,7 @@ public class BuildArtifactConflictException(string targetPath, BuildArtifactConf
 {
     #region Nested type: ConflictKind
 
-    public enum ConflictKind { OccupiedByRegularFileSystemEntry, LegacyImportProjection }
+    public enum ConflictKind { OccupiedByRegularFileSystemEntry }
 
     #endregion
 

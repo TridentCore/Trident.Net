@@ -12,7 +12,7 @@ public sealed class RuntimePlanner
         foreach (var file in index.Files)
         {
             token.ThrowIfCancellationRequested();
-            FilePlanningHelper.RequireFile(plan, PatchHelper.ResolvePath(root, file.Path), file.Download, file.Hash, file.Executable);
+            DeploymentFileHelper.RequireFile(plan, PatchHelper.ResolvePath(root, file.Path), file.Download, file.Hash, file.Executable);
         }
         return plan;
     }

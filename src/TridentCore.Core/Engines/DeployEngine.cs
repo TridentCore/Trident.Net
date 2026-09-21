@@ -28,8 +28,8 @@ public class DeployEngine(
             typeof(SyncPackagesStage),
             typeof(SelectRuntimeStage),
             typeof(PersistLockStage),
-            typeof(GenerateManifestStage),
-            typeof(SolidifyManifestStage)
+            typeof(PlanDeploymentStage),
+            typeof(ExecuteDeploymentStage)
         ];
 
         private int _index = -1;

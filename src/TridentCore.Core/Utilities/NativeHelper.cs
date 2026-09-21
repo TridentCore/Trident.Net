@@ -6,7 +6,7 @@ public static class NativeHelper
 {
     public static async Task ExtractAsync(string directory, IReadOnlyList<Archive> archives, CancellationToken token)
     {
-        if (FilePlanningHelper.LinkTarget(directory) is not null)
+        if (DeploymentFileHelper.LinkTarget(directory) is not null)
             throw new InvalidDataException("The managed natives directory cannot be a symbolic link.");
         var opened = new List<ZipArchive>();
         try

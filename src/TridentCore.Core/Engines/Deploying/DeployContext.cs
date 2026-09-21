@@ -13,7 +13,7 @@ public class DeployContext(
     internal LockData? BaseLock;
     internal LockData Lock = null!;
     internal PatchSet Patches = null!;
-    internal DeploymentPlan? Manifest;
+    internal DeploymentPlan? Plan;
 
     public string Key => key;
 
