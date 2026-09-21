@@ -24,6 +24,23 @@ public static class ProjectionManifestHelper
         return File.Exists(path) ? ReadPersistAt(path, PathDef.Default.DirectoryOfBuild(key)) : new();
     }
 
+    public static void Validate(string key)
+    {
+        ReadImport(key);
+        ReadPersist(key);
+    }
+
+    public static bool HasImportManifest(string key) => File.Exists(PathDef.Default.FileOfImportProjectionManifest(key));
+
+    public static IReadOnlyList<string> EnumerateImportSourcePaths(string key)
+    {
+        var import = PathDef.Default.DirectoryOfImport(key);
+        return [.. DeploymentFileHelper.EnumerateFilesWithoutLinks(import)
+            .Select(x => Path.GetRelativePath(import, x).Replace(Path.DirectorySeparatorChar, '/'))];
+    }
+
+    public static IReadOnlyList<string> GetImportOwnershipPaths(string key) =>
+        HasImportManifest(key) ? ReadImport(key).Files : EnumerateImportSourcePaths(key);
     public static ImportProjectionManifest ReadImportAt(string path, string build)
     {
         var manifest = JsonSerializer.Deserialize<ImportProjectionManifest>(File.ReadAllText(path), FileHelper.SerializerOptions)

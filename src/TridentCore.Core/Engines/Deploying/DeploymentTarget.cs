@@ -5,7 +5,6 @@ namespace TridentCore.Core.Engines.Deploying;
 public sealed class DeploymentTarget
 {
     public List<DeploymentPlan.Download> Downloads { get; } = [];
-    public List<DeploymentPlan.Operation> PreparationOperations { get; } = [];
     public List<Projection> Projections { get; } = [];
 
     public enum ProjectionKind { Package = 0, Import = 1, Persist = 2 }

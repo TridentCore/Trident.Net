@@ -531,13 +531,7 @@ public class InstanceManager(
             throw new InvalidDataException($"Managed source directory cannot be a symbolic link: {importDir}");
         Directory.CreateDirectory(importDir);
         var buildDir = PathDef.Default.DirectoryOfBuild(key);
-        var importManifestPath = PathDef.Default.FileOfImportProjectionManifest(key);
-        var importManifest = ProjectionManifestHelper.ReadImport(key);
-        var oldProjectionPaths = File.Exists(importManifestPath)
-            ? importManifest.Files
-            : DeploymentFileHelper.EnumerateFilesWithoutLinks(importDir)
-                .Select(x => Path.GetRelativePath(importDir, x).Replace(Path.DirectorySeparatorChar, '/'))
-                .ToArray();
+        var oldProjectionPaths = ProjectionManifestHelper.GetImportOwnershipPaths(key);
 
         var token = run.Token;
         var homeDir = PathDef.Default.DirectoryOfHome(key);

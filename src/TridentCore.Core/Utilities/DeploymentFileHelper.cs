@@ -14,39 +14,20 @@ public static class DeploymentFileHelper
         return target;
     }
 
-    public static void RequireFile(DeploymentPlan plan, string path, Uri? url, FileHash? hash, bool executable = false) =>
-        RequireFile(plan.Downloads, plan.Operations, path, url, hash, executable);
-
-    public static void RequireFile(DeploymentTarget target, string path, Uri? url, FileHash? hash, bool executable = false) =>
-        RequireFile(target.Downloads, target.PreparationOperations, path, url, hash, executable);
-
-    private static void RequireFile(
-        ICollection<DeploymentPlan.Download> downloads,
-        ICollection<DeploymentPlan.Operation> operations,
-        string path,
-        Uri? url,
-        FileHash? hash,
-        bool executable)
+    public static void RequireFile(DeploymentTarget target, string path, Uri? url, FileHash? hash, bool executable = false)
     {
-        if (!FileHelper.VerifyModified(path, null, hash))
+        var existing = target.Downloads.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
+        if (existing is not null)
         {
-            if (url is null) throw new InvalidDataException($"Local deployment source is missing or changed: {path}");
-            var existing = downloads.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
-            if (existing is not null)
-            {
-                if (existing.Hash != hash || existing.Url != url) throw new InvalidDataException($"Conflicting file requirements: {path}");
-                return;
-            }
-            downloads.Add(new(path, url, hash, executable));
+            if (existing.Hash != hash || existing.Url != url) throw new InvalidDataException($"Conflicting file requirements: {path}");
+            if (executable && !existing.Executable)
+                target.Downloads[target.Downloads.IndexOf(existing)] = existing with { Executable = true };
+            return;
         }
-        else if (executable && !OperatingSystem.IsWindows()
-            && (File.GetUnixFileMode(path) & UnixFileMode.UserExecute) == 0)
-        {
-            operations.Add(new DeploymentPlan.MakeExecutable(path));
-        }
+        target.Downloads.Add(new(path, url!, hash, executable));
     }
 
-    public static string? LinkTarget(string path) => EntryAt(path)?.LinkTarget;
+    public static string? LinkTarget(string path) => new FileInfo(path).LinkTarget;
 
     public static bool LinkMatches(string path, string target)
     {
@@ -94,7 +75,7 @@ public static class DeploymentFileHelper
         foreach (var segment in relative.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, segment);
-            if (EntryAt(current) is { LinkTarget: not null } link) DeleteLink(link);
+            DeleteLink(current);
             if (File.Exists(current)) throw new IOException($"A file occupies a required directory: {current}");
             Directory.CreateDirectory(current);
         }
@@ -102,8 +83,9 @@ public static class DeploymentFileHelper
 
     public static bool DeleteLink(string path)
     {
-        if (EntryAt(path) is not { LinkTarget: not null } entry) return false;
-        DeleteLink(entry);
+        if (LinkTarget(path) is null) return false;
+        if ((File.GetAttributes(path) & FileAttributes.Directory) != 0) Directory.Delete(path, false);
+        else File.Delete(path);
         return true;
     }
 
@@ -174,15 +156,6 @@ public static class DeploymentFileHelper
         }
     }
 
-    public static FileSystemInfo? EntryAt(string path)
-    {
-        var parent = Path.GetDirectoryName(path);
-        if (parent is null || !Directory.Exists(parent)) return null;
-        var name = Path.GetFileName(path);
-        return new DirectoryInfo(parent).EnumerateFileSystemInfos()
-            .FirstOrDefault(x => FileHelper.IsFileNameEquivalent(x.Name, name));
-    }
-
     private static bool DeleteDirectoryTreeIfEmptyOrLinks(string path)
     {
         if (!Directory.Exists(path)) return true;
@@ -190,7 +163,7 @@ public static class DeploymentFileHelper
         {
             if (entry.LinkTarget is not null)
             {
-                DeleteLink(entry);
+                DeleteLink(entry.FullName);
                 continue;
             }
             if (entry is not DirectoryInfo directory || !DeleteDirectoryTreeIfEmptyOrLinks(directory.FullName))
@@ -198,11 +171,5 @@ public static class DeploymentFileHelper
         }
         Directory.Delete(path, false);
         return true;
-    }
-
-    private static void DeleteLink(FileSystemInfo entry)
-    {
-        if ((entry.Attributes & FileAttributes.Directory) != 0) Directory.Delete(entry.FullName, false);
-        else File.Delete(entry.FullName);
     }
 }

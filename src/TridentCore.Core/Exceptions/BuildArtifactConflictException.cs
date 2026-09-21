@@ -12,4 +12,7 @@ public class BuildArtifactConflictException(string targetPath, BuildArtifactConf
     public string TargetPath { get; } = targetPath;
 
     public ConflictKind Kind { get; } = kind;
+
+    public static BuildArtifactConflictException Occupied(string targetPath) =>
+        new(targetPath, ConflictKind.OccupiedByRegularFileSystemEntry);
 }

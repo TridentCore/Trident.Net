@@ -29,8 +29,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         var totalSize = 0L;
         var bag = new ConcurrentBag<ReferenceInfo>();
         var setup = profileManager.GetImmutable(key).Setup.Clone();
-        _ = ProjectionManifestHelper.ReadImport(key);
-        _ = ProjectionManifestHelper.ReadPersist(key);
+        ProjectionManifestHelper.Validate(key);
 
         var home = new DirectoryInfo(PathDef.Default.DirectoryOfHome(key));
         var dirs = new[] { PathDef.Default.DirectoryOfImport(key), PathDef.Default.DirectoryOfPersist(key), PathDef.Default.DirectoryOfPatches(key) };
@@ -54,7 +53,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                                             }
                                         }
 
-                                        foreach (var file in EnumerateImportProjection(key, []))
+                                        foreach (var file in EnumerateImportProjection(key))
                                         {
                                             await channel.Writer.WriteAsync(file, token).ConfigureAwait(false);
                                             Interlocked.Increment(ref totalCollected);
@@ -216,37 +215,18 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                     var manifestRelativePaths = EnumerateProjectionManifestPaths(key)
                         .Select(x => Path.GetRelativePath(home, x)).ToHashSet(FileHelper.PathComparer);
                     var manifestReferences = references.Where(x => manifestRelativePaths.Contains(x.RelativePath)).ToArray();
-                    var targetManifests = ValidateProjectionManifestReferences(key, home, refByPath);
-                    var currentPersist = ProjectionManifestHelper.ReadPersist(key);
-                    var build = PathDef.Default.DirectoryOfBuild(key);
-                    var targetImportRelativePaths = ResolveSnapshotImportPaths(
-                        key, home, references, targetManifests.Import);
+                    var targetImportRelativePaths = ResolveSnapshotImportPaths(key, home, references);
                     var projectionFiles = EnumerateImportProjection(key, targetImportRelativePaths).ToArray();
+                    var build = PathDef.Default.DirectoryOfBuild(key);
                     var targetImportPaths = targetImportRelativePaths
                         .Select(x => ProjectionManifestHelper.ResolveStoredPath(build, x))
                         .ToHashSet(FileHelper.PathComparer);
-                    var persistProjectionPaths = currentPersist.Files.Select(x => x.Path)
-                        .Concat(targetManifests.Persist.Files.Select(x => x.Path))
-                        .Distinct(FileHelper.PathComparer)
-                        .Select(x => ProjectionManifestHelper.ResolveStoredPath(build, x))
-                        .Where(x => !targetImportPaths.Contains(x))
-                        .ToArray();
-                    var ownedProjectionFiles = projectionFiles.Select(x => x.FullName)
-                        .Concat(persistProjectionPaths)
-                        .ToHashSet(FileHelper.PathComparer);
-                    ValidateProjectionPathsForRestore(build, targetImportPaths, persistProjectionPaths, ownedProjectionFiles);
                     DeploymentFileHelper.DeleteAllLinks(build, token);
 
-                    // WARNING: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
-                    //  只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
-                    //  它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
-                    //  投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。
-                    foreach (var file in projectionFiles)
+                    void ReconcileFile(FileInfo file)
                     {
                         token.ThrowIfCancellationRequested();
-
                         var relative = Path.GetRelativePath(home, file.FullName);
-
                         if (refByPath.TryGetValue(relative, out var reference))
                         {
                             matched.Add(reference.RelativePath);
@@ -261,8 +241,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                             if (changed)
                             {
-                                var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                                File.Copy(objectPath, file.FullName, true);
+                                File.Copy(PathDef.Default.FileOfSnapshotObject(key, reference.Hash), file.FullName, true);
                             }
 
                             if (file.Attributes != reference.Attributes)
@@ -284,7 +263,14 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                         restored?.Report(processed);
                     }
 
-                    RemovePersistProjectionFiles(build, persistProjectionPaths, token);
+                    // WARNING: build 的 import 投影不能整目录遍历（会碰到包软链接/日志/assets），
+                    //  只能以 import 清单为驱动枚举 build 受管路径：在引用里则还原、不在则删。
+                    //  它必须先于 import/persist 对账执行：否则 import 里快照之后新增的文件先被删除，
+                    //  投影枚举便看不到它，build 里对应的部署副本会残留成孤儿。
+                    foreach (var file in projectionFiles)
+                    {
+                        ReconcileFile(file);
+                    }
 
                     var dirs = new[]
                         {
@@ -304,47 +290,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
 
                         foreach (var path in DeploymentFileHelper.EnumerateFilesWithoutLinks(dir))
                         {
-                            var file = new FileInfo(path);
-                            token.ThrowIfCancellationRequested();
-
-                            var relative = Path.GetRelativePath(home, file.FullName);
-
-                            if (refByPath.TryGetValue(relative, out var reference))
-                            {
-                                matched.Add(reference.RelativePath);
-
-                                var changed = file.Length != reference.Size;
-
-                                if (!changed)
-                                {
-                                    using var stream = File.OpenRead(file.FullName);
-                                    var hash = FileHelper.ComputeHash(stream, HashAlgorithm.Sha1);
-                                    changed = hash != reference.Hash;
-                                }
-
-                                if (changed)
-                                {
-                                    var objectPath = PathDef.Default.FileOfSnapshotObject(key, reference.Hash);
-                                    File.Copy(objectPath, file.FullName, true);
-                                }
-
-                                if (file.Attributes != reference.Attributes)
-                                {
-                                    file.Attributes = reference.Attributes;
-                                }
-
-                                if (file.LastWriteTime != reference.LastModifiedAt)
-                                {
-                                    File.SetLastWriteTime(file.FullName, reference.LastModifiedAt);
-                                }
-                            }
-                            else
-                            {
-                                file.Delete();
-                            }
-
-                            processed++;
-                            restored?.Report(processed);
+                            ReconcileFile(new FileInfo(path));
                         }
 
                         foreach (var d in root
@@ -388,72 +334,22 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                      restored?.Report(processed);
                  },
                  token);
-
-    private static (ImportProjectionManifest Import, PersistProjectionManifest Persist) ValidateProjectionManifestReferences(
-        string key,
-        string home,
-        IReadOnlyDictionary<string, ReferenceInfo> references)
-    {
-        var build = PathDef.Default.DirectoryOfBuild(key);
-        var import = new ImportProjectionManifest();
-        var importPath = PathDef.Default.FileOfImportProjectionManifest(key);
-        var importRelative = Path.GetRelativePath(home, importPath);
-        if (references.TryGetValue(importRelative, out var importReference))
-            import = ProjectionManifestHelper.ReadImportAt(PathDef.Default.FileOfSnapshotObject(key, importReference.Hash), build);
-
-        var persist = new PersistProjectionManifest();
-        var persistPath = PathDef.Default.FileOfPersistProjectionManifest(key);
-        var persistRelative = Path.GetRelativePath(home, persistPath);
-        if (references.TryGetValue(persistRelative, out var persistReference))
-            persist = ProjectionManifestHelper.ReadPersistAt(PathDef.Default.FileOfSnapshotObject(key, persistReference.Hash), build);
-        return (import, persist);
-    }
-
     private static IReadOnlyList<string> ResolveSnapshotImportPaths(
         string key,
         string home,
-        IReadOnlyList<ReferenceInfo> references,
-        ImportProjectionManifest manifest)
+        IReadOnlyList<ReferenceInfo> references)
     {
-        var manifestRelative = Path.GetRelativePath(home, PathDef.Default.FileOfImportProjectionManifest(key));
-        if (references.Any(x => FileHelper.PathComparer.Equals(x.RelativePath, manifestRelative))) return manifest.Files;
-
         var build = PathDef.Default.DirectoryOfBuild(key);
+        var manifestRelative = Path.GetRelativePath(home, PathDef.Default.FileOfImportProjectionManifest(key));
+        if (references.FirstOrDefault(x => FileHelper.PathComparer.Equals(x.RelativePath, manifestRelative)) is { } manifestReference)
+            return ProjectionManifestHelper.ReadImportAt(PathDef.Default.FileOfSnapshotObject(key, manifestReference.Hash), build).Files;
+
         return [.. references.Select(x => Path.GetFullPath(Path.Combine(home, x.RelativePath)))
             .Where(x => FileHelper.IsInDirectory(x, build) && !ProjectionManifestHelper.IsReservedProjectionPath(build, x))
             .Select(x => ProjectionManifestHelper.ToStoredPath(build, x))
             .Distinct(FileHelper.PathComparer)];
     }
 
-    private static void ValidateProjectionPathsForRestore(
-        string build,
-        IEnumerable<string> targetImportPaths,
-        IEnumerable<string> persistProjectionPaths,
-        ISet<string> ownedProjectionFiles)
-    {
-        foreach (var path in targetImportPaths.Concat(persistProjectionPaths).Distinct(FileHelper.PathComparer))
-        {
-            if (DeploymentFileHelper.HasLinkAtOrAbove(path, build) || !Directory.Exists(path)) continue;
-            if (!DeploymentFileHelper.DirectoryContainsOnlyLinksEmptyDirectoriesOrFiles(path, ownedProjectionFiles))
-                throw new InvalidDataException($"Projection path is occupied by an unmanaged directory: {path}");
-        }
-    }
-
-    private static void RemovePersistProjectionFiles(
-        string build,
-        IEnumerable<string> paths,
-        CancellationToken token)
-    {
-        foreach (var path in paths.OrderByDescending(x => x.Length))
-        {
-            token.ThrowIfCancellationRequested();
-            if (DeploymentFileHelper.HasLinkAtOrAbove(path, build)) continue;
-            if (File.Exists(path)) File.Delete(path);
-            else if (Directory.Exists(path) && !DeploymentFileHelper.DeleteDirectoryTreeIfEmptyOrLinks(path, build))
-                throw new InvalidDataException($"Persist projection path is occupied by an unmanaged directory: {path}");
-            DeploymentFileHelper.TrimEmptyParents(build, Path.GetDirectoryName(path));
-        }
-    }
 
     private static void RestoreProjectionManifests(
         string key,
@@ -500,19 +396,13 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         }
     }
 
-    private static IEnumerable<FileInfo> EnumerateImportProjection(string key, IEnumerable<string> targetRelativePaths)
+    private static IEnumerable<FileInfo> EnumerateImportProjection(string key, IEnumerable<string>? targetRelativePaths = null)
     {
-        var importDir = PathDef.Default.DirectoryOfImport(key);
         var buildDir = PathDef.Default.DirectoryOfBuild(key);
         if (!Directory.Exists(buildDir)) yield break;
 
-        var manifest = ProjectionManifestHelper.ReadImport(key);
-        var relativePaths = new HashSet<string>(targetRelativePaths, FileHelper.PathComparer);
-        if (File.Exists(PathDef.Default.FileOfImportProjectionManifest(key)))
-            relativePaths.UnionWith(manifest.Files);
-        else
-            relativePaths.UnionWith(DeploymentFileHelper.EnumerateFilesWithoutLinks(importDir)
-                .Select(x => Path.GetRelativePath(importDir, x).Replace(Path.DirectorySeparatorChar, '/')));
+        var relativePaths = new HashSet<string>(targetRelativePaths ?? [], FileHelper.PathComparer);
+        relativePaths.UnionWith(ProjectionManifestHelper.GetImportOwnershipPaths(key));
         foreach (var relative in relativePaths)
         {
             var target = ProjectionManifestHelper.ResolveStoredPath(buildDir, relative);

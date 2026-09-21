@@ -36,11 +36,7 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             token.ThrowIfCancellationRequested();
             switch (operation)
             {
-                case DeploymentPlan.CreateDirectory directory:
-                    CreateDirectory(directory.Path);
-                    break;
                 case DeploymentPlan.EnsureImportFile copy:
-                    EnsureImportFile(build, copy.Source, copy.Target);
                     break;
                 case DeploymentPlan.RemoveBuildFile remove:
                     RemoveBuildFile(build, remove.Path);
@@ -66,6 +62,10 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             ProgressStream.OnNext((++completed, total));
         }
 
+        // 计划（DeploymentPlanner）、求差（DeploymentDiffer）、应用（上面的下载与操作循环）三段是一个整体，
+        // 前两段抽出为独立类，供 InstanceStateService 复用以判断实例就绪。
+        // 以下的 natives 提取、allowed_symlinks 写入与清单提交是收尾，属于另一个整体，
+        // 不属于前三段，刻意保持内联而不做成 Operation。
         var natives = Context.Lock.Artifact!.AllLibraries().Where(x => x.IsNative)
             .Select(x => new NativeHelper.Archive(x.FilePath(Context.Key), false, x.Exclude)).ToArray();
         var nativesDirectory = PathDef.Default.DirectoryOfNatives(Context.Key);
@@ -83,7 +83,7 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
         DeploymentFileHelper.EnsureRealParent(target, build);
         DeploymentFileHelper.DeleteLink(target);
         if (Directory.Exists(target) && !DeploymentFileHelper.DeleteDirectoryTreeIfEmptyOrLinks(target, build))
-            throw Conflict(target);
+            throw BuildArtifactConflictException.Occupied(target);
         if (File.Exists(target)) return;
         var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -113,9 +113,9 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             DeploymentFileHelper.TrimEmptyParents(build, Path.GetDirectoryName(source));
             return;
         }
-        if (Directory.Exists(source)) throw Conflict(source);
+        if (Directory.Exists(source)) throw BuildArtifactConflictException.Occupied(source);
         DeploymentFileHelper.EnsureRealParent(target, persist);
-        if (Path.Exists(target)) throw Conflict(source);
+        if (Path.Exists(target)) throw BuildArtifactConflictException.Occupied(source);
         File.Move(source, target);
         DeploymentFileHelper.TrimEmptyParents(build, Path.GetDirectoryName(source));
     }
@@ -131,12 +131,12 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             DeploymentFileHelper.TrimEmptyParents(build, Path.GetDirectoryName(operation.Source));
             return;
         }
-        if (Directory.Exists(operation.Source)) throw Conflict(operation.Source);
+        if (Directory.Exists(operation.Source)) throw BuildArtifactConflictException.Occupied(operation.Source);
         DeploymentFileHelper.EnsureRealParent(operation.Target, persist);
         if (DeploymentFileHelper.LinkTarget(operation.Target) is not null || !File.Exists(operation.Target))
-            throw Conflict(operation.Target);
+            throw BuildArtifactConflictException.Occupied(operation.Target);
         if (File.GetLastWriteTimeUtc(operation.Target).Ticks != operation.ExpectedTargetLastWriteTimeUtcTicks)
-            throw Conflict(operation.Target);
+            throw BuildArtifactConflictException.Occupied(operation.Target);
         File.Move(operation.Source, operation.Target, true);
         DeploymentFileHelper.TrimEmptyParents(build, Path.GetDirectoryName(operation.Source));
     }
@@ -151,17 +151,11 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
     {
         DeploymentFileHelper.EnsureRealParent(operation.Path, build);
         DeploymentFileHelper.DeleteLink(operation.Path);
-        if (File.Exists(operation.Path)) throw Conflict(operation.Path);
+        if (File.Exists(operation.Path)) throw BuildArtifactConflictException.Occupied(operation.Path);
         if (Directory.Exists(operation.Path)
-            && !DeploymentFileHelper.DeleteDirectoryTreeIfEmptyOrLinks(operation.Path, build)) throw Conflict(operation.Path);
+            && !DeploymentFileHelper.DeleteDirectoryTreeIfEmptyOrLinks(operation.Path, build)) throw BuildArtifactConflictException.Occupied(operation.Path);
         if (operation.Directory) Directory.CreateSymbolicLink(operation.Path, operation.Target);
         else File.CreateSymbolicLink(operation.Path, operation.Target);
-    }
-
-    private static void CreateDirectory(string path)
-    {
-        if (DeploymentFileHelper.LinkTarget(path) is not null || File.Exists(path)) throw Conflict(path);
-        Directory.CreateDirectory(path);
     }
 
     private static async Task WriteAllowedSymlinksAsync(string build, string persist, CancellationToken token)
@@ -169,7 +163,7 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
         Directory.CreateDirectory(build);
         var path = Path.Combine(build, ProjectionManifestHelper.ALLOWED_SYMLINKS_FILE_NAME);
         DeploymentFileHelper.DeleteLink(path);
-        if (Directory.Exists(path)) throw Conflict(path);
+        if (Directory.Exists(path)) throw BuildArtifactConflictException.Occupied(path);
         var content = $"[prefix]{PathDef.Default.CachePackageDirectory}\n[prefix]{persist}";
         if (!File.Exists(path) || await File.ReadAllTextAsync(path, token).ConfigureAwait(false) != content)
             await File.WriteAllTextAsync(path, content, token).ConfigureAwait(false);
@@ -180,9 +174,6 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
     }
-
-    private static BuildArtifactConflictException Conflict(string path) =>
-        new(path, BuildArtifactConflictException.ConflictKind.OccupiedByRegularFileSystemEntry);
 
     public override void Dispose()
     {

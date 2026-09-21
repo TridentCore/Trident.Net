@@ -12,7 +12,6 @@ public sealed class DeploymentPlan
 
     public abstract record Operation;
     public sealed record Download(string Path, Uri Url, FileHash? Hash, bool Executable = false) : Operation;
-    public sealed record CreateDirectory(string Path) : Operation;
     public sealed record EnsureImportFile(string Source, string Target) : Operation;
     public sealed record RemoveBuildFile(string Path) : Operation;
     public sealed record MoveToPersist(string Source, string Target) : Operation;
