@@ -36,7 +36,7 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 false,
                 package.Resolved.Download,
                 package.Resolved.Hash);
-            AddCandidate(projection);
+            DeploymentFileHelper.RequireProjection(candidates, build, projection);
         }
         Collect(PathDef.Default.DirectoryOfImport(key), build, DeploymentTarget.ProjectionKind.Import, candidates, token);
         Collect(PathDef.Default.DirectoryOfPersist(key), build, DeploymentTarget.ProjectionKind.Persist, candidates, token);
@@ -45,13 +45,6 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
         foreach (var projection in target.Projections.Where(x => x.Kind == DeploymentTarget.ProjectionKind.Package))
             DeploymentFileHelper.RequireFile(target, projection.Source, projection.Url, projection.Hash);
         return target;
-
-        void AddCandidate(DeploymentTarget.Projection projection)
-        {
-            if (ProjectionManifestHelper.IsReservedProjectionPath(build, projection.Target))
-                throw new InvalidDataException($"Projection target is reserved for deployment metadata: {projection.Target}");
-            candidates[projection.Target] = projection;
-        }
     }
 
     private static List<DeploymentTarget.Projection> Select(IEnumerable<DeploymentTarget.Projection> candidates)
@@ -100,7 +93,7 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 if (!covered)
                 {
                     var target = DeploymentFileHelper.ProjectionPath(build, Path.GetRelativePath(source, directory));
-                    Add(new(directory, target, kind, true, null, null));
+                    DeploymentFileHelper.RequireProjection(candidates, build, new(directory, target, kind, true, null, null));
                     covered = true;
                 }
             }
@@ -114,16 +107,9 @@ public sealed class DeploymentPlanner(PackagePlanner packages)
                 else if (!covered)
                 {
                     var target = DeploymentFileHelper.ProjectionPath(build, Path.GetRelativePath(source, entry.FullName));
-                    Add(new(entry.FullName, target, kind, false, null, null));
+                    DeploymentFileHelper.RequireProjection(candidates, build, new(entry.FullName, target, kind, false, null, null));
                 }
             }
-        }
-
-        void Add(DeploymentTarget.Projection projection)
-        {
-            if (ProjectionManifestHelper.IsReservedProjectionPath(build, projection.Target))
-                throw new InvalidDataException($"Projection target is reserved for deployment metadata: {projection.Target}");
-            candidates[projection.Target] = projection;
         }
     }
 

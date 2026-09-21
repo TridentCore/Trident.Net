@@ -7,9 +7,6 @@ namespace TridentCore.Core.Utilities;
 
 public static class ProjectionManifestHelper
 {
-    public const string ALLOWED_SYMLINKS_FILE_NAME = "allowed_symlinks.txt";
-    public const string TEMPORARY_DIRECTORY_NAME = ".trident-manifest-tmp";
-
     public static ImportProjectionManifest ReadImport(string key)
     {
         var path = PathDef.Default.FileOfImportProjectionManifest(key);
@@ -41,6 +38,7 @@ public static class ProjectionManifestHelper
 
     public static IReadOnlyList<string> GetImportOwnershipPaths(string key) =>
         HasImportManifest(key) ? ReadImport(key).Files : EnumerateImportSourcePaths(key);
+
     public static ImportProjectionManifest ReadImportAt(string path, string build)
     {
         var manifest = JsonSerializer.Deserialize<ImportProjectionManifest>(File.ReadAllText(path), FileHelper.SerializerOptions)
@@ -104,11 +102,11 @@ public static class ProjectionManifestHelper
     {
         var reserved = new[]
         {
-            Path.Combine(build, "trident.import.json"),
-            Path.Combine(build, "trident.persist.json"),
-            Path.Combine(build, ALLOWED_SYMLINKS_FILE_NAME),
-            Path.Combine(build, TEMPORARY_DIRECTORY_NAME),
-            Path.Combine(build, "natives")
+            Path.Combine(build, PathDef.IMPORT_PROJECTION_MANIFEST_FILE_NAME),
+            Path.Combine(build, PathDef.PERSIST_PROJECTION_MANIFEST_FILE_NAME),
+            Path.Combine(build, PathDef.ALLOWED_SYMLINKS_FILE_NAME),
+            Path.Combine(build, PathDef.MANIFEST_TEMPORARY_DIRECTORY_NAME),
+            Path.Combine(build, PathDef.NATIVES_DIRECTORY_NAME)
         };
         return reserved.Any(path => FileHelper.IsPathEquivalent(target, path) || FileHelper.IsInDirectory(target, path));
     }
@@ -157,7 +155,7 @@ public static class ProjectionManifestHelper
     private static async Task WriteAtomicAsync<T>(string build, string path, T value, CancellationToken token)
     {
         EnsureManifestPath(path, build);
-        var temporaryDirectory = Path.Combine(build, TEMPORARY_DIRECTORY_NAME);
+        var temporaryDirectory = Path.Combine(build, PathDef.MANIFEST_TEMPORARY_DIRECTORY_NAME);
         var temporary = Path.Combine(temporaryDirectory, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         DeploymentFileHelper.EnsureRealParent(temporary, build);
         try

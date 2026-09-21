@@ -72,9 +72,16 @@ public class PathDef
     public string FileOfPackData(string key) => Path.Combine(InstanceDirectory, key, "data.pack.json");
     public string FileOfBomb(string key) => Path.Combine(InstanceDirectory, key, "_bomb_has_been_planted_");
     public string DirectoryOfBuild(string key) => Path.Combine(InstanceDirectory, key, "build");
-    public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), "natives");
-    public string FileOfImportProjectionManifest(string key) => Path.Combine(DirectoryOfBuild(key), "trident.import.json");
-    public string FileOfPersistProjectionManifest(string key) => Path.Combine(DirectoryOfBuild(key), "trident.persist.json");
+
+    public const string IMPORT_PROJECTION_MANIFEST_FILE_NAME = "trident.import.json";
+    public const string PERSIST_PROJECTION_MANIFEST_FILE_NAME = "trident.persist.json";
+    public const string ALLOWED_SYMLINKS_FILE_NAME = "allowed_symlinks.txt";
+    public const string MANIFEST_TEMPORARY_DIRECTORY_NAME = ".trident-manifest-tmp";
+    public const string NATIVES_DIRECTORY_NAME = "natives";
+
+    public string DirectoryOfNatives(string key) => Path.Combine(DirectoryOfBuild(key), NATIVES_DIRECTORY_NAME);
+    public string FileOfImportProjectionManifest(string key) => Path.Combine(DirectoryOfBuild(key), IMPORT_PROJECTION_MANIFEST_FILE_NAME);
+    public string FileOfPersistProjectionManifest(string key) => Path.Combine(DirectoryOfBuild(key), PERSIST_PROJECTION_MANIFEST_FILE_NAME);
     public string DirectoryOfImport(string key) => Path.Combine(InstanceDirectory, key, "import");
     public string DirectoryOfPersist(string key) => Path.Combine(InstanceDirectory, key, "persist");
     public string DirectoryOfPatches(string key) => Path.Combine(DirectoryOfHome(key), "patches");

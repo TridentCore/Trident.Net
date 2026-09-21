@@ -24,6 +24,8 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1)
         }, async (download, ct) =>
         {
+            if (download.Url is null)
+                throw new InvalidOperationException($"The planned download has no source: {download.Path}");
             await DownloadHelper.DownloadAsync(client, download.Url, download.Path, download.Hash, ct).ConfigureAwait(false);
             if (download.Executable) MakeExecutable(download.Path);
             lock (ProgressStream) ProgressStream.OnNext((++completed, total));
@@ -37,6 +39,7 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
             switch (operation)
             {
                 case DeploymentPlan.EnsureImportFile copy:
+                    EnsureImportFile(build, copy.Source, copy.Target);
                     break;
                 case DeploymentPlan.RemoveBuildFile remove:
                     RemoveBuildFile(build, remove.Path);
@@ -161,7 +164,7 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
     private static async Task WriteAllowedSymlinksAsync(string build, string persist, CancellationToken token)
     {
         Directory.CreateDirectory(build);
-        var path = Path.Combine(build, ProjectionManifestHelper.ALLOWED_SYMLINKS_FILE_NAME);
+        var path = Path.Combine(build, PathDef.ALLOWED_SYMLINKS_FILE_NAME);
         DeploymentFileHelper.DeleteLink(path);
         if (Directory.Exists(path)) throw BuildArtifactConflictException.Occupied(path);
         var content = $"[prefix]{PathDef.Default.CachePackageDirectory}\n[prefix]{persist}";

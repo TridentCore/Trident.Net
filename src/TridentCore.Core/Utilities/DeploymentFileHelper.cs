@@ -14,6 +14,16 @@ public static class DeploymentFileHelper
         return target;
     }
 
+    public static void RequireProjection(
+        IDictionary<string, DeploymentTarget.Projection> candidates,
+        string build,
+        DeploymentTarget.Projection projection)
+    {
+        if (ProjectionManifestHelper.IsReservedProjectionPath(build, projection.Target))
+            throw new InvalidDataException($"Projection target is reserved for deployment metadata: {projection.Target}");
+        candidates[projection.Target] = projection;
+    }
+
     public static void RequireFile(DeploymentTarget target, string path, Uri? url, FileHash? hash, bool executable = false)
     {
         var existing = target.Downloads.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
@@ -24,7 +34,7 @@ public static class DeploymentFileHelper
                 target.Downloads[target.Downloads.IndexOf(existing)] = existing with { Executable = true };
             return;
         }
-        target.Downloads.Add(new(path, url!, hash, executable));
+        target.Downloads.Add(new(path, url, hash, executable));
     }
 
     public static string? LinkTarget(string path) => new FileInfo(path).LinkTarget;

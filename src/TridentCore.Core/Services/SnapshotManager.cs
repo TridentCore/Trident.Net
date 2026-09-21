@@ -358,7 +358,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         CancellationToken token)
     {
         var build = PathDef.Default.DirectoryOfBuild(key);
-        var temporaryDirectory = Path.Combine(build, ProjectionManifestHelper.TEMPORARY_DIRECTORY_NAME);
+        var temporaryDirectory = Path.Combine(build, PathDef.MANIFEST_TEMPORARY_DIRECTORY_NAME);
         var entries = new[]
         {
             (Path: PathDef.Default.FileOfImportProjectionManifest(key), Import: true),
