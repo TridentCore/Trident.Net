@@ -2,7 +2,7 @@
 
 <h1>Trident.Net</h1>
 
-<p><strong>声明式 Minecraft 实例工具链：核心库、整合包流水线与命令行产品。</strong></p>
+<p><strong>声明式 Minecraft 实例工具链：内部 Core、整合包流水线与命令行产品。</strong></p>
 
 <p>
   <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white"></a>
@@ -14,7 +14,7 @@
 <p>
   <a href="README.md">English</a>
   ·
-  <a href="#trident-作为库">作为库使用</a>
+  <a href="#内部-core-集成">内部 Core</a>
   ·
   <a href="#trident-作为-cli">作为 CLI 使用</a>
   ·
@@ -25,13 +25,13 @@
 
 </div>
 
-Trident.Net 是 Trident 的 .NET 实现：一套面向 Minecraft 实例、整合包、包仓库和账号的核心库，以及基于同一套核心能力构建的 `trident` 命令行工具。
+Trident.Net 是 Trident 的 .NET 实现：一组处理 Minecraft 实例、整合包、包仓库和账号的内部核心项目，以及基于这些能力构建的 `trident` 命令行工具。
 
-Trident 的目标是把一个实例拆成可声明、可重建、可导入导出、可被工具链自动维护的结构。库负责定义模型和执行引擎；CLI 则把这些能力包装成可以直接用于本地游玩、整合包维护和 CI/CD 发布的产品化入口。
+Trident 的目标是把一个实例拆成可声明、可重建、可导入导出、可被工具链自动维护的结构。内部项目定义模型和执行引擎，由第一方宿主直接从源码使用：本仓库中的 CLI，以及通过 Trident.Net git submodule 使用它们的 Polymerium。CLI 是对外分发的产品入口。
 
-## 一套模型，两种入口
+## 一套模型，第一方宿主
 
-Trident 的核心对象是 `profile.json`。它描述游戏版本、加载器、包列表、规则和运行覆盖项；部署时 Core 会把 profile 解析成可启动的 `.minecraft` 目录结构，CLI 则提供创建、导入、构建、运行、导出和包管理命令。
+Trident 的核心对象是 `profile.json`。它描述游戏版本、加载器、包列表、规则和运行覆盖项；部署时 Core 会把 profile 解析成可启动的 `.minecraft` 目录结构。CLI 在终端中提供这些能力，Polymerium 则以桌面应用呈现同一套模型。
 
 ```text
 TridentCore.Abstractions  -> 文件模型、仓库接口、任务追踪、账号接口
@@ -43,9 +43,9 @@ TridentCore.Cli           -> 面向终端用户的 trident 命令
   ├── Tools/              -> MCP Tool 入口 + JSON 序列化
 ```
 
-## Trident 作为库
+## 内部 Core 集成
 
-这一部分面向要把 Trident 嵌入启动器、桌面应用、服务端工具或自动化系统的开发者。
+这一部分记录第一方宿主的集成方式。非 CLI 项目是随源码使用的内部实现，不是承诺兼容性的发布接口。设计改善需要调整内部 API 时应直接修改，并在同一项变更中更新所有第一方调用方；不保留兼容重载、别名、转发垫片或 obsolete 成员。
 
 ### 数据布局
 
@@ -129,7 +129,7 @@ services
     .AddSingleton<InstanceManager>();
 ```
 
-在自己的应用中使用时，优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
+第一方宿主应优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
 
 资源规划可独立于 `DeployEngine` 使用：`LockValidationHelper` 验证已解析需求，`SourceProjectionPlanner` 扫描受管来源，`ProjectionArbitrator` 以不读写文件系统的纯逻辑应用路径优先级，`DeploymentPlanner` 组装库与投影目标视图，`DeploymentDiffer` 再将目标视图与当前运行目录比较；`AssetPlanner` / `RuntimePlanner` 展开可读的本地索引。这些组件不联网、不写文件。部署消费方可用 `DeploymentIndexService` 补齐缺失索引，就绪检查消费方则直接停止。部署按锁内可选 major 准备 Mojang Java 运行时，不受用户启动偏好影响；用户 Java Home 仅在启动时选择。
 
@@ -382,6 +382,6 @@ dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 
 <br>
 
-Library first. CLI packaged on NuGet. Modpack workflows included.
+内部 Core。CLI 通过 NuGet 分发。内置整合包工作流。
 
 </div>

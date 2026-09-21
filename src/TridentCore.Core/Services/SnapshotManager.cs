@@ -199,7 +199,7 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
         object snapshotId,
         IProgress<int>? restored = null,
         CancellationToken token = default) =>
-        Task.Run(() =>
+        Task.Run(async () =>
                  {
                      token.ThrowIfCancellationRequested();
 
@@ -215,7 +215,9 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                     var manifestRelativePaths = EnumerateProjectionManifestPaths(key)
                         .Select(x => Path.GetRelativePath(home, x)).ToHashSet(FileHelper.PathComparer);
                     var manifestReferences = references.Where(x => manifestRelativePaths.Contains(x.RelativePath)).ToArray();
-                    var targetImportRelativePaths = ResolveSnapshotImportPaths(key, home, references);
+                    var targetImportManifest = ReadSnapshotImportManifest(key, home, refByPath);
+                    var targetPersistManifest = ReadSnapshotPersistManifest(key, home, refByPath);
+                    var targetImportRelativePaths = ResolveSnapshotImportPaths(key, home, references, targetImportManifest);
                     var projectionFiles = EnumerateImportProjection(key, targetImportRelativePaths).ToArray();
                     var build = PathDef.Default.DirectoryOfBuild(key);
                     var targetImportPaths = targetImportRelativePaths
@@ -329,54 +331,68 @@ public class SnapshotManager(ISnapshotStoreFactory factory, ProfileManager profi
                          restored?.Report(processed);
                      }
 
-                     RestoreProjectionManifests(key, home, refByPath, token);
+                     await RestoreProjectionManifestsAsync(key, targetImportManifest, targetPersistManifest, token).ConfigureAwait(false);
                      processed += manifestReferences.Length;
                      restored?.Report(processed);
                  },
                  token);
+
+    private static ImportProjectionManifest? ReadSnapshotImportManifest(
+        string key,
+        string home,
+        IReadOnlyDictionary<string, ReferenceInfo> references)
+    {
+        var relative = Path.GetRelativePath(home, PathDef.Default.FileOfImportProjectionManifest(key));
+        return references.TryGetValue(relative, out var reference)
+            ? ProjectionManifestHelper.ReadImportAt(
+                PathDef.Default.FileOfSnapshotObject(key, reference.Hash),
+                PathDef.Default.DirectoryOfBuild(key))
+            : null;
+    }
+
+    private static PersistProjectionManifest? ReadSnapshotPersistManifest(
+        string key,
+        string home,
+        IReadOnlyDictionary<string, ReferenceInfo> references)
+    {
+        var relative = Path.GetRelativePath(home, PathDef.Default.FileOfPersistProjectionManifest(key));
+        return references.TryGetValue(relative, out var reference)
+            ? ProjectionManifestHelper.ReadPersistAt(
+                PathDef.Default.FileOfSnapshotObject(key, reference.Hash),
+                PathDef.Default.DirectoryOfBuild(key))
+            : null;
+    }
+
     private static IReadOnlyList<string> ResolveSnapshotImportPaths(
         string key,
         string home,
-        IReadOnlyList<ReferenceInfo> references)
+        IReadOnlyList<ReferenceInfo> references,
+        ImportProjectionManifest? manifest)
     {
-        var build = PathDef.Default.DirectoryOfBuild(key);
-        var manifestRelative = Path.GetRelativePath(home, PathDef.Default.FileOfImportProjectionManifest(key));
-        if (references.FirstOrDefault(x => FileHelper.PathComparer.Equals(x.RelativePath, manifestRelative)) is { } manifestReference)
-            return ProjectionManifestHelper.ReadImportAt(PathDef.Default.FileOfSnapshotObject(key, manifestReference.Hash), build).Files;
+        if (manifest is not null) return manifest.Files;
 
+        var build = PathDef.Default.DirectoryOfBuild(key);
         return [.. references.Select(x => Path.GetFullPath(Path.Combine(home, x.RelativePath)))
             .Where(x => FileHelper.IsInDirectory(x, build) && !ProjectionManifestHelper.IsReservedProjectionPath(build, x))
             .Select(x => ProjectionManifestHelper.ToStoredPath(build, x))
             .Distinct(FileHelper.PathComparer)];
     }
 
-
-    private static void RestoreProjectionManifests(
+    private static async Task RestoreProjectionManifestsAsync(
         string key,
-        string home,
-        IReadOnlyDictionary<string, ReferenceInfo> references,
+        ImportProjectionManifest? imports,
+        PersistProjectionManifest? persists,
         CancellationToken token)
     {
-        var entries = new[]
-        {
-            (Path: PathDef.Default.FileOfImportProjectionManifest(key), Import: true),
-            (Path: PathDef.Default.FileOfPersistProjectionManifest(key), Import: false)
-        };
-        // WARNING: 两份清单生命周期独立并按顺序直接恢复；I/O 失败可能只完成其中一份，
-        //  此处不提供跨文件事务或中断恢复，后续部署将按磁盘上实际存在的清单重新规划。
-        foreach (var entry in entries)
-        {
-            token.ThrowIfCancellationRequested();
-            if (entry.Import) ProjectionManifestHelper.DeleteImport(key);
-            else ProjectionManifestHelper.DeletePersist(key);
+        // WARNING: 两份清单生命周期独立并按顺序恢复；第二次提交失败可能留下不同代次，
+        //  此处不提供跨文件事务或回滚，下一次部署按磁盘上的两份清单继续求差。
+        token.ThrowIfCancellationRequested();
+        if (imports is null) ProjectionManifestHelper.DeleteImport(key);
+        else await ProjectionManifestHelper.WriteImportAsync(key, imports, token).ConfigureAwait(false);
 
-            var relative = Path.GetRelativePath(home, entry.Path);
-            if (!references.TryGetValue(relative, out var reference)) continue;
-            Directory.CreateDirectory(Path.GetDirectoryName(entry.Path)!);
-            File.Copy(PathDef.Default.FileOfSnapshotObject(key, reference.Hash), entry.Path, false);
-            File.SetAttributes(entry.Path, reference.Attributes);
-            File.SetLastWriteTime(entry.Path, reference.LastModifiedAt);
-        }
+        token.ThrowIfCancellationRequested();
+        if (persists is null) ProjectionManifestHelper.DeletePersist(key);
+        else await ProjectionManifestHelper.WritePersistAsync(key, persists, token).ConfigureAwait(false);
     }
 
     private static IEnumerable<FileInfo> EnumerateImportProjection(string key, IEnumerable<string>? targetRelativePaths = null)

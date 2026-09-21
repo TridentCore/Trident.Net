@@ -65,15 +65,17 @@ public static class ProjectionManifestHelper
         PersistProjectionManifest persists,
         CancellationToken token)
     {
-        var build = PathDef.Default.DirectoryOfBuild(key);
-        Directory.CreateDirectory(build);
-        if (DeploymentFileHelper.LinkTarget(build) is not null)
-            throw new InvalidDataException($"The run directory cannot be a symbolic link: {build}");
         // WARNING: import 与 persist 清单生命周期独立并按顺序提交；第二次写入失败可能留下不同代次，
         //  此处不提供跨文件事务或回滚，下一次部署按磁盘上的两份清单继续求差。
-        await WriteAtomicAsync(build, PathDef.Default.FileOfImportProjectionManifest(key), imports, token).ConfigureAwait(false);
-        await WriteAtomicAsync(build, PathDef.Default.FileOfPersistProjectionManifest(key), persists, token).ConfigureAwait(false);
+        await WriteImportAsync(key, imports, token).ConfigureAwait(false);
+        await WritePersistAsync(key, persists, token).ConfigureAwait(false);
     }
+
+    public static Task WriteImportAsync(string key, ImportProjectionManifest manifest, CancellationToken token) =>
+        WriteManifestAsync(key, PathDef.Default.FileOfImportProjectionManifest(key), manifest, token);
+
+    public static Task WritePersistAsync(string key, PersistProjectionManifest manifest, CancellationToken token) =>
+        WriteManifestAsync(key, PathDef.Default.FileOfPersistProjectionManifest(key), manifest, token);
 
     public static void DeleteImport(string key) =>
         Delete(PathDef.Default.FileOfImportProjectionManifest(key), PathDef.Default.DirectoryOfBuild(key));
@@ -91,7 +93,9 @@ public static class ProjectionManifestHelper
     {
         var relative = Path.GetRelativePath(build, path);
         _ = DeploymentFileHelper.ProjectionPath(build, relative);
-        return relative.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
+        var stored = relative.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
+        ValidateStoredPath(stored);
+        return stored;
     }
 
     public static string ResolveStoredPath(string build, string path)
@@ -152,6 +156,15 @@ public static class ProjectionManifestHelper
             throw new InvalidDataException($"Projection manifest path is occupied by a directory: {path}");
         if (DeploymentFileHelper.LinkTarget(path) is not null)
             throw new InvalidDataException($"Projection manifest cannot be a symbolic link: {path}");
+    }
+
+    private static async Task WriteManifestAsync<T>(string key, string path, T value, CancellationToken token)
+    {
+        var build = PathDef.Default.DirectoryOfBuild(key);
+        Directory.CreateDirectory(build);
+        if (DeploymentFileHelper.LinkTarget(build) is not null)
+            throw new InvalidDataException($"The run directory cannot be a symbolic link: {build}");
+        await WriteAtomicAsync(build, path, value, token).ConfigureAwait(false);
     }
 
     private static async Task WriteAtomicAsync<T>(string build, string path, T value, CancellationToken token)

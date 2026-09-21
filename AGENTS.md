@@ -4,7 +4,7 @@
 
 Trident.Net is a .NET 10 toolchain for managing **Minecraft instances, modpacks, package repositories, and accounts**. Instances are declarative (driven by `profile.json`), rebuildable, importable, exportable, and friendly to automation.
 
-The repository provides both a **library** surface (for embedding in launchers or tools) and a **CLI product** (`trident`) installable as a .NET global tool. The CLI also ships an **MCP server mode** (`--mcp`) for AI agent integration.
+The non-CLI projects are internal implementation consumed directly from source by first-party hosts: the CLI in this repository and Polymerium through its Trident.Net git submodule. Only the `trident` CLI is a distributed product; it also ships an MCP server mode (`--mcp`) for AI agent integration.
 
 ## Repository Layout
 
@@ -34,6 +34,7 @@ The CLI layer follows a strict **Commands → Operations → Tools** pattern —
 ## Development Conventions
 
 - **Framework:** .NET 10, C# 13
+- **Internal API policy:** Non-CLI projects have no source or binary compatibility contract. Prefer direct breaking changes that improve the design and update every first-party caller in the same change. Never add compatibility overloads, aliases, forwarding shims, or `[Obsolete]` members.
 - **File-scoped namespaces**, implicit usings
 - **Primary constructors** preferred
 - **`var`** preferred everywhere

@@ -2,7 +2,7 @@
 
 <h1>Trident.Net</h1>
 
-<p><strong>Declarative Minecraft instance tooling: core libraries, modpack pipelines, and a command-line product.</strong></p>
+<p><strong>Declarative Minecraft instance tooling: internal core, modpack pipelines, and a command-line product.</strong></p>
 
 <p>
   <a href="https://dotnet.microsoft.com/"><img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white"></a>
@@ -14,7 +14,7 @@
 <p>
   <a href="README.zh.md">简体中文</a>
   ·
-  <a href="#trident-as-a-library">Library</a>
+  <a href="#internal-core-integration">Internal Core</a>
   ·
   <a href="#trident-as-a-cli">CLI</a>
   ·
@@ -25,18 +25,18 @@
 
 </div>
 
-Trident.Net is the .NET implementation of Trident: a set of core libraries for Minecraft instances, modpacks, package
-repositories, and accounts, plus the `trident` command-line tool built on the same core capabilities.
+Trident.Net is the .NET implementation of Trident: internal core projects for Minecraft instances, modpacks, package
+repositories, and accounts, plus the `trident` command-line tool built on those capabilities.
 
-Trident keeps an instance declarative, rebuildable, importable, exportable, and friendly to automation. The libraries
-define the model and execution engine; the CLI exposes those capabilities as a product-ready entry point for local play,
-modpack maintenance, and CI/CD publishing.
+Trident keeps an instance declarative, rebuildable, importable, exportable, and friendly to automation. The internal
+projects define the model and execution engine and are consumed directly from source by first-party hosts: the CLI in
+this repository and Polymerium through its Trident.Net git submodule. The CLI is the distributed product entry point.
 
-## One Model, Two Entrypoints
+## One Model, First-Party Hosts
 
 The core object in Trident is `profile.json`. It describes the game version, loader, packages, rules, and runtime
-overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI provides
-commands for creating, importing, building, running, exporting, and managing packages.
+overrides. During deployment, Core resolves the profile into a launchable `.minecraft` directory. The CLI exposes these
+capabilities in the terminal, while Polymerium presents the same model as a desktop application.
 
 ```text
 TridentCore.Abstractions  -> file models, repository interfaces, trackers, account interfaces
@@ -48,9 +48,12 @@ TridentCore.Cli           -> end-user trident command
   ├── Tools/              -> MCP tool entry points + JSON serialization
 ```
 
-## Trident As A Library
+## Internal Core Integration
 
-This section is for developers embedding Trident into launchers, desktop apps, server tools, or automation systems.
+This section documents integration for first-party hosts. The non-CLI projects are source-only implementation details,
+not published compatibility surfaces. Internal APIs should change directly when the design improves, with every
+first-party caller updated in the same change; compatibility overloads, aliases, forwarding shims, and obsolete members
+are intentionally not maintained.
 
 ### Data Layout
 
@@ -148,7 +151,7 @@ services
     .AddSingleton<InstanceManager>();
 ```
 
-In your own application, prefer these managers over direct file manipulation: `ProfileManager` manages the profile
+First-party hosts should prefer these managers over direct file manipulation: `ProfileManager` manages the profile
 lifecycle, `InstanceManager` deploys and runs instances, `RepositoryAgent` queries repositories, and `ImporterAgent`
 plus `ExporterAgent` convert modpacks.
 
@@ -426,6 +429,6 @@ dotnet pack src/TridentCore.Cli/TridentCore.Cli.csproj --configuration Release
 
 <br>
 
-Library first. CLI packaged on NuGet. Modpack workflows included.
+Internal core. CLI packaged on NuGet. Modpack workflows included.
 
 </div>
