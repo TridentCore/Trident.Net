@@ -185,11 +185,6 @@ public static class DeploymentFileHelper
                 DeleteLink(entry.FullName);
                 continue;
             }
-            if (entry.LinkTarget is not null)
-            {
-                DeleteLink(entry.FullName);
-                continue;
-            }
             if (IsOsMetadataFile(entry.Name))
             {
                 entry.Delete();

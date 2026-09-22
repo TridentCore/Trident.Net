@@ -33,6 +33,7 @@ public static class ProjectionManifestHelper
     {
         var import = PathDef.Default.DirectoryOfImport(key);
         return [.. DeploymentFileHelper.EnumerateFilesWithoutLinks(import)
+            .Where(x => !DeploymentFileHelper.IsOsMetadataFile(Path.GetFileName(x)))
             .Select(x => Path.GetRelativePath(import, x).Replace(Path.DirectorySeparatorChar, '/'))];
     }
 
