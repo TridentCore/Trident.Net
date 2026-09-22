@@ -43,12 +43,16 @@ public static class PackageHelper
         string? version = null;
         string? loader = null;
         ResourceKind? kind = null;
+        ReleaseType? type = null;
         foreach (var (key, value) in self.Filters)
         {
             switch (key)
             {
-                case "type" when value is not null && Enum.TryParse<ResourceKind>(value, true, out var k):
+                case "kind" when value is not null && Enum.TryParse<ResourceKind>(value, true, out var k):
                     kind = k;
+                    break;
+                case "type" when value is not null && Enum.TryParse<ReleaseType>(value, true, out var t):
+                    type = t;
                     break;
                 case "version":
                     version = value;
@@ -59,7 +63,7 @@ public static class PackageHelper
             }
         }
 
-        return new(version, loader, kind);
+        return new(version, loader, kind, type);
     }
 
     public static PackageIdentifier Parse(string pref) =>
@@ -107,6 +111,7 @@ public static class PackageHelper
                       pid,
                       vid,
                       vid is null && filter is not null
-                          ? [("type", filter.Kind?.ToString()), ("version", filter.Version), ("loader", filter.Loader)]
+                          ? [("kind", filter.Kind?.ToString()), ("version", filter.Version), ("loader", filter.Loader),
+                             ("type", filter.Type?.ToString())]
                           : null);
 }

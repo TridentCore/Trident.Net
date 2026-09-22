@@ -78,7 +78,7 @@ public class ModrinthExporter(RepositoryAgent agent, IServiceProvider servicePro
                                            : throw new FormatException($"Package {x.Pref} is not a valid package"))
                           .ToList();
             var resolved = await agent
-                                .ResolveBatchAsync(packages, new(pack.Profile.Setup.Version, loader?.Identity, null))
+                                .ResolveBatchAsync(packages, new(pack.Profile.Setup.Version, loader?.Identity, null, null))
                                 .ConfigureAwait(false);
 
             resolved.ThrowIfFailures();

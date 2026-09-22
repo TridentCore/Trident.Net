@@ -27,7 +27,7 @@ public static class PackageCliHelper
             loader = LoaderHelper.TryParse(lurl, out var parsed) ? parsed.Identity : null;
         }
 
-        return new(gameVersion, loader, kind);
+        return new(gameVersion, loader, kind, null);
     }
 
     public static ResourceKind? ParseKind(string? kind)

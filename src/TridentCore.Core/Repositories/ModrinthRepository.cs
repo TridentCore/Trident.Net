@@ -354,7 +354,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
                     ModrinthHelper.GetVersionLoaderFilter(project.ProjectTypes.FirstOrDefault(), filter.Loader);
                 var (versionsTask, membersTask) = (client
                                                   .GetProjectVersionsAsync(id.Identity,
-                                                                           null,
+                                                                           filter.Type?.ToString().ToLowerInvariant(),
                                                                            loader is not null
                                                                                ? ArrayParameterConstructor([loader])
                                                                                : null,
@@ -462,7 +462,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var loader = ModrinthHelper.GetVersionLoaderFilter(project.ProjectTypes.FirstOrDefault(), filter.Loader);
         var versions = await client
                             .GetProjectVersionsAsync(id.Identity,
-                                                     null,
+                                                     filter.Type?.ToString().ToLowerInvariant(),
                                                      loader is not null ? ArrayParameterConstructor([loader]) : null,
                                                      BuildLoaderFields(("game_versions", filter.Version)),
                                                      limit: 1)
@@ -557,7 +557,7 @@ public class ModrinthRepository(string label, IModrinthClient client) : IReposit
         var loader = ModrinthHelper.GetVersionLoaderFilter(project.ProjectTypes.FirstOrDefault(), filter.Loader);
         var first = await client
                          .GetProjectVersionsAsync(id.Identity,
-                                                  null,
+                                                  filter.Type?.ToString().ToLowerInvariant(),
                                                   loader is not null ? ArrayParameterConstructor([loader]) : null,
                                                   BuildLoaderFields(("game_versions", filter.Version)))
                          .ConfigureAwait(false);

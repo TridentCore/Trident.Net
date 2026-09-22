@@ -445,7 +445,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                        CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId,
                                                            filter.Loader),
                                                        0,
-                                                       1)
+                                                       1,
+                                                       releaseTypes: CurseForgeHelper.ToFileReleaseType(filter.Type))
                                      .ConfigureAwait(false)).Data.FirstOrDefault();
                     if (file != null)
                     {
@@ -508,7 +509,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                            filter.Version,
                                            CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId, filter.Loader),
                                            0,
-                                           1)
+                                           1,
+                                           releaseTypes: CurseForgeHelper.ToFileReleaseType(filter.Type))
                          .ConfigureAwait(false)).Data.FirstOrDefault()
                 ?? throw new
                        ResourceNotFoundException($"{mod.Name} ({label}:{modId}@*) has no matched version for {FormatTarget(filter)}");
@@ -625,7 +627,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
             var mod = (await client.GetModAsync(modId).ConfigureAwait(false)).Data;
             var loader = CurseForgeHelper.GetVersionLoaderFilter(mod.ClassId, filter.Loader);
             var first = await client
-                             .GetModFilesAsync(modId, filter.Version, loader, 0, PAGE_SIZE)
+                             .GetModFilesAsync(modId, filter.Version, loader, 0, PAGE_SIZE,
+                                               releaseTypes: CurseForgeHelper.ToFileReleaseType(filter.Type))
                              .ConfigureAwait(false);
             var initial = first.Data.Select(x => CurseForgeHelper.ToVersion(label, x));
             return new PaginationHandle<Version>(initial,
@@ -638,7 +641,8 @@ public class CurseForgeRepository(string label, ICurseForgeClient client) : IRep
                                                                         filter.Version,
                                                                         loader,
                                                                         pageIndex * first.Pagination.PageSize,
-                                                                        first.Pagination.PageSize)
+                                                                        first.Pagination.PageSize,
+                                                                        releaseTypes: CurseForgeHelper.ToFileReleaseType(filter.Type))
                                                                    .ConfigureAwait(false);
                                                      return rv.Data.Select(x => CurseForgeHelper.ToVersion(label, x));
                                                  });

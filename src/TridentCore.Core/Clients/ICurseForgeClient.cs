@@ -43,7 +43,8 @@ public interface ICurseForgeClient
         string? gameVersion,
         ModLoaderTypeModel? modLoaderType,
         uint? index,
-        uint? pageSize);
+        uint? pageSize,
+        [AliasAs("releaseTypes")] uint? releaseTypes = null);
 
     [Get("/v1/mods/{modId}/description")]
     Task<ObjectResponse<string>> GetModDescriptionAsync(uint modId);

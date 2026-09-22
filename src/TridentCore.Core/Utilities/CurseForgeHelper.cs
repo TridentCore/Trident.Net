@@ -105,6 +105,16 @@ public static class CurseForgeHelper
             _ => ReleaseType.Release
         };
 
+    public static uint? ToFileReleaseType(ReleaseType? type) =>
+        type switch
+        {
+            ReleaseType.Release => (uint)FileInfo.FileReleaseType.Release,
+            ReleaseType.Beta => (uint)FileInfo.FileReleaseType.Beta,
+            ReleaseType.Alpha => (uint)FileInfo.FileReleaseType.Alpha,
+            null => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+
     public static Uri ToDownloadUrl(FileInfo file) =>
         file.DownloadUrl
      ?? new
