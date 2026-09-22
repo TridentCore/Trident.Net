@@ -192,6 +192,7 @@ public sealed class DeploymentDiffer
                         pending.Push((entry.FullName, target));
                         continue;
                     }
+                    if (DeploymentFileHelper.IsOsMetadataFile(entry.Name)) continue;
                     if (Directory.Exists(target))
                     {
                         if (OldImportPaths.Contains(entry.FullName))

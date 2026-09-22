@@ -49,7 +49,7 @@ public sealed class SourceProjectionPlanner(ProjectionArbitrator arbitrator)
                     throw new InvalidDataException($"Managed source cannot contain a symbolic link: {entry.FullName}");
                 if (entry is DirectoryInfo)
                     pending.Push((entry.FullName, covered));
-                else if (!covered)
+                else if (!covered && !DeploymentFileHelper.IsOsMetadataFile(entry.Name))
                 {
                     var target = DeploymentFileHelper.ProjectionPath(build, Path.GetRelativePath(source, entry.FullName));
                     DeploymentFileHelper.RequireProjection(candidates, build, new(entry.FullName, target, kind, false, null, null));

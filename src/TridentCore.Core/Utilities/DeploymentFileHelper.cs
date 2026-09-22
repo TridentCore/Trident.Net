@@ -39,6 +39,15 @@ public static class DeploymentFileHelper
 
     public static string? LinkTarget(string path) => new FileInfo(path).LinkTarget;
 
+    // OS-generated metadata (Finder .DS_Store, Explorer Thumbs.db/desktop.ini, AppleDouble ._* pairs)
+    // is regenerable noise: never projected from a managed source, never migrated into persist, and
+    // safe to clear when a deployment takes over the directory holding it.
+    public static bool IsOsMetadataFile(string name) =>
+        name.StartsWith("._", StringComparison.Ordinal)
+        || name.Equals(".DS_Store", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("Thumbs.db", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase);
+
     public static bool LinkMatches(string path, string target)
     {
         var current = LinkTarget(path);
@@ -113,7 +122,7 @@ public static class DeploymentFileHelper
                 if (!DirectoryContainsOnlyLinksEmptyDirectoriesOrFiles(directory.FullName, allowedFiles)) return false;
                 continue;
             }
-            if (!allowedFiles.Contains(entry.FullName)) return false;
+            if (!allowedFiles.Contains(entry.FullName) && !IsOsMetadataFile(entry.Name)) return false;
         }
         return true;
     }
@@ -174,6 +183,16 @@ public static class DeploymentFileHelper
             if (entry.LinkTarget is not null)
             {
                 DeleteLink(entry.FullName);
+                continue;
+            }
+            if (entry.LinkTarget is not null)
+            {
+                DeleteLink(entry.FullName);
+                continue;
+            }
+            if (IsOsMetadataFile(entry.Name))
+            {
+                entry.Delete();
                 continue;
             }
             if (entry is not DirectoryInfo directory || !DeleteDirectoryTreeIfEmptyOrLinks(directory.FullName))
