@@ -254,22 +254,16 @@ public class InstanceManager(
             run.Mutate<InstanceActivity.Deploying>(x => x with
             {
                 CurrentStage = current,
-                FileCount = null,
-                Progress = new ActivityProgress.Indeterminate(current.ToString())
+                Progress = new ActivityProgress.Indeterminate(null)
             });
 
-            // 只有部署执行阶段能报出文件计数，其余阶段保持脉冲。
-            if (stage is ExecuteDeploymentStage execute)
+            IObservable<ActivityProgress>? progress = stage switch
             {
-                execute
-                   .ProgressStream.Subscribe(x => run.Mutate<InstanceActivity.Deploying>(a => a with
-                    {
-                        FileCount = x,
-                        Progress = new ActivityProgress.Determinate(current.ToString(),
-                                                                    x.Total == 0 ? 0d : (double)x.Current / x.Total)
-                    }))
-                   .DisposeWith(execute);
-            }
+                PlanDeploymentStage planning => planning.ProgressStream,
+                ExecuteDeploymentStage execute => execute.ProgressStream,
+                _ => null
+            };
+            if (progress is not null) progress.Subscribe(run.Report).DisposeWith(stage);
 
             logger.LogInformation("Enter stage {name}", stage.GetType().Name);
             await stage.ProcessAsync(run.Token).ConfigureAwait(false);
@@ -743,14 +737,14 @@ public class InstanceManager(
 
         var memory = await DownloadFileAsync(package.Download,
                                             size,
-                                            p => run.Report(new ActivityProgress.Determinate(null, p)),
+                                            p => run.Report(new ActivityProgress.Determinate(null, p, 1d)),
                                             client,
                                             cancellationToken)
                         .ConfigureAwait(false);
 
         logger.LogDebug("Downloaded {length} bytes", memory.Length);
 
-        run.Report(new ActivityProgress.Determinate(null, 1d));
+        run.Report(new ActivityProgress.Determinate(null, 1d, 1d));
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
 
         // 解压与导入无法量化，进度回到脉冲。

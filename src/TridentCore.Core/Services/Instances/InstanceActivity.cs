@@ -72,9 +72,6 @@ public abstract record InstanceActivity
         public override InstanceState Kind => InstanceState.Deploying;
 
         public DeployStage CurrentStage { get; init; } = DeployStage.LoadLock;
-
-        /// <summary>部署执行阶段的文件计数，包含下载与本地文件操作。</summary>
-        public (int Current, int Total)? FileCount { get; init; }
     }
 
     #endregion

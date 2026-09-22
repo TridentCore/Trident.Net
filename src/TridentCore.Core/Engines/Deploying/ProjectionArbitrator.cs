@@ -1,36 +1,48 @@
-using TridentCore.Core.Utilities;
 using TridentCore.Core.Exceptions;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Engines.Deploying;
 
 public sealed class ProjectionArbitrator
 {
-    public IReadOnlyList<DeploymentTarget.Projection> Select(IEnumerable<DeploymentTarget.Projection> candidates)
+    public IReadOnlyList<DeploymentTarget.Projection> Select(
+        IEnumerable<DeploymentTarget.Projection> candidates, CancellationToken token = default)
     {
         var selected = new List<DeploymentTarget.Projection>();
+        var paths = new Dictionary<string, DeploymentTarget.Projection>(FileHelper.PathComparer);
+        var descendantKinds = new Dictionary<string, int>(FileHelper.PathComparer);
         foreach (var candidate in candidates.OrderByDescending(x => x.Kind).ThenBy(x => x.Target.Length))
         {
-            var same = selected.FirstOrDefault(x => FileHelper.IsPathEquivalent(candidate.Target, x.Target));
-            if (same is not null)
+            token.ThrowIfCancellationRequested();
+            var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate.Target));
+            if (paths.TryGetValue(path, out var same))
             {
                 if (same.Kind == candidate.Kind) throw Conflict(candidate.Target);
                 continue;
             }
 
-            var ancestor = selected.FirstOrDefault(x => FileHelper.IsInDirectory(candidate.Target, x.Target));
+            DeploymentTarget.Projection? ancestor = null;
+            for (var parent = Path.GetDirectoryName(path); parent is not null; parent = Path.GetDirectoryName(parent))
+            {
+                if (paths.TryGetValue(parent, out ancestor)) break;
+            }
             if (ancestor is not null)
             {
                 if (ancestor.Kind == candidate.Kind) throw Conflict(candidate.Target);
                 continue;
             }
 
-            var descendants = selected.Where(x => FileHelper.IsInDirectory(x.Target, candidate.Target)).ToArray();
-            if (descendants.Length != 0)
+            var kind = 1 << (int)candidate.Kind;
+            if (descendantKinds.TryGetValue(path, out var descendants))
             {
-                if (descendants.Any(x => x.Kind == candidate.Kind)) throw Conflict(candidate.Target);
+                if ((descendants & kind) != 0) throw Conflict(candidate.Target);
                 continue;
             }
+
             selected.Add(candidate);
+            paths.Add(path, candidate);
+            for (var parent = Path.GetDirectoryName(path); parent is not null; parent = Path.GetDirectoryName(parent))
+                descendantKinds[parent] = descendantKinds.GetValueOrDefault(parent) | kind;
         }
         return selected;
     }

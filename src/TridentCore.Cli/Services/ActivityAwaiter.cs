@@ -2,6 +2,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Text.Json;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 using TridentCore.Abstractions.Tasks;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Services.Instances;
@@ -20,11 +21,12 @@ public class ActivityAwaiter(CliOutput output)
             return;
         }
 
+        var stepColumn = new DeploymentStepColumn();
         await AnsiConsole
              .Progress()
              .AutoClear(false)
              .HideCompleted(false)
-             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
+             .Columns(new TaskDescriptionColumn(), stepColumn, new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
              .StartAsync(async progressContext =>
               {
                   var task = progressContext.AddTask("[blue]Preparing build[/]", maxValue: 1);
@@ -32,10 +34,19 @@ public class ActivityAwaiter(CliOutput output)
                                        stage => task.Description = $"[blue]{Markup.Escape(stage)}[/]",
                                        progress =>
                                        {
-                                           task.Value = Math.Clamp(progress, 0d, 1d);
+                                           stepColumn.Step = progress switch
+                                           {
+                                               ActivityProgress.Determinate value => value.Stage,
+                                               ActivityProgress.Indeterminate value => value.Stage,
+                                               _ => null
+                                           };
+                                           task.IsIndeterminate = progress is not ActivityProgress.Determinate;
+                                           task.MaxValue = progress is ActivityProgress.Determinate total ? total.Total : 1;
+                                           task.Value = progress is ActivityProgress.Determinate current ? current.Current : 0;
                                        },
                                        cancellationToken)
                      .ConfigureAwait(false);
+                  task.IsIndeterminate = false;
                   task.Value = task.MaxValue;
                   task.StopTask();
               })
@@ -45,7 +56,7 @@ public class ActivityAwaiter(CliOutput output)
     private static async Task AwaitCoreAsync(
         IObservable<InstanceActivity> activities,
         Action<string>? onStage,
-        Action<double>? onProgress,
+        Action<ActivityProgress>? onProgress,
         CancellationToken cancellationToken)
     {
         DeployStage? lastStage = null;
@@ -57,14 +68,29 @@ public class ActivityAwaiter(CliOutput output)
                 onStage?.Invoke(x.CurrentStage.ToString());
             }
 
-            if (x.FileCount is { Total: > 0 } count)
-            {
-                onProgress?.Invoke((double)count.Current / count.Total);
-            }
+            onProgress?.Invoke(x.Progress);
         });
 
         var final = await AwaitCompletionAsync(activities, cancellationToken).ConfigureAwait(false);
         ThrowIfFaulted(final, "Deploy failed.");
+    }
+
+    private sealed class DeploymentStepColumn : ProgressColumn
+    {
+        public string? Step { get; set; }
+
+        public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime) =>
+            new Text(Step switch
+            {
+                nameof(DeploymentPlanningStep) + "_" + nameof(DeploymentPlanningStep.CollectSources) => "Collecting sources",
+                nameof(DeploymentPlanningStep) + "_" + nameof(DeploymentPlanningStep.BuildRequirements) => "Listing required files",
+                nameof(DeploymentPlanningStep) + "_" + nameof(DeploymentPlanningStep.VerifyFiles) => "Checking files",
+                nameof(DeploymentPlanningStep) + "_" + nameof(DeploymentPlanningStep.ReconcileDirectories) => "Checking directories",
+                nameof(DeploymentExecutionStep) + "_" + nameof(DeploymentExecutionStep.DownloadFiles) => "Downloading files",
+                nameof(DeploymentExecutionStep) + "_" + nameof(DeploymentExecutionStep.ApplyChanges) => "Applying file changes",
+                nameof(DeploymentExecutionStep) + "_" + nameof(DeploymentExecutionStep.FinalizeDeployment) => "Finalizing deployment",
+                _ => string.Empty
+            });
     }
 
     public async Task AwaitInstallAsync(
@@ -141,7 +167,7 @@ public class ActivityAwaiter(CliOutput output)
             {
                 case ActivityProgress.Determinate d:
                     phase = InstallPhase.Downloading;
-                    return (phase, d.Percent);
+                    return (phase, d.Current / d.Total);
                 case ActivityProgress.Indeterminate when phase == InstallPhase.Downloading:
                     phase = InstallPhase.Extracting;
                     return (phase, null);

@@ -7,10 +7,15 @@ namespace TridentCore.Core.Engines.Deploying;
 
 public sealed class DeploymentDiffer
 {
-    public DeploymentPlan Diff(string key, DeploymentTarget target, CancellationToken token = default)
+    public DeploymentPlan Diff(
+        string key,
+        DeploymentTarget target,
+        CancellationToken token = default,
+        Action<(int Current, int Total)?>? progress = null)
     {
         var session = new Session(key, target);
-        session.EvaluateRequirements(token);
+        session.EvaluateRequirements(token, progress);
+        progress?.Invoke(null);
 
         foreach (var projection in target.Projections.Where(x => x.Kind == DeploymentTarget.ProjectionKind.Package))
         {
@@ -83,8 +88,11 @@ public sealed class DeploymentDiffer
         public HashSet<string> HandledRetired { get; } = new(FileHelper.PathComparer);
         public List<PersistProjectionManifest.FileEntry> PersistEntries { get; } = [];
 
-        public void EvaluateRequirements(CancellationToken token)
+        public void EvaluateRequirements(CancellationToken token, Action<(int Current, int Total)?>? progress)
         {
+            var total = Target.Requirements.Length;
+            var completed = 0;
+            if (total > 0) progress?.Invoke((0, total));
             foreach (var requirement in Target.Requirements)
             {
                 token.ThrowIfCancellationRequested();
@@ -101,6 +109,7 @@ public sealed class DeploymentDiffer
                     Plan.Downloads.Add(new(
                         requirement.Path, requirement.Url, requirement.Hash, requirement.Executable));
                 }
+                progress?.Invoke((++completed, total));
             }
         }
 

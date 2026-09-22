@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Reactive.Subjects;
 using TridentCore.Abstractions;
+using TridentCore.Abstractions.Tasks;
 using TridentCore.Core.Exceptions;
 using TridentCore.Core.Extensions;
 using TridentCore.Core.Services;
@@ -9,14 +11,16 @@ namespace TridentCore.Core.Engines.Deploying.Stages;
 
 public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
 {
-    public Subject<(int Current, int Total)> ProgressStream { get; } = new();
+    private long _lastReport;
+
+    public Subject<ActivityProgress> ProgressStream { get; } = new();
 
     protected override async Task OnProcessAsync(CancellationToken token)
     {
         var plan = Context.Plan!;
-        var total = plan.Downloads.Count + plan.Operations.Count;
+        var total = plan.Downloads.Count;
         var completed = 0;
-        ProgressStream.OnNext((0, total));
+        if (total > 0) Report(DeploymentExecutionStep.DownloadFiles, (0, total));
         using var client = factory.CreateClient(RepositoryAgent.CLIENT_NAME);
         await Parallel.ForEachAsync(plan.Downloads, new ParallelOptions
         {
@@ -26,8 +30,12 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
         {
             await DownloadHelper.DownloadAsync(client, download.Url, download.Path, download.Hash, ct).ConfigureAwait(false);
             if (download.Executable) MakeExecutable(download.Path);
-            lock (ProgressStream) ProgressStream.OnNext((++completed, total));
+            lock (ProgressStream) Report(DeploymentExecutionStep.DownloadFiles, (++completed, total));
         }).ConfigureAwait(false);
+
+        total = plan.Operations.Count;
+        completed = 0;
+        if (total > 0) Report(DeploymentExecutionStep.ApplyChanges, (0, total));
 
         var build = PathDef.Default.DirectoryOfBuild(Context.Key);
         var persist = PathDef.Default.DirectoryOfPersist(Context.Key);
@@ -60,13 +68,14 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
                 default:
                     throw new InvalidOperationException($"Unknown deployment operation: {operation}");
             }
-            ProgressStream.OnNext((++completed, total));
+            Report(DeploymentExecutionStep.ApplyChanges, (++completed, total));
         }
 
         // 计划（DeploymentPlanner）、求差（DeploymentDiffer）、应用（上面的下载与操作循环）三段是一个整体，
         // 前两段抽出为独立类，供 InstanceStateService 复用以判断实例就绪。
         // 以下的 natives 提取、allowed_symlinks 写入与清单提交是收尾，属于另一个整体，
         // 不属于前三段，刻意保持内联而不做成 Operation。
+        Report(DeploymentExecutionStep.FinalizeDeployment, null);
         var natives = Context.Lock.Artifact!.AllLibraries().Where(x => x.IsNative)
             .Select(x => new NativeHelper.Archive(x.FilePath(Context.Key), false, x.Exclude)).ToArray();
         var nativesDirectory = PathDef.Default.DirectoryOfNatives(Context.Key);
@@ -77,6 +86,18 @@ public class ExecuteDeploymentStage(IHttpClientFactory factory) : StageBase
         if (plan.NeedsManifestCommit)
             await ProjectionManifestHelper.WriteAsync(Context.Key, plan.ImportManifest, plan.PersistManifest, token)
                 .ConfigureAwait(false);
+    }
+
+    private void Report(DeploymentExecutionStep step, (int Current, int Total)? count)
+    {
+        if (count is { Current: > 0 } value && value.Current < value.Total
+            && Stopwatch.GetElapsedTime(_lastReport).TotalMilliseconds < 100) return;
+        _lastReport = Stopwatch.GetTimestamp();
+        var name = $"{nameof(DeploymentExecutionStep)}_{step}";
+        ActivityProgress progress = count is { } items
+            ? new ActivityProgress.Determinate(name, items.Current, items.Total)
+            : new ActivityProgress.Indeterminate(name);
+        ProgressStream.OnNext(progress);
     }
 
     private static void EnsureImportFile(string build, string source, string target)

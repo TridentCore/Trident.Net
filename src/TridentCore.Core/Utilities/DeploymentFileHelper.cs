@@ -1,4 +1,3 @@
-using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Engines.Deploying;
 
 namespace TridentCore.Core.Utilities;
@@ -22,19 +21,6 @@ public static class DeploymentFileHelper
         if (ProjectionManifestHelper.IsReservedProjectionPath(build, projection.Target))
             throw new InvalidDataException($"Projection target is reserved for deployment metadata: {projection.Target}");
         candidates[projection.Target] = projection;
-    }
-
-    public static void RequireFile(DeploymentTarget target, string path, Uri? url, FileHash? hash, bool executable = false)
-    {
-        var existing = target.Requirements.FirstOrDefault(x => FileHelper.IsPathEquivalent(x.Path, path));
-        if (existing is not null)
-        {
-            if (existing.Hash != hash || existing.Url != url) throw new InvalidDataException($"Conflicting file requirements: {path}");
-            if (executable && !existing.Executable)
-                target.Requirements[target.Requirements.IndexOf(existing)] = existing with { Executable = true };
-            return;
-        }
-        target.Requirements.Add(new(path, url, hash, executable));
     }
 
     public static string? LinkTarget(string path) => new FileInfo(path).LinkTarget;

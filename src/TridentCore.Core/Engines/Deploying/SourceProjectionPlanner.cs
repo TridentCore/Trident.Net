@@ -12,7 +12,7 @@ public sealed class SourceProjectionPlanner(ProjectionArbitrator arbitrator)
         var candidates = new Dictionary<string, DeploymentTarget.Projection>(FileHelper.PathComparer);
         Collect(PathDef.Default.DirectoryOfImport(key), build, DeploymentTarget.ProjectionKind.Import, candidates, token);
         Collect(PathDef.Default.DirectoryOfPersist(key), build, DeploymentTarget.ProjectionKind.Persist, candidates, token);
-        return arbitrator.Select(candidates.Values);
+        return arbitrator.Select(candidates.Values, token);
     }
 
     private static void Collect(
