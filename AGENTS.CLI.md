@@ -14,8 +14,8 @@ Utilities/   → CLI-specific helpers
 
 ## Entry Point
 
-1. `Program.Main` → `CliContext.Parse(args)` extracts global options (`--home`, `--json`, `--no-interactive`, `--verbose`, `--debug`, `--mcp`).
-2. Home directory resolution: walk upward from CWD looking for `.trident/`, fall back to `~/.trident`.
+1. `Program.Main` → `CliContext.Parse(args)` extracts global options (`--json`, `--no-interactive`, `--verbose`, `--debug`, `--mcp`).
+2. Home directory resolution (`PathDef.LocateEffectiveHome`): `TRIDENT_HOME` env var, then walk upward from CWD looking for `.trident/`, then the `~/.trident.home` override file, then `~/.trident`.
 3. `Startup.ConfigureServices()` registers all DI services.
 4. If `--mcp`: `McpHost.RunAsync()` starts the MCP stdio server with tools from assembly.
 5. Otherwise: `Startup.ConfigureCommands()` registers the Spectre command tree, then `app.RunAsync()`.

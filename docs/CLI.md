@@ -7,7 +7,7 @@ Trident CLI is the command-line entry point for Trident instance, loader, packag
 Global options are preprocessed before command dispatch and can be used before any command.
 
 ```sh
-trident --home C:/path/to/.trident --json list
+TRIDENT_HOME=C:/path/to/.trident trident --json list
 trident --no-interactive instance delete --instance cherry_picks --yes
 trident --verbose package search --repository modrinth "Mouse Tweaks"
 trident --debug repository status --label modrinth
@@ -15,7 +15,7 @@ trident --debug repository status --label modrinth
 
 | Option | Description |
 | --- | --- |
-| `--home <path>` | Use a specific Trident home instead of auto-detecting `.trident` or falling back to `~/.trident`. |
+| `--json` | Force structured JSON output. |
 | `--json` | Force structured JSON output. |
 | `--no-interactive` | Disable prompts/progress UI. Destructive commands require `--yes` where supported. |
 | `--verbose` | Enable informational logging. |
@@ -59,6 +59,13 @@ Long-running commands such as `instance build`, `instance import`, `instance exp
 ## Data Locations
 
 Managed instances, caches, and profiles still live under the selected Trident home.
+
+The home is resolved at startup in this order:
+
+1. The `TRIDENT_HOME` environment variable, when set to a directory path.
+2. A `.trident` directory found by walking up from the current directory.
+3. The first line of the `~/.trident.home` override file, when it is an absolute path.
+4. The fallback `~/.trident`.
 
 CLI-owned configuration is stored under the private brand directory:
 
@@ -332,11 +339,11 @@ Supported repository drivers:
 ```sh
 dotnet build "Trident.slnx"
 dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --help
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> create --identity smoke --name Smoke --version 1.21.1
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> list
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> inspect --instance smoke
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> loader list
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> account add --type offline --username Steve
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> repository list
-dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --home <temp-home> --no-interactive instance delete --instance smoke --yes
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json create --identity smoke --name Smoke --version 1.21.1
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json list
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json inspect --instance smoke
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json loader list
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json account add --type offline --username Steve
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json repository list
+TRIDENT_HOME=<temp-home> dotnet run --project "src/TridentCore.Cli/TridentCore.Cli.csproj" -- --json --no-interactive instance delete --instance smoke --yes
 ```

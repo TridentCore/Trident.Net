@@ -188,7 +188,6 @@ trident instance export --instance cherry_picks --format modrinth --type online 
 
 | Option | 用途 |
 | --- | --- |
-| `--home <path>` / `--home=<path>` | 指定 Trident home，覆盖自动查找的 `.trident`。 |
 | `--json` | 强制结构化 JSON 输出。 |
 | `--no-interactive` | 禁用提示、spinner 和进度 UI；破坏性命令需要配合 `--yes`。 |
 | `--verbose` | 输出信息级日志。 |
@@ -196,6 +195,8 @@ trident instance export --instance cherry_picks --format modrinth --type online 
 | `--mcp` | 以 MCP（Model Context Protocol）服务器模式启动，通过 stdio 通信。隐含 `--json` 和 `--no-interactive`。 |
 
 当 stdout 被重定向时，CLI 会自动倾向输出 JSON，方便管道和脚本消费。
+
+Trident home 不是命令行选项：通过 `TRIDENT_HOME` 环境变量显式指定，完整解析顺序见 [docs/CLI.md](docs/CLI.md)。
 
 ### 命令总览
 
@@ -292,7 +293,7 @@ trident --mcp
 | `List` (AccountTools) | 列出已注册账号。 |
 | `List` / `VersionList` (LoaderTools) | 列出支持的加载器和查询版本。 |
 
-所有工具返回 JSON。MCP 模式下同样支持 `--home` 选项。
+所有工具返回 JSON。MCP 模式下同样通过 `TRIDENT_HOME` 环境变量指定 home。
 
 #### 能力边界
 
@@ -305,7 +306,7 @@ MCP 接口刻意排除了那些不可逆、资源占用重、涉及外部信任�
 
 ### CI/CD 发布整合包
 
-Trident CLI 可以在 GitHub Actions 中把同一个实例导出为多个发行格式。下面示例假定仓库内有可被 CLI 管理的 `.trident` home，或者通过 `--home` 指定构建用目录。
+Trident CLI 可以在 GitHub Actions 中把同一个实例导出为多个发行格式。下面示例假定仓库内有可被 CLI 管理的 `.trident` home，或者通过 `TRIDENT_HOME` 环境变量指定构建用目录。
 
 ```yaml
 name: Build and Publish Modpack

@@ -216,7 +216,6 @@ Global options are preprocessed before command dispatch and can appear anywhere 
 
 | Option                            | Purpose                                                                                                       |
 |-----------------------------------|---------------------------------------------------------------------------------------------------------------|
-| `--home <path>` / `--home=<path>` | Sets the Trident home directory and overrides automatic `.trident` discovery.                                 |
 | `--json`                          | Forces structured JSON output.                                                                                |
 | `--no-interactive`                | Disables prompts, spinners, and progress UI; destructive commands also require `--yes`.                       |
 | `--verbose`                       | Enables information-level logs.                                                                               |
@@ -224,6 +223,8 @@ Global options are preprocessed before command dispatch and can appear anywhere 
 | `--mcp`                           | Starts Trident as an MCP (Model Context Protocol) server over stdio. Implies `--json` and `--no-interactive`. |
 
 When stdout is redirected, the CLI automatically prefers JSON output for pipeline and scripting scenarios.
+
+The Trident home is not selected by a command-line option: set the `TRIDENT_HOME` environment variable to choose it explicitly. See [docs/CLI.md](docs/CLI.md) for the full resolution order.
 
 ### Command Overview
 
@@ -331,7 +332,7 @@ Available tools:
 | `List` (AccountTools)                          | List registered accounts.                                     |
 | `List` / `VersionList` (LoaderTools)           | List supported loaders and query versions.                    |
 
-All tools return JSON. The `--home` option is also respected in MCP mode.
+All tools return JSON. The `TRIDENT_HOME` environment variable also selects the home in MCP mode.
 
 #### Surface Boundaries
 
@@ -350,7 +351,7 @@ credential-lifecycle tools without raising it first.
 ### CI/CD Modpack Publishing
 
 Trident CLI can export the same instance into multiple release formats in GitHub Actions. The example below assumes the
-repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through `--home`.
+repository contains a `.trident` home managed by the CLI, or that the workflow supplies one through the `TRIDENT_HOME` environment variable.
 
 ```yaml
 name: Build and Publish Modpack
