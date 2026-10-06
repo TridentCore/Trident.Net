@@ -26,7 +26,7 @@ public class InstanceRunCommand(
     CliConfigurationStore configuration,
     CliOutput output) : InstanceCommandBase<InstanceRunCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         RunAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

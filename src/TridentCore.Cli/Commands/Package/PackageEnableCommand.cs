@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Package;
 public class PackageEnableCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
     : InstanceCommandBase<PackageEnableCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = PackageOperation.SetEnabled(Resolver,
                                                  profileManager,

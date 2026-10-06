@@ -13,7 +13,7 @@ public class AccountAddCommand(
     MinecraftService minecraftService,
     CliOutput output) : Command<AccountAddCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

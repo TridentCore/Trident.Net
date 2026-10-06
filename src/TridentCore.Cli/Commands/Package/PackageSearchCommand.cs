@@ -10,7 +10,7 @@ namespace TridentCore.Cli.Commands.Package;
 public class PackageSearchCommand(InstanceContextResolver resolver, RepositoryAgent repositories, CliOutput output)
     : Command<PackageSearchCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         SearchAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

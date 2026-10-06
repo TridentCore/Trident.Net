@@ -11,7 +11,7 @@ public class PackageDependentListCommand(
     RepositoryAgent repositories,
     CliOutput output) : InstanceCommandBase<PackageDependentListCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = PackageOperation

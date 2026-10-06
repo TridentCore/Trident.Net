@@ -10,7 +10,7 @@ public class RepositoryListCommand(
     CliRepositoryProviderAccessor combined,
     CliOutput output) : Command<RepositoryListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var repositories = RepositoryOperation.List(userRepositories, combined);
 

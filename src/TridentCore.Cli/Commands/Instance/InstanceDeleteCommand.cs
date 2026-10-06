@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceDeleteCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
     : InstanceCommandBase<InstanceDeleteCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         output.RequireConfirmation($"Delete instance '{instance.Key}'? The directory will be removed on the next profile scan.",

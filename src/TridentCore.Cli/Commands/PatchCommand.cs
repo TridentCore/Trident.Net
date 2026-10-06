@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands;
 public class PatchCommand(InstanceContextResolver resolver, CliOutput output)
     : InstanceCommandBase<PatchCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         if (settings.Action == "remove")

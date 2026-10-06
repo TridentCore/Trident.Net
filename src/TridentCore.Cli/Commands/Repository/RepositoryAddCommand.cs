@@ -7,7 +7,7 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryAddCommand(UserRepositoryStore userRepositories, CliOutput output)
     : Command<RepositoryAddCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = RepositoryOperation.Add(userRepositories,
                                              settings.Label,

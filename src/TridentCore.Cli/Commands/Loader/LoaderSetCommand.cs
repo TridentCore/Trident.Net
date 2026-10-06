@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Loader;
 public class LoaderSetCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
     : InstanceCommandBase<LoaderSetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = LoaderOperation.Set(Resolver, profileManager, settings.Loader, instance.Key, settings.Profile);

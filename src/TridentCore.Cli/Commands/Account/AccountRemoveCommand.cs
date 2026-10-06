@@ -6,7 +6,7 @@ namespace TridentCore.Cli.Commands.Account;
 
 public class AccountRemoveCommand(AccountStore accounts, CliOutput output) : Command<AccountRemoveCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         output.RequireConfirmation($"Remove account '{settings.Uuid}'?", settings.Yes);
         var result = AccountOperation.Remove(accounts, settings.Uuid);

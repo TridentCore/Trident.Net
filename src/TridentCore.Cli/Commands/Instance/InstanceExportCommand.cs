@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceExportCommand(InstanceContextResolver resolver, ExporterAgent exporterAgent, CliOutput output)
     : InstanceCommandBase<InstanceExportCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation

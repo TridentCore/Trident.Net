@@ -7,7 +7,7 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryRemoveCommand(UserRepositoryStore userRepositories, CliOutput output)
     : Command<RepositoryRemoveCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         output.RequireConfirmation($"Remove user repository '{settings.Label}'?", settings.Yes);
         var result = RepositoryOperation.Remove(userRepositories, settings.Label);

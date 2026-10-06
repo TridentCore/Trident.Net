@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceBuildCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliOutput output)
     : InstanceCommandBase<InstanceBuildCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation

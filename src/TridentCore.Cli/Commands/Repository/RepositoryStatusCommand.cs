@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Commands.Repository;
 public class RepositoryStatusCommand(RepositoryAgent repositories, CliOutput output)
     : Command<RepositoryStatusCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

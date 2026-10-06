@@ -11,7 +11,7 @@ public class PackageDependencyListCommand(
     RepositoryAgent repositories,
     CliOutput output) : Command<PackageDependencyListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = PackageOperation
                     .DependencyList(repositories,

@@ -7,7 +7,7 @@ namespace TridentCore.Cli.Commands.Account;
 
 public class AccountListCommand(AccountStore accounts, CliOutput output) : Command<AccountListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = AccountOperation.List(accounts);
         if (output.UseStructuredOutput)

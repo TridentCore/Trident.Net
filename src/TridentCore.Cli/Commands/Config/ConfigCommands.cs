@@ -26,7 +26,7 @@ public abstract class ConfigCommandBase<T>(InstanceContextResolver resolver) : C
 public class ConfigGetCommand(InstanceContextResolver resolver, CliConfigurationStore configuration, CliOutput output)
     : ConfigCommandBase<ConfigGetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = ConfigOperation.Get(Resolver, configuration, settings.Name, settings.Instance, settings.Profile);
 
@@ -59,7 +59,7 @@ public class ConfigSetCommand(
     CliConfigurationStore configuration,
     CliOutput output) : ConfigCommandBase<ConfigSetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = ConfigOperation.Set(Resolver,
                                          configuration,
@@ -106,7 +106,7 @@ public class ConfigUnsetCommand(
     CliConfigurationStore configuration,
     CliOutput output) : ConfigCommandBase<ConfigUnsetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ConfigOperation.Unset(Resolver,
                               configuration,
@@ -138,7 +138,7 @@ public class ConfigUnsetCommand(
 public class ConfigListCommand(InstanceContextResolver resolver, CliConfigurationStore configuration, CliOutput output)
     : ConfigCommandBase<ConfigListCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = ConfigOperation.List(Resolver, configuration, settings.Instance, settings.Profile);
 

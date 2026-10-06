@@ -10,7 +10,7 @@ namespace TridentCore.Cli.Commands.Loader;
 public class LoaderVersionListCommand(PrismLauncherService prismLauncher, CliOutput output)
     : Command<LoaderVersionListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ExecuteAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

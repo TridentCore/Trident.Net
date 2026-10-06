@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceResetCommand(InstanceContextResolver resolver, InstanceManager instanceManager, CliOutput output)
     : InstanceCommandBase<InstanceResetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         output.RequireConfirmation($"Reset build artifacts for instance '{instance.Key}'?", settings.Yes);

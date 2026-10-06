@@ -12,7 +12,7 @@ public class PackageAddCommand(
     StdinValueReader stdin,
     CliOutput output) : InstanceCommandBase<PackageAddCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var prefs = new List<string>();
         if (!string.IsNullOrWhiteSpace(settings.Pref))

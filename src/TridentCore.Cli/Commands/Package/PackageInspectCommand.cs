@@ -10,7 +10,7 @@ namespace TridentCore.Cli.Commands.Package;
 public class PackageInspectCommand(InstanceContextResolver resolver, RepositoryAgent repositories, CliOutput output)
     : Command<PackageInspectCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         InspectAsync(settings).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Commands.Package;
 public class PackageListCommand(InstanceContextResolver resolver, RepositoryAgent repositories, CliOutput output)
     : InstanceCommandBase<PackageListCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         ListAsync(settings, cancellationToken).GetAwaiter().GetResult();
         return ExitCodes.SUCCESS;

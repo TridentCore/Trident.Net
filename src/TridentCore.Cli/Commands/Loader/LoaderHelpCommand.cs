@@ -6,7 +6,7 @@ namespace TridentCore.Cli.Commands.Loader;
 
 public class LoaderHelpCommand(CliOutput output) : Command<LoaderHelpCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = new
         {

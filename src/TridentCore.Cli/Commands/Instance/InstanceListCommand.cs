@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceListCommand(ProfileManager profileManager, CliOutput output)
     : Command<InstanceListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instances = InstanceOperation.List(profileManager);
 

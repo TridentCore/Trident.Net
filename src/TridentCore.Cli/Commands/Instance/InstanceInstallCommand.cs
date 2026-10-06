@@ -12,7 +12,7 @@ public class InstanceInstallCommand(
     ActivityAwaiter awaiter,
     CliOutput output) : Command<InstanceInstallCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var activities = InstanceOperation
                         .StartInstallAsync(instanceManager, repositories, settings.Pref, settings.Identity)

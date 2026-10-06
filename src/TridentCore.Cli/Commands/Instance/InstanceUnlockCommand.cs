@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Instance;
 public class InstanceUnlockCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
     : InstanceCommandBase<InstanceUnlockCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = InstanceOperation.Unlock(Resolver, profileManager, instance.Key, settings.Profile);

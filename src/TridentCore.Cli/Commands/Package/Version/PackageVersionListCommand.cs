@@ -9,7 +9,7 @@ namespace TridentCore.Cli.Commands.Package.Version;
 public class PackageVersionListCommand(RepositoryAgent repositories, CliOutput output)
     : Command<PackageVersionListCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var result = PackageOperation
                     .VersionList(repositories,

@@ -6,7 +6,7 @@ namespace TridentCore.Cli.Commands.Repository;
 
 public class RepositoryHelpCommand(CliOutput output) : Command<RepositoryHelpCommand.Arguments>
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var drivers = new[]
         {

@@ -8,7 +8,7 @@ namespace TridentCore.Cli.Commands.Package.Version;
 public class PackageVersionSetCommand(InstanceContextResolver resolver, ProfileManager profileManager, CliOutput output)
     : InstanceCommandBase<PackageVersionSetCommand.Arguments>(resolver)
 {
-    protected override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Arguments settings, CancellationToken cancellationToken)
     {
         var instance = ResolveInstance(settings);
         var result = PackageOperation.VersionSet(Resolver,
