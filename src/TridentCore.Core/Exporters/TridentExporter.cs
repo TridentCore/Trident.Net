@@ -12,6 +12,7 @@ using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 using TridentCore.Pref.Building;
+using TridentCore.Pref.Utilities;
 
 namespace TridentCore.Core.Exporters;
 
@@ -52,7 +53,7 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
             string Sever(string? source)
             {
                 // NOTE: 非 pref 戳（collection 等）不是整合包来源，原样保留。
-                if (source is null || !InternalUriHelper.IsKind(source, Builder.Scheme))
+                if (source is null || !InternalUriHelper.HasScheme(source, Builder.Scheme))
                 {
                     return source!;
                 }

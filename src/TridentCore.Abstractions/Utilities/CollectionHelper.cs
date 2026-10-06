@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using TridentCore.Pref.Utilities;
 
 namespace TridentCore.Abstractions.Utilities;
 
@@ -13,31 +14,31 @@ public static class CollectionHelper
 
     private const string BY_NAME_SEGMENT = "by-name/";
 
-    public static string ToUri(string name) => PREFIX + BY_NAME_SEGMENT + Uri.EscapeDataString(name);
+    public static string ToUri(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return PREFIX + BY_NAME_SEGMENT + Uri.EscapeDataString(name);
+    }
 
     public static bool TryGetName(string? s, [MaybeNullWhen(false)] out string name)
     {
         name = null;
-        if (s is null || !s.StartsWith(PREFIX, StringComparison.Ordinal))
+        if (!InternalUriHelper.TryParse(s, SCHEME, out var uri)
+            || !s!.StartsWith(PREFIX + BY_NAME_SEGMENT, StringComparison.OrdinalIgnoreCase)
+            || uri.Query.Length != 0)
         {
             return false;
         }
 
-        var rest = s[PREFIX.Length..];
-        if (!rest.StartsWith(BY_NAME_SEGMENT, StringComparison.Ordinal))
+        var encoded = s[(PREFIX.Length + BY_NAME_SEGMENT.Length)..];
+        if (encoded.Contains('/') || encoded.Contains('\\')
+            || !InternalUriHelper.TryDecodeComponent(encoded, out var decoded)
+            || string.IsNullOrWhiteSpace(decoded))
         {
             return false;
         }
 
-        try
-        {
-            name = Uri.UnescapeDataString(rest[BY_NAME_SEGMENT.Length..]);
-        }
-        catch
-        {
-            return false;
-        }
-
+        name = decoded;
         return true;
     }
 }

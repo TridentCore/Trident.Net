@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using IParser;
+using TridentCore.Pref.Utilities;
 
 namespace TridentCore.Pref.Parsing;
 
@@ -14,9 +15,15 @@ public partial class Parser : IParser<string, PackageDescriptor>
 
     public PackageDescriptor Parse(string input)
     {
-        if (Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme == Building.Builder.Scheme)
+        if (InternalUriHelper.HasScheme(input, Building.Builder.Scheme))
         {
-            return ParsePref(uri);
+            if (!InternalUriHelper.TryParse(input, Building.Builder.Scheme, out var uri)
+                || string.IsNullOrEmpty(uri.Host))
+            {
+                throw new FormatException("Invalid package reference URI.");
+            }
+
+            return ParsePref(input, uri);
         }
 
         return ParseLegacy(input);
@@ -24,10 +31,22 @@ public partial class Parser : IParser<string, PackageDescriptor>
 
     #endregion
 
-    private static PackageDescriptor ParsePref(Uri uri)
+    private static PackageDescriptor ParsePref(string input, Uri uri)
     {
         var repository = uri.Host;
-        var path = uri.AbsolutePath.TrimStart('/');
+        var pathStart = input.IndexOf('/', Building.Builder.Scheme.Length + 3);
+        var queryStart = input.IndexOf('?');
+        if (pathStart < 0 || queryStart >= 0 && pathStart > queryStart)
+        {
+            throw new FormatException("A package reference requires an identity.");
+        }
+
+        // NOTE: Read escaped components from the input so URI dot-segment normalization cannot change package IDs.
+        var path = queryStart < 0 ? input[(pathStart + 1)..] : input[(pathStart + 1)..queryStart];
+        if (path.Contains('\\'))
+        {
+            throw new FormatException("Package identity delimiters must be escaped.");
+        }
 
         // NOTE: '@' 是合法 pchar，@version 落在路径段尾部。
         string? version = null;
@@ -35,7 +54,13 @@ public partial class Parser : IParser<string, PackageDescriptor>
         var idPath = at >= 0 ? path[..at] : path;
         if (at >= 0)
         {
-            version = path[(at + 1)..];
+            // WARNING: Persisted Packwiz versions may contain unescaped '/' from Git branch names.
+            version = DecodeRequired(path[(at + 1)..]);
+        }
+
+        if (idPath.Contains('@'))
+        {
+            throw new FormatException("Package identity delimiters must be escaped.");
         }
 
         var slash = idPath.IndexOf('/');
@@ -43,35 +68,49 @@ public partial class Parser : IParser<string, PackageDescriptor>
         string identity;
         if (slash >= 0)
         {
-            @namespace = idPath[..slash];
-            identity = idPath[(slash + 1)..];
+            @namespace = DecodeRequired(idPath[..slash]);
+            identity = DecodeRequired(idPath[(slash + 1)..]);
+            if (idPath[(slash + 1)..].Contains('/'))
+            {
+                throw new FormatException("Package identity delimiters must be escaped.");
+            }
         }
         else
         {
-            identity = idPath;
+            identity = DecodeRequired(idPath);
         }
 
-        return new(repository, @namespace, identity, version, ParseFilters(uri.Query));
+        return new(repository, @namespace, identity, version,
+                   ParseFilters(queryStart < 0 ? null : input[(queryStart + 1)..]));
     }
+
+    private static string DecodeRequired(string encoded) =>
+        InternalUriHelper.TryDecodeComponent(encoded, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value
+            : throw new FormatException("A package reference contains an invalid or empty component.");
 
     private static ImmutableArray<(string, string?)> ParseFilters(string? query)
     {
-        if (string.IsNullOrEmpty(query) || query == "?")
+        if (string.IsNullOrEmpty(query))
         {
             return [];
         }
 
-        var body = query[0] == '?' ? query[1..] : query;
         var builder = ImmutableArray.CreateBuilder<(string, string?)>();
-        foreach (var segment in body.Split('&'))
+        foreach (var segment in query.Split('&'))
         {
             var eq = segment.IndexOf('=');
             if (eq <= 0)
             {
-                continue;
+                throw new FormatException("A package filter requires a key and a value separated by '='.");
             }
 
-            builder.Add((segment[..eq], segment[(eq + 1)..]));
+            if (!InternalUriHelper.TryDecodeComponent(segment[(eq + 1)..], out var value))
+            {
+                throw new FormatException("A package filter contains invalid escaping.");
+            }
+
+            builder.Add((DecodeRequired(segment[..eq]), value));
         }
 
         return builder.ToImmutable();
