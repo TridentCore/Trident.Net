@@ -15,8 +15,14 @@ public class MultiMcImporter : IProfileImporter
     public bool CanHandle(CompressedProfilePack pack) =>
         pack.FileNames.Contains(MultiMcHelper.PACK_INDEX_FILE_NAME);
 
-    public Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack) =>
-        ExtractSourceAsync(pack);
+    public async Task<ImportedProfileContainer> ExtractAsync(CompressedProfilePack pack)
+    {
+        var container = await ExtractSourceAsync(pack).ConfigureAwait(false);
+        container.Profile.Setup.Source = pack.Reference is not null
+                                             ? ModpackSourceHelper.FromPref(PackageHelper.ToPref(pack.Reference))
+                                             : ModpackSourceHelper.FromLocalName(container.Profile.Name);
+        return container;
+    }
 
     public static async Task<ImportedProfileContainer> ExtractSourceAsync(IProfilePackSource pack)
     {

@@ -3,6 +3,8 @@ using System.Text.Json;
 using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
+using TridentCore.Abstractions.Utilities;
+using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Importers;
@@ -33,6 +35,24 @@ public class TridentImporter : IProfileImporter
         {
             throw new FormatException($"{IndexFileName} is not a valid manifest");
         }
+
+        ProfileManager.MigrateSources(index.Setup);
+        var previousSource = index.Setup.Source;
+        var source = pack.Reference is not null
+                         ? ModpackSourceHelper.FromPref(PackageHelper.ToPref(pack.Reference))
+                         : previousSource ?? ModpackSourceHelper.FromLocalName(index.Name);
+        foreach (var entry in index.Setup.Packages.Where(x => x.Source == previousSource))
+        {
+            entry.Source = source;
+        }
+        for (var i = 0; i < index.Setup.SourceOrders.Count; i++)
+        {
+            if (index.Setup.SourceOrders[i] == previousSource)
+            {
+                index.Setup.SourceOrders[i] = source;
+            }
+        }
+        index.Setup.Source = source;
 
         var options = await JsonSerializer
                            .DeserializeAsync<PackData>(optionsStream, FileHelper.SerializerOptions)

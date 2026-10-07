@@ -22,11 +22,10 @@ public class PackwizImporter : IProfileImporter
             throw new FormatException($"{PackwizHelper.INDEX_FILE_NAME} declares no minecraft version");
         }
 
-        var source = pack.Reference is not null ? PackageHelper.ToPref(pack.Reference) : null;
-        // 在线安装（有项目引用）保留 pref 溯源；本地导入无引用可关联，
-        // 包级改用整合包名 collection 分组，便于用户管理区分来源。
         var packName = string.IsNullOrEmpty(manifest.Name) ? "Imported packwiz modpack" : manifest.Name;
-        var packageSource = source ?? CollectionHelper.ToUri(packName);
+        var source = pack.Reference is not null
+                         ? ModpackSourceHelper.FromPref(PackageHelper.ToPref(pack.Reference))
+                         : ModpackSourceHelper.FromLocalName(packName);
         var loader = manifest.Loader is { } l ? LoaderHelper.ToLurl(l.Identity, l.Version) : null;
 
         var packages = new List<Profile.Rice.Entry>();
@@ -52,7 +51,7 @@ public class PackwizImporter : IProfileImporter
                 continue;
             }
 
-            packages.Add(new() { Pref = pref, Enabled = true, Source = packageSource });
+            packages.Add(new() { Pref = pref, Enabled = true, Source = source });
         }
 
         // packwiz 的整个包内容就是实例目录，无 overrides 层：除清单与包声明外原样带入。

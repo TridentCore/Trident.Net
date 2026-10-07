@@ -11,8 +11,6 @@ using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Engines.Deploying;
 using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
-using TridentCore.Pref.Building;
-using TridentCore.Pref.Utilities;
 
 namespace TridentCore.Core.Exporters;
 
@@ -40,8 +38,8 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
 
         if (!pack.Options.IncludingSource)
         {
-            // NOTE: IncludingSource 语义是「不关联原始整合包」——只针对整合包型（pref://）来源：
-            //  剔除 setup 级引用；包级 pref 来源连同 SourceOrders 确定性映射为 collection，
+            // NOTE: IncludingSource 语义是「不关联原始整合包」——只针对整合包型来源：
+            //  剔除 setup 级引用；包级整合包来源连同 SourceOrders 确定性映射为 collection，
             //  使覆盖层叠（(Pref, Source) 身份 + 叠加优先级）在消费者侧原样存活。
             exported.Setup.Source = null;
             var profileManager = serviceProvider.GetRequiredService<ProfileManager>();
@@ -52,14 +50,15 @@ public class TridentExporter(IServiceProvider serviceProvider) : IProfileExporte
                                .ToDictionary(x => x.Source!, x => x.Name);
             string Sever(string? source)
             {
-                // NOTE: 非 pref 戳（collection 等）不是整合包来源，原样保留。
-                if (source is null || !InternalUriHelper.HasScheme(source, Builder.Scheme))
+                if (!ModpackSourceHelper.IsModpack(source))
                 {
                     return source!;
                 }
 
-                var fallback = PackageHelper.TryParse(source, out var id) ? id.Identity : source;
-                return CollectionHelper.ToUri(namesBySource.GetValueOrDefault(source, fallback));
+                var fallback = ModpackSourceHelper.TryGetLocalName(source, out var name)
+                                   ? name
+                                   : ModpackSourceHelper.TryGetPref(source, out var id) ? id.Identity : source!;
+                return CollectionHelper.ToUri(namesBySource.GetValueOrDefault(source!, fallback));
             }
 
             foreach (var entry in exported.Setup.Packages)

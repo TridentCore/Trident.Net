@@ -6,6 +6,7 @@ using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services.Profiles;
 using TridentCore.Core.Utilities;
+using TridentCore.Pref;
 
 namespace TridentCore.Core.Services;
 
@@ -49,6 +50,10 @@ public class ProfileManager : IDisposable
                 }
 
                 var handle = ProfileHandle.Create(ins.Name, FileHelper.SerializerOptions);
+                if (MigrateSources(handle.Value.Setup))
+                {
+                    handle.Save();
+                }
                 _profiles.Add(handle);
                 logger.LogInformation("{} scanned", handle.Key);
             }
@@ -113,6 +118,7 @@ public class ProfileManager : IDisposable
 
     public void Add(ReservedKey key, Profile profile)
     {
+        MigrateSources(profile.Setup);
         var handle = new ProfileHandle(key.Key, profile, FileHelper.SerializerOptions);
         handle.Save();
         _profiles.Add(handle);
@@ -209,6 +215,7 @@ public class ProfileManager : IDisposable
     {
         var handle = _profiles.FirstOrDefault(x => x.Key == key)
                   ?? throw new InvalidOperationException($"{key} is not in profiles");
+        MigrateSources(updated.Setup);
         handle.Save(updated);
         handle.Value.Name = updated.Name;
         handle.Value.Setup = updated.Setup;
@@ -234,13 +241,62 @@ public class ProfileManager : IDisposable
 
     public event EventHandler<ProfileChangedEventArgs>? ProfileAdded;
 
-    internal void OnProfileUpdated(string key, Profile profile) => ProfileUpdated?.Invoke(this, new(key, profile));
+    internal void OnProfileUpdated(string key, Profile profile)
+    {
+        MigrateSources(profile.Setup);
+        ProfileUpdated?.Invoke(this, new(key, profile));
+    }
 
     internal void OnProfileRemoved(string key, Profile profile) => ProfileRemoved?.Invoke(this, new(key, profile));
 
     internal void OnProfileAdded(string key, Profile profile) => ProfileAdded?.Invoke(this, new(key, profile));
 
     #endregion
+
+    internal void Save(ProfileHandle handle)
+    {
+        MigrateSources(handle.Value.Setup);
+        handle.Save();
+    }
+
+    internal static bool MigrateSources(Profile.Rice setup)
+    {
+        var changed = false;
+        setup.Source = Migrate(setup.Source);
+        foreach (var entry in setup.Packages)
+        {
+            entry.Source = Migrate(entry.Source);
+        }
+        for (var i = 0; i < setup.SourceOrders.Count; i++)
+        {
+            var source = Migrate(setup.SourceOrders[i]);
+            if (source is null)
+            {
+                setup.SourceOrders.RemoveAt(i--);
+                changed = true;
+            }
+            else
+            {
+                setup.SourceOrders[i] = source;
+            }
+        }
+        return changed;
+
+        string? Migrate(string? source)
+        {
+            var migrated = source;
+            if (string.IsNullOrEmpty(source))
+            {
+                migrated = null;
+            }
+            else if (PackageHelper.TryParseDescriptor(source, out var pref))
+            {
+                migrated = ModpackSourceHelper.FromPref(pref.Build());
+            }
+            changed |= migrated != source;
+            return migrated;
+        }
+    }
 
     #region Dispose
 

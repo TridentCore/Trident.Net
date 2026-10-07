@@ -20,7 +20,7 @@ public class ProfileGuard : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
-        _handle.Save();
+        _root.Save(_handle);
         NotifyChanged();
         return ValueTask.CompletedTask;
     }
