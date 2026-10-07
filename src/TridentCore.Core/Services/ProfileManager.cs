@@ -7,6 +7,8 @@ using TridentCore.Abstractions.Utilities;
 using TridentCore.Core.Services.Profiles;
 using TridentCore.Core.Utilities;
 using TridentCore.Pref;
+using TridentCore.Pref.Building;
+using TridentCore.Pref.Utilities;
 
 namespace TridentCore.Core.Services;
 
@@ -289,7 +291,9 @@ public class ProfileManager : IDisposable
             {
                 migrated = null;
             }
-            else if (PackageHelper.TryParseDescriptor(source, out var pref))
+            else if ((InternalUriHelper.HasScheme(source, Builder.Scheme)
+                      || !source.Contains("://", StringComparison.Ordinal))
+                     && PackageHelper.TryParseDescriptor(source, out var pref))
             {
                 migrated = ModpackSourceHelper.FromPref(pref.Build());
             }
