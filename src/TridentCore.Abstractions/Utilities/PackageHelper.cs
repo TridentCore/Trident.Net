@@ -92,30 +92,6 @@ public static class PackageHelper
 
     public static string ToPref(PackageIdentifier id) => ToPref(id.Repository, id.Namespace, id.Identity, id.Version);
 
-    // WARNING: 旧 Purl 仅在能构造有效 Pref 时迁移，否则原样保留，避免加载存量配置时抛异常。
-    //  恒返回非 null 字符串（空输入得空串）。
-    public static string SafeMigrate(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return string.Empty;
-        }
-
-        if (!Parser.Default.TryParse(value, out var parsed))
-        {
-            return value;
-        }
-
-        try
-        {
-            return parsed.Build();
-        }
-        catch (ArgumentException)
-        {
-            return value;
-        }
-    }
-
     // NOTE: 有 vid 即固定版本；无 vid 但有 filter 即浮动版本。
     public static string Identify(string label, string? ns, string pid, string? vid, Filter? filter) =>
         Builder.Build(label,

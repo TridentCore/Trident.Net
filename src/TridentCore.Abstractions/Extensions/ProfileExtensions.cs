@@ -56,7 +56,7 @@ public static class ProfileExtensions
         {
             var overrides = new Dictionary<string, object>(profile.Overrides);
 
-            return new() { Name = profile.Name, Setup = profile.Setup.Clone(), Overrides = overrides };
+            return new() { Format = profile.Format, Name = profile.Name, Setup = profile.Setup.Clone(), Overrides = overrides };
         }
     }
 

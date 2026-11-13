@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using TridentCore.Abstractions.Repositories.Resources;
 using TridentCore.Abstractions.Utilities;
 
@@ -7,7 +6,9 @@ namespace TridentCore.Abstractions.FileModels;
 // Platform records package compatibility; artifact regions cache their own inputs independently.
 public record LockData
 {
-    public const int FORMAT = 9;
+    public const int FORMAT = 10;
+
+    public int Format { get; init; } = FORMAT;
 
     public required PlatformData Platform { get; init; }
     public ArtifactData? Artifact { get; init; }
@@ -46,16 +47,6 @@ public record LockData
     {
         public Library? MainJar { get; init; }
         public IReadOnlyList<Agent> Agents { get; init; } = [];
-
-        // NOTE: 兼容旧的单个 major 写法。读取时折叠成单元素集合；写出恒为 null，所以不再落盘。
-        //  移除见 POLY-167。
-        [Obsolete("compat: legacy scalar javaMajorVersion, remove once on-disk lock files have migrated (POLY-167)")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public uint? JavaMajorVersion
-        {
-            get => null;
-            init => CompatibleJavaMajors = value is { } major ? [major] : [];
-        }
     }
 
     public record Agent(Library Library, string? Arguments = null);
@@ -69,16 +60,7 @@ public record LockData
         string Pref,
         string? Source,
         Package Resolved,
-        PackageRule Rule)
-    {
-        [Obsolete("compat: legacy purl key, remove once on-disk lock files have migrated")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Purl
-        {
-            get => null;
-            init => Pref = PackageHelper.SafeMigrate(value);
-        }
-    }
+        PackageRule Rule);
 
     #endregion
 

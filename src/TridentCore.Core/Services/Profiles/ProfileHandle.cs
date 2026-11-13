@@ -1,6 +1,7 @@
 using System.Text.Json;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
+using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Services.Profiles;
 
@@ -46,7 +47,7 @@ internal class ProfileHandle(string key, Profile value, JsonSerializerOptions op
         var path = PathDef.Default.FileOfProfile(key);
         if (File.Exists(path))
         {
-            var profile = JsonSerializer.Deserialize<Profile>(File.ReadAllText(path), options)!;
+            var profile = FileFormatHelper.Profile.Deserialize(File.ReadAllText(path), options);
             return new(key, profile, options);
         }
 

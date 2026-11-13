@@ -131,6 +131,8 @@ services
 
 第一方宿主应优先复用这些 manager，而不是直接操作文件：`ProfileManager` 管理 profile 生命周期，`InstanceManager` 负责部署和启动，`RepositoryAgent` 负责仓库查询，`ImporterAgent` 和 `ExporterAgent` 负责整合包转换。
 
+带版本的文件通过 `FileFormatHelper` 和 `PatchFormatHelper` 中的格式加载器读取：解析原始 JSON，依次执行已注册的前向格式转换，再返回当前模型，不写回来源。缺少 `format` 视为版本 0，高于当前支持版本则读取失败。Profile 的 0→1 转换处理历史 `purl` 字段和来源表示；只要已有 `pref` 字段就保留其值。正常保存操作写出当前格式。版本锁属于可丢弃缓存，格式不适用时重建，不进行格式转换。
+
 资源规划可独立于 `DeployEngine` 使用：`LockValidationHelper` 验证已解析需求，`SourceProjectionPlanner` 扫描受管来源，`ProjectionArbitrator` 使用内存路径索引应用路径优先级。`DeploymentPlanner` 接收版本锁和可用的资产及运行时索引，在内部合并文件需求，一次性返回包含不可变需求与投影集合的完整目标。`AssetPlanner` / `RuntimePlanner` 从索引枚举需求，`DeploymentDiffer` 校验目标文件并将投影与当前运行目录比较。这些组件不联网、不写文件。部署消费方可用 `DeploymentIndexService` 补齐缺失索引；就绪检查消费方记录不可用类别并继续检查其余本地输入。部署按锁内可选 major 准备 Mojang Java 运行时，不受用户启动偏好影响；用户 Java Home 仅在启动时选择。
 
 部署活动通过 `CurrentStage` 表示大阶段，通过 `Progress.Stage` 单独表示内部步骤。各步骤选择自己的工作单位，通过 `ActivityProgress.Determinate` 汇报 `Current` 和 `Total`，无法量化时汇报无级进度。规划依次收集来源、展开需求、校验文件和核对目录；执行依次下载文件、应用本地变更和完成部署。新的有级步骤从零开始，没有工作项的步骤直接跳过。桌面界面固定以两行显示大阶段和带当前量/总量的内部步骤，进度条直接绑定这两个值，并始终使用同一套值过渡动画。

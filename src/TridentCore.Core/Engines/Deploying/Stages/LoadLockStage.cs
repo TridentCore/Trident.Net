@@ -16,23 +16,14 @@ public class LoadLockStage(ILogger<LoadLockStage> logger) : StageBase
         {
             try
             {
-                var content = await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
-                var existing = JsonSerializer.Deserialize<LockData>(content, JsonSerializerOptions.Web);
-                if (existing != null)
-                {
-                    Context.BaseLock = existing;
-                    logger.LogInformation("Loaded lock: {path}", Path.GetFileName(path));
-                }
-                else
-                {
-                    logger.LogInformation("Lock deserialized to null, rebuilding");
-                }
+                Context.BaseLock = await LockStorageHelper.ReadAsync(path, token).ConfigureAwait(false);
+                logger.LogInformation("Loaded lock: {path}", Path.GetFileName(path));
             }
             catch (JsonException e)
             {
                 logger.LogWarning("Lock unreadable (likely legacy format), rebuilding: {message}", e.Message);
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not OperationCanceledException)
             {
                 logger.LogWarning("Load lock failed: {message}", e.Message);
             }

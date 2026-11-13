@@ -1,4 +1,3 @@
-using System.Text.Json;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
@@ -35,9 +34,9 @@ public class ImporterAgent(IEnumerable<IProfileImporter> importers)
         PatchIndex? index = null;
         if (container.Patches.Generated.TryGetValue(PatchStorageHelper.INDEX_FILE_NAME, out var bytes))
         {
-            var incoming = JsonSerializer.Deserialize<PackPatchIndex>(bytes, FileHelper.SerializerOptions)
-                        ?? throw new InvalidDataException("Patch index is empty.");
-            index = new PatchIndex { Format = incoming.Format, Import = incoming.Import, Users = previous.Users };
+            await using var stream = new MemoryStream(bytes, false);
+            var incoming = await PatchFormatHelper.PackIndex.DeserializeAsync(stream, FileHelper.SerializerOptions, token).ConfigureAwait(false);
+            index = new PatchIndex { Import = incoming.Import, Users = previous.Users };
             PatchStorageHelper.ValidateEntries(home, index);
         }
         foreach (var (_, target) in container.Patches.Files)

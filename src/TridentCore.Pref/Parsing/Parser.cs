@@ -116,8 +116,6 @@ public partial class Parser : IParser<string, PackageDescriptor>
         return builder.ToImmutable();
     }
 
-    // TODO: 旧 Purl 字符串格式兼容，保留以解析存量 profile/lock/snapshot 数据；
-    //  磁盘 Purl 数据不再需要后移除。
     private PackageDescriptor ParseLegacy(string input)
     {
         var match = LegacyPattern.Match(input);

@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using MimeDetective;
 using MimeDetective.Definitions;
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Core.Converters;
 using FileHash = TridentCore.Abstractions.Utilities.FileHash;
 using HashAlgorithm = TridentCore.Abstractions.Utilities.HashAlgorithm;
 using FileStream = System.IO.FileStream;
@@ -30,7 +29,6 @@ public static class FileHelper
     static FileHelper()
     {
         SerializerOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-        SerializerOptions.Converters.Add(new SelectorTypeConverter());
         SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
         SerializerOptions.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
     }

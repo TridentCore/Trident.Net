@@ -284,8 +284,7 @@ public static class PatchStorageHelper
             return new();
         }
         await using var stream = File.OpenRead(path);
-        var index = await JsonSerializer.DeserializeAsync<PatchIndex>(stream, PatchHelper.JsonOptions, token).ConfigureAwait(false)
-                 ?? throw new InvalidDataException("Patch index is empty.");
+        var index = await PatchFormatHelper.Index.DeserializeAsync(stream, PatchHelper.JsonOptions, token).ConfigureAwait(false);
         ValidateIndex(index);
         return index;
     }
@@ -311,39 +310,14 @@ public static class PatchStorageHelper
     private static async Task<PatchDocument> ReadDocumentAsync(string path, CancellationToken token)
     {
         await using var stream = File.OpenRead(path);
-        var document = await JsonSerializer.DeserializeAsync<PatchDocument>(stream, PatchHelper.JsonOptions, token).ConfigureAwait(false)
-                    ?? throw new InvalidDataException($"Patch '{path}' is empty.");
-        document = FoldLegacyJavaMajor(document);
+        var document = await PatchFormatHelper.Document.DeserializeAsync(stream, PatchHelper.JsonOptions, token).ConfigureAwait(false);
         ValidateDocument(document);
         return document;
     }
 
-    // NOTE: format 1 把 Java 兼容版本写成单个主版本；这里把旧 target 折成兼容版本集合，旧文档因此仍
-    //  能参与集合语义。已经写成集合的文档原样通过。移除见 POLY-167。
-    private static PatchDocument FoldLegacyJavaMajor(PatchDocument document) =>
-        document.Operations.Any(x => x.Target.EndsWith(".javaMajor", StringComparison.Ordinal))
-            ? document with
-            {
-                Operations =
-                [
-                    .. document.Operations.Select(x => x.Target.EndsWith(".javaMajor", StringComparison.Ordinal)
-                                                           ? x with
-                                                           {
-                                                               Target = x.Target[..^"javaMajor".Length] + "compatibleJavaMajors",
-                                                               Value = x.Value is { ValueKind: JsonValueKind.Number } number
-                                                                           ? JsonSerializer.SerializeToElement(new[] { number.GetUInt32() },
-                                                                                                               FileHelper.SerializerOptions)
-                                                                           : x.Value
-                                                           }
-                                                           : x)
-                ]
-            }
-            : document;
-
     private static void ValidateDocument(PatchDocument document)
     {
-        // 1 是 Java 兼容版本仍写作单个 major 的旧文档，2 是集合与 intersect 的文档；两者都读。见 POLY-167。
-        if (document.Format is not (1 or 2) || document.Operations is null)
+        if (document.Format != PatchDocument.FORMAT || document.Operations is null)
         {
             throw new InvalidDataException("Unsupported patch document format.");
         }
@@ -355,7 +329,7 @@ public static class PatchStorageHelper
 
     private static void ValidateIndex(PatchIndex index)
     {
-        if (index.Format != 1 || index.Import is null || index.Users is null)
+        if (index.Format != PatchIndex.FORMAT || index.Import is null || index.Users is null)
         {
             throw new InvalidDataException("Unsupported patch index format.");
         }

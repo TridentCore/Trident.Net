@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TridentCore.Abstractions;
 using TridentCore.Abstractions.Accounts;
@@ -326,9 +325,8 @@ public class InstanceManager(
             throw new LockUnavailableException(operation.Key, lockPath, false);
         }
 
-        var lockData = JsonSerializer.Deserialize<LockData>(
-            await File.ReadAllTextAsync(lockPath, operation.Token).ConfigureAwait(false), JsonSerializerOptions.Web);
-        if (lockData?.Artifact is not { } artifact)
+        var lockData = await LockStorageHelper.ReadAsync(lockPath, operation.Token).ConfigureAwait(false);
+        if (lockData.Artifact is not { } artifact)
         {
             throw new InvalidOperationException("Lock is not valid or has no artifact");
         }

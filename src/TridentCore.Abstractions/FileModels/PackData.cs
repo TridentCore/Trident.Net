@@ -2,6 +2,10 @@ namespace TridentCore.Abstractions.FileModels;
 
 public class PackData
 {
+    public const int FORMAT = 1;
+
+    public int Format { get; init; } = FORMAT;
+
     public bool OfflineMode { get; set; }
     public IList<string> ExcludedTags { get; set; } = [];
 

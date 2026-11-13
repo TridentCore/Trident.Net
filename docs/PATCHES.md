@@ -44,7 +44,7 @@ Each indexed entry points to a `patch.json` in its own directory. Indexed owners
 
 ```json
 {
-  "format": 2,
+  "format": 3,
   "name": "My launch adjustments",
   "operations": [
     {
@@ -177,7 +177,7 @@ Operations and libraries can carry ordered platform rules:
 
 With no rules, an item applies everywhere. With rules, it begins disallowed and each matching rule sets allow/disallow: rules are evaluated top to bottom and the last matching rule decides. A bare `allow` matches every platform, so `[allow, disallow windows]` expresses everywhere except Windows, and `[allow osx]` expresses macOS only. OS values include windows, linux, osx and architecture-qualified names such as osx-arm64. Architecture and OS-version conditions are regular expressions evaluated against the host architecture and OS version.
 
-`compatibleJavaMajors` is a set, not a choice: it lists every Java major the result accepts. `replace` declares the set outright and discards whatever earlier declarations supplied; `intersect` narrows it to the majors both sides accept. A whole-result replacement carries the set as well. The applied result may end up empty, in which case the runtime resolution reports that no Java version fits rather than rejecting the patch. Index format stays 1; documents are format 2, and format 1 documents remain readable so modpacks built against the earlier single-major form still deploy.
+`compatibleJavaMajors` is a set, not a choice: it lists every Java major the result accepts. `replace` declares the set outright and discards whatever earlier declarations supplied; `intersect` narrows it to the majors both sides accept. A whole-result replacement carries the set as well. The applied result may end up empty, in which case the runtime resolution reports that no Java version fits rather than rejecting the patch. Index format stays 1; current documents use format 3. The file loader converts format 1 and 2 documents in memory before validation, including legacy single-major fields accepted by earlier readers. It does not rewrite the source file and rejects documents newer than the supported format.
 
 ## Java and cache behavior
 

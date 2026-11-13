@@ -1,11 +1,13 @@
-using System.Text.Json.Serialization;
 using TridentCore.Abstractions.Repositories.Resources;
-using TridentCore.Abstractions.Utilities;
 
 namespace TridentCore.Abstractions.FileModels;
 
 public class Profile
 {
+    public const int FORMAT = 1;
+
+    public int Format { get; init; } = FORMAT;
+
     public const string OVERRIDE_JAVA_HOME = "java.home";
     public const string OVERRIDE_JAVA_MAX_MEMORY = "java.max_memory";
     public const string OVERRIDE_JAVA_ADDITIONAL_ARGUMENTS = "java.additional_arguments";
@@ -45,14 +47,6 @@ public class Profile
         {
             public string Pref { get; set; } = null!;
 
-            [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
-            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-            public string? Purl
-            {
-                get => null;
-                set => Pref = PackageHelper.SafeMigrate(value);
-            }
-
             public required bool Enabled { get; set; }
 
             public string? Source { get; set; }
@@ -83,14 +77,6 @@ public class Profile
 
                 public IList<RuleSelector>? Children { get; set; }
                 public string? Pref { get; set; }
-
-                [Obsolete("compat: legacy purl key, remove once on-disk profiles have migrated")]
-                [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-                public string? Purl
-                {
-                    get => null;
-                    set => Pref = PackageHelper.SafeMigrate(value);
-                }
 
                 public string? Repository { get; set; }
                 public string? Tag { get; set; }

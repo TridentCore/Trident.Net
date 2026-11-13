@@ -49,8 +49,7 @@ public static class LockValidationHelper
     {
         try
         {
-            await using var stream = File.OpenRead(PathDef.Default.FileOfLockData(key));
-            return await JsonSerializer.DeserializeAsync<LockData>(stream, JsonSerializerOptions.Web, token).ConfigureAwait(false);
+            return await LockStorageHelper.ReadAsync(PathDef.Default.FileOfLockData(key), token).ConfigureAwait(false);
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
@@ -59,7 +58,7 @@ public static class LockValidationHelper
 
     public static async Task<bool> ValidateAsync(string key, Profile.Rice setup, LockData data, CancellationToken token = default)
     {
-        if (data.Artifact is null || data.Vanilla is null || data.Loader is null || data.Launch is null
+        if (data.Format != LockData.FORMAT || data.Artifact is null || data.Vanilla is null || data.Loader is null || data.Launch is null
             || data.Platform != new LockData.PlatformData(setup.Version, setup.Loader)
             || data.PackagesInput != PackagesInput(setup)
             || data.RuntimeMajor != JavaHelper.SelectRuntimeMajor(data.Artifact.CompatibleJavaMajors))

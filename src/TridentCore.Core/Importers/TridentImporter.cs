@@ -4,7 +4,6 @@ using TridentCore.Abstractions.Extensions;
 using TridentCore.Abstractions.FileModels;
 using TridentCore.Abstractions.Importers;
 using TridentCore.Abstractions.Utilities;
-using TridentCore.Core.Services;
 using TridentCore.Core.Utilities;
 
 namespace TridentCore.Core.Importers;
@@ -28,15 +27,8 @@ public class TridentImporter : IProfileImporter
 
         await using var indexStream = pack.Open(IndexFileName);
         await using var optionsStream = pack.Open(OptionsFileName);
-        var index = await JsonSerializer
-                         .DeserializeAsync<Profile>(indexStream, FileHelper.SerializerOptions)
-                         .ConfigureAwait(false);
-        if (index is null)
-        {
-            throw new FormatException($"{IndexFileName} is not a valid manifest");
-        }
-
-        ProfileManager.MigrateSources(index.Setup);
+        var index = await FileFormatHelper.Profile.DeserializeAsync(indexStream, FileHelper.SerializerOptions)
+                                         .ConfigureAwait(false);
         var previousSource = index.Setup.Source;
         var source = pack.Reference is not null
                          ? ModpackSourceHelper.FromPref(PackageHelper.ToPref(pack.Reference))
@@ -54,13 +46,8 @@ public class TridentImporter : IProfileImporter
         }
         index.Setup.Source = source;
 
-        var options = await JsonSerializer
-                           .DeserializeAsync<PackData>(optionsStream, FileHelper.SerializerOptions)
-                           .ConfigureAwait(false);
-        if (options is null)
-        {
-            throw new FormatException($"{OptionsFileName} is not a valid manifest");
-        }
+        var options = await FileFormatHelper.PackData.DeserializeAsync(optionsStream, FileHelper.SerializerOptions)
+                                           .ConfigureAwait(false);
 
         // 导入是不可信输入，只接受导出端明确启用的 Override。
         var included = options.IncludedOverrides.Where(x => x.Enabled).Select(x => x.Key).ToFrozenSet();
@@ -90,8 +77,7 @@ public class TridentImporter : IProfileImporter
         if (pack.FileNames.Contains(patchIndexPath))
         {
             await using var patchStream = pack.Open(patchIndexPath);
-            patchIndex = await JsonSerializer.DeserializeAsync<PackPatchIndex>(patchStream, FileHelper.SerializerOptions).ConfigureAwait(false)
-                      ?? throw new InvalidDataException("Patch index is empty.");
+            patchIndex = await PatchFormatHelper.PackIndex.DeserializeAsync(patchStream, FileHelper.SerializerOptions).ConfigureAwait(false);
         }
         generatedPatches.Add(PatchStorageHelper.INDEX_FILE_NAME,
             JsonSerializer.SerializeToUtf8Bytes(patchIndex, FileHelper.SerializerOptions));

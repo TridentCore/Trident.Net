@@ -4,7 +4,9 @@ namespace TridentCore.Abstractions.FileModels;
 
 public record PatchDocument
 {
-    public int Format { get; init; } = 2;
+    public const int FORMAT = 3;
+
+    public int Format { get; init; } = FORMAT;
     public string? Name { get; init; }
     public string? Description { get; init; }
     public IReadOnlyList<Operation> Operations { get; init; } = [];
