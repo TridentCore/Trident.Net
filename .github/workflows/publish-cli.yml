@@ -9,9 +9,6 @@ concurrency:
     group: publish-${{ github.ref }}
     cancel-in-progress: false
 
-permissions:
-    contents: write
-
 defaults:
     run:
         shell: bash
@@ -19,6 +16,10 @@ defaults:
 jobs:
     publish:
         runs-on: ubuntu-latest
+        environment: nuget
+        permissions:
+            contents: write
+            id-token: write
         steps:
             -   name: Checkout code
                 uses: actions/checkout@v4
@@ -73,12 +74,19 @@ jobs:
                       --configuration Release \
                       --output ./publish
 
+            -   name: Log in to NuGet
+                if: steps.version-check.outputs.should_publish == 'true'
+                uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+                id: nuget-login
+                with:
+                    user: ${{ vars.NUGET_USER }}
+
             -   name: Publish to NuGet
                 if: steps.version-check.outputs.should_publish == 'true'
                 run: |
-                    dotnet nuget push ./publish/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+                    dotnet nuget push ./publish/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
                 env:
-                    NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+                    NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
 
             -   name: Push tag to remote
                 if: steps.version-check.outputs.should_publish == 'true'
